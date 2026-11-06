@@ -214,6 +214,20 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     assert!(g.location().col >= 120, "{}", g.location());
 }
 
+/// A stretch the two agree on all the way is confirmed whatever its length: the original ends its
+/// passes about one behind the frames run, so a case of exactly the route's frames missed its goal
+/// on the last pass at 600 and 900 steps (and met it at 300 and 950).
+#[test]
+fn a_route_the_original_agrees_with_meets_its_goal_at_any_length() {
+    let d = data();
+    let p = short();
+    for n in [600, 900] {
+        let v = confirm::confirm(&d, &p.route.inputs[..n]).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(v.outcome, Outcome::Same, "{n} steps: {v}");
+        assert!(v.goal_met.is_some(), "{n} steps: {v}");
+    }
+}
+
 /// The longer search, through the real command: more rounds, the original and the page.
 #[test]
 #[ignore = "full: a 400-round search played on the original, about 5 s release, 15 s debug"]

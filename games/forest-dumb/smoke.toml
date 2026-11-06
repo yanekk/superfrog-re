@@ -172,7 +172,8 @@ workspace = "engine"
 "crates/fd-routeview/tests/page.rs" = "smoke"
 # T20, the planner: its facts, a 100-round search to the exit's cells replayed and drawn on the page,
 # the same route on 1 to 4 threads, the budget's stop through the command, and the route played on the
-# original (~2 s): about 4 s warm. The 400-round search through the command is full (~6 s).
+# original (~2 s), two agreeing prefixes on it (~3 s): about 7 s warm. The 400-round search through
+# the command is full (~6 s).
 "crates/fd-plan/src" = "smoke"
 "crates/fd-plan/tests/route.rs" = [
     "the_facts_match_the_levels_readings",
@@ -180,6 +181,7 @@ workspace = "engine"
     "the_route_is_the_same_across_runs_and_thread_counts",
     "the_budget_stops_the_search_and_it_reports_where",
     "the_routes_stretch_is_confirmed_on_the_original_where_modelled",
+    "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
 ]
 
 [python]

@@ -65,13 +65,18 @@ pub fn replay(data: &Arc<GameData>, inputs: &[FrameInput]) -> PlanState {
 /// the map page reads the last line's frame as the route's end and plays only its idle tail past it.
 pub fn script_text(notes: &[String], inputs: &[FrameInput]) -> String {
     let mut out: String = notes.iter().map(|n| format!("# {n}\n")).collect();
+    out.push_str(&script(inputs).to_text());
+    out
+}
+
+/// `inputs` as an input script that lets go at the route's end, so whatever plays past it idles.
+pub fn script(inputs: &[FrameInput]) -> InputScript {
     let mut s = InputScript::from_steps(inputs);
     let end = inputs.len() as u32;
     if s.lines.last().is_none_or(|l| l.0 != end) {
         s.lines.push((end, FrameInput::NONE));
     }
-    out.push_str(&s.to_text());
-    out
+    s
 }
 
 #[cfg(test)]
