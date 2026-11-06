@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
-| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ✅ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |
