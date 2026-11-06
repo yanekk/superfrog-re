@@ -20,6 +20,9 @@ pub enum Key {
     Space,
     Return,
     Escape,
+    Tab,
+    /// The left Option key, alone (a game's Fire), posted as a key of its own.
+    OptionLeft,
     /// A letter or digit key.
     Char(char),
 }
@@ -35,6 +38,8 @@ impl Key {
             Key::Space => 0x31,
             Key::Return => 0x24,
             Key::Escape => 0x35,
+            Key::Tab => 0x30,
+            Key::OptionLeft => 0x3A,
             Key::Char(c) => match c.to_ascii_lowercase() {
                 'a' => 0x00,
                 's' => 0x01,
