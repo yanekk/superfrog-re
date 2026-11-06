@@ -914,6 +914,7 @@ dependencies = [
  "amiga-app",
  "amiga-disk",
  "amiga-input",
+ "amiga-record",
  "fd-assets",
  "fd-core",
  "fd-tools",

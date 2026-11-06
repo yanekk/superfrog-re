@@ -37,3 +37,5 @@ rfd = "0.15"
 # Which inputs a settings.toml names, so the ones it leaves out take this game's defaults.
 toml = "0.9"
 
+# The bug recorder and its zip (T14): the toolkit's game-free half, with fd-core's header.
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }

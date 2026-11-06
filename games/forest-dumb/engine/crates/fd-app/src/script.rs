@@ -9,13 +9,31 @@
 //! 30: resize 700 600     # ask for this inner size, in points
 //! 40: hang               # stop answering for good: the watchdog's test
 //! ```
+//!
+//! The recorder's (T14). `menu start-level` and `menu stop-recording` are Game ▸ Start Level… and
+//! Game ▸ Stop Recording at their frame. The windows they open are answered by lines that hold for
+//! no frame, in order, whenever the window is shown; with none left, a window is cancelled (Start
+//! Level), cancelled ("Recording in progress": the recording goes on) or discarded (the save window):
+//!
+//! ```text
+//! form level W1-1               # the Start Level window as clicks drive it, until a `form start`
+//! form record off               # it takes or a `form cancel` (the recorder starts on)
+//! form start
+//! answer-recording save         # "Recording in progress": `save`, `discard` or `cancel`
+//! note black screen here        # the save window's note, and Save (`note` alone: an empty note;
+//!                               # `note discard`: Discard)
+//! ```
+
+use std::ops::Deref;
 
 use amiga_app::controls_window::ControlsAction;
 use amiga_app::script_core::{
     CoreScript, HostInput, Line, ScriptError, ScriptGame, parse_script_core,
 };
+use amiga_app::start_level_window::{FieldAction, Form};
 
 use crate::menu::Command;
+use crate::recorder::{self, EndChoice};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Event {
@@ -27,9 +45,38 @@ pub enum Event {
     Hang,
 }
 
-pub type Script = CoreScript<Event>;
+/// The answers to the recorder's windows, in the order they are asked.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Answers {
+    /// Each showing of the Start Level window: what is done in it, until Start or Cancel.
+    pub starts: Vec<Vec<FieldAction>>,
+    /// "Recording in progress".
+    pub endings: Vec<EndChoice>,
+    /// The save window: the note, or `None` for Discard.
+    pub notes: Vec<Option<String>>,
+}
 
-struct Game;
+/// A script: its events by frame and the windows' answers.
+#[derive(Debug, Clone)]
+pub struct Script {
+    core: CoreScript<Event>,
+    pub answers: Answers,
+}
+
+impl Deref for Script {
+    type Target = CoreScript<Event>;
+    fn deref(&self) -> &CoreScript<Event> {
+        &self.core
+    }
+}
+
+#[derive(Default)]
+struct Game {
+    answers: Answers,
+    /// The `form` lines of a Start Level window not yet closed by a Start it takes or a Cancel,
+    /// with the window's model, which says when that is.
+    form: Option<(Form, Vec<FieldAction>)>,
+}
 
 impl ScriptGame for Game {
     type Event = Event;
@@ -38,8 +85,56 @@ impl ScriptGame for Game {
         Event::Input(input)
     }
 
-    fn directive(&mut self, _: &Line) -> Result<bool, ScriptError> {
-        Ok(false)
+    fn directive(&mut self, line: &Line) -> Result<bool, ScriptError> {
+        let words = &line.words;
+        match words.first().copied() {
+            Some("form") => {
+                let spec = recorder::spec();
+                let a = FieldAction::named(&spec, &words[1..]).ok_or_else(|| {
+                    line.error("`form` takes level W1-1, record on|off, start or cancel")
+                })?;
+                let (model, actions) = self
+                    .form
+                    .get_or_insert_with(|| (Form::new(spec), Vec::new()));
+                actions.push(a.clone());
+                if model.apply(a).is_some() {
+                    let (_, actions) = self.form.take().expect("open");
+                    self.answers.starts.push(actions);
+                }
+                Ok(true)
+            }
+            Some("answer-recording") => {
+                self.answers.endings.push(match &words[1..] {
+                    ["save"] => EndChoice::Save,
+                    ["discard"] => EndChoice::Discard,
+                    ["cancel"] => EndChoice::Cancel,
+                    _ => {
+                        return Err(line.error(
+                            "`answer-recording` takes `save`, `discard` or `cancel`",
+                        ));
+                    }
+                });
+                Ok(true)
+            }
+            Some("note") => {
+                self.answers.notes.push(match line.text["note".len()..].trim() {
+                    "discard" => None,
+                    note => Some(note.to_string()),
+                });
+                Ok(true)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    fn finish(&mut self) -> Result<(), ScriptError> {
+        match self.form {
+            Some(_) => Err(ScriptError(
+                "script: the last `form` lines are not closed by `form start` or `form cancel`"
+                    .into(),
+            )),
+            None => Ok(()),
+        }
     }
 
     fn event(&mut self, line: &Line, words: &[&str]) -> Result<Option<Vec<Event>>, ScriptError> {
@@ -63,7 +158,12 @@ impl ScriptGame for Game {
 }
 
 pub fn parse(text: &str) -> Result<Script, ScriptError> {
-    parse_script_core(text, &mut Game)
+    let mut g = Game::default();
+    let core = parse_script_core(text, &mut g)?;
+    Ok(Script {
+        core,
+        answers: g.answers,
+    })
 }
 
 /// Step `n`'s events, in file order.
@@ -116,9 +216,49 @@ mod tests {
     }
 
     #[test]
+    fn the_recorder_s_lines_answer_its_windows_in_order() {
+        let s = parse(
+            "1: menu start-level\nform record off\nform start\nform cancel\n\
+             9: menu stop-recording\nanswer-recording save\nanswer-recording discard\n\
+             answer-recording cancel\nnote black screen # here\nnote\nnote discard\n",
+        )
+        .unwrap();
+        assert_eq!(
+            s.events,
+            vec![
+                (1, Event::Command(Command::StartLevel)),
+                (9, Event::Command(Command::StopRecording)),
+            ]
+        );
+        let spec = recorder::spec();
+        let record = spec.field("record").unwrap();
+        assert_eq!(
+            s.answers,
+            Answers {
+                starts: vec![
+                    vec![
+                        FieldAction::Set(
+                            record,
+                            amiga_app::start_level_window::Value::On(false)
+                        ),
+                        FieldAction::Start
+                    ],
+                    vec![FieldAction::Cancel],
+                ],
+                endings: vec![EndChoice::Save, EndChoice::Discard, EndChoice::Cancel],
+                notes: vec![Some("black screen".into()), Some(String::new()), None],
+            }
+        );
+    }
+
+    #[test]
     fn bad_lines_name_themselves() {
         for (bad, why) in [
-            ("5: menu start-level", "no menu item is called start-level"),
+            ("5: menu start", "no menu item is called start"),
+            ("form level W1-2", "`form` takes"),
+            ("form record maybe", "`form` takes"),
+            ("form record off", "not closed by `form start`"),
+            ("answer-recording keep", "`answer-recording` takes"),
             ("5: controls jump keys", "bad `controls` event"),
             ("5: resize big 3", "`resize` takes"),
             ("5: fly", "unknown event"),
