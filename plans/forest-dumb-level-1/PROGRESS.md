@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 57 of 73 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T70; T71 (status-redraw-race, added by T70 with the owner's yes) once T70 merges; then T42 and T68 (resumed), T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T71 (status-redraw-race, added by T70 with the owner's yes) once T70 merges; then T42 and T68 (resumed), T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -90,10 +90,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
-| T70 | playfield-contact | T23; blocks T24, T46 | 🔍 | CLXDAT model (`render/contact.rs`, vAmiga's rules), `char_hit_check` contact half by Muse; cases death-pit, death-spikes (full), contact-route; 11 tests. Deviations: water contact unshown (T25 draws water); death-spikes excludes the lives box (T71, owner); frozen cases drop engine bonus bobs (owner); route.rs re-pinned; stretch-pit runs to 6600. |
+| T70 | playfield-contact | T23; blocks T24, T46 | ✅ | Review ✅: spikes held on variables and picture (death-pit, death-spikes, contact-route, route.rs). Fix: water's drawer is T25's, not T22's. Water unshown, carried to T72 (owner). Mutated the dying flag (rig red), the single-playfield rule and a one-pass contact lag (cases red); reading before or after the foreground is equivalent.
 | T71 | status-redraw-race | T70; blocks T27 | ⬜ | |
+| T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
-**Review queue:** T70
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
