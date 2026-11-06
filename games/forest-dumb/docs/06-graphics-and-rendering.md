@@ -105,3 +105,11 @@ Measured (2026-11-06): with the original's display memory transplanted, the engi
 oracle's `picture_in` at frame 6340 in every pixel; at 6640, scrolled and moving, 1 211 pixels differ around
 the character and a creature, which the original rewrites while the frame is drawn (T44's). The oracle's
 picture at the sync point (6301) is its blank, not play's.
+
+Measured by T44 (2026-11-06, `fd-conform/tests/picture_cases.rs`): a frame shows the pass started at its
+vertical blank, `irq_count` at the step's end less one; paired so, the engine's picture equals the
+original's in every pixel while scrolling, walking and jumping, the character's sprite included.
+The status bar is the exception inside a frame: `main_loop` redraws it after pass `32k` ends and before
+the beam reaches line 241, so the frame showing pass `32k` has the new numbers; `Game::picture` draws
+that redraw ahead of the next step. Still differing: the countdown's digits until T23 ticks it, and
+creatures, animated cells and springs (T24, T25, T52).

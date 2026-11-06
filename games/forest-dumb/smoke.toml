@@ -106,6 +106,10 @@ workspace = "engine"
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
+# T44: the engine's picture against the original's, the two picture cases from the cached sync point,
+# the status bar's numbers set in both sides and the old pairing's failure: about 8 s warm. The boot
+# counting the start-up's two routines (about 10 s) is #[ignore]d, so the full set runs it.
+"crates/fd-conform/tests/picture_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -233,3 +237,10 @@ covers = ["crates/fd-conform/tests/camera_cases.rs::each_camera_case_passes_on_t
 [[area]]
 name = "the app plays level 1"
 covers = ["crates/fd-e2e/tests/smoke.rs::up_and_right_by_key_play_as_the_headless_game_does_every_frame"]
+
+[[area]]
+name = "the engine's picture against the original's over whole runs, scrolling and the status bar's digits"
+covers = [
+    "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
+    "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
+]

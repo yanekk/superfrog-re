@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
-| T44 | case-picture | T10 | ⬜ | |
+| T44 | case-picture | T10 | ✅ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | Review clean, no fix commit. Mutations caught: game stepped without input (smoke.rs red at step 20), Restore Defaults without this game's keys (controls.rs red). Probed the real binary: debug paces 500 frames in 10.3 s, 15.6 s with `--capture` (results unaffected); window shot at scale 2 judged. OS layer is T16's. |
