@@ -173,7 +173,7 @@ impl Display {
     /// At the level sync point, as measured there (`fd-conform/tests/drawing_routines.rs`): the fade
     /// has run its first pass from black, the sprites hold the character's first frame, the status
     /// bar is the program's own picture with the level's starting numbers drawn, and the play screen is as `level_init`
-    /// drew it, which T65 ports (until then, empty).
+    /// drew it, which [`crate::Game::new`] applies after (T65).
     pub fn level_1(data: &DisplayData, program: &Program) -> Display {
         let mut fade = Fade {
             on: 1,

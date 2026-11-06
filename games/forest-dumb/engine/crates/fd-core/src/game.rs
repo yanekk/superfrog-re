@@ -8,7 +8,7 @@ use fd_assets::{AssetError, Files, Level, read_level};
 
 use crate::character::AnimTables;
 use crate::level::collision::{self, CollisionPlane};
-use crate::level::redraw::{Blit, LevelImage};
+use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program};
 use crate::render::{self, Display, DisplayData};
@@ -26,10 +26,17 @@ pub struct GameData {
     pub program: Program,
     /// The animation frame tables in it (T51).
     pub anim: AnimTables,
+    /// [`TITLE_SONG`], the title's music, which `load_list_title` reads to `h3+$f000`: at a level's
+    /// start the collision plane's slack still holds it (T65, `level::start::lay_title_song`). Empty
+    /// from [`GameData::new`].
+    pub title_song: Vec<u8>,
     /// What the display reads from the disks (T10); empty for data built without the program's
     /// other hunks, which then draws black.
     pub display: DisplayData,
 }
+
+/// The title's music module on disk 2, read unpacked (`load_file_raw`).
+pub const TITLE_SONG: &str = "_BALLA";
 
 impl GameData {
     /// Read everything from `files`, which hands over a file by its name, unpacked: the level
@@ -39,8 +46,10 @@ impl GameData {
         let level = read_level(1, files)?;
         let exe = files(PROGRAM_FILE)?;
         let program = Program::hunk0(fd_assets::loaded_hunk(&exe, PROGRAM_FILE, 0, &HUNK_BASES)?);
+        let title_song = files(TITLE_SONG)?;
         let display = DisplayData::read(files, &level)?;
         Ok(GameData {
+            title_song,
             display,
             ..GameData::new(level, program)?
         })
@@ -55,6 +64,7 @@ impl GameData {
             level,
             program,
             anim,
+            title_song: Vec::new(),
             display: DisplayData::default(),
         })
     }
@@ -76,12 +86,13 @@ pub struct Game {
     objects: Vec<Object>,
     dispatch: Dispatch,
     events: Vec<Event>,
-    /// The collision plane: the edge redraws (T55) draw it as the view scrolls; empty at a new game
-    /// until T65 ports level_init's first view; a case takes the original's ([`Transplant`]).
+    /// The collision plane: `level_init`'s first view (T65) at a new game, then the edge redraws
+    /// (T55) as the view scrolls; a case takes the original's ([`Transplant`]).
     plane: CollisionPlane,
     /// The level buffers the edge redraws read, built once from `data`.
     image: Arc<LevelImage>,
-    /// The blits the last step's edge redraws started (T55), applied to the play screen.
+    /// The blits the last step's edge redraws started (T55), applied to the play screen; at a new
+    /// game, the first view's 368 tiles (T65), already applied.
     blits: Vec<Blit>,
     /// What the display shows (T10): picture state, left out of equality.
     display: Display,
@@ -93,17 +104,34 @@ impl Game {
             Start::Level1 => {
                 let mut state = State::level_1();
                 state.object_map = data.level.objects.cells.clone();
+                let mut plane = CollisionPlane::new(&data.program);
+                let image = Arc::new(LevelImage::new(&data.level));
+                let mut blits = Vec::new();
+                level::start::lay_title_song(&mut plane, &data.title_song);
+                // `level_init` (T65): the first view's tiles and shapes, before the first pass.
+                level::start::first_view(&mut PlayIo {
+                    image: &image,
+                    objects: &mut state.object_map,
+                    collision: &mut plane,
+                    blits: &mut blits,
+                });
+                // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
+                // takes the first view's tiles as it takes an edge redraw's.
+                let mut display = Display::level_1(&data.display, &data.program);
+                for b in &blits {
+                    display.screen.apply(b, &|a| data.display.byte(a));
+                }
                 Game {
-                    display: Display::level_1(&data.display, &data.program),
-                    plane: CollisionPlane::new(&data.program),
-                    image: Arc::new(LevelImage::new(&data.level)),
+                    display,
+                    plane,
+                    image,
                     data,
                     scene: Scene::Level,
                     state,
                     objects: Vec::new(),
                     dispatch: Dispatch::level_1(),
                     events: Vec::new(),
-                    blits: Vec::new(),
+                    blits,
                 }
             }
         }
@@ -222,8 +250,9 @@ impl Game {
         &self.display
     }
 
-    /// The blits the last step's edge redraws started, in order: tiles and bobs onto the play screen,
-    /// for the picture (T10).
+    /// The blits the last step's edge redraws started, in order: tiles and bobs onto the play screen.
+    /// Before the first step, `level_init`'s first view: its 23 by 16 tiles, column by column (T65),
+    /// already drawn into the play screen by [`Game::new`].
     pub fn blits(&self) -> &[Blit] {
         &self.blits
     }
@@ -463,6 +492,15 @@ mod tests {
         assert_eq!(*a.state(), want);
         // Equal data read twice compares equal too.
         assert_eq!(a, Game::new(data(), Start::Level1));
+    }
+
+    #[test]
+    fn a_new_game_lists_the_first_views_tiles_until_its_first_step() {
+        let mut g = Game::new(data(), Start::Level1);
+        assert_eq!(g.blits().len(), 23 * 16);
+        assert!(g.blits().iter().all(|b| matches!(b, Blit::Tile { .. })));
+        g.step(FrameInput::NONE);
+        assert!(g.blits().len() < 23 * 16);
     }
 
     #[test]

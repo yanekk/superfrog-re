@@ -501,8 +501,14 @@ fn the_display_equals_the_original_at_the_sync_point() {
     assert_eq!(e.sprite, o.sprite);
     assert_eq!(e.status.shown, o.status.shown);
     assert!(e.status.bytes == o.status.bytes, "the status bar's buffer");
-    // The play screen is level_init's first view, T65's to port: the original's is drawn.
-    assert!(o.screen.bytes.iter().any(|&b| b != 0));
+    // The play screen's 16 bands are level_init's first view (T65). The slack after them, to
+    // `collision_map`, is not drawn by it: from h3+$f000 it holds the title's music (docs/12).
+    let bands = 16 * 0xe60;
+    assert!(o.screen.bytes[..bands].iter().any(|&b| b != 0));
+    let differ = (0..bands)
+        .filter(|&i| e.screen.bytes[i] != o.screen.bytes[i])
+        .count();
+    assert_eq!(differ, 0, "{differ} play screen byte(s) differ");
 }
 
 #[test]
@@ -512,7 +518,7 @@ fn the_first_frame_is_drawn_with_the_status_bar() {
     let (strt, stop) = WINDOW;
     assert_eq!((p.left, p.top), ((strt & 0xff) as i32, strt >> 8));
     assert_eq!((p.width, p.height), (320, 0x129 - 0x2f));
-    // The bar's 56 rows from line 241 show its picture; the play area's (empty until T65) do not.
+    // The bar's 56 rows from line 241 show its picture.
     let row = |y: usize| &p.pixels[y * 320..(y + 1) * 320];
     let bar = 241 - 0x2f;
     let drawn = (bar..bar + 56)
