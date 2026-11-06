@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T65.
+**Next `pir-work` will:** T13, T20 (T65 done).
 
 ## Tasks
 
@@ -84,10 +84,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
-| T65 | level-start-draw | T55; blocks T13, T20 | 🔍 | `level/start.rs`: four routines, rig 10 000 states (cells) and 1 000 (loops, 10 000 took 32 min); sync-point checks pass. 9 tests. Deviations: first-view tiles are `Blit::Tile`s in `blits()` until the first step; `GameData` also reads `_BALLA`, which fills the plane's slack (docs/12). |
+| T65 | level-start-draw | T55; blocks T13, T20 | ✅ | Review: one fix (sync-point message printed negative offsets as two's complement), symbols header moved. Probed: registers but d4/d5 preserved by the cell routines on the rig; three mutations (shape mask, song offset, tile loop bound) red. Both deviations held. Routine listing equivalence to `h0_774` read-only. |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
 
-**Review queue:** T65
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
