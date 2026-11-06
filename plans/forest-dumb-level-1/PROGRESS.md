@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
-| T15 | recording-compare | T03, T14 | ⬜ | |
+| T15 | recording-compare | T03, T14 | ✅ | |
 | T16 | app-drill | T13, T14 | ✅ | Review: script-layer half sound, one fix: `drill_sizes.rs` bar-shrink check waited 490 steps, shrink lands up to 840 under load (failed 1 of 4 loaded runs), now waits to 2000. Probed real-key Tab and Left Option on the app; mutated blur, caught. Real-window half is T68's. |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
@@ -87,6 +87,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
+| T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 
 **Review queue:** *(empty)*
 

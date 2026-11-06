@@ -6,11 +6,11 @@ use std::sync::Arc;
 use amiga_input::FrameInput;
 use fd_assets::{AssetError, Files, Level, read_level};
 
-use crate::character::AnimTables;
+use crate::character::{AnimTables, Character};
 use crate::level::collision::{self, CollisionPlane};
 use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
-use crate::program::{HUNK_BASES, PROGRAM_FILE, Program};
+use crate::program::{HUNK_BASES, PROGRAM_FILE, Program, Scratch};
 use crate::render::{self, Display, DisplayData};
 use crate::{Mem, Scene, State, Transplant, Var};
 use amiga_chips::Picture;
@@ -121,6 +121,19 @@ impl Game {
                 for b in &blits {
                     display.screen.apply(b, &|a| data.display.byte(a));
                 }
+                // The sync point's frame ends inside pass 1, at `char_update`'s start: it has
+                // written `char_update_t = 3` and run none of its four sub-steps (measured, T69;
+                // docs/12). `char_update` is `game_frame`'s last call, so running it here leaves the
+                // state as pass 1 leaves it, which is what a step's state is: the original at the
+                // first pass end, where a case transplants.
+                Character {
+                    state: &mut state,
+                    program: &data.program,
+                    anim: &data.anim,
+                    plane: &plane,
+                    scratch: &mut Scratch::default(),
+                }
+                .update();
                 Game {
                     display,
                     plane,
@@ -477,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn two_new_games_are_equal_and_start_at_the_sync_point() {
+    fn two_new_games_are_equal_and_start_at_pass_1s_end() {
         let d = data();
         let (a, b) = (
             Game::new(d.clone(), Start::Level1),
@@ -485,10 +498,16 @@ mod tests {
         );
         assert_eq!(a, b);
         assert_eq!(*a.scene(), Scene::Level);
-        let want = State {
+        // The sync point's state with pass 1's `char_update` run (T69): nothing below the
+        // character in this data, so its four sub-steps start the fall and step it.
+        let mut want = State {
             object_map: a.data().level.objects.cells.clone(),
             ..State::level_1()
         };
+        want.motion.falling = 1;
+        want.motion.jump_t = 4;
+        want.motion.update_t = 0;
+        want.anim = a.state().anim;
         assert_eq!(*a.state(), want);
         // Equal data read twice compares equal too.
         assert_eq!(a, Game::new(data(), Start::Level1));
@@ -547,12 +566,12 @@ mod tests {
         // read_joystick (T51): right held, one more byte in the log.
         assert_eq!((s.joy.right, s.input_log.index), (1, 2));
         // char_update (T08): the plane holds only that row below the view, which the probes at the
-        // character's feet do not reach, so `char_probe_1` is 0, so four sub-steps fall; the
-        // first starts the fall, the next three step it down `h0+$44d4` (all 0 here) and steer
-        // right a pixel each.
+        // character's feet do not reach, so `char_probe_1` is 0, so four sub-steps fall; the fall
+        // started in pass 1 (`Game::new`, T69), so each steps it down `h0+$44d4` (all 0 here) and
+        // steers right a pixel.
         assert_eq!(s.motion.falling, 1);
-        assert_eq!(s.motion.update_t, 0);
-        assert_eq!((s.char_x, s.char_y), (0x70 + 3, 0x70));
+        assert_eq!((s.motion.update_t, s.motion.jump_t), (0, 8));
+        assert_eq!((s.char_x, s.char_y), (0x70 + 4, 0x70));
         // The count wraps as the original's word does.
         g.state.irq_count = 0xffff;
         g.step(FrameInput::NONE);
@@ -565,12 +584,11 @@ mod tests {
         // its `paused` test (h0+$200a); the joystick, the objects and the character wait.
         let mut g = Game::new(data(), Start::Level1);
         g.state.paused = 1;
+        let start = g.state().clone();
         g.step(FrameInput::joy(Joy::RIGHT));
         let mut want = State {
             irq_count: 2,
-            paused: 1,
-            frame_flag: 0xffff,
-            ..State::level_1()
+            ..start
         };
         want.camera.edges.crossed = [false, true, false, false];
         want.camera.edges.latch = [0, 0xffff, 0, 0];

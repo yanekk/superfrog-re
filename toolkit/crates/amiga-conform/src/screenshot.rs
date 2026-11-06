@@ -2,6 +2,7 @@
 //! not beside the recording (`amiga-record`, pure), because it decodes a PNG.
 
 use amiga_chips::{Picture, to_rgb12};
+use amiga_oracle::Rgb12Frame;
 
 /// `pic` as 8-bit RGB, each 4-bit channel times 17, as the app shows it.
 pub fn picture_rgb(pic: &Picture) -> Vec<u8> {
@@ -20,6 +21,22 @@ pub fn picture_rgb(pic: &Picture) -> Vec<u8> {
 /// `pic` as a PNG.
 pub fn picture_png(pic: &Picture) -> Vec<u8> {
     crate::report::png(pic.width as u32, pic.height as u32, &picture_rgb(pic))
+}
+
+/// The original's frame as a PNG, each 4-bit channel times 17 as [`picture_rgb`].
+pub fn frame_png(f: &Rgb12Frame) -> Vec<u8> {
+    let rgb: Vec<u8> = f
+        .pixels
+        .iter()
+        .flat_map(|&c| {
+            [
+                (c >> 8 & 15) as u8 * 17,
+                (c >> 4 & 15) as u8 * 17,
+                (c & 15) as u8 * 17,
+            ]
+        })
+        .collect();
+    crate::report::png(f.width as u32, f.height as u32, &rgb)
 }
 
 /// How many pixels of the screenshot `png` differ from `pic`: 0 is equal. A screenshot of another
@@ -80,5 +97,20 @@ mod tests {
         lit.palettes[1][0] = 0xFFF;
         assert_eq!(screenshot_differs(&picture_png(&lit), &pic).unwrap(), 4);
         assert!(screenshot_differs(b"not a png", &pic).is_err());
+    }
+
+    #[test]
+    fn the_originals_frame_is_the_pictures_colours() {
+        let f = Rgb12Frame {
+            left: 0,
+            top: 0,
+            width: 2,
+            height: 1,
+            pixels: vec![0x000, 0xF80],
+            hires_detail: false,
+        };
+        let (w, h, rgb) = decode_png(&frame_png(&f)).unwrap();
+        assert_eq!((w, h), (2, 1));
+        assert_eq!(rgb, [0, 0, 0, 255, 136, 0]);
     }
 }

@@ -5,9 +5,12 @@
 use std::path::Path;
 use std::process::Command;
 
+use amiga_oracle::FrameInput;
 use fd_conform::sync::{LEVEL_1_SYNC, reach_level_1};
-use fd_conform::{Case, Goal, Live, Options, Outcome, game_data, game_data_in, run, run_with};
-use fd_core::{Game, LAYOUT, Mem, Object, Start, Transplant};
+use fd_conform::{
+    Case, Goal, Options, OracleMem, Outcome, PASS_END, game_data, game_data_in, run, run_with,
+};
+use fd_core::{Game, LAYOUT, Mem, Object, Start, Transplant, layout_var};
 
 fn idle() -> Case {
     Case::load(Path::new("cases/w1-idle.toml")).unwrap_or_else(|e| panic!("{e}"))
@@ -17,24 +20,39 @@ fn game() -> Game {
     Game::new(game_data().unwrap_or_else(|e| panic!("{e}")), Start::Level1)
 }
 
+/// `Game::new` is the original at pass 1's end, the first pass end after the sync point and where a
+/// case transplants (T69): the sync point's frame ends at `char_update`'s start, which `Game::new`
+/// runs. `mt_counter` is the title's, so it is the boot script's here and not compared.
 #[test]
-fn every_layout_variable_equals_the_original_at_the_sync_point() {
-    let am = reach_level_1(0).unwrap_or_else(|e| panic!("{e}"));
+fn every_layout_variable_equals_the_original_at_the_first_pass_end() {
+    let mut am = reach_level_1(4).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(am.frame(), LEVEL_1_SYNC);
+    am.watch_write(Some(PASS_END));
+    let mem = (0..4)
+        .find_map(|_| {
+            am.step(FrameInput::NONE).unwrap();
+            am.watched_memory()
+        })
+        .expect("a pass ends within 4 frames of the sync point");
+    let theirs = OracleMem(&mem);
     let g = game();
+    let irq = layout_var("irq_count").unwrap();
+    assert_eq!(theirs.value(irq), 1, "the first pass end is pass 1's");
     let wrong: Vec<String> = LAYOUT
         .iter()
-        .filter(|v| g.probe(v) != Live(&am).value(v))
+        .filter(|v| v.name != "mt_counter" && g.probe(v) != theirs.value(v))
         .map(|v| {
             format!(
                 "{}: engine {:#x}, original {:#x}",
                 v.name,
                 g.probe(v),
-                Live(&am).value(v)
+                theirs.value(v)
             )
         })
         .collect();
     assert!(wrong.is_empty(), "{wrong:#?}");
+    // Not equal by accident: pass 1 starts the character's fall.
+    assert_eq!(theirs.value(layout_var("char_falling").unwrap()), 1);
 }
 
 #[test]
