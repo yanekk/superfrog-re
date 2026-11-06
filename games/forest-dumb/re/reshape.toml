@@ -69,3 +69,26 @@ units = [
   { fn = "scroll", routines = [["h0_51fc", 0x51fc], ["h0_526a", 0x526a], ["h0_52d8", 0x52d8], ["h0_5346", 0x5346]],
     helpers = ["set"] },
 ]
+
+[T23]
+src = "crates/fd-core/src/character/death.rs"
+impl = "impl Play<'_>"
+test = "crates/fd-conform/tests/death_routines.rs"
+test_fn = "every_death_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/character/death.rs", "crates/fd-core/src/state.rs"]
+layout = true
+harness = ["LAST_KEY", "PAUSED", "PAUSE_DOWN", "ESC_DOWN", "GIVE_UP", "TICK", "EXIT_TOUCHED", "COUNTDOWN",
+           "LIVES", "ITEMS_LEFT", "CHEAT", "h0", "load", "store", "on_play"]
+adapter_fn = true
+examples = ["esc_key", "lives_minus_one"]
+compared = """The rig loads the variables these routines touch into a State, runs your function on \
+`Play { state }`, stores them back and compares every byte the original writes; no register is \
+compared."""
+units = [
+  { fn = "countdown_step", routines = [["countdown_step", 0x20b0]] },
+  { fn = "play_keys", routines = [["play_keys", 0x2104]] },
+  { fn = "help_key", routines = [["help_key", 0x2146]] },
+  { fn = "esc_key", routines = [["esc_key", 0x2176]] },
+  { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
+]

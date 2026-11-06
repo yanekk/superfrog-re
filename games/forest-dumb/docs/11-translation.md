@@ -782,6 +782,14 @@ What each porting task did with its share of the table above, and which routines
   to 24). By hand: `char_probe` (too-big) and `char_update` (blocked behind it), from the listing; the
   other twelve rewritten from their passing T40 ports and the listing. `game_frame` (blocked) went to
   T63 (owner, 2026-11-05): its rig proof needs every routine it calls ported first.
+- **T23** (2026-11-06): `countdown_step`, `play_keys`, `help_key`, `esc_key`, `lives_minus_one`, as
+  `fd_core::character::Play` methods (`tests/death_routines.rs`, 10 000 states; paths 3, 5, 3, 4, 2).
+  `help_key` is T26's in the table, but `play_keys` runs it whole, so T23 ported it with its caller.
+  Muse wrote `countdown_step`, `play_keys` and `help_key` (`reshape.py --task T23 --all`, all passing,
+  no quality issue, $0.0080 in all); fitted: `play_keys` calls `help_key` and `esc_key` instead of
+  inlining them, and `countdown_step` uses the file's `sbcd`. By hand: `esc_key` and `lives_minus_one`,
+  the two examples Muse is shown. `sbcd` follows the rig's 68000 digit by digit: a carry-chain formula
+  differs on bad digits (`$be - 1`).
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

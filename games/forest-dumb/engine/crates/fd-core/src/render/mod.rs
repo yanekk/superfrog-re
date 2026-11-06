@@ -318,15 +318,43 @@ pub fn picture(
     program: &Program,
 ) -> Picture {
     let chip = Chip::new(data, display, camera, program);
+    run_list(&chip, h(1, LEVEL_COPPER))
+}
+
+/// The game over screen's copper list, hunk 1 (`game_over_screen`, T23).
+pub const GAME_OVER_COPPER: u32 = 0x810;
+/// Its five bitplane pointers' MOVE pairs, hunk 1, which `h0+$993e` points at [`GAME_OVER_PICTURE`].
+const GAME_OVER_PLANES: u32 = 0x908;
+/// The game over picture, hunk 4: five interleaved planes, a plane's line 40 bytes after the last.
+const GAME_OVER_PICTURE: u32 = 0x1_49e8;
+
+/// The game over screen as Denise shows it in [`WINDOW`]: `h0+$993e`'s bitplane pointers written
+/// into its copper list, the list run for the frame. The play screen and sprites are left as play
+/// left them; nothing in that list points at them.
+pub fn game_over_picture(data: &DisplayData, display: &Display, program: &Program) -> Picture {
+    let mut chip = Chip::new(data, display, (0, 0), program);
+    for k in 0..5 {
+        for (off, b) in pointer(GAME_OVER_PLANES + 8 * k, h(4, GAME_OVER_PICTURE + 0x28 * k)) {
+            // Data read without the program has no hunk 1: nothing to write into.
+            for (x, &v) in chip.h1.iter_mut().skip(off as usize).zip(&b) {
+                *x = v;
+            }
+        }
+    }
+    run_list(&chip, h(1, GAME_OVER_COPPER))
+}
+
+/// The frame copper list `list` draws from `chip`.
+fn run_list(chip: &Chip, list: u32) -> Picture {
     let word = |a: u32| chip.word(a);
     let frame = amiga_clock::FRAME_LINES;
     // The frame starts with the bitplane setup the list leaves at its end.
     let mut start = Fetch::default();
-    for w in copper::run(&word, h(1, LEVEL_COPPER), start, frame) {
+    for w in copper::run(&word, list, start, frame) {
         start.write(w.reg, w.value);
     }
-    let writes = copper::run(&word, h(1, LEVEL_COPPER), start, frame);
-    draw(&chip, &writes, start)
+    let writes = copper::run(&word, list, start, frame);
+    draw(chip, &writes, start)
 }
 
 fn draw(chip: &Chip, writes: &[Write], start: Fetch) -> Picture {

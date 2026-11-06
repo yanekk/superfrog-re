@@ -204,8 +204,8 @@ hunk = 0
 offset = 0x1f78
 name = "last_key_byte"
 kind = "var"
-size = 2
-note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed"
+size = 1
+note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed; move.b only, h0+$1f79 is padding (T23)"
 
 [[sym]]
 exe = "forest_dumb_forever"

@@ -112,6 +112,17 @@ pub const PORTED: &[Ported] = &[
     port("h0_6c80", 0x6c80, "render::status::Status::lives"),
     port("h0_9a34", 0x9a34, "render::sprite_pointers"),
     port("h0_988a", 0x988a, "render::status_pointers"),
+    // T23: the countdown, the keys play acts on and the lives. `help_key` is T26's in
+    // re/translate.toml, but `play_keys` runs it whole, so it is ported with its caller.
+    port("countdown_step", 0x20b0, "character::Play::countdown_step"),
+    port("play_keys", 0x2104, "character::Play::play_keys"),
+    port("help_key", 0x2146, "character::Play::help_key"),
+    port("esc_key", 0x2176, "character::Play::esc_key"),
+    port(
+        "lives_minus_one",
+        0x69d6,
+        "character::Play::lives_minus_one",
+    ),
 ];
 
 /// A hunk 0 routine's entry.

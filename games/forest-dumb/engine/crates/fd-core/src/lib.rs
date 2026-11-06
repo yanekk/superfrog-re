@@ -7,6 +7,7 @@
 
 pub mod character;
 pub mod game;
+pub mod game_over;
 pub mod layout;
 pub mod level;
 pub mod ported;

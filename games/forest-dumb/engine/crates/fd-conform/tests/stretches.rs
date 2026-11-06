@@ -83,8 +83,8 @@ const NOT_IN_A_STRETCH: [(&str, &str); 7] = [
     ("h0_6b70", "T22"),
     // The items left: an item taken.
     ("h0_6c20", "T22"),
-    // The lives: a life lost (T42's pit stretch loses one, on the spikes; its hurt frame is T24's).
-    ("h0_6c80", "T23"),
+    // The lives: a life lost (T42's pit stretch loses one, on the spikes: char_hit_check, T70).
+    ("h0_6c80", "T70"),
     // The copper list's sprite and status pointers, set at start-up before the sync point
     // (`picture_cases.rs`, the boot from power-on).
     ("h0_9a34", "T44"),

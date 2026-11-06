@@ -226,9 +226,6 @@ impl Mem for Over<'_> {
     }
 }
 
-/// `countdown_step`'s pass counter, hunk 0: the countdown loses one when it reaches 63.
-const COUNTDOWN_TICK: u32 = 0x20ac;
-
 /// One set of the bar's numbers, BCD as the variables hold them.
 #[derive(Debug, Clone, Copy)]
 struct Numbers {
@@ -292,8 +289,10 @@ fn var(name: &str) -> &'static Var {
 }
 
 /// The bytes each set puts in memory. The countdown's digits are its first word; its second is left.
+/// `countdown_tick` starts from 0, so the countdown does not tick in the window (63 passes away).
 fn bytes(n: &Numbers) -> Vec<(&'static Var, Vec<u8>)> {
     vec![
+        (var("countdown_tick"), vec![0; 4]),
         (var("countdown"), n.countdown.to_be_bytes().to_vec()),
         (var("lives"), n.lives.to_be_bytes().to_vec()),
         (var("items_left"), n.items.to_be_bytes().to_vec()),
@@ -349,9 +348,6 @@ fn status_bar_run() -> Vec<(&'static str, u32)> {
                 for (v, b) in bytes(&set) {
                     am.poke(HUNK_BASES[v.hunk as usize] + v.offset, &b);
                 }
-                // `countdown_tick` (`h0+$20ac`) from 0: the original's countdown does not tick
-                // in the window (63 passes away), as the engine's does not until T23.
-                am.poke(HUNK_BASES[0] + COUNTDOWN_TICK, &[0; 4]);
                 break (g, ended);
             }
         };

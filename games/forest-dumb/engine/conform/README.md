@@ -43,7 +43,7 @@ frames = 130                 # oracle frames run after the sync point
 compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
-exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var countdown", task = "T23" }]  # optional
+exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 freeze = false               # optional
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
