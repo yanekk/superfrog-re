@@ -151,6 +151,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T68](tasks/T68-app-drill-os-half.md) | app-drill-os-half | T16; blocks T28 |
 | [T69](tasks/T69-level-start-state.md) | level-start-state | T07, T65; blocks T20, T28 |
 | [T70](tasks/T70-playfield-contact.md) | playfield-contact | T23; blocks T24, T46 |
+| [T71](tasks/T71-status-redraw-race.md) | status-redraw-race | T70; blocks T27 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

@@ -85,6 +85,9 @@ impl Engine for Watched {
     fn events(&mut self) -> Vec<Event> {
         self.game.events()
     }
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
 }
 
 fn run(name: &str) -> (Case, Verdict, Watched) {

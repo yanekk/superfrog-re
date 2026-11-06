@@ -48,6 +48,9 @@ impl Engine for Copies {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
 }
 
 /// Every pass of the route to the exit's cells: CLXDAT and what contact counts, equal; and the
@@ -82,4 +85,66 @@ fn the_status_bar_alone_sets_the_playfield_bit() {
     assert_eq!(clxdat(data, &d, (c.x, c.y), program) & !0x1, 0x8000);
     d.screen.bytes.fill(0);
     assert_eq!(clxdat(data, &d, (c.x, c.y), program), 0x8001);
+}
+
+/// A case that freezes the original leaves out the bonus bobs the frozen edge redraws never blit
+/// (`camera-bottom-right` passes several), so contact is judged on the same screen; the game as the
+/// app and the planner make it draws them, and touches them: its CLXDAT differs where they lie.
+#[test]
+fn only_a_frozen_case_leaves_the_bonus_items_out() {
+    let case =
+        Case::load(Path::new("cases/camera-bottom-right.toml")).unwrap_or_else(|e| panic!("{e}"));
+    assert!(case.freeze);
+    let inputs = fd_conform::Inputs::load(&case).unwrap_or_else(|e| panic!("{e}"));
+    let (mut normal, mut frozen) = (game(), game());
+    frozen.freeze_as_a_case();
+    let bobs = |g: &Game| {
+        g.blits()
+            .iter()
+            .filter(|b| matches!(b, fd_core::level::redraw::Blit::Bob { .. }))
+            .count()
+    };
+    let (mut drawn, mut left_out, mut touched) = (0, 0, 0);
+    for k in 0..case.frames {
+        let i = inputs.at(case.sync_frame + k);
+        normal.step(i);
+        frozen.step(i);
+        drawn += bobs(&normal);
+        left_out += bobs(&frozen);
+        touched += usize::from(normal.state().clxdat_copy != frozen.state().clxdat_copy);
+    }
+    assert!(drawn > 0, "the normal game draws bonus items");
+    assert_eq!(left_out, 0);
+    assert!(
+        touched > 0,
+        "the bonus items' colour 29 under the character"
+    );
+}
+
+/// Nothing outside the conformance runner sets the engine's freeze: not the app, the planner, the map
+/// page or the end-to-end harness.
+#[test]
+fn the_freeze_is_set_by_the_case_runner_alone() {
+    let crates = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut found = Vec::new();
+    for c in ["fd-app", "fd-plan", "fd-routeview", "fd-e2e", "fd-tools"] {
+        let mut dirs = vec![crates.join(c)];
+        while let Some(d) = dirs.pop() {
+            for e in std::fs::read_dir(&d).unwrap_or_else(|e| panic!("{}: {e}", d.display())) {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    dirs.push(p);
+                } else if p.extension().is_some_and(|x| x == "rs")
+                    && std::fs::read_to_string(&p)
+                        .unwrap()
+                        .contains("freeze_as_a_case")
+                {
+                    found.push(p);
+                }
+            }
+        }
+    }
+    assert!(found.is_empty(), "{found:?}");
+    let lib = std::fs::read_to_string(crates.join("fd-conform/src/lib.rs")).unwrap();
+    assert_eq!(lib.matches("freeze_as_a_case").count(), 1);
 }

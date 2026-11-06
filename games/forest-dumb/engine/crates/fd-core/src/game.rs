@@ -102,6 +102,11 @@ pub struct Game {
     blits: Vec<Blit>,
     /// What the display shows (T10): picture state, left out of equality.
     display: Display,
+    /// A conformance case froze the original's bonus blits (`h0_a06`, `h0_ce4`, `h0_104c`,
+    /// `h0_1390`: `fd-conform`'s `freeze.rs`): the edge redraws leave their bobs out of the play
+    /// screen too, so contact (T70) is judged on the same screen. Set only by
+    /// [`Game::freeze_as_a_case`]; the app and the planner never do (`fd-conform/tests/contact.rs`).
+    frozen: bool,
 }
 
 impl Game {
@@ -151,6 +156,7 @@ impl Game {
                     dispatch: Dispatch::level_1(),
                     events: Vec::new(),
                     blits,
+                    frozen: false,
                 }
             }
         }
@@ -216,10 +222,19 @@ impl Game {
     /// Where the original enters its high scores: the level again from its start, lives full and
     /// score zero (DESIGN §2.4). Events not yet taken are kept.
     fn restart(&mut self) {
-        let events = std::mem::take(&mut self.events);
+        let (events, frozen) = (std::mem::take(&mut self.events), self.frozen);
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
+        self.frozen = frozen;
         self.events.push(Event::Restart);
+    }
+
+    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
+    /// nothing else): the edge redraws' bonus bobs are left out of the play screen from now on, as
+    /// the frozen original leaves them out. Contact reads that screen (T70), so it follows; a restart
+    /// keeps the freeze.
+    pub fn freeze_as_a_case(&mut self) {
+        self.frozen = true;
     }
 
     /// The lives left, as a number (`lives` is BCD).
@@ -256,6 +271,14 @@ impl Game {
                     &self.image,
                     &mut self.blits,
                 );
+                if self.frozen {
+                    let kept: Vec<Blit> = self
+                        .blits
+                        .drain(from..)
+                        .filter(|b| !matches!(b, Blit::Bob { .. }))
+                        .collect();
+                    self.blits.extend(kept);
+                }
                 let data = &self.data.display;
                 for b in &self.blits[from..] {
                     self.display.screen.apply(b, &|a| data.byte(a));

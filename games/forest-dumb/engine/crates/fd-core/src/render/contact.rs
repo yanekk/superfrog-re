@@ -143,6 +143,10 @@ impl Line {
         {
             chip.read(planes.pt[p], &mut d[..n]);
         }
+        Line::of(planes, data)
+    }
+
+    fn of(planes: &Planes, data: [[u8; LINE_BYTES]; 6]) -> Line {
         let hires = planes.fetch.hires();
         Line {
             planes: *planes,
@@ -400,5 +404,52 @@ mod tests {
         // Unattached, each sprite marks itself, in front or not.
         l[1] = line(0x100, [0x8000, 0], false);
         assert_eq!(marked(&l, 0, at, 29, 0), [true, true]);
+    }
+
+    #[test]
+    fn eight_pixels_at_a_time_find_what_each_pixel_finds() {
+        let mut planes = Planes::default();
+        for (r, v) in [
+            (reg::BPLCON0, 0x5200),
+            (0x092, 0x38),
+            (0x094, 0xd0),
+            (0x08e, 0x2c81),
+            (0x090, 0x2cc1),
+        ] {
+            planes.write(r, v);
+        }
+        let mut seed = 0x1234_5678u32;
+        let mut next = || {
+            seed ^= seed << 13;
+            seed ^= seed >> 17;
+            seed ^= seed << 5;
+            seed
+        };
+        for delay in [0u16, 0x33, 0x55, 0x3f] {
+            planes.write(reg::BPLCON1, delay);
+            for _ in 0..200 {
+                // Mostly no match; now and then one colour 29 pixel.
+                let mut data = [[0u8; LINE_BYTES]; 6];
+                for d in data.iter_mut().take(5) {
+                    for b in d.iter_mut() {
+                        *b = next() as u8 & next() as u8;
+                    }
+                }
+                if next() % 2 == 0 {
+                    let (k, bit) = ((next() % 40) as usize, 1 << (next() % 8));
+                    for (p, d) in data.iter_mut().enumerate().take(5) {
+                        d[k] = if 29 >> p & 1 != 0 {
+                            d[k] | bit
+                        } else {
+                            d[k] & !bit
+                        };
+                    }
+                }
+                let line = Line::of(&planes, data);
+                let (from, to) = (0x81 + (next() % 40) as i32, 0x1c1 - (next() % 40) as i32);
+                let each = (from..to).any(|at| PLAY.both(line.at(at)));
+                assert_eq!(line.any_both(&PLAY, from, to), each, "delay {delay:#x}");
+            }
+        }
     }
 }

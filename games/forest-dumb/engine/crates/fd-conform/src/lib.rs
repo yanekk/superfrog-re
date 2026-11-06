@@ -123,6 +123,10 @@ pub trait Engine: Transplant {
     fn game_over(&self) -> bool {
         false
     }
+    /// The case freezes the original (`freeze = true`, DESIGN §2.2): the engine leaves out what the
+    /// frozen routines would have drawn, so both draw the same screen. Called once, before the
+    /// transplant; the only way the engine's freeze is ever set.
+    fn freeze(&mut self) {}
 }
 
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
@@ -146,6 +150,10 @@ impl Engine for Game {
 
     fn game_over(&self) -> bool {
         matches!(self.scene(), fd_core::Scene::GameOver(_))
+    }
+
+    fn freeze(&mut self) {
+        self.freeze_as_a_case();
     }
 }
 
@@ -795,6 +803,9 @@ pub fn run_inputs(
             let ended = theirs.value(irq);
             match at {
                 None => {
+                    if case.freeze {
+                        engine.freeze();
+                    }
                     engine.transplant(&theirs);
                     at = Some((ended, ended));
                     read.drop_through(ended);
