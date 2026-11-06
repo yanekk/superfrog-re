@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T13 review, worker-driven: debug `fd-app` keeps the 50 Hz pace (500 frames 10.3 s) but falls behind with `--capture` (15.6 s); the pacer catches up, so hashes are unaffected. T16 judges pacing without capture or in release. |
 | 2026-11-06 | 📌 | T65, measured: at the sync point `collision_map`'s slack holds `_BALLA` (title music at `h3+$f000`), so `Game::new` lays it. The oracle's chip RAM repeats past 512 KB, the rig's flat memory does not: generators keep reads below `$80000`. |
 | 2026-11-06 | 📌 | T65 review, merging T10: `Game::new` now applies the first view's 368 tiles to `Display::screen`; `the_display_equals_the_original_at_the_sync_point` compares its 16 bands (was any-nonzero). The screen's slack from `h3+$f000` (`_BALLA`) stays zero in the engine. |
 | 2026-11-06 | 📌 | T10, worker-driven: transplanted display memory, `Game::picture` equals oracle `picture_in` every pixel at frame 6340; 1 211 differ at 6640 near the moving character and a creature (mid-frame writes). For T44. Sync-point oracle picture is blank. |

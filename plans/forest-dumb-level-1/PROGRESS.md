@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
-| T13 | forest-dumb-app | T01, T10, T12 | 🔍 | fd-app (Controls, Quit, Esc, disks message, W1-1) and fd-e2e, 12 e2e + 18 app tests, smoke area. Deviations: Start Level left to T14 (its menu.rs). State hash in fd-app lib (`state_hash`), shared with tests. Owner keys default applied in fd-app, Restore Defaults too; no toolkit change. No profile override: debug keeps pace. OS layer left to T16. |
+| T13 | forest-dumb-app | T01, T10, T12 | ✅ | Review clean, no fix commit. Mutations caught: game stepped without input (smoke.rs red at step 20), Restore Defaults without this game's keys (controls.rs red). Probed the real binary: debug paces 500 frames in 10.3 s, 15.6 s with `--capture` (results unaffected); window shot at scale 2 judged. OS layer is T16's. |
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
@@ -87,7 +87,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 
-**Review queue:** T13
+**Review queue:** —
 
 ## Blocked on the user
 
