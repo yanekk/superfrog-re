@@ -125,6 +125,9 @@ workspace = "engine"
     "every_stretch_matches_the_original_on_variables_and_picture_together",
     "a_mutated_jump_constant_fails_the_jump_stretch",
 ]
+# T45: collecting in play against the original, the ledge and the way back from the cached sync point
+# in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
+"crates/fd-conform/tests/collect_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -332,6 +335,13 @@ covers = [
 [[area]]
 name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
 covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "taking items and bonuses in play, score and status bar, against the original"
+covers = [
+    "crates/fd-conform/tests/collect_cases.rs::collecting_matches_the_original_on_variables_and_picture_together",
+    "crates/fd-conform/tests/collect_cases.rs::the_engine_alone_meets_each_collecting_goal",
+]
 
 [[area]]
 name = "the countdown, giving up, the game over screen and the level's restart"
