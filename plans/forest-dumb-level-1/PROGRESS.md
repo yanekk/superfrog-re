@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T26; T22, T68 and T70, then the rest as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T22, T68 and T70, then the rest as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -64,7 +64,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
-| T26 | level-end | T11, T13, T14, T23 | 🔍 | Built `level_end`, scenes `LevelEnd` and `Complete`, `render/message.rs`, the runner's `set` key, `level_end` goal and `next_world` stop; 12 tests (6 unit, 4 case, 2 e2e). Deviations: `Complete { ready }`, so fire held over the end is ignored; no Muse units (`help_key` was T23's); recording test sets the cheat, inputs alone cannot end the level until T22. |
+| T26 | level-end | T11, T13, T14, T23 | ✅ | Review: one fix, the runner's `world_index` check at `next_world` was untested (test added, red without it). Mutated the check's 32-pass mask and `Complete.ready`: caught. CLI case run, app drilled at scale 1 (message whole, centred). Five deviations held. The original clearing `level_exit_touched` stays T22's. |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
 | T48 | route-on-original | T27 | ⬜ | |
@@ -92,7 +92,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** T26
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
