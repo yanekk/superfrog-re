@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T23 review: the runner never compares the frame a scene switches in, so `Game::picture`'s status skip on the game over pass was unheld until `death.rs` pinned it. T26's level end gets the same uncompared frame. |
 | 2026-11-06 | 📌 | T23, measured: the step after pass `32k` shows `game_over_screen`; no pass runs after. Fire counts from its 21st step; letting go enters the high scores (`h0+$89d0`), where the engine restarts. Screen pixel-equal. |
 | 2026-11-06 | 📌 | T23: fd-app strips the Amiga's P from game input (DESIGN §2.7, no pause): the default map binds the Mac's P and the engine now pauses on it. The Amiga's Esc reaches play only when rebound. |
 | 2026-11-06 | 📌 | T23, measured: the countdown run out from frame 6400 matches every pass and picture down to 000, game over at frame 69245 (`death-countdown`, full set, 140 s release). |
@@ -44,7 +45,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T21: no object dispatch tables (`h0_2fea`, `h0_26ec`, `h0_62b6` compare); every object routine was in `re/translate.toml`, so T49 had none. 332 coins (`$20`-`$23`), `items_left` 282, 50 spare. docs/06's `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
-| 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the byte is already 0. |
 | 2026-11-05 | 🔄 | T06's counter corrects T00 in docs/09: idle, `game_frame` returns before the step ends in 2 968 of 3 000 frames; moving, after in 2 977. Owner: correct the note, keep T00's wording dated. |
 | 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |

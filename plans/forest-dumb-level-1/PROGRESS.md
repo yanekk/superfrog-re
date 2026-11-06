@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T23; then T70 (contact, after T23), T26 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T70 (contact), T26 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -59,7 +59,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
-| T23 | lives-and-game-over | T11, T13, T14, T20 | 🔍 | Countdown, keys, lives on the rig (Muse wrote 3 of 5, $0.008); game over check, screen, restart; runner follows the screen to the high scores; death-esc, death-countdown (full), app e2e; 17 tests. Deviations: pit and last-life tests moved to T70 (owner); `help_key` ported with `play_keys`; app strips Amiga P (§2.7). |
+| T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | Review: one fix, a test pinning the status bar skipped on the game over pass (mutation survived even death-countdown). Ran rig, death, e2e, plan, neighbours; mutated restart (caught). Deviations held; pit and last-life carried by T70 (owner's yes read-only). `death-countdown` run in release. |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
@@ -92,7 +92,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** T23
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
