@@ -200,6 +200,9 @@ workspace = "engine"
     "the_routes_stretch_is_confirmed_on_the_original_where_modelled",
     "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
 ]
+# T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
+# seven in about 40 s in release, as Superfrog's recorder_drill.rs.
+"crates/fd-e2e/tests/drill_os.rs" = "full"
 
 [python]
 "tools/test_call_tree.py" = "smoke"
