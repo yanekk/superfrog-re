@@ -565,3 +565,78 @@ fn after_a_transplant_the_picture_is_the_originals_still_and_scrolled() {
         }
     }
 }
+
+#[test]
+fn the_foreground_draws_the_status_bar_and_play_screen_as_the_original() {
+    // T10 review: `Game::foreground` against the original over 520 passes from the sync point,
+    // running right, jumping and back left, from a transplant each pass: the status bar's buffer
+    // after `main_loop`'s redraw every 32 interrupts, and every play screen byte the engine's blits
+    // write (tiles and bobs), which the original holds then or, for a redraw a pass cuts short, a
+    // pass later (docs/09). The transplant tests above set the display and never run these.
+    use amiga_oracle::{FrameInput, Joy};
+    use fd_core::render::playfield::{SCREEN, SCREEN_BYTES};
+    let script = [
+        (0, FrameInput::NONE),
+        (40, FrameInput::joy(Joy::RIGHT)),
+        (200, FrameInput::joy(Joy::RIGHT | Joy::UP)),
+        (215, FrameInput::joy(Joy::RIGHT)),
+        (260, FrameInput::joy(Joy::LEFT | Joy::UP)),
+        (275, FrameInput::joy(Joy::LEFT)),
+        (400, FrameInput::joy(Joy::LEFT | Joy::UP)),
+        (415, FrameInput::joy(Joy::LEFT)),
+    ];
+    let input = |f: u32| {
+        script
+            .iter()
+            .rev()
+            .find(|(at, _)| *at <= f)
+            .map_or(FrameInput::NONE, |(_, i)| *i)
+    };
+    let frames = 520;
+    let mut am = reach_level_1(frames + 1).unwrap_or_else(|e| panic!("{e}"));
+    let data = game_data().unwrap_or_else(|e| panic!("{e}"));
+    let (mut redraws, mut written, mut bobs) = (0, 0, 0);
+    // The bytes that differed on the last pass, and what the engine wrote there.
+    let mut pending: Vec<(usize, u8)> = Vec::new();
+    for f in 0..frames {
+        let mut g = Game::new(data.clone(), Start::Level1);
+        g.transplant(&Live(&am));
+        let (bar, screen) = (
+            g.display().status.bytes.clone(),
+            g.display().screen.bytes.clone(),
+        );
+        g.foreground();
+        let d = g.display();
+        redraws += (d.status.bytes != bar) as u32;
+        bobs += g
+            .blits()
+            .iter()
+            .filter(|b| matches!(b, fd_core::level::redraw::Blit::Bob { .. }))
+            .count();
+        am.step(input(f)).unwrap_or_else(|e| panic!("{e}"));
+        let theirs_bar = Live(&am).read(4, STATUS, STATUS_BYTES as usize);
+        assert!(d.status.bytes == theirs_bar, "pass {f}: the status bar");
+        let theirs = Live(&am).read(3, SCREEN, SCREEN_BYTES as usize);
+        let late: Vec<_> = pending.drain(..).filter(|&(i, v)| theirs[i] != v).collect();
+        assert!(
+            late.is_empty(),
+            "pass {}: {} play screen bytes",
+            f - 1,
+            late.len()
+        );
+        for (i, (&v, &was)) in d.screen.bytes.iter().zip(&screen).enumerate() {
+            if v != was {
+                written += 1;
+                if theirs[i] != v {
+                    pending.push((i, v));
+                }
+            }
+        }
+    }
+    assert!(pending.is_empty());
+    // Measured: 9 redraws of the bar, 307 345 screen bytes written, 33 bobs among the blits.
+    assert!(
+        redraws >= 8 && written > 100_000 && bobs > 0,
+        "{redraws} {written} {bobs}"
+    );
+}
