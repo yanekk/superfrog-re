@@ -117,15 +117,22 @@ impl core::str::FromStr for Location {
 const SPOT_DX: u32 = 0xe;
 const SPOT_DY: u32 = 9;
 
+impl Location {
+    /// The cell a character at (`char_x`, `char_y`) of `level` is at.
+    pub fn of_character(level: LevelId, char_x: u32, char_y: u32) -> Location {
+        Location {
+            level,
+            col: ((char_x + SPOT_DX) / 16) as u16,
+            row: ((char_y + SPOT_DY) / 16) as u16,
+        }
+    }
+}
+
 impl Game {
     /// Where play is ([`Location`]): the cell the character is at.
     pub fn location(&self) -> Location {
         let s = self.state();
-        Location {
-            level: LevelId::W1_1,
-            col: ((s.char_x + SPOT_DX) / 16) as u16,
-            row: ((s.char_y + SPOT_DY) / 16) as u16,
-        }
+        Location::of_character(LevelId::W1_1, s.char_x, s.char_y)
     }
 }
 
@@ -371,6 +378,15 @@ mod tests {
         let mut rec = full();
         rec.seed = vec![1, 2];
         assert!(rec.validate().unwrap_err().contains("no seed"));
+    }
+
+    /// Both spots docs/10-object-system.md measured: the start and the slide's end. The slide's end
+    /// is where each offset decides the cell (669 / 16 is 41, 553 / 16 is 34).
+    #[test]
+    fn the_character_s_cell_is_the_one_docs_10_measured() {
+        let at = |x, y| Location::of_character(LevelId::W1_1, x, y).to_string();
+        assert_eq!(at(0x70, 0x70), "W1-1:7,7");
+        assert_eq!(at(669, 553), "W1-1:42,35");
     }
 
     #[test]
