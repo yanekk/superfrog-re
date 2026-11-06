@@ -109,6 +109,9 @@ workspace = "engine"
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
+# T42: the character against walls, the spike pit, the first slope and the left and top edges, five
+# cases from the cached sync point in parallel: about 2 s warm.
+"crates/fd-conform/tests/character_edges.rs" = "smoke"
 # T44: the engine's picture against the original's, the two picture cases from the cached sync point,
 # the status bar's numbers set in both sides and the old pairing's failure: about 8 s warm. The boot
 # counting the start-up's two routines (about 10 s) is #[ignore]d, so the full set runs it.
@@ -229,6 +232,10 @@ covers = ["crates/fd-conform/tests/character_routines.rs::every_t08_routine_is_r
 [[area]]
 name = "the character running and jumping in play, against the original"
 covers = ["crates/fd-conform/tests/character_run.rs"]
+
+[[area]]
+name = "the character against walls, pits, slopes and the level's edges, against the original"
+covers = ["crates/fd-conform/tests/character_edges.rs"]
 
 [[area]]
 name = "entering level 1 on the engine"

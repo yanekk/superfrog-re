@@ -1,0 +1,11 @@
+# T42: the first slope (scripts/character-edge-slope.txt): down it and a stop on it (char_x $da,
+# char_y $d2, the goal), up it to the left wall, a slide on the flat when right is let go, a running
+# jump left into the stone above (char_y $59). Frozen: a creature touches the character at 6555 (T24).
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "character-edge-slope"
+frames = 200
+compare = ["vars"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "lives", "hits_taken", "irq_count", "char_unhurt_t"]
+goal = { all = [{ var = "char_x", value = 0xda }, { var = "char_y", value = 0xd2 }], by_frame = 6460 }
+exclude = [{ what = "var countdown", task = "T23" }]
+freeze = true
