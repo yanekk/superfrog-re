@@ -494,31 +494,45 @@ fn os_layer_fire_on_left_option_up_on_space_and_tab_reach_the_game() {
     assert!(tab.iter().all(|n| common::joy(&c, *n, *n)[0] == 0), "Tab is no joystick bit");
 }
 
-/// Every window at the default scale (2×), for judging beside the 1× captures the tests above
-/// take: the game, Controls, Start Level, the question and the save window.
+/// Every window at scale 1 (1×, the smallest) and at the default scale (2×), each captured for
+/// judging: the game, Controls, Start Level, the recording bar, the question and the save window.
 #[test]
 #[ignore = "OS layer"]
-fn os_layer_every_window_at_the_default_scale_is_on_screen_and_captured() {
+fn os_layer_every_window_at_scale_1_and_the_default_scale_is_on_screen_and_captured() {
     os_layer();
-    let (mut app, _) = os_launch(None);
-    capture(&app, "game-2x");
+    for (scale, tag) in [(Some(1), "1x"), (None, "2x")] {
+        every_window(scale, tag);
+    }
+}
+
+fn every_window(scale: Option<u32>, tag: &str) {
+    let (mut app, _) = os_launch(scale);
+    capture(&app, &format!("game-{tag}"));
     app.os_menu(&["Game", "Controls…"]);
     until("the Controls window", || controls_open(&app));
-    capture(&app, "controls-2x");
+    capture(&app, &format!("controls-{tag}"));
     app.os_close_window("Controls");
     until("closed", || !controls_open(&app));
     app.os_menu(&["Game", "Start Level…"]);
     until("the window", || start_level_open(&app));
-    capture(&app, "start-level-2x");
+    capture(&app, &format!("start-level-{tag}"));
     // The modal window is on layer 8, above the game's: listed, so captured with it.
     assert_eq!(app.os_windows().len(), 2, "the game and Start Level windows");
     app.os_key(Key::Return);
     until("recording", || recording(&app));
     pause(500);
-    capture(&app, "recording-bar-2x");
+    capture(&app, &format!("recording-bar-{tag}"));
+    app.os_activate();
+    pause(300);
+    app.os_key(Key::Escape);
+    until("the question", || has(&app, "Save…"));
+    capture(&app, &format!("question-{tag}"));
+    app.os_press_button("Cancel");
+    until("the question gone", || !has(&app, "Save…"));
+    until("the question's window closed", || app.os_windows().len() == 1);
     app.os_menu(&["Game", "Stop Recording"]);
     until("the save window", || has(&app, "Save") && has(&app, "Discard"));
-    capture(&app, "save-window-2x");
+    capture(&app, &format!("save-window-{tag}"));
     app.os_press_id("discard");
     until("not recording", || !recording(&app));
     let c = quit(&mut app);
