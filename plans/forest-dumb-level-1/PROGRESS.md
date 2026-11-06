@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T42; T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ✅ | |
 | T41 | case-run-jump | T08, T09 | ✅ | |
-| T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
+| T42 | case-walls-pits | T08, T09, T41 | 🔍 | Five cases (wall, pit, slope, left, top), all passes match, every T08/T51 routine hit; `character_edges.rs`, one test, smoke. Deviation: pit excludes `char_anim_ptr`, `char_dying`, `char_dying_t` (T24): spikes cost a life and the original holds the character ~30 passes; input waits it out. Slope and pit frozen (creature contact, T24). |
 | T43 | case-scroll | T08, T09 | ✅ | |
 | T44 | case-picture | T10 | ✅ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T42
 
 ## Blocked on the user
 

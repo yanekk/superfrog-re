@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T42, measured: a life lost on W1-1's spikes holds the character about 30 passes (`char_dying`, `char_dying_t`, its hurt frame), input ignored, no respawn; standing there costs another every ~135 passes. Unported (T24). |
 | 2026-11-06 | 🔄 | Owner amended at checkpoint 3 (DESIGN §4.4): `task_pack.py` packs start every pending task; workers' unused tools denied, run started with `ENABLE_CLAUDEAI_MCP_SERVERS=false`; Muse writes porting engine code with a quality loop (`reshape.py --all`), T66's answer. Run stopped for the edit. |
 | 2026-11-06 | 📌 | T68 added by T16 with the coordinator's yes (screen locked): the OS-layer drill, the real windows `ScriptedUi` fakes (fake unverified, T14). Locked, the window never becomes key and Accessibility sees no buttons. Blocks T28. |
 | 2026-11-06 | 📌 | T16 drill, worker-driven, script layer, default, scale 1, resized: Tab (Amiga Tab), Esc, blur, pad, Controls' Esc, menu items out of turn, every recorder answer, 2 000-character note saved whole, picture whole and centred. No decidable defect. |
@@ -28,7 +29,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T65 added by T55 with the owner's yes: nothing ported `level_init`'s first view (`h0+$62e` tiles, `h0+$6c4` `collision_map`), so `Game::new` had an empty `collision_map` (cases transplant it). Blocks T13, T20. |
 | 2026-11-05 | 📌 | Single live calls, worker actions, each pass on try 1: T33 `char_sprite_position` $0.0017 67 s; T35 `h0_4274` $0.0010; T37 `h0_9754` $0.0018 81 s; T39 `play_keys` $0.0010 43 s. T57 fixed T50's fullscreen OS-test red (locked screen). |
 | 2026-11-05 | 📌 | T08: `purity.rs`'s lexer reads a hex literal ending `f64` or `f32` (`0x4f64`) as a float; written `0x4F64`. On the rig, table reads past an end hit live variables (`h0+$40cb + $3d` is `char_slide_t`). |
-| 2026-11-05 | 📌 | T64 (added by T08, owner's yes; Escape T51): `hunk_listing.py` lists the byte after an odd-sized var as `dc.b`, resyncing on a word. Superfrog `d1_c03` changes once: `key_down` ($16078) now lists; owner accepted. Other 7 listings identical. |
 | 2026-11-05 | 📌 | T63 added by T08 with the owner's yes: `game_frame` calls 20 routines of T09, T10, T22 to T26, T51, T52, T55, so its rig proof waits for them; `blocks T27`. T08 wires the character's calls only. |
 | 2026-11-05 | 🐞 | T61: `fd-judge --cover` finds hand-written generators failing `generate.py`'s rules: `h0_3566` (`probe`) and `char_object_cells` poke bytes the original never reads; `char_object_cells` and `h0_4b0e` leave branch ways untaken. Left alone. |
 | 2026-11-05 | 📌 | T51 review, worker-driven: each joystick direction held on the oracle gave `joy_left`..`joy_down` equal to `JoyFlags::read_joystick(joy1dat(input))`. Comments in `gen/character.rs:55`, `gen/character_anim.rs:4` still say `joy_flags`; left. |
