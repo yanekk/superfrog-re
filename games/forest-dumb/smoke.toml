@@ -32,6 +32,9 @@ workspace = "engine"
 # sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/runner.rs" = "smoke"
 "crates/fd-conform/tests/input_timing.rs" = "smoke"
+# T67: the input each pass read: the slide with up changed mid-scroll on Game and on the old pairing,
+# and the keys measured standing and sliding, about 2 s warm from the cached sync point.
+"crates/fd-conform/tests/pass_input.rs" = "smoke"
 # T07: the level engine entering W1-1 against the original, and its idle case (200 frames, also
 # through the command line): 2 s warm. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/level_entry.rs" = "smoke"
@@ -52,9 +55,25 @@ workspace = "engine"
 # T09: the camera's engine port against the original, 10 000 states a routine and the negative
 # checks: about 3 s on the program from disk 1.
 "crates/fd-conform/tests/camera_routines.rs" = "smoke"
+# T43: the camera cases, three scripted runs to all four level ends against the original, a
+# negative check and collision_map at the right wall: about 6 s warm, from the cached sync point.
+"crates/fd-conform/tests/camera_cases.rs" = "smoke"
 # T55: the edge redraws' engine port. Registration, the pointer tables, the d0 carry's negative check
 # and collision_map after a scroll each way from the cached sync point, about 7 s. The 10 000-state
 # check of all 14 routines (about 7 min) and the cell-table filter's count (16 s) stay in full.
+# T10: the renderer's ports, registration, the display at the sync point and the picture against the
+# oracle's, under 2 s together; the foreground's bar and play screen against the original, 2.5 s. The
+# 10 000-state check of all 16 routines (about 2 min) and the mutants (11 s) stay in full.
+"crates/fd-conform/tests/drawing_routines.rs" = [
+    "every_t10_routine_is_registered_and_checked_here",
+    "the_status_generators_poke_only_what_their_routines_read",
+    "the_adapters_store_back_what_they_load",
+    "the_palette_is_the_one_the_program_holds_and_the_original_fades_to",
+    "the_display_equals_the_original_at_the_sync_point",
+    "the_first_frame_is_drawn_with_the_status_bar",
+    "after_a_transplant_the_picture_is_the_originals_still_and_scrolled",
+    "the_foreground_draws_the_status_bar_and_play_screen_as_the_original",
+]
 "crates/fd-conform/tests/edge_redraw_routines.rs" = [
     "every_t55_routine_is_registered_and_checked_here",
     "the_pointer_tables_are_sixteen_rotated_bands",
@@ -157,6 +176,10 @@ name = "the camera following the character"
 covers = ["crates/fd-conform/tests/camera_routines.rs::every_camera_routine_matches_the_original"]
 
 [[area]]
+name = "the engine's picture: play area, character sprites and status bar as the original draws them"
+covers = ["crates/fd-conform/tests/drawing_routines.rs::after_a_transplant_the_picture_is_the_originals_still_and_scrolled"]
+
+[[area]]
 name = "the map's edges redrawn into collision_map as the view scrolls"
 covers = ["crates/fd-conform/tests/edge_redraw_routines.rs::after_a_scroll_each_way_the_collision_map_equals_the_originals"]
 
@@ -194,3 +217,7 @@ covers = ["tools/test_generate.py", "tools/test_generate_judge.py"]
 [[area]]
 name = "a game started on its own holding the level's first view"
 covers = ["crates/fd-conform/tests/level_start.rs::a_new_games_collision_map_is_the_originals_at_the_sync_point"]
+
+[[area]]
+name = "the camera scrolling both ways to every level end, against the original"
+covers = ["crates/fd-conform/tests/camera_cases.rs::each_camera_case_passes_on_the_level_engine_and_reaches_its_goal"]

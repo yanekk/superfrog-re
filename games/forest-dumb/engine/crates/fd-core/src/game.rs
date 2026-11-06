@@ -11,7 +11,9 @@ use crate::level::collision::{self, CollisionPlane};
 use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program};
+use crate::render::{self, Display, DisplayData};
 use crate::{Mem, Scene, State, Transplant, Var};
+use amiga_chips::Picture;
 
 /// What the game reads from the disks, at run time: the copyrighted data never enters the repo
 /// (DESIGN §3.1). A task needing a table of the main program reads it from [`GameData::program`].
@@ -28,6 +30,9 @@ pub struct GameData {
     /// start the collision plane's slack still holds it (T65, `level::start::lay_title_song`). Empty
     /// from [`GameData::new`].
     pub title_song: Vec<u8>,
+    /// What the display reads from the disks (T10); empty for data built without the program's
+    /// other hunks, which then draws black.
+    pub display: DisplayData,
 }
 
 /// The title's music module on disk 2, read unpacked (`load_file_raw`).
@@ -42,8 +47,10 @@ impl GameData {
         let exe = files(PROGRAM_FILE)?;
         let program = Program::hunk0(fd_assets::loaded_hunk(&exe, PROGRAM_FILE, 0, &HUNK_BASES)?);
         let title_song = files(TITLE_SONG)?;
+        let display = DisplayData::read(files, &level)?;
         Ok(GameData {
             title_song,
+            display,
             ..GameData::new(level, program)?
         })
     }
@@ -58,6 +65,7 @@ impl GameData {
             program,
             anim,
             title_song: Vec::new(),
+            display: DisplayData::default(),
         })
     }
 }
@@ -83,9 +91,11 @@ pub struct Game {
     plane: CollisionPlane,
     /// The level buffers the edge redraws read, built once from `data`.
     image: Arc<LevelImage>,
-    /// The blits the last step's edge redraws started, for the picture (T10); at a new game, the
-    /// first view's 368 tiles (T65).
+    /// The blits the last step's edge redraws started (T55), applied to the play screen; at a new
+    /// game, the first view's 368 tiles (T65), already applied.
     blits: Vec<Blit>,
+    /// What the display shows (T10): picture state, left out of equality.
+    display: Display,
 }
 
 impl Game {
@@ -105,7 +115,14 @@ impl Game {
                     collision: &mut plane,
                     blits: &mut blits,
                 });
+                // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
+                // takes the first view's tiles as it takes an edge redraw's.
+                let mut display = Display::level_1(&data.display, &data.program);
+                for b in &blits {
+                    display.screen.apply(b, &|a| data.display.byte(a));
+                }
                 Game {
+                    display,
                     plane,
                     image,
                     data,
@@ -138,6 +155,8 @@ impl Game {
                     program: &self.data.program,
                     anim: &self.data.anim,
                     plane: &self.plane,
+                    display: &mut self.display,
+                    display_data: &self.data.display,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -152,22 +171,65 @@ impl Game {
         }
     }
 
-    /// `main_loop`'s edge redraws (T55): what the foreground does between passes. Their blits are
-    /// added to [`Game::blits`].
+    /// What the foreground does between passes: `main_loop`'s status bar every 32 interrupts (T10),
+    /// then its edge redraws (T55), whose blits are added to [`Game::blits`] and drawn into the play
+    /// screen.
     pub fn foreground(&mut self) {
         match self.scene {
-            Scene::Level => level::main_loop_redraws(
-                &mut self.state,
-                &mut self.plane,
-                &self.image,
-                &mut self.blits,
-            ),
+            Scene::Level => {
+                let s = &self.state;
+                if s.irq_count & 0x1f == 0 {
+                    let data = &self.data.display;
+                    let h4 = |o: u32| data.h4(o);
+                    let src = render::status::Sources {
+                        h4: &h4,
+                        program: &self.data.program,
+                    };
+                    let countdown = (s.countdown >> 16) as u16;
+                    self.display
+                        .status
+                        .update(countdown, s.lives, s.score, s.items_left, &src);
+                }
+                let from = self.blits.len();
+                level::main_loop_redraws(
+                    &mut self.state,
+                    &mut self.plane,
+                    &self.image,
+                    &mut self.blits,
+                );
+                let data = &self.data.display;
+                for b in &self.blits[from..] {
+                    self.display.screen.apply(b, &|a| data.byte(a));
+                }
+            }
         }
+    }
+
+    /// The frame the original shows after this step, in the play area and status bar's window
+    /// (`render::WINDOW`), drawn as Denise would from the display's memory (T10).
+    pub fn picture(&self) -> Picture {
+        let c = &self.state.camera;
+        render::picture(
+            &self.data.display,
+            &self.display,
+            (c.x, c.y),
+            &self.data.program,
+        )
+    }
+
+    /// [`Game::picture`] as RGBA, 8 bits a channel, row-major: `out` holds width × height × 4 bytes.
+    pub fn picture_rgba(&self, out: &mut [u8]) {
+        render::rgba(&self.picture(), out);
+    }
+
+    /// What the display shows that the engine keeps.
+    pub fn display(&self) -> &Display {
+        &self.display
     }
 
     /// The blits the last step's edge redraws started, in order: tiles and bobs onto the play screen.
     /// Before the first step, `level_init`'s first view: its 23 by 16 tiles, column by column (T65),
-    /// for the picture (T10).
+    /// already drawn into the play screen by [`Game::new`].
     pub fn blits(&self) -> &[Blit] {
         &self.blits
     }
@@ -214,7 +276,8 @@ impl Game {
 }
 
 /// Equal state: the same scene, variables, objects and pending events, on equal data. The dispatch
-/// is the same code for every game, so it is not compared.
+/// is the same code for every game, so it is not compared; nor is the display, picture state that
+/// nothing in play logic reads (T00, T10).
 impl PartialEq for Game {
     fn eq(&self, o: &Game) -> bool {
         (Arc::ptr_eq(&self.data, &o.data) || self.data == o.data)
@@ -274,6 +337,37 @@ impl Game {
     }
 }
 
+impl Game {
+    /// The display's memory from the original's (T10), so a picture case starts from its screen: the
+    /// play screen, the status bar and what it last drew, the fade and the copper list's colours, the
+    /// sprites' control words. The sprites' frame is the one `char_anim_ptr` names unless their data
+    /// is clear; the next pass copies it again in any case.
+    fn transplant_display(&mut self, mem: &dyn Mem) {
+        use crate::render::{COLOURS, objects, playfield, status};
+        let long = |b: &[u8]| u32::from_be_bytes([b[0], b[1], b[2], b[3]]);
+        let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
+        let d = &mut self.display;
+        d.screen.bytes = mem.read(3, playfield::SCREEN, playfield::SCREEN_BYTES as usize);
+        d.status.bytes = mem.read(4, status::STATUS, status::STATUS_BYTES as usize);
+        let shown = mem.read(0, 0x6a8c, 10);
+        d.status.shown = status::Shown {
+            countdown: word(&shown, 0),
+            lives: word(&shown, 2),
+            items: word(&shown, 4),
+            score: long(&shown[6..]),
+        };
+        d.fade.on = mem.read(0, 0x94b4, 1)[0];
+        d.fade.pass = long(&mem.read(0, 0x94b6, 4));
+        let scratch = mem.read(0, 0x961e, 6);
+        d.fade.scratch = std::array::from_fn(|i| word(&scratch, 2 * i));
+        let colours = mem.read(1, COLOURS, 128);
+        d.fade.now = std::array::from_fn(|i| word(&colours, 4 * i));
+        d.sprite.ctl = long(&mem.read(1, objects::SPRITES, 4));
+        let data = mem.read(1, objects::SPRITES + 4, objects::SPRITE_DATA as usize);
+        d.sprite.frame = data.iter().any(|&b| b != 0).then_some(self.state.anim.ptr);
+    }
+}
+
 impl Transplant for Game {
     /// Every `LAYOUT` variable from the original, and the collision plane (`h3+$fa50` and the
     /// tail a probe reaches past it). Objects are not transplanted until T21 measures where the
@@ -284,6 +378,7 @@ impl Transplant for Game {
             debug_assert!(known, "{} is in LAYOUT but not in State", v.name);
         }
         self.transplant_play(mem);
+        self.transplant_display(mem);
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -443,8 +538,8 @@ mod tests {
 
     #[test]
     fn paused_runs_the_camera_and_nothing_after_it() {
-        // game_frame runs camera_update before its `paused` test (h0+$200a); the joystick, the
-        // objects and the character wait.
+        // game_frame runs char_sprite_copy, the fade, camera_update and char_sprite_position before
+        // its `paused` test (h0+$200a); the joystick, the objects and the character wait.
         let mut g = Game::new(data(), Start::Level1);
         g.state.paused = 1;
         g.step(FrameInput::joy(Joy::RIGHT));
@@ -457,6 +552,8 @@ mod tests {
         want.camera.edges.crossed = [false, true, false, false];
         want.camera.edges.latch = [0, 0xffff, 0, 0];
         want.camera.screen_y = 0x70 - 0x17;
+        // char_sprite_copy runs before the test too: the blink counter steps.
+        want.motion.unhurt_t = 0x9d;
         want.edges = g.state().edges.clone();
         want.object_map = g.state().object_map.clone();
         assert_eq!(*g.state(), want);

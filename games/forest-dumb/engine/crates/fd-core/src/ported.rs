@@ -86,6 +86,32 @@ pub const PORTED: &[Ported] = &[
     port("view_tile", 0x672, "level::start::tile_cell"),
     port("view_shapes", 0x6c4, "level::start::draw_shapes"),
     port("view_shape", 0x708, "level::start::shape_cell"),
+    // T10, the renderer (render/): the drawing routines of re/translate.toml, then the status bar's
+    // and the start-up's copper list pointers, which are outside it.
+    port("h0_3ab4", 0x3ab4, "render::playfield::blit_done"),
+    port(
+        "char_sprite_position",
+        0x5462,
+        "render::objects::CharSprite::position",
+    ),
+    port("h0_94ba", 0x94ba, "render::palette::Fade::step"),
+    port("h0_94fe", 0x94fe, "render::palette::Fade::all"),
+    port("h0_9550", 0x9550, "render::palette::colour"),
+    port("h0_9754", 0x9754, "render::playfield::Scroll::from_camera"),
+    port(
+        "char_sprite_copy",
+        0x9b06,
+        "render::objects::CharSprite::copy",
+    ),
+    port("h0_6a96", 0x6a96, "render::status::Status::update"),
+    port("h0_6ae8", 0x6ae8, "render::status::Status::score"),
+    port("h0_6b70", 0x6b70, "render::status::Status::score_digit"),
+    port("h0_6b78", 0x6b78, "render::status::Status::digit"),
+    port("h0_6bc0", 0x6bc0, "render::status::Status::countdown"),
+    port("h0_6c20", 0x6c20, "render::status::Status::items"),
+    port("h0_6c80", 0x6c80, "render::status::Status::lives"),
+    port("h0_9a34", 0x9a34, "render::sprite_pointers"),
+    port("h0_988a", 0x988a, "render::status_pointers"),
 ];
 
 /// A hunk 0 routine's entry.

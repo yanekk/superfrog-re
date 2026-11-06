@@ -39,10 +39,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
-| T10 | level-drawing | T08, T09, T40 | ⬜ | |
+| T10 | level-drawing | T08, T09, T40 | ✅ | |
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
-| T43 | case-scroll | T08, T09 | ⬜ | |
+| T43 | case-scroll | T08, T09 | ✅ | |
 | T44 | case-picture | T10 | ⬜ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
@@ -84,8 +84,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
-| T65 | level-start-draw | T55; blocks T13, T20 | ✅ | Review: one fix (sync-point message printed negative offsets as two's complement), symbols header moved. Probed: registers but d4/d5 preserved by the cell routines on the rig; three mutations (shape mask, song offset, tile loop bound) red. Both deviations held. Routine listing equivalence to `h0_774` read-only. |
-| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ⬜ | |
+| T65 | level-start-draw | T55; blocks T13, T20 | ✅ | Review: one fix (sync-point message printed negative offsets as two's complement), symbols header moved. Probed: registers but d4/d5 preserved by the cell routines on the rig; three mutations (shape mask, song offset, tile loop bound) red. Both deviations held. Merged with T10: first view applied to `Display::screen`, its 16 bands checked. |
+| T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 
 **Review queue:** *(empty)*
 

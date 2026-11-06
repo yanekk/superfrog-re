@@ -15,6 +15,7 @@ pub mod objects;
 pub mod objects_move;
 pub mod rest;
 pub mod spike;
+pub mod status;
 
 pub use crate::routine::{Gen, Generator, Setup, h};
 
@@ -39,6 +40,7 @@ pub const MODULES: &[&[(&str, Generator)]] = &[
     character_anim::ALL,
     objects_move::ALL,
     level_start::ALL,
+    status::ALL,
 ];
 
 /// The generator registered as `name`.

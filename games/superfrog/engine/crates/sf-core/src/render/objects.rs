@@ -30,15 +30,8 @@ pub(super) struct Sprite {
     data: [u16; 2],
 }
 
-/// What a sprite shows on one line.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct SpriteLine {
-    pub hstart: u16,
-    pub data: [u16; 2],
-    pub attached: bool,
-    /// A control write in the middle of the line turns it off from this picture pixel on.
-    pub cut: Option<i32>,
-}
+/// What a sprite shows on one line: the toolkit's ([`amiga_chips::sprite`]).
+pub(super) use amiga_chips::sprite::SpriteLine;
 
 /// The sprite a register belongs to.
 pub(super) fn sprite_of(r: u16) -> usize {
@@ -150,9 +143,6 @@ impl Sprite {
     }
 }
 
-/// Lores pixels between a sprite's HSTART and the window position its first pixel shows at.
-const SPRITE_DELAY: i32 = 1;
-
 /// The picture's pixels: each line's fetched bitplane indices (on a play-field line, outside the
 /// original's window — widescreen's extra columns — the level from the map and its bobs), then the sprites, a pair in front of the play field when its number is below the play field's
 /// priority, the lower pair in front of the higher, an attached pair as one 16-colour sprite.
@@ -186,34 +176,9 @@ pub(super) fn compose(pic: &mut Picture, rows: &[Row], field: &Field, extra: usi
 }
 
 /// The sprites' colour at picture pixel `x` (window position `at`) of `row`, and the pair that
-/// gives it: the lower pair in front of the higher, an attached pair as one 16-colour sprite.
+/// gives it (`amiga_chips::sprite::sprite_at`).
 pub(super) fn sprite_at(row: &Row, at: i32, x: i32) -> Option<(u8, usize)> {
-    let bits = |n: usize| {
-        let s = row.sprites[n]?;
-        let i = at - s.hstart as i32 - SPRITE_DELAY;
-        if !(0..16).contains(&i) || s.cut.is_some_and(|c| x >= c) {
-            return None;
-        }
-        let b = 15 - i;
-        Some((s.data[0] >> b & 1 | (s.data[1] >> b & 1) << 1) as u8)
-    };
-    for pair in 0..4 {
-        let (even, odd) = (bits(2 * pair), bits(2 * pair + 1));
-        let colour = if row.sprites[2 * pair + 1].is_some_and(|s| s.attached) {
-            let v = even.unwrap_or(0) | odd.unwrap_or(0) << 2;
-            (v != 0).then_some(16 + v)
-        } else {
-            [even, odd]
-                .into_iter()
-                .flatten()
-                .find(|&v| v != 0)
-                .map(|v| 16 + 4 * pair as u8 + v)
-        };
-        if let Some(c) = colour {
-            return Some((c, pair));
-        }
-    }
-    None
+    amiga_chips::sprite::sprite_at(&row.sprites, at, x)
 }
 
 #[cfg(test)]
