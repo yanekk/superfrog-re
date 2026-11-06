@@ -27,6 +27,7 @@
 pub mod camera;
 pub mod collision;
 pub mod redraw;
+pub mod start;
 
 use amiga_input::FrameInput;
 use fd_assets::Level;

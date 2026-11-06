@@ -1598,6 +1598,38 @@ note = "up pressed: the jump starts, or the fall (T08)"
 [[sym]]
 exe = "forest_dumb_forever"
 hunk = 0
+offset = 0x62e
+name = "view_tiles"
+kind = "func"
+note = "level_init's first view: 23 columns by 16 rows of tiles from the map's top-left, by view_tile (T65: level::start::draw_tiles)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x672
+name = "view_tile"
+kind = "func"
+note = "copies the tile of cell d6 (row), d7 (column) onto the play screen by CPU, 5 words a line over 16 lines (T65: level::start::tile_cell)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c4
+name = "view_shapes"
+kind = "func"
+note = "level_init's first view: the same 23 by 16 cells' shapes into collision_map, by view_shape (T65: level::start::draw_shapes)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x708
+name = "view_shape"
+kind = "func"
+note = "copies the shape of cell d6 (row), d7 (column) into collision_map, 16 words $2e apart (T65: level::start::shape_cell)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
 offset = 0x774
 name = "h0_774"
 kind = "func"

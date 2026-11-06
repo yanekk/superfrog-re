@@ -71,12 +71,21 @@ pub const PORTED: &[Ported] = &[
     port("h0_ce4", 0xce4, "level::redraw::bob_above"),
     port("redraw_edge_c", 0xdf6, "level::redraw::Edges::redraw_left"),
     port("h0_104c", 0x104c, "level::redraw::bob_left"),
-    port("redraw_edge_d", 0x114a, "level::redraw::Edges::redraw_right"),
+    port(
+        "redraw_edge_d",
+        0x114a,
+        "level::redraw::Edges::redraw_right",
+    ),
     port("h0_1390", 0x1390, "level::redraw::bob_right"),
     port("h0_3ac2", 0x3ac2, "level::redraw::blitter_wait"),
     port("h0_681c", 0x681c, "level::redraw::CreatureSlots::start"),
     port("h0_6852", 0x6852, "level::redraw::CreatureSlots::fill"),
     port("h0_6882", 0x6882, "level::redraw::AnimatedCells::add"),
+    // T65, level_init's first view (level/start.rs).
+    port("view_tiles", 0x62e, "level::start::draw_tiles"),
+    port("view_tile", 0x672, "level::start::tile_cell"),
+    port("view_shapes", 0x6c4, "level::start::draw_shapes"),
+    port("view_shape", 0x708, "level::start::shape_cell"),
 ];
 
 /// A hunk 0 routine's entry.

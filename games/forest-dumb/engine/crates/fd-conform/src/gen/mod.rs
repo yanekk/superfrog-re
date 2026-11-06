@@ -10,6 +10,7 @@ pub mod character;
 pub mod character_anim;
 pub mod drawing;
 pub mod edge_redraw;
+pub mod level_start;
 pub mod objects;
 pub mod objects_move;
 pub mod rest;
@@ -37,6 +38,7 @@ pub const MODULES: &[&[(&str, Generator)]] = &[
     edge_redraw::ALL,
     character_anim::ALL,
     objects_move::ALL,
+    level_start::ALL,
 ];
 
 /// The generator registered as `name`.
