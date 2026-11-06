@@ -17,13 +17,20 @@ use std::process::Command;
 const PURE: [&str; 2] = ["fd-core", "fd-assets"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
-/// pure crates needs one line saying why it is pure. The two toolkit crates' sources are scanned by
+/// pure crates needs one line saying why it is pure. The toolkit crates' sources are scanned by
 /// the toolkit's own purity test.
 const ALLOWED: &[&str] = &[
     "fd-core",
     "fd-assets",
     "amiga-clock",
     "amiga-input",
+    // The renderer's chips (T10): the copper run, the bitplane fetch and the sprite composition,
+    // functions of the memory and registers handed to them. Pure by the toolkit's own purity test
+    // (`toolkit-checks/tests/purity.rs`), which scans its sources.
+    "amiga-chips",
+    // amiga-chips' sound-side dependency: the mixer's chip-memory trait AmigaMemory implements; pure
+    // by the same toolkit test (its resampler's floats are that test's one named exemption).
+    "amiga-paula",
     // amiga-input's save-state derive: serde's traits and derive. The derive runs at compile time
     // and emits plain field-by-field code; the traits read and write values handed to them.
     "serde",

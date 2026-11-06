@@ -1,6 +1,6 @@
 //! Pure: the Amiga's custom chips as a game engine uses them, naming no game. The blitter's
 //! memory effect ([`Blit`]), the copper run for one frame ([`copper`]), the A500's RAM
-//! ([`AmigaMemory`]), the picture a frame shows ([`Picture`]) and which custom registers are
+//! ([`AmigaMemory`]), the picture a frame shows ([`Picture`]), the sprites over it ([`sprite`]) and which custom registers are
 //! Paula's ([`is_paula`]).
 
 pub mod blit;
@@ -8,6 +8,7 @@ pub mod copper;
 pub mod display;
 pub mod memory;
 pub mod picture;
+pub mod sprite;
 
 pub use blit::{Blit, BlitMem, FIXED_TO, bltsize_words, logic, word_times};
 pub use memory::{AmigaMemory, Ram, SLOW_BASE};

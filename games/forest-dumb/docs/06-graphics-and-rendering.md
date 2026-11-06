@@ -43,6 +43,8 @@ Level colours are 32 pairs of `COLORnn` register and 12-bit value in hunk 1's co
 `$5e564 + $404`. Levels start by copying `$384` (W1, W2, hunk 1 `$484`) or `$404` (W3 to W6, `$49e`) over
 `$304`. The two blocks hold the same values, so all six worlds share one palette. The tool reads it from the
 main program and checks each register number. Colours are not written down here: they are disk-derived.
+Measured at the W1-1 sync point (T10, `drawing_routines.rs`): the target block `h1+$304` holds hunk 1's
+`h1+$384` block, the second of the two above; the file's own `h1+$304` differs. The engine copies it so.
 
 ## What the renderer writes
 
@@ -71,3 +73,35 @@ The Rust readers in `engine/crates/fd-assets` (`read_level`, `read_sprites`) rea
   the level. Only W1-1 and world 1's sprites are compared with the original; the other worlds rest on the
   formats above. Sprite frames are compared as bytes, not as drawn: the character is a hardware sprite and the
   bobs' drawing is T10's. Collision shapes are compared as bytes; their meaning in play is T08's.
+
+## The engine's picture (T10)
+
+`fd-core/src/render/` draws the frame as Denise would: the level copper list (`h1+$d4`, from the main
+program) is run for the frame over the engine's copy of the memory it reads, each line fetched from where
+its bitplane pointers point, the character's sprites over it, outside each line's DIW colour 0. Window:
+DIWSTRT `$2f81`, DIWSTOP `$29c1` (play area and status bar). `amiga-chips` gives the copper run, the fetch
+and, moved there by T10 from the first game's renderer, the sprite composition (`amiga_chips::sprite`).
+
+**The display buffers are picture state, kept, not drawn from the map** (T00's answer, docs/09). The play
+screen (`h3+$398`, 256 lines, and its slack to `collision_map`) is what the original's blits leave in it:
+the engine applies T55's `Blit` list (tile copies, bobs cut through their masks) as it goes. A blit word
+landing outside it is dropped: the stray bob after a full creature table lands in low chip RAM. The status
+bar's buffer (`h4+$6400`) is the program's picture with the numbers `h0_6a96` draws. `Game`'s equality
+leaves both out. Until T65 ports `level_init`'s first view, a new game's play screen is empty.
+
+What the start-up and level start leave in hunk 1, which the engine sets up the same way: the sprite
+pointers (`h0_9a34`), the status bar's bitplane pointers (`h0_988a`), the palette block above.
+
+Interruptible points of the ported routines (porting rule 1), listed before porting:
+
+| Routine | Runs in | Interruptible points |
+|---|---|---|
+| `char_sprite_copy`, `h0_94ba`, `h0_94fe`, `h0_9550`, `char_sprite_position`, `h0_9754` | level-3 interrupt (`game_frame`) | none; no waits |
+| `h0_3ab4` | callers in `game_frame` | a blitter-busy loop; the engine's blits finish at once |
+| `h0_6a96` and its digit routines | foreground (`main_loop`) | any instruction: a pass can cut a redraw short; picture only, for one frame |
+| `h0_9a34`, `h0_988a` | start-up | none |
+
+Measured (2026-11-06): with the original's display memory transplanted, the engine's picture equals the
+oracle's `picture_in` at frame 6340 in every pixel; at 6640, scrolled and moving, 1 211 pixels differ around
+the character and a creature, which the original rewrites while the frame is drawn (T44's). The oracle's
+picture at the sync point (6301) is its blank, not play's.

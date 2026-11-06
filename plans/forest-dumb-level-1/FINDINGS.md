@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T10, worker-driven: transplanted display memory, `Game::picture` equals oracle `picture_in` every pixel at frame 6340; 1 211 differ at 6640 near the moving character and a creature (mid-frame writes). For T44. Sync-point oracle picture is blank. |
+| 2026-11-06 | 📌 | T10: the status bar's routines (`h0_6a96`, five digit routines) and start-up pointers (`h0_9a34`, `h0_988a`) are outside `re/translate.toml`; T10 ported them with its own generators (`gen/status.rs`). Palette target is `h1+$384`'s block. |
 | 2026-11-06 | 📌 | T67, measured: a pass's joystick is its `read_joystick` step's (`PassInputs`, checked by `input_log_index`); its keys are its start step's, standing or sliding. A paused pass runs `h0+$200e`, no read. T41's pairing premise held. |
 | 2026-11-05 | 📌 | T41, from frame 6400: holding right slides W1-1's first slope to `char_x` $29d by frame 6522; up held jumps (review falsified "up ignored"). Right and up from frame 10 lands on a creature at 6487 (`char_hit_check` stomp sets `h0+$3b28`): T24's. |
 | 2026-11-05 | 📌 | T43, measured: W1-1's right wall stops the character at column 229, `camera_x` `$dc9` (`$17cf` unreachable); `redraw_edge_d` reads filler column 241, `collision_map` equal. Two-edge frames (T55) never differed over 2 826 passes, so unexcluded; `hits_taken` excluded (T24). |
