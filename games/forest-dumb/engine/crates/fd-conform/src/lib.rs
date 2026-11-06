@@ -572,7 +572,12 @@ impl PassInputs {
         }
         self.log = (self.log + reads).min(INPUT_LOG_FULL);
         let log = Live(am).value(var("input_log_index")?);
-        if log != self.log {
+        // A read that started just before the step's end counts at `h0+$8dfc` in this step but adds
+        // to `input_log_index` (`h0+$8eb4`) in the next: one behind is allowed only in a step that
+        // counted a read, and the next step's check holds it to the count (T15, measured at frame
+        // 7715 of a long varied recording, the character dying).
+        let reading = reads > 0 && log + 1 == self.log && self.log < INPUT_LOG_FULL;
+        if log != self.log && !reading {
             return Err(format!(
                 "input_log_index is {log} on the original, the counter says {}: a joystick read \
                  was missed or counted twice",
