@@ -474,9 +474,10 @@ fn value_ff_is_the_exit() {
     assert_eq!(s.cells, [0xff], "{s:x?}");
 }
 
-/// With `freeze.rs`'s list patched in, every value placed above does nothing: no creature, no
-/// animated cell, no bonus drawn, nothing taken, no spring. The character slides as with an empty
-/// map, which is what a frozen case compares with an engine that models no objects.
+/// With `freeze.rs`'s list patched in, every value placed above that the engine does not model yet
+/// does nothing: no creature, no animated cell, no spring. The character slides as with an empty
+/// map. Taking (T22) is no longer frozen, so the item and the bonus are taken and scored, as the
+/// engine takes them.
 #[test]
 fn freezing_stops_every_object() {
     let placed = [
@@ -490,8 +491,6 @@ fn freezing_stops_every_object() {
     assert!(s.kinds.is_empty(), "a creature took a slot: {s:x?}");
     for e in [
         at::ANIM_ADD + 4, // past the frozen `movem`: never reached
-        at::ITEM_TAKEN,
-        at::BONUS_TAKEN,
         at::DRAW_ITEM,
         at::DRAW_VANISH,
     ]
@@ -501,26 +500,20 @@ fn freezing_stops_every_object() {
     {
         assert_eq!(s.hits(e), 0, "h0+${e:x} ran frozen: {s:x?}");
     }
-    assert_eq!(
-        (s.after.score, s.after.items_left),
-        (s.before.score, s.before.items_left),
-        "{s:x?}"
+    assert!(
+        s.hits(at::ITEM_TAKEN) > 0 && s.hits(at::BONUS_TAKEN) > 0,
+        "taking is not frozen since T22: {s:x?}"
     );
+    assert_eq!(s.after.items_left, s.before.items_left - 1, "{s:x?}");
     assert_eq!((s.after.x, s.after.y), (669, 553), "{s:x?}");
-    // Each frozen entry was still reached (its `rts` ran), so the freeze is not vacuous; of the four
-    // edge redraws' bonus blits, the one whose edge brought the bonus in.
-    for f in FROZEN
-        .iter()
-        .filter(|f| !at::BONUS_DRAW.contains(&f.offset))
-    {
+    // Each frozen entry was still reached (its `rts` ran), so the freeze is not vacuous.
+    for f in FROZEN {
         assert!(
             s.hits(f.offset) > 0,
             "frozen {} never reached: {s:x?}",
             f.what
         );
     }
-    let drawn: u32 = at::BONUS_DRAW.iter().map(|&o| s.hits(o)).sum();
-    assert!(drawn > 0, "no frozen bonus blit reached: {s:x?}");
 }
 
 /// The oracle reports sprite-to-playfield collision (T59): on the slide, `char_hit_check` copies

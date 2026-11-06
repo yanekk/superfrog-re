@@ -159,6 +159,12 @@ Whether the player sees `countdown` as time or as energy is not known; `Game::en
   `main_loop` calls `next_world`: `world_index` was 1 by frame 6560, world 2 loaded from disk and its SCENA
   screen waited from frame ~7531. No other end-of-level sequence ran in between. With items left the exit
   does nothing (read). So the comparison's end is `world_index` becoming 1.
+- **Level end, measured (T26, `fd-conform/tests/level_end.rs`).** `cheat_flag` set at the sync point,
+  HELP pressed in step 6523 is read by pass 224's `help_key`; `main_loop`'s check after it runs
+  `next_world` in step 6525, before `h0_6a96`, so that pass's frame keeps the old status bar. `h0+$500`
+  then blacks the play area's 32 colours. A HELP read by a pass the check does not follow is lost on
+  the original (`char_object_cells` clears `level_exit_touched` next pass, T22), not on the engine yet.
+  The level-end milestone for T27: case goal `level_end = true`; on the engine alone `Game::finished()`.
 - **Game over** goes to `h0+$1aa`: `game_over_screen` (waits for fire), then the high scores (`h0+$89d0`),
   then `session_loop` and the title. Measured: Esc (`give_up`) and `countdown` reaching 0 (poked to 1 at
   frame 6500: 0 at 6526, game over screen by 6560). Read: `lives` 0 does the same.

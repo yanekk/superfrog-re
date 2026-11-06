@@ -3,7 +3,7 @@
 # Goal: camera_y at its clamp $53f and camera_x at its furthest, $dc9, with the character against
 # the right wall at column 229: the view's right edge reaches column 241, past column 240's filler.
 # Contact (char_hit_check on the engine's CLXDAT, T70) is compared: on this route it counts hits_taken
-# without costing a life. The engine leaves out the bonus bobs the frozen original never draws.
+# without costing a life. Bonuses are drawn and taken on both sides since T22.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "camera-bottom-right"
 frames = 1880

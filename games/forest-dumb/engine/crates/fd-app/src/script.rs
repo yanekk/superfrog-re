@@ -8,6 +8,7 @@
 //! 20: shot               # the window as presented, into the capture (`window-NNNNN.png`)
 //! 30: resize 700 600     # ask for this inner size, in points
 //! 40: hang               # stop answering for good: the watchdog's test
+//! 50: cheat              # the title's cheat code (`Game::set_cheat`): HELP then ends the level
 //! ```
 //!
 //! The recorder's (T14). `menu start-level` and `menu stop-recording` are Game ▸ Start Level… and
@@ -43,6 +44,7 @@ pub enum Event {
     Shot,
     Resize(u32, u32),
     Hang,
+    Cheat,
 }
 
 /// The answers to the recorder's windows, in the order they are asked.
@@ -154,6 +156,7 @@ impl ScriptGame for Game {
                 _ => return Err(line.error("`resize` takes a width and a height in points")),
             },
             ["hang"] => Event::Hang,
+            ["cheat"] => Event::Cheat,
             _ => return Ok(None),
         }]))
     }
@@ -185,7 +188,7 @@ mod tests {
 
     #[test]
     fn the_game_s_lines_and_the_toolkit_s_land_on_their_frames() {
-        let s = parse("10: menu controls\n11: controls up keys\n12: press KeyW\n13: shot\n14: resize 640 600\n15: hang\n")
+        let s = parse("10: menu controls\n11: controls up keys\n12: press KeyW\n13: shot\n14: resize 640 600\n15: hang\n16: cheat\n")
             .unwrap();
         assert_eq!(
             s.events,
@@ -212,6 +215,7 @@ mod tests {
                 (13, Event::Shot),
                 (14, Event::Resize(640, 600)),
                 (15, Event::Hang),
+                (16, Event::Cheat),
             ]
         );
         assert_eq!(at(&s, 12).count(), 2);

@@ -75,9 +75,9 @@ holds disk graphics: keep it under `build/`.
 `cargo run --release -p fd-plan -- level W1-1` in `engine/` plans W1-1 on the engine (`--rounds N`,
 `--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
 `build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
-it on the original with every object frozen, saying for how many passes the two agree. Until the items,
-contact and the level's end are ported (T22, T24, T26) the level never ends, so a route stops at the
-exit's cells and exits 1.
+it on the original with creatures, animated cells and springs frozen, saying for how many passes the
+two agree. The engine takes coins (T22), so the search chases them; until contact and the level's end
+are ported (T70, T24, T26) the level never ends, so a route stalls with coins left and exits 1.
 
 ## Bug-fix procedure
 

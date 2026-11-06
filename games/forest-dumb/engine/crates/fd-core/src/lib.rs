@@ -10,6 +10,8 @@ pub mod game;
 pub mod game_over;
 pub mod layout;
 pub mod level;
+pub mod level_end;
+pub mod objects;
 pub mod ported;
 pub mod program;
 pub mod recording;

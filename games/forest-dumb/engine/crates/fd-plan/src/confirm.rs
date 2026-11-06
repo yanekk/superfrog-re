@@ -1,11 +1,11 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with every object frozen (T21's `freeze.rs`), as T11's stretches do: the
-//! engine models no object yet (T22 to T25), so a frozen original is what it is meant to equal. The
-//! case compares the character's, the camera's and the status variables on every pass, and its
-//! goal is where the engine ends.
+//! the level sync point with what the engine does not model frozen (T21's `freeze.rs`: creatures,
+//! animated cells, springs), as T11's stretches do; items, bonuses and the exit are taken on both
+//! sides (T22). The case compares the character's, the camera's and the status variables on every
+//! pass, and its goal is where the engine ends.
 //!
-//! Where the two first differ is where the modelled part of the route ends. Contact and the lives
-//! it costs are modelled since T70.
+//! Where the two first differ is where the modelled part of the route ends: contact with the
+//! playfield and the lives it costs are modelled since T70, a creature's (T24) not yet.
 
 use std::sync::Arc;
 

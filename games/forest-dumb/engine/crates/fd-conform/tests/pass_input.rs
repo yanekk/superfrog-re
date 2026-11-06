@@ -68,9 +68,6 @@ impl Engine for StartStep {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
 }
 
 #[test]

@@ -106,6 +106,8 @@ workspace = "engine"
 # T08: the character's movement against the original, 14 routines at 10 000 states each and 5
 # mutants, about 9 s (one rig per test, run in parallel).
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
+# T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
+"crates/fd-conform/tests/collect_routines.rs" = "smoke"
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
@@ -123,6 +125,9 @@ workspace = "engine"
     "every_stretch_matches_the_original_on_variables_and_picture_together",
     "a_mutated_jump_constant_fails_the_jump_stretch",
 ]
+# T45: collecting in play against the original, the ledge and the way back from the cached sync point
+# in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
+"crates/fd-conform/tests/collect_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -184,6 +189,11 @@ workspace = "engine"
 ]
 "crates/fd-conform/tests/contact.rs" = "smoke"
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
+# T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
+# status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
+# end in the real app at two scales, about 5 s warm.
+"crates/fd-conform/tests/level_end.rs" = "smoke"
+"crates/fd-e2e/tests/level_end.rs" = "smoke"
 # T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
@@ -195,12 +205,15 @@ workspace = "engine"
 "crates/fd-plan/src" = "smoke"
 "crates/fd-plan/tests/route.rs" = [
     "the_facts_match_the_levels_readings",
-    "a_planned_route_reaches_the_exit_on_replay_and_the_page_shows_it",
+    "a_planned_route_replays_to_its_end_and_the_page_shows_it",
     "the_route_is_the_same_across_runs_and_thread_counts",
     "the_budget_stops_the_search_and_it_reports_where",
     "the_routes_stretch_is_confirmed_on_the_original_where_modelled",
     "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
 ]
+# T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
+# seven in about 40 s in release, as Superfrog's recorder_drill.rs.
+"crates/fd-e2e/tests/drill_os.rs" = "full"
 
 [python]
 "tools/test_call_tree.py" = "smoke"
@@ -329,8 +342,19 @@ covers = [
 [[area]]
 name = "planning a route through level 1 and confirming it on the original"
 covers = [
-    "crates/fd-plan/tests/route.rs::a_planned_route_reaches_the_exit_on_replay_and_the_page_shows_it",
+    "crates/fd-plan/tests/route.rs::a_planned_route_replays_to_its_end_and_the_page_shows_it",
     "crates/fd-plan/tests/route.rs::the_routes_stretch_is_confirmed_on_the_original_where_modelled",
+]
+
+[[area]]
+name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
+covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "taking items and bonuses in play, score and status bar, against the original"
+covers = [
+    "crates/fd-conform/tests/collect_cases.rs::collecting_matches_the_original_on_variables_and_picture_together",
+    "crates/fd-conform/tests/collect_cases.rs::the_engine_alone_meets_each_collecting_goal",
 ]
 
 [[area]]
@@ -339,6 +363,13 @@ covers = [
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
     "crates/fd-conform/tests/death.rs::giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
     "crates/fd-e2e/tests/game_over.rs::giving_up_in_the_app_shows_game_over_and_restarts_the_level_at_scale_1",
+]
+
+[[area]]
+name = "the level's end: next_world as the original runs it, Level 1 complete until fire, the restart"
+covers = [
+    "crates/fd-conform/tests/level_end.rs::the_level_end_matches_the_original_up_to_next_world_and_stops_there_by_name",
+    "crates/fd-e2e/tests/level_end.rs::the_level_end_in_the_app_shows_level_1_complete_and_fire_restarts_at_scale_1",
 ]
 
 [[area]]

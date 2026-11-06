@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 57 of 73 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 61 of 73 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T71 (status-redraw-race, added by T70 with the owner's yes) once T70 merges; then T42 and T68 (resumed), T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T71 once T70 merges; T24, T25 and T52, whose dependencies are done; then T46, T47, T72 and T63 as theirs finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -58,13 +58,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | planner-level-1 | T11, T17, T19 | ✅ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
-| T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
+| T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
-| T45 | case-collect | T22 | ⬜ | |
+| T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
-| T26 | level-end | T11, T13, T14, T23 | ⬜ | |
+| T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
 | T48 | route-on-original | T27 | ⬜ | |
@@ -89,8 +89,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
-| T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
-| T70 | playfield-contact | T23; blocks T24, T46 | ✅ | Review ✅: spikes held on variables and picture (death-pit, death-spikes, contact-route, route.rs). Fix: water's drawer is T25's, not T22's. Water unshown, carried to T72 (owner). Mutated the dying flag (rig red), the single-playfield rule and a one-pass contact lag (cases red); reading before or after the foreground is equivalent.
+| T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
+| T70 | playfield-contact | T23; blocks T24, T46 | ✅ | Review ✅: spikes held on variables and picture (death-pit, death-spikes, contact-route, route.rs). Fix: water's drawer is T25's, not T22's. Water unshown, carried to T72 (owner). Mutated the dying flag (rig red), the single-playfield rule and a one-pass contact lag (cases red). Merge removed the frozen bonus-bob drop (T22). |
 | T71 | status-redraw-race | T70; blocks T27 | ⬜ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 

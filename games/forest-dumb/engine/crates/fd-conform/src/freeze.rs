@@ -23,7 +23,9 @@ pub struct Frozen {
     pub task: &'static str,
 }
 
-/// Every routine a `freeze = true` case returns from at once.
+/// Every routine a `freeze = true` case returns from at once. T22 removed its five (the bonus blits
+/// `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, which T55 ported, and `h0_26ec`, taking): the engine takes
+/// items, bonuses and the exit as the original does, so a frozen case lets both.
 pub const FROZEN: &[Frozen] = &[
     Frozen {
         hunk: 0,
@@ -38,37 +40,6 @@ pub const FROZEN: &[Frozen] = &[
         what: "h0_6882: a value $20-$3f in view joins h0_62b6's animated cells (items, water, \
                vanishing blocks), so none is drawn and no vanishing block writes collision_map",
         task: "T25",
-    },
-    Frozen {
-        hunk: 0,
-        offset: 0xa06,
-        what: "h0_a06: the bottom edge redraw blits a bonus ($40+)",
-        task: "T22",
-    },
-    Frozen {
-        hunk: 0,
-        offset: 0xce4,
-        what: "h0_ce4: the top edge redraw blits a bonus ($40+)",
-        task: "T22",
-    },
-    Frozen {
-        hunk: 0,
-        offset: 0x104c,
-        what: "h0_104c: the right edge redraw blits a bonus ($40+)",
-        task: "T22",
-    },
-    Frozen {
-        hunk: 0,
-        offset: 0x1390,
-        what: "h0_1390: the left edge redraw blits a bonus ($40+)",
-        task: "T22",
-    },
-    Frozen {
-        hunk: 0,
-        offset: 0x26ec,
-        what: "h0_26ec: an item, bonus or the exit under the character is taken; the exit is \
-               frozen with them, so a frozen case cannot end the level",
-        task: "T22",
     },
     Frozen {
         hunk: 0,

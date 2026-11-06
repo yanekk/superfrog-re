@@ -758,6 +758,21 @@ on 10 000 states of each T56 generator; paths 3, 1, 2 680, 2, 2 633, 2, 2 110, 2
 - Registers compared: `d0` after `h0_681c` and after the row bobs `h0_a06`, `h0_ce4`, whose high word the
   scan carries to the next bob; none for the rest (`main_loop` reloads what it reads).
 
+## Engine ports: taking and the write-back (T22)
+
+`fd-core/src/objects/collectible.rs` (`MapObjects`), proven by `fd-conform/tests/collect_routines.rs` on
+10 000 states of each T38 and T37 generator; paths 115, 23, 1, 1, 142, 10, 2, 2 for `char_object_cells`,
+`h0_26ec`, `h0_29ca`, `score_add_routine`, `h0_2dd6`, `h0_2e0e`, `countdown_plus_100`, `items_left_minus_one`.
+Behaviour and interruptible points: [10](10-object-system.md), "Taking and writing back, ported".
+
+- The object map, tile map and tile table are read, and taken cells and written-back creatures written,
+  through `objects::Io` at hunk 0 offsets, as T55's redraws; the rig's `Io` is the state's memory, play's
+  `objects::PlayIo`. The item redraw is a `Blit::Cell` (a source offset from the tile table, not a tile
+  number); the sounds are `objects::Sound`, turned into the Paula writes by the rig and dropped in play.
+- Bonus scores are read from `h0_26ec`'s own `move.l #amount, score_add` immediates
+  (`collectible::BONUS_SCORES`): a 17-entry table in the code fails `purity.rs`.
+- Registers compared: `d0` after `h0_29ca` (`h0_26ec` compares the bonus value in it); none for the rest.
+
 ## Object routines (T49)
 
 T49 was to translate the object routines T21 found reached only through dispatch tables, which T34's
@@ -782,6 +797,14 @@ What each porting task did with its share of the table above, and which routines
   to 24). By hand: `char_probe` (too-big) and `char_update` (blocked behind it), from the listing; the
   other twelve rewritten from their passing T40 ports and the listing. `game_frame` (blocked) went to
   T63 (owner, 2026-11-05): its rig proof needs every routine it calls ported first.
+- **T22** (2026-11-06): the eight routines above. By hand, as Muse's examples: `add_score`
+  (`score_add_routine`) and `redraw_cell` (`h0_29ca`), the smallest two, one showing the BCD helpers and one
+  `Io`'s blit. From Muse (`reshape.py --task T22 --all`, then `--only object_cells` once `take` had passed):
+  `object_cells`, `take`, `write_back`, `write_back_slot`, `add_time`, `count_item`, each passing with no
+  quality issue; $0.039 in all, 16 calls. Fitted by hand: `write_back` calls `write_back_slot` (Muse's
+  first answer inlined it, written before that unit passed), `write_back_slot` folded to one try list, and
+  the 17-entry bonus table moved into the program's own code (purity). The first run's prompts lacked the
+  rig table lines (rustfmt had wrapped them); the adapters are named since, and `test_reshape.py` passes.
 - **T23** (2026-11-06): `countdown_step`, `play_keys`, `help_key`, `esc_key`, `lives_minus_one`, as
   `fd_core::character::Play` methods (`tests/death_routines.rs`, 10 000 states; paths 3, 5, 3, 4, 2).
   `help_key` is T26's in the table, but `play_keys` runs it whole, so T23 ported it with its caller.
@@ -790,6 +813,12 @@ What each porting task did with its share of the table above, and which routines
   inlining them, and `countdown_step` uses the file's `sbcd`. By hand: `esc_key` and `lives_minus_one`,
   the two examples Muse is shown. `sbcd` follows the rig's 68000 digit by digit: a carry-chain formula
   differs on bad digits (`$be - 1`).
+- **T26** (2026-11-06): nothing for Muse. Its one routine, `help_key`, was ported with its caller by
+  T23. The rest is `main_loop`'s level-end test (`h0+$286`..`$298`) and `next_world`'s first
+  instruction (`addi.l #1, world_index`), outside `re/translate.toml` and five instructions in all,
+  written by hand in `fd_core::level_end`, so no `[T26]` table in `re/reshape.toml`; $0 spent. They
+  are proven by the `level-end` case (`tests/level_end.rs`), not the rig: `main_loop` is foreground
+  code no rig unit holds.
 - **T70** (2026-11-06): `char_hit_check`'s contact half, as `fd_core::character::Play::char_hit_check`
   (`tests/death_routines.rs`, 10 000 states of T38's generator with every creature slot inactive; 12
   paths). The creature half, `h0_3dd8`'s stomp loop while falling, is left to **T24**: the port calls

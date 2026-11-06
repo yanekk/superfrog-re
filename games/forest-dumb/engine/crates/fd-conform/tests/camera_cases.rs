@@ -199,9 +199,6 @@ impl Engine for ShortClamp {
     fn events(&mut self) -> Vec<Event> {
         self.0.events()
     }
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.0);
-    }
 }
 
 #[test]

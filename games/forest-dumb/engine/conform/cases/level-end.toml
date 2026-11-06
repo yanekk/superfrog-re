@@ -1,0 +1,12 @@
+# T26: the level's end (DESIGN §2.5), from frame 6400 standing. cheat_flag is set in the original at
+# the sync point, as the title's code would, and the engine takes it with the rest of its memory; HELP
+# then touches the exit with no items left (help_key) in pass 224, and main_loop's check after it runs
+# next_world. The comparison ends in that step (fd-conform AFTER_NEXT_WORLD: world 2's load is not
+# built). Variables and picture on every pass up to there.
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "level-end"
+frames = 200
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "lives", "countdown", "countdown_tick", "items_left", "score", "irq_count", "paused", "give_up", "last_key_byte", "cheat_flag", "level_exit_touched", "world_index", "char_anim_ptr", "char_unhurt_t", "char_update_t"]
+goal = { level_end = true, by_frame = 6600 }
+set = [{ var = "cheat_flag", value = 1 }]

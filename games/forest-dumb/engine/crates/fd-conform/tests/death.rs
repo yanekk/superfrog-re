@@ -111,9 +111,6 @@ impl Engine for Changed {
     fn game_over(&self) -> bool {
         matches!(self.game.scene(), Scene::GameOver(_))
     }
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
 }
 
 fn changed(no_screen: bool, fire: bool) -> Changed {
@@ -283,9 +280,6 @@ impl Engine for Watched {
     }
     fn game_over(&self) -> bool {
         matches!(self.game.scene(), Scene::GameOver(_))
-    }
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
     }
 }
 

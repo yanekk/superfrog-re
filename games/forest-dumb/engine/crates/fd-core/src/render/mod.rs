@@ -13,6 +13,7 @@
 //! renderer by this task). Agreement with the original's picture is T44's.
 
 pub mod contact;
+pub mod message;
 pub mod objects;
 pub mod palette;
 pub mod playfield;
