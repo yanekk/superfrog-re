@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | planner-level-1 | T11, T17, T19 | ✅ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
-| T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
+| T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
