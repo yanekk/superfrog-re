@@ -205,12 +205,25 @@ pub fn game_frame(
         Play { state: l.state }.play_keys();
         return;
     }
-    // h0+$2c7e .. h0+$62b6: the objects (T24, T25, T52); until they are ported, the dispatch's kinds
-    // run here.
+    // h0+$2c7e: the tiles behind the creatures the last pass drew restored, run with their flags
+    // (`creature_active+$c`) in place of the live ones, which wait at `creature_active+6` (T52).
+    let s = &mut *l.state;
+    s.creature_draw.saved = s.edges.creatures.active;
+    s.edges.creatures.active = s.creature_draw.drawn;
+    crate::render::objects::in_play(l, |c| c.restore_all());
+    let s = &mut *l.state;
+    s.edges.creatures.active = s.creature_draw.saved;
+    // h0+$2fae .. h0+$62b6: the objects (T24, T25); until they are ported, the dispatch's kinds run
+    // here.
     update_objects(l, objects, dispatch, events);
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
+    // h0+$3698 (T24).
+    // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
+    // restore (T52).
+    crate::render::objects::in_play(l, |c| c.cut_all());
     let s = &mut *l.state;
+    s.creature_draw.drawn = s.edges.creatures.active;
     s.joy.read_joystick(&mut s.input_log, &input);
     // char_hit_check (T70, T24).
     Play { state: l.state }.countdown_step();

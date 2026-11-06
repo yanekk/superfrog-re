@@ -1878,3 +1878,35 @@ offset = 0x2e0e
 name = "h0_2e0e"
 kind = "func"
 note = "slot d0 out of view: kind + 1 written into a free cell near it, its flag cleared (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2c7e
+name = "h0_2c7e"
+kind = "func"
+note = "for each flagged slot (game_frame swaps in the flags last drawn), h0_5e44 restores the tiles behind it (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2d4c
+name = "h0_2d4c"
+kind = "func"
+note = "sets the cut blits' modulos and masks, then h0_5820 cuts each active creature onto the screen (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5820
+name = "h0_5820"
+kind = "func"
+note = "cuts the creature at h0+$5818 from StworkiNew (kind 7: h4+$3200) onto the screen, split at its 256th line (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5e44
+name = "h0_5e44"
+kind = "func"
+note = "copies the map's tiles back over the creature at h0+$5818: 3 by 2, a third row for kinds 0, 3, 7 (T52)"

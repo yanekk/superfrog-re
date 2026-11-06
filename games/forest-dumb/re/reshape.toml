@@ -123,3 +123,29 @@ units = [
   { fn = "esc_key", routines = [["esc_key", 0x2176]] },
   { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
 ]
+
+[T52]
+src = "crates/fd-core/src/render/objects.rs"
+impl = "impl Creatures<'_>"
+test = "crates/fd-conform/tests/creature_drawing_routines.rs"
+test_fn = "every_t52_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/render/objects.rs", "crates/fd-core/src/level/redraw.rs"]
+layout = false
+harness = ["CAMERA_Y", "RESTORE_INDEX", "CUT_INDEX", "X", "Y", "CURRENT", "RESTORING", "ACTIVE", "SAVED",
+           "DRAWN", "SLOTS", "h0", "CpuIo", "load", "store", "on_creatures"]
+adapter_fn = true
+# Only h0_2d4c and h0_5820 have passing literal ports: h0_5e44 is by_hand and h0_2c7e blocked behind it,
+# so both are written by hand and are not units here. `cut_all` is the hand-written example; Muse wrote
+# `cut` (2026-11-06), listed second only so `cut_all`'s own prompt has an example to show.
+examples = ["cut_all", "cut"]
+compared = """The rig loads the drawing's state from memory (`CreatureDraw`, the five slots, their flags and \
+`h0+$581c` as `slots.current`, `camera_y`), runs your function with `self.io` over that memory, stores what \
+changed and compares every byte the original writes and every custom-chip write in order: each blit goes \
+through `self.io.blit` as a `CreatureBlit`, which the rig turns into the original's register writes. The \
+frame tables and a slot past the fifth are read through `self.io` at hunk 0 offsets (`slot_byte`, `kind`). \
+No register is compared."""
+units = [
+  { fn = "cut_all", routines = [["h0_2d4c", 0x2d4c]] },
+  { fn = "cut", routines = [["h0_5820", 0x5820]] },
+]

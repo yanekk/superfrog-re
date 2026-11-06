@@ -7,6 +7,7 @@ use crate::character::{Anim, InputLog, JoyFlags, Keys, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
 use crate::objects::Collect;
+use crate::render::objects::CreatureDraw;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,6 +56,8 @@ pub struct State {
     pub edges: Edges,
     /// What taking objects keeps besides the counters (T22, `objects`).
     pub collect: Collect,
+    /// What the creature drawing keeps between its calls (T52, `render::objects`).
+    pub creature_draw: CreatureDraw,
     /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
     /// started. Filled from the level by `Game::new`.
     pub object_map: Vec<u8>,
@@ -127,6 +130,16 @@ impl State {
             // from the original by transplant (T55).
             edges: Edges::default(),
             collect: Collect::default(),
+            // Pass 1's `h0_2c7e` and `h0_2d4c` have run their loops to 5 with no slot active; the
+            // place (`h0+$5818`, `$581a`) is left by a routine before play, not traced; the rest are
+            // 0 (measured, `creature_drawing_routines.rs`).
+            creature_draw: CreatureDraw {
+                restore_index: 5,
+                cut_index: 5,
+                x: 0x6e,
+                y: 0xe0,
+                ..CreatureDraw::default()
+            },
             object_map: Vec::new(),
         }
     }

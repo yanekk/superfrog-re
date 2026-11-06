@@ -461,6 +461,14 @@ impl Game {
             };
         }
         c.current = word(&mem.read(0, 0x581c, 2), 0);
+        // The creature drawing's (T52): `h0+$2c7a`, `$2c7c`, `$5818`..`$581f`, the flag sets.
+        let d = &mut s.creature_draw;
+        d.restore_index = word(&mem.read(0, 0x2c7a, 2), 0);
+        d.cut_index = word(&mem.read(0, 0x2c7c, 2), 0);
+        let at = mem.read(0, 0x5818, 8);
+        (d.x, d.y, d.restoring) = (word(&at, 0), word(&at, 2), word(&at, 6));
+        d.saved.copy_from_slice(&mem.read(0, 0x67e0, 5));
+        d.drawn.copy_from_slice(&mem.read(0, 0x67e6, 5));
         let last = mem.read(0, 0x687e, 4);
         c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
         let used = mem.read(2, 0x1680, 48);
