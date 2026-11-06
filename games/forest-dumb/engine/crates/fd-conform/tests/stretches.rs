@@ -144,6 +144,8 @@ fn every_stretch_matches_the_original_on_variables_and_picture_together() {
         assert!(v.passes + v.unseen + 1 >= case.frames - 5, "{name}: {v}");
         assert!(v.pictures + 3 >= case.frames, "{name}: {v}");
         assert_eq!(v.tolerated, [0, 0, 0], "{name}: {v}");
+        // Nor a bar accepted as a cut redraw draws it (T71).
+        assert_eq!(v.cut_redraws, 0, "{name}: {v}");
         // Every exclusion names its task (the parser requires one) and hid something.
         for (e, n) in &v.excluded {
             assert!(*n > 0, "{name}: {} hid nothing", e.what);
