@@ -123,3 +123,28 @@ units = [
   { fn = "esc_key", routines = [["esc_key", 0x2176]] },
   { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
 ]
+
+[T70]
+src = "crates/fd-core/src/character/death.rs"
+impl = "impl Play<'_>"
+test = "crates/fd-conform/tests/death_routines.rs"
+test_fn = "every_death_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/character/death.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/character/physics.rs", "crates/fd-core/src/program.rs"]
+layout = true
+harness = ["LAST_KEY", "PAUSED", "PAUSE_DOWN", "ESC_DOWN", "GIVE_UP", "TICK", "EXIT_TOUCHED", "COUNTDOWN",
+           "LIVES", "ITEMS_LEFT", "CHEAT", "CLXDAT_COPY", "HITS_TAKEN", "DYING", "FALLING", "UNHURT_T",
+           "RUN_LEFT", "RUN_RIGHT", "RISING", "JUMPED", "JUMP_T", "CLXDAT", "h0", "load", "store", "on_play"]
+adapter_fn = true
+examples = ["esc_key", "lives_minus_one"]
+compared = """The rig loads the variables these routines touch into a State, runs your function on \
+`Play { state }` (char_hit_check with CLXDAT as the hardware read returned it and a Scratch whose \
+`hw` takes the custom-chip writes in order), stores them back and compares every byte the original \
+writes and its custom-chip writes; no register is compared. Creature slots are inactive in every \
+state: call `self.stomp(scratch)` where the original loops over them, and leave it as it is."""
+units = [
+  { fn = "esc_key", routines = [["esc_key", 0x2176]] },
+  { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
+  { fn = "char_hit_check", routines = [["char_hit_check", 0x3b2a]] },
+]

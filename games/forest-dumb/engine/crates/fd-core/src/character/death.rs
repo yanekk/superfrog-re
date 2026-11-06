@@ -5,6 +5,10 @@
 //! against the original on the routine rig. `main_loop` turns `give_up`, `lives` 0 and `countdown`
 //! 0 into the game over screen (`crate::game_over`).
 //!
+//! A life is lost only in `char_hit_check` (`h0+$3b2a`, T70): three passes in a row with contact,
+//! the CLXDAT bits the frame the display showed sets (`crate::render::contact`). Its creature half,
+//! the stomp of `h0_3dd8` while falling, is T24's ([`Play::stomp`]).
+//!
 //! None of these can be stopped partway: they run inside `game_frame`, which nothing interrupts
 //! (docs/09-play-measured.md, "The character's update"). What they read that is set elsewhere is
 //! `last_key_byte`, which the keyboard interrupt writes between passes ([`Keys::feed`]).
@@ -16,9 +20,26 @@
 use amiga_input::KeySet;
 
 use crate::State;
+use crate::program::{Scratch, h};
+use crate::render::contact::CONTACT;
 
 /// `countdown_tick` counts passes to this, then the countdown loses one (`cmpi.l #$3f`).
 pub const TICKS_PER_COUNT: u32 = 0x3f;
+
+/// Passes in a row with contact that cost a life (`cmpi.w #3, hits_taken`).
+pub const HITS_PER_LIFE: u16 = 3;
+
+/// The hurt sound `char_hit_check` starts on audio channel 1: its sample's hunk 4 offset, length in
+/// words, period and volume (`crate::program::h`). Sound is out of scope (DESIGN §8); the writes are
+/// kept for the rig.
+pub const HURT_SAMPLE: u32 = 0x00c8d0;
+pub const HURT_LENGTH: u16 = 0x15a4;
+pub const HURT_PERIOD: u16 = 0x00ff;
+pub const HURT_VOLUME: u16 = 0x003f;
+/// DMACON, and the writes that stop and start audio channel 1's DMA.
+const DMACON: u16 = 0x96;
+const AUD1_OFF: u16 = 0x0002;
+const AUD1_ON: u16 = 0x8202;
 
 /// `last_key_byte` as the keyboard sends a key: the raw code shifted left over its up bit, all
 /// inverted (the CIA's serial byte, which `level2_handler` stores unchanged).
@@ -147,6 +168,59 @@ impl Play<'_> {
             self.state.give_up = 1;
             k.esc_down = 0;
         }
+    }
+
+    /// `char_hit_check` (`h0+$3b2a`), once a pass after `read_joystick`, with CLXDAT as the hardware
+    /// reads it: copies it to `clxdat_copy`; no [`CONTACT`] bit clears `hits_taken`. Contact while
+    /// dying does nothing; while falling, a stomped creature ([`Play::stomp`]) spares the pass;
+    /// otherwise, once `char_unhurt_t` is 0, `hits_taken` counts it, and the third in a row (with the
+    /// cheat off) starts the dying fall, takes a life, stops the run and jump, and starts the hurt
+    /// sound, its custom-chip writes pushed on `scratch.hw`.
+    pub fn char_hit_check(&mut self, clxdat: u16, scratch: &mut Scratch) {
+        let s = &mut *self.state;
+        s.clxdat_copy = clxdat;
+        if clxdat & CONTACT == 0 {
+            s.hits_taken = 0;
+            return;
+        }
+        if s.motion.dying != 0 {
+            return;
+        }
+        if s.motion.falling != 0 && self.stomp(scratch) {
+            return;
+        }
+        let s = &mut *self.state;
+        if s.motion.unhurt_t != 0 {
+            return;
+        }
+        s.hits_taken = s.hits_taken.wrapping_add(1);
+        // `cmpi.w #3` then `bmi`: the sign of the difference, so a count past `$8002` counts too.
+        if (s.hits_taken.wrapping_sub(HITS_PER_LIFE) as i16) < 0 || s.keys.cheat != 0 {
+            return;
+        }
+        s.motion.dying = 1;
+        self.lives_minus_one();
+        let m = &mut self.state.motion;
+        (m.run_left, m.run_right) = (0, 0);
+        (m.rising, m.jumped, m.jump_t) = (0, 0, 0);
+        // The hurt sound: channel 1 off, a wait of three beam lines (reads only), its sample, on.
+        let sample = h(4, HURT_SAMPLE);
+        scratch.hw.extend([
+            (DMACON, AUD1_OFF),
+            (0xb0, (sample >> 16) as u16),
+            (0xb2, sample as u16),
+            (0xb4, HURT_LENGTH),
+            (0xb6, HURT_PERIOD),
+            (0xb8, HURT_VOLUME),
+            (DMACON, AUD1_ON),
+        ]);
+    }
+
+    /// The creature half of `char_hit_check` (`h0+$3b5c` to `$3d34`, T24): while falling, each active
+    /// creature slot whose box `h0_3dd8` finds under the feet is stomped (kind 7, +250, a bounce) and
+    /// the pass counts no hit. `true` when one was. No creature is ported yet, so none is stomped.
+    pub fn stomp(&mut self, _scratch: &mut Scratch) -> bool {
+        false
     }
 
     /// `lives_minus_one` (`h0+$69d6`): one life less in BCD, unless none is left.

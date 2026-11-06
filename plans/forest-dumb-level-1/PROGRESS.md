@@ -91,6 +91,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
+| T71 | status-redraw-race | T70; blocks T27 | ⬜ | |
+| T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
 **Review queue:** *(empty)*
 

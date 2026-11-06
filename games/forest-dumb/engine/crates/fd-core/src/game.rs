@@ -192,6 +192,9 @@ impl Game {
                 self.events.push(Event::LevelEnd);
             }
             Scene::Level => {
+                // CLXDAT gathers the frame shown since the last pass, which is the picture the last
+                // step left: taken before the foreground, whose edge redraws land outside the view.
+                let clxdat = self.contact();
                 self.foreground();
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
                 self.state.irq_count = self.state.irq_count.wrapping_add(1);
@@ -204,6 +207,7 @@ impl Game {
                     image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
+                    clxdat,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -353,6 +357,24 @@ impl Game {
         let mut status = self.display.status.clone();
         self.status_redraw(&mut status);
         draw(&Display {
+            status,
+            ..self.display.clone()
+        })
+    }
+
+    /// CLXDAT as the frame [`Game::picture`] draws in play sets it: the character's sprites against
+    /// the playfield (`render::contact`, T70).
+    pub fn contact(&self) -> u16 {
+        let c = &self.state.camera;
+        let (data, program) = (&self.data.display, &self.data.program);
+        let clx = |d: &Display| render::contact::clxdat(data, d, (c.x, c.y), program);
+        // As `picture`: the status bar `main_loop` redraws after a pass `32k` shows in its frame.
+        if self.state.irq_count & 0x1f != 0 || game_over::game_is_over(&self.state) {
+            return clx(&self.display);
+        }
+        let mut status = self.display.status.clone();
+        self.status_redraw(&mut status);
+        clx(&Display {
             status,
             ..self.display.clone()
         })

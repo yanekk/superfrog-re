@@ -100,6 +100,9 @@ pub struct LevelCtx<'a> {
     pub display: &'a mut crate::render::Display,
     /// What the display reads from the disks: the level palette the fade reaches.
     pub display_data: &'a crate::render::DisplayData,
+    /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
+    /// showed since the last pass (`render::contact`, T70).
+    pub clxdat: u16,
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -212,10 +215,11 @@ pub fn game_frame(
     crate::objects::in_play(l, |o| o.write_back());
     let s = &mut *l.state;
     s.joy.read_joystick(&mut s.input_log, &input);
-    // char_hit_check (T70, T24).
-    Play { state: l.state }.countdown_step();
-    // h0+$24ce (T25).
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
+    let mut play = Play { state: l.state };
+    play.char_hit_check(l.clxdat, &mut Scratch::default());
+    play.countdown_step();
+    // h0+$24ce (T25).
     Character {
         state: l.state,
         program: l.program,
