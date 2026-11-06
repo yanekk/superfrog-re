@@ -8,9 +8,11 @@
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 **Amended mid-run:** 2026-11-05 — Muse writes generators (T60, T61; T49 uses them) and an engine-shape trial (T62) (owner). Read back 2026-11-05: 11 fixed, 1 decided (T62 measures on T08's and T09's routines, blocks nothing).
 
-**Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
-**Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
+
+**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-06
+**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -83,7 +85,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T62 | engine-shape-trial | T08, T09, T33 | ✅ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
-| T66 | reshape-decision | T62; blocks T22 | ⬜ | |
+| T66 | reshape-decision | T62; blocks T22 | ✅ | Owner answered 2026-11-06: yes, Muse tidies first through a quality loop (DESIGN §4.4, docs/11 "Reshaping by Muse"). Closed by the owner's amendment, no worker. |
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |

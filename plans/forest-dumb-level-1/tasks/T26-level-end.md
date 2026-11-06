@@ -2,6 +2,8 @@
 
 **Phase:** 6 · **Depends on:** T11, T13, T14, T23 · **Weight:** medium
 
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T26` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again. A reviewer's pack has no FINDINGS: read it after your cold read.
+
 ## Goal
 The original's end-of-level sequence, then the "Level 1 complete" message until fire, then restart.
 ## Design sections this implements
@@ -27,3 +29,4 @@ The `Complete` scene is commented as temporary until world 2 lands.
 ## Done when
 - [ ] Case and end-to-end tests pass, and a milestone for level end exists for T27.
 - [ ] If matching its cases against the original needs more than one session, the owner is asked to add a task for the rest, split by case (DESIGN §4.3).
+- [ ] Engine functions written by Muse through `tools/reshape.py --task T26 --all` and a `[T26]` table in `re/reshape.toml`, after the typed state, the rig test, two example units and stubs by hand (`docs/11-translation.md`, "Reshaping by Muse"). docs/11's "Ported" line names Muse's functions, its spend, and any written by hand with why.
