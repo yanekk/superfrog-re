@@ -536,3 +536,100 @@ fn a_spring_under_the_falling_character_fires_in_play() {
         "h0_24ce did not run in game_frame"
     );
 }
+
+// ---------------------------------------------------------------------------------------------
+// The picture: the rig proves each blit's register writes, not how the engine's screen draws them.
+// ---------------------------------------------------------------------------------------------
+
+/// Each blit T25's ports start, drawn by the play screen (`render::playfield::Screen::apply`) and by
+/// the rig's blitter from the register writes [`CpuIo`] makes for it (which the rig holds to the
+/// original's), over random pictures, masks, tiles and screen: the same bytes on the play screen.
+#[test]
+fn the_play_screen_draws_each_t25_blit_as_the_blitter_does() {
+    use fd_core::objects::animated::{
+        FLAME_HALF, FLAME_MODULO, FLAME_PICTURE, VANISH_MODULO, VANISH_PICTURE,
+    };
+    use fd_core::objects::spring::{PICTURE_HALF, PICTURE_MODULO, PICTURES};
+    use fd_core::render::playfield::{SCREEN_BYTES, Screen};
+    let rig = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let base = rig.memory_for(&generators::generator("h0_62b6").unwrap());
+    // Random bytes over hunk 4's pictures and masks, the tiles and the screen.
+    let mut seed = 0x2545_f491u32;
+    let mut random = |n: u32| -> Vec<u8> {
+        (0..n)
+            .map(|_| {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                seed as u8
+            })
+            .collect()
+    };
+    let pokes = vec![
+        (ELEMENTS, random(0xb000)),
+        (TILES, random(0x4000)),
+        (SCREEN, random(SCREEN_BYTES)),
+    ];
+    let line = fd_core::level::redraw::SCREEN_LINE;
+    let blits = [
+        Blit::Element {
+            frame: 9,
+            tile: 0x3c0,
+            dst: 0x1e + 0x40 * line,
+        },
+        Blit::Element {
+            frame: 3,
+            tile: 0xa0,
+            dst: 0x2c + 0xf0 * line,
+        },
+        Blit::Picture {
+            src: VANISH_PICTURE + 8,
+            modulo: VANISH_MODULO,
+            dst: 0x10 + 0x20 * line,
+        },
+        Blit::Picture {
+            src: FLAME_PICTURE + 4,
+            modulo: FLAME_MODULO,
+            dst: 0x0,
+        },
+        Blit::Picture {
+            src: FLAME_PICTURE + FLAME_HALF,
+            modulo: FLAME_MODULO,
+            dst: 0x22 + 0x10 * line,
+        },
+        Blit::Picture {
+            src: PICTURES[1] + PICTURE_HALF,
+            modulo: PICTURE_MODULO,
+            dst: 0x2a + 0xf0 * line,
+        },
+        Blit::Cell {
+            src: 0x140,
+            dst: 0x6 + 0x80 * line,
+        },
+    ];
+    for b in blits {
+        let mut cpu = Cpu {
+            d: [0; 8],
+            a: [0; 8],
+            mem: judge::Mem::new(base.clone(), &pokes),
+        };
+        let mut screen = Screen {
+            bytes: (0..SCREEN_BYTES).map(|k| cpu.mem.rb(SCREEN + k)).collect(),
+        };
+        screen.apply(&b, &|a| cpu.mem.rb(a));
+        CpuIo {
+            cpu: &mut cpu,
+            cells: 0,
+        }
+        .blit(b);
+        let wrong: Vec<u32> = (0..SCREEN_BYTES)
+            .filter(|&k| screen.bytes[k as usize] != cpu.mem.rb(SCREEN + k))
+            .collect();
+        assert!(
+            wrong.is_empty(),
+            "{b:?}: {} bytes differ, first at screen +{:#x}",
+            wrong.len(),
+            wrong[0]
+        );
+    }
+}
