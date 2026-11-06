@@ -7,6 +7,10 @@
 //! and the newest frame is presented at each refresh at a whole-number scale. Keys and pads feed
 //! the game through `input.rs`; Controls and Quit are in the menu bar (`menu.rs`), Esc also quits.
 //!
+//! Game → Start Level… starts W1-1 afresh, and with its recorder on every stepped frame's input is
+//! recorded until Stop Recording saves it as a bug zip (`recorder.rs`, DESIGN §2.8); while it runs
+//! the recording bar sits under the picture, the window that much taller.
+//!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
 //! inputs and each frame's state hash (`fd_app::HASHES`); `--max-frames` and `--timeout` bound a
 //! run (DESIGN §5.2).
@@ -17,6 +21,7 @@ mod disks;
 mod home;
 mod input;
 mod menu;
+mod recorder;
 mod script;
 mod settings;
 
@@ -31,7 +36,9 @@ use amiga_app::controls_window::ControlsWindow;
 use amiga_app::lock::{self, Lock};
 use amiga_app::pacing::{Pacer, Presenter};
 use amiga_app::pad::{self, PadSource};
+use amiga_app::recording_bar::{BAR_HEIGHT, RecordingBar, elapsed};
 use amiga_app::video::Video;
+use fd_core::recording::{LevelId, recorder as start_recording};
 use fd_core::{Event as GameEvent, Game, Start};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
@@ -44,6 +51,7 @@ use crate::args::Args;
 use crate::controls::OpenControls;
 use crate::input::{HostInput, Input};
 use crate::menu::{Command, MenuBar};
+use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 
@@ -103,9 +111,21 @@ fn main() {
         eprintln!("fd-app: no event loop: {e}");
         std::process::exit(1);
     });
+    let ui: Box<dyn Ui> = match &script {
+        Some(s) => Box::new(ScriptedUi::new(
+            s.answers.clone(),
+            args.capture
+                .as_ref()
+                .map(|d| d.join(amiga_app::capture::PROMPTS)),
+        )),
+        None => Box::new(NativeUi::default()),
+    };
+    let bugs_dir = recorder::bugs_dir(args.bugs_dir.as_deref(), script.is_some(), &home);
     let mut app = App {
         args,
         home,
+        bugs_dir,
+        ui,
         script,
         menu: None,
         controls: None,
@@ -140,6 +160,10 @@ fn watchdog(limit: Duration) {
 struct App {
     args: Args,
     home: PathBuf,
+    /// Where a bug recording is saved (`recorder::bugs_dir`).
+    bugs_dir: PathBuf,
+    /// The recorder's windows, real or a script's answers.
+    ui: Box<dyn Ui>,
     script: Option<Script>,
     menu: Option<MenuBar>,
     /// Game → Controls…, while it is open.
@@ -173,6 +197,12 @@ struct Run {
     dropped: u64,
     steps: u64,
     shot: Option<u64>,
+    /// The game picture's size: the window's least, less the bar.
+    picture: (u32, u32),
+    /// The bug recording, while one runs (T14).
+    recorder: Recorder,
+    /// The recording bar, once a recording has first shown it; whether it shows is `video.bar`.
+    bar: Option<RecordingBar>,
 }
 
 /// The window's inner size at the scale: `N(n)` is n times the picture, `Auto` twice.
@@ -182,6 +212,11 @@ fn initial_size(scale: Scale, picture: (u32, u32)) -> LogicalSize<u32> {
         Scale::N(n) => n,
     };
     LogicalSize::new(picture.0 * n, picture.1 * n)
+}
+
+/// The window's least inner size: the picture at 1×, and the bar under it while it shows.
+fn min_size(picture: (u32, u32), bar: bool) -> LogicalSize<u32> {
+    LogicalSize::new(picture.0, picture.1 + if bar { BAR_HEIGHT } else { 0 })
 }
 
 /// The game's picture as the window gets it: its size and RGBA.
@@ -217,16 +252,18 @@ impl App {
         let attrs = Window::default_attributes()
             .with_title("Forest Dumb")
             .with_inner_size(initial_size(scale, size))
-            .with_min_inner_size(LogicalSize::new(size.0, size.1))
+            .with_min_inner_size(min_size(size, false))
             .with_active(!self.args.unattended());
         let window = match event_loop.create_window(attrs) {
             Ok(w) => Arc::new(w),
             Err(e) => return self.fail(event_loop, &format!("no window: {e}")),
         };
-        let video = match Video::new(window.clone(), scale) {
+        let mut video = match Video::new(window.clone(), scale) {
             Ok(v) => v,
             Err(e) => return self.fail(event_loop, &e),
         };
+        video.bar_points = BAR_HEIGHT;
+        self.ui.attach(window.clone());
         let (pads, present) = if self.args.unattended() {
             (None, Vec::new())
         } else {
@@ -275,6 +312,9 @@ impl App {
             dropped: 0,
             steps: 0,
             shot: None,
+            picture: size,
+            recorder: Recorder::Off,
+            bar: None,
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
@@ -312,11 +352,192 @@ impl App {
         let steps = self.run.as_ref().map_or(0, |r| r.steps);
         // The step it came after, so a test can line the frames up with it.
         eprintln!("fd-app: menu {} after step {steps}", c.id());
+        if let Some(action) = self.ends_recording(c)
+            && !self.end_recording(action)
+        {
+            return self.show_menu();
+        }
         match c {
+            Command::StartLevel => self.start_level(),
+            Command::StopRecording => self.stop_recording(),
             Command::Controls => self.open_controls(event_loop),
             // Settings are saved when they change, never on the way out: a damaged file stays as
             // it is until the owner changes a setting (DESIGN §2.12).
             Command::Quit => self.finish(event_loop),
+        }
+        self.show_menu();
+    }
+
+    /// What "Recording in progress" calls `c`, when taking it would end the recording running.
+    fn ends_recording(&self, c: Command) -> Option<&'static str> {
+        if !self.run.as_ref()?.recorder.is_recording() {
+            return None;
+        }
+        match c {
+            Command::StartLevel => Some("Start Level"),
+            Command::Quit => Some("Quit"),
+            _ => None,
+        }
+    }
+
+    /// Ask "Recording in progress" before `action`: `false` for Cancel (still recording, the
+    /// action not taken); else the recording saved or dropped as answered, and the action goes on.
+    fn end_recording(&mut self, action: &str) -> bool {
+        let choice = self.ui.recording_in_progress(action);
+        self.after_panel();
+        match choice {
+            EndChoice::Cancel => {
+                eprintln!("fd-app: {action} cancelled; still recording");
+                false
+            }
+            EndChoice::Discard => {
+                self.run.as_mut().expect("running").recorder = Recorder::Off;
+                eprintln!("fd-app: recording discarded");
+                true
+            }
+            EndChoice::Save => {
+                self.save_recording();
+                true
+            }
+        }
+    }
+
+    /// Game → Start Level…: the window, then W1-1 started afresh, recording from its first frame
+    /// when the recorder was on. Cancelled, the game carries on.
+    fn start_level(&mut self) {
+        let answer = self.ui.start_level();
+        self.after_panel();
+        let Some((level, record)) = answer else {
+            return;
+        };
+        let run = self.run.as_mut().expect("running");
+        // The one level a recording names today (`LevelId`), started as the app starts it.
+        let LevelId::W1_1 = level;
+        run.game = Game::new(run.game.data().clone(), Start::Level1);
+        run.recorder = match record {
+            true => start_recording(level, fd_tools::ENGINE_BUILD),
+            false => Recorder::Off,
+        };
+        // The level's first frame at once: the picture a Stop before any step saves.
+        let (size, rgba) = frame_of(&run.game);
+        run.shown.completed((run.steps, size, rgba));
+        let recording = if record { ", recording" } else { "" };
+        eprintln!(
+            "fd-app: started {level} after step {}{recording}",
+            run.steps
+        );
+        self.show_newest();
+    }
+
+    /// Game → Stop Recording: the save window; nothing when no recording runs (the item is disabled
+    /// then).
+    fn stop_recording(&mut self) {
+        if !self.run.as_ref().is_some_and(|r| r.recorder.is_recording()) {
+            eprintln!("fd-app: not recording");
+            return;
+        }
+        self.save_recording();
+    }
+
+    /// The save window for the recording, which ends here: its screenshot the last frame stepped
+    /// at 1× (what `fd-conform bug replay` holds its last picture against), where play is, the
+    /// zip's name. A write that fails says so and the window stays open, so the note is not lost.
+    fn save_recording(&mut self) {
+        let run = self.run.as_mut().expect("running");
+        let at = run.game.location();
+        let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
+            return;
+        };
+        let ((w, h), rgba) = frame_of(&run.game);
+        let shot = amiga_app::capture::png(w, h, &rgba);
+        let path = recorder::zip_name(&self.bugs_dir, rec.level, recorder::local_now());
+        let name = path
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned();
+        let mut save = |note: &str| {
+            rec.note = note.replace(['\n', '\r'], " ");
+            recorder::write_zip(&path, &rec, &shot).map_err(|e| {
+                let m = format!(
+                    "The bug recording could not be saved as “{}”: {e}.",
+                    path.display()
+                );
+                eprintln!("fd-app: {m}");
+                m
+            })
+        };
+        if self.ui.save_recording(&shot, &at, &name, &mut save) {
+            let shown = path.display().to_string();
+            eprintln!(
+                "fd-app: recording saved to {shown} ({} frames)",
+                rec.inputs.len()
+            );
+            self.ui
+                .notice(&format!("The bug recording is saved as {shown}."));
+        } else {
+            eprintln!("fd-app: recording discarded");
+        }
+        self.after_panel();
+    }
+
+    /// A modal window has closed: the time it was open is not caught up, the game carries on from
+    /// now.
+    fn after_panel(&mut self) {
+        if let Some(run) = self.run.as_mut() {
+            run.pacer.skip_to(run.clock.samples());
+        }
+    }
+
+    /// The menu and the bar follow the recorder: Stop Recording enabled and the bar shown exactly
+    /// while a recording runs.
+    fn show_menu(&mut self) {
+        let Some(run) = &mut self.run else { return };
+        let on = run.recorder.is_recording();
+        if let Some(m) = &self.menu {
+            m.show_recording(on);
+        }
+        if on != run.video.bar {
+            run.video.bar = on;
+            if on && run.bar.is_none() {
+                match RecordingBar::new(&run.window) {
+                    Ok(b) => run.bar = Some(b),
+                    Err(e) => eprintln!("fd-app: no recording bar: {e}"),
+                }
+            }
+            if let Some(b) = &mut run.bar {
+                b.set_shown(on);
+            }
+            eprintln!(
+                "fd-app: recording bar {} after step {}",
+                if on { "shown" } else { "hidden" },
+                run.steps
+            );
+            // The size before the minimum changes: winit grows a window below a new minimum at
+            // once, and the bar's height is added to the size it had, not to that.
+            let at = run
+                .window
+                .inner_size()
+                .to_logical::<f64>(run.window.scale_factor());
+            run.window
+                .set_min_inner_size(Some(min_size(run.picture, on)));
+            let by = if on {
+                BAR_HEIGHT as f64
+            } else {
+                -(BAR_HEIGHT as f64)
+            };
+            let _ = run
+                .window
+                .request_inner_size(LogicalSize::new(at.width, at.height + by));
+        }
+        self.show_bar_time();
+    }
+
+    /// The bar's time: the recording's length.
+    fn show_bar_time(&mut self) {
+        let Some(run) = &mut self.run else { return };
+        if let (Some(b), Some(frames)) = (&mut run.bar, run.recorder.frames()) {
+            b.set_time(&elapsed(frames));
         }
     }
 
@@ -373,6 +594,7 @@ impl App {
         run.steps = n;
         let input = run.input.frame();
         run.game.step(input);
+        run.recorder.step(input);
         for e in run.game.take_events() {
             match e {
                 GameEvent::Unported(v) => {
@@ -394,6 +616,11 @@ impl App {
             }
         }
         run.shown.completed((n, size, rgba));
+        if run.recorder.full() {
+            eprintln!("fd-app: the recording is a day long, the longest one may be: stopped");
+            self.save_recording();
+            self.show_menu();
+        }
         if self.args.max_frames == Some(n) {
             self.finish(event_loop);
         }
@@ -464,6 +691,12 @@ impl ApplicationHandler for App {
         while let Some(a) = ControlsWindow::next_click() {
             self.controls_action(a);
         }
+        while RecordingBar::next_click() {
+            self.on_command(event_loop, Command::StopRecording);
+            if event_loop.exiting() {
+                return;
+            }
+        }
         while let Some(e) = self
             .run
             .as_mut()
@@ -506,6 +739,7 @@ impl ApplicationHandler for App {
         }
         if due > 0 {
             self.show_newest();
+            self.show_bar_time();
         }
         event_loop.set_control_flow(ControlFlow::WaitUntil(
             Instant::now() + Duration::from_millis(2),
@@ -535,6 +769,9 @@ impl ApplicationHandler for App {
             WindowEvent::Resized(size) => {
                 if let Some(run) = &mut self.run {
                     run.video.resized(size.width, size.height);
+                    if let Some(b) = &mut run.bar {
+                        b.layout();
+                    }
                     run.window.request_redraw();
                 }
             }
@@ -581,6 +818,23 @@ mod tests {
         assert_eq!(
             initial_size(Scale::Auto, (320, 256)),
             LogicalSize::new(640, 512)
+        );
+    }
+
+    #[test]
+    fn the_bar_adds_its_height_under_the_picture_and_its_views_fit_the_smallest_window() {
+        assert_eq!(min_size((320, 256), false), LogicalSize::new(320, 256));
+        assert_eq!(
+            min_size((320, 256), true),
+            LogicalSize::new(320, 256 + BAR_HEIGHT)
+        );
+        // The bar's views as AppKit measures them at 13 points (Superfrog's measure).
+        let widths = [12.0, 70.0, 40.0, 18.0, 72.0];
+        // The play picture is 320 wide (T04); the app's own end-to-end tests see its size.
+        let pic = 320;
+        assert!(
+            amiga_app::recording_bar::place(pic as f64, widths).is_some(),
+            "all five fit {pic} points"
         );
     }
 }

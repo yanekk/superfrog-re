@@ -14,3 +14,5 @@ amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The level files, read through a closure (pure, this game's crate).
 fd-assets = { path = "../fd-assets" }
+# The recording a bug zip holds (T14): the toolkit's game-free recorder, its text and its zip (pure).
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }

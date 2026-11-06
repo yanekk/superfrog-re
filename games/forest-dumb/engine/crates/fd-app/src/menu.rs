@@ -2,10 +2,10 @@
 //!
 //! ```text
 //! Forest Dumb   About · Services · Hide, Hide Others, Show All · Quit Forest Dumb ⌘Q
-//! Game          Controls…
+//! Game          Start Level… · Stop Recording ⌘. · Controls…
 //! ```
 //!
-//! Start Level… joins Game with the recorder (T14). A [`Command`] is the one path from the menu to
+//! Stop Recording is enabled only while a recording runs (T14). A [`Command`] is the one path from the menu to
 //! the app: a click, its shortcut, a script's `menu …` and a key `input.rs` keeps for the app all
 //! become one, and the app acts on it.
 
@@ -15,6 +15,10 @@ use winit::event_loop::ActiveEventLoop;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Command {
+    /// Game → Start Level…: the window that starts W1-1 afresh, the recorder on or off (T14).
+    StartLevel,
+    /// Game → Stop Recording, ⌘., or the recording bar's STOP: the save window (T14).
+    StopRecording,
     /// Game → Controls…: the window that rebinds keys and pad.
     Controls,
     /// Quit Forest Dumb, ⌘Q, Esc, or the window closed.
@@ -22,11 +26,18 @@ pub enum Command {
 }
 
 impl Command {
-    pub const ALL: [Command; 2] = [Command::Controls, Command::Quit];
+    pub const ALL: [Command; 4] = [
+        Command::StartLevel,
+        Command::StopRecording,
+        Command::Controls,
+        Command::Quit,
+    ];
 
     /// Its menu item's id, also its name in a script's `menu …` event.
     pub fn id(self) -> &'static str {
         match self {
+            Command::StartLevel => "start-level",
+            Command::StopRecording => "stop-recording",
             Command::Controls => "controls",
             Command::Quit => "quit",
         }
@@ -40,6 +51,7 @@ impl Command {
 /// The menu bar, held for as long as it shows.
 pub struct MenuBar {
     menu: Menu,
+    stop_recording: MenuItem,
 }
 
 /// The menu bar, before [`MenuBar::install`] puts it in place. On the main thread.
@@ -70,25 +82,39 @@ pub fn build_menu() -> MenuBar {
             &quit,
         ],
     );
+    let stop_recording = MenuItem::with_id(
+        Command::StopRecording.id(),
+        "Stop Recording",
+        false,
+        Some(Accelerator::new(Modifiers::META, Code::Period)),
+    );
     let game = Submenu::with_items(
         "Game",
         true,
-        &[&MenuItem::with_id(
-            Command::Controls.id(),
-            "Controls…",
-            true,
-            None,
-        )],
+        &[
+            &MenuItem::with_id(Command::StartLevel.id(), "Start Level…", true, None),
+            &stop_recording,
+            &PredefinedMenuItem::separator(),
+            &MenuItem::with_id(Command::Controls.id(), "Controls…", true, None),
+        ],
     );
     let menu = Menu::new();
     for m in [app, game] {
         menu.append(&m.expect("a menu"))
             .expect("a menu in the menu bar");
     }
-    MenuBar { menu }
+    MenuBar {
+        menu,
+        stop_recording,
+    }
 }
 
 impl MenuBar {
+    /// Stop Recording is enabled exactly while a recording runs.
+    pub fn show_recording(&self, on: bool) {
+        self.stop_recording.set_enabled(on);
+    }
+
     /// Make this the app's menu bar; AppKit's window tabs are turned off.
     pub fn install(&self, event_loop: &ActiveEventLoop) {
         #[cfg(target_os = "macos")]
@@ -122,6 +148,6 @@ mod tests {
         for c in Command::ALL {
             assert_eq!(Command::from_id(c.id()), Some(c));
         }
-        assert_eq!(Command::from_id("start-level"), None, "T14's");
+        assert_eq!(Command::from_id("start"), None);
     }
 }

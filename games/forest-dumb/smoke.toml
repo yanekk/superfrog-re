@@ -144,6 +144,11 @@ workspace = "engine"
 "crates/fd-e2e/tests/controls.rs" = "smoke"
 "crates/fd-e2e/tests/disks.rs" = "smoke"
 "crates/fd-e2e/tests/window.rs" = "smoke"
+# T14: the recorder in the real app, eight scripted runs in parallel, about 12 s warm; and a zip it
+# saves replayed by the real `fd-conform bug replay`, about 14 s warm (two app runs, a build of
+# fd-conform on a cold target). Both crucial: the recorder is how a bug reaches a session.
+"crates/fd-e2e/tests/recorder_app.rs" = "smoke"
+"crates/fd-e2e/tests/recorder_replay.rs" = "smoke"
 
 [python]
 "tools/test_call_tree.py" = "smoke"
@@ -244,3 +249,7 @@ covers = [
     "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
     "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
 ]
+
+[[area]]
+name = "a recording made in the app replays headless to the same result"
+covers = ["crates/fd-e2e/tests/recorder_replay.rs::a_zip_saved_in_the_app_replays_headless_to_its_screenshot"]
