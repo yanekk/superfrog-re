@@ -37,4 +37,27 @@ original's play screen at the sync point.
 
 ## Measured at the sync point
 
-RESULTS
+Measured 2026-11-06 by `fd-conform/tests/level_start.rs` (smoke), against the original at the level
+sync point (frame 6301 of `boot-to-level1`):
+
+- `collision_map`, `$2e00` bytes, equals the engine's first view byte for byte.
+- The kept slack around it (`$40` bytes before, the rest up to the tiles at `h3+$13540` after) is not
+  zero: it is `_BALLA`, the title's music, which `load_list_title` reads unpacked to `h3+$f000`
+  (`song`) and which runs across `collision_map` and on. Nothing writes it between the title and
+  `level_init`, which overwrites only the map. So `GameData::read` reads `_BALLA` too and
+  `Game::new` lays it under the plane before drawing (`level::start::lay_title_song`); without it
+  3 281 kept bytes differ. The edge redraws overwrite the slack as the view moves right; whether play
+  ever reads it before then was not measured.
+- The play screen's 16 bands equal the 368 listed tiles copied from the original's own tiles.
+- `creature_active` (`h0+$67da`) and `anim_cell_used` (`h2+$1680`) are all 0: `level_init` starts no
+  creature and adds no animated cell, and no edge redraw has run before the first pass. The engine's
+  empty tables match, so nothing goes to the owner.
+
+## Proven on the rig
+
+`fd-conform/tests/level_start_routines.rs`, generators in `fd-conform/src/gen/level_start.rs`: the two
+cell routines over 10 000 states each, the two loops over 1 000 (368 000 cells each; 10 000 passed
+once too, in 32 minutes, 2026-11-06). The cell routines add their offsets to the bases the loops pass
+in `a3` to `a5`, so their states set those. Tile numbers from `$90e` read past the oracle's 512 KB of
+chip RAM, which there reads back from 0 (a later cell can read the screen an earlier one drew); the
+rig's flat memory does not model that, so the generators stay below it. The level's tiles stop at `$3ed`.

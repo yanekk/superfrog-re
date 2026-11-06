@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T65, measured: at the sync point `collision_map`'s slack holds `_BALLA` (title music at `h3+$f000`), so `Game::new` lays it. The oracle's chip RAM repeats past 512 KB, the rig's flat memory does not: generators keep reads below `$80000`. |
 | 2026-11-05 | 📌 | T67 added by T41 with the owner's yes: while the camera scrolls a pass reads `JOY1DAT` in the step after its `irq_count` rose (57 of 76 slide passes), so `run_with` pairs the wrong input; blocks T42, T43, T44, T15. |
 | 2026-11-05 | 📌 | T41, from frame 6400: holding right slides W1-1's first slope to `char_x` $29d by frame 6522; up held jumps (review falsified "up ignored"). Right and up from frame 10 lands on a creature at 6487 (`char_hit_check` stomp sets `h0+$3b28`): T24's. |
 | 2026-11-05 | 📌 | T55 review: `cases/w1-idle.toml` (T07) compares no `edge_latch_*` or `edge_at_*`, so it cannot see the camera/redraw hand-off; T55's `the_edge_latches_step_with_the_original_over_the_idle_case` does. Left. |
