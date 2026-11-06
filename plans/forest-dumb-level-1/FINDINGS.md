@@ -6,9 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T72, measured: W1-1's pool tiles carry colour 29, so `death-water` loses its lives with the water undrawn too; the water changes CLXDAT on a few passes. Its `thaw = ["h0_6882"]` makes late passes: `edge_latch_down`, `edge_latch_up` excluded (T47). |
 | 2026-11-06 | 🔄 | T25 (owner): `freeze.rs` keeps `h0_6882`, `h0_24ce` (unfrozen, `camera-bottom-right` differs at pass 495, `edge_latch_down`). At T70's merge, frozen cases' engine leaves them out too (`FROZEN_IN_A_CASE`, `Engine::freeze` only); four checks broke without. T47 removes both. |
 | 2026-11-06 | 🔄 | Owner, T71: pass `32k+1` cuts the bar redraw at no fixed read (cycle-dependent, docs/09), outside the faithful bar (DESIGN §2.1); the runner accepts `Game::cut_redraw` at the measured cut, bar only (README). `set_profile(false)` clears the frame just drawn. |
-| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). Review: T72 water-contact added; water is unshown: `h0_62b6` (T25) draws it, frozen cases stop it. |
+| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). |
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
 | 2026-11-06 | 📌 | T70: contact costs about 25 µs a step in release (was about 3 µs a whole step; `fd-core` dev opt-level 2); `fd-plan` `route.rs` went from about 7 s to 60 s warm under load. |
 | 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. `h0_2e0e` waits for T46. |
@@ -25,9 +26,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-06 | 📌 | T68 drill, worker-driven, OS layer, every window at 1× and 2× judged, nothing clipped. Open: `drill_os` `recording: not within 30 s` after Start Level's Return, once in about 12 runs, unexplained. |
 | 2026-11-06 | 🐞 | T68 fixed `amiga-e2e`: `os_text_id` read over 512 bytes as empty; `os_windows` skipped layer 8 (`runModalForWindow`). Sweep: `sf-e2e/tests/recorder_start_level.rs:135` comment still says Start Level is left out; left. |
 | 2026-11-06 | 🐞 | Open: Superfrog `recorder_start_level.rs` OS test fails at line 201, a typed key lost, on every whole-file run (5 of 5), with or without T68's change; alone it passes. |
-| 2026-11-06 | 📌 | T16 drill, worker-driven, script layer, default, scale 1, resized: Tab (Amiga Tab), Esc, blur, pad, Controls' Esc, menu items out of turn, every recorder answer, 2 000-character note saved whole, picture whole and centred. No decidable defect. |
+| 2026-11-06 | 📌 | T16 drill, worker-driven, script layer, scale 1, resized: Tab, Esc, blur, pad, Controls' Esc, menu items out of turn, every recorder answer, 2 000-character note saved, picture centred. Script `resize` bypasses the window's minimum (50×50 clips); left. |
 | 2026-11-06 | 📌 | T16, measured: release keeps 50 Hz (500 steps, 481 291 of 48 kHz samples). Debug with `--capture` falls behind (15.6 s per 500); `Pacer::due`'s uncapped catch-up holds window events seconds under load: resizes land late. |
-| 2026-11-06 | 📌 | T16: the script's `resize` bypasses the window's minimum: 50×50 clips the picture, hiding the bar shrinks it to 50×16. A person's drag cannot; left. |
 | 2026-11-06 | 📌 | T15, measured: retimed by pass, a varied 4 000-step W1-1 recording with deaths stays on the original, a pass a frame; 2 passes (steps 1658, 1695) read the previous one's joystick. Short runs: none. |
 | 2026-11-06 | 📌 | T15: `bug compare` "same" is weak at lagged passes and on printed gaps (`hits_taken`, `clxdat_copy`, creatures, collectibles: T22, T24). Zips refuse other builds (T14), so BUG-FIX.md checks fixes by a case. |
 | 2026-11-06 | 🐞 | T15: a `read_joystick` cut by the frame's end counts at `h0+$8dfc` a step before `input_log_index` rises; `PassInputs` failed "missed or counted twice" (frame 7715). Allowed now (Escape T67). Review: the original's `input_log` differs from the recording only at the lagged steps. |
