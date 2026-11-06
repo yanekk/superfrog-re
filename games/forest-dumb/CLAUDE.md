@@ -65,7 +65,9 @@ elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `-
 
 ## Bug-fix procedure
 
-Not written yet: there is no engine to fix. It comes with the recorder, step 8 of the playbook.
+A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it
+(`fd-conform bug replay`), compare it with the original (`fd-conform bug compare`, retimed by pass),
+keep a difference as a case that fails before the fix.
 
 ## Notes
 

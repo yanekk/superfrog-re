@@ -86,6 +86,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
+| T69 | level-start-state | T07, T65; blocks T20, T28 | ⬜ | |
 
 **Review queue:** *(empty)*
 

@@ -38,6 +38,9 @@ workspace = "engine"
 # T07: the level engine entering W1-1 against the original, and its idle case (200 frames, also
 # through the command line): 2 s warm. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/level_entry.rs" = "smoke"
+# T15: bug recordings compared with the original by pass, and the command on a zip: about 9 s warm
+# from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
+"crates/fd-conform/tests/recording_compare.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
@@ -253,3 +256,11 @@ covers = [
 [[area]]
 name = "a recording made in the app replays headless to the same result"
 covers = ["crates/fd-e2e/tests/recorder_replay.rs::a_zip_saved_in_the_app_replays_headless_to_its_screenshot"]
+
+[[area]]
+name = "a bug recording compared with the original: same, differs at its step, or where judging ended"
+covers = [
+    "crates/fd-conform/tests/recording_compare.rs::a_scripted_recording_stays_in_step_on_the_original",
+    "crates/fd-conform/tests/recording_compare.rs::an_engine_mutation_is_reported_at_its_step",
+    "crates/fd-conform/tests/recording_compare.rs::the_command_compares_a_zip_and_writes_both_pictures",
+]
