@@ -171,7 +171,18 @@ workspace = "engine"
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
 # two scales, about 5 s warm.
 "crates/fd-conform/tests/death_routines.rs" = "smoke"
-"crates/fd-conform/tests/death.rs" = "smoke"
+# T70: death.rs's death-pit (a life lost on the spikes, about 2 s warm) is smoke; death-spikes (all 32
+# lives to the game over screen, about 12 s debug) is full. contact.rs, the collision model over
+# fd-plan's route and its parts, about 3 s warm. The planner's route tests above it slowed with contact
+# (about 25 us a step in release): about 58 s warm on a loaded machine.
+"crates/fd-conform/tests/death.rs" = [
+    "giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "an_engine_that_misses_the_screen_or_leaves_it_early_fails",
+    "a_recording_runs_through_game_over_and_the_restart_and_replays_alike",
+    "the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar",
+    "falling_into_the_spike_pit_loses_a_life_as_the_originals",
+]
+"crates/fd-conform/tests/contact.rs" = "smoke"
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
 # script, read back against a replay; about 1 s warm.
@@ -328,4 +339,11 @@ covers = [
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
     "crates/fd-conform/tests/death.rs::giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
     "crates/fd-e2e/tests/game_over.rs::giving_up_in_the_app_shows_game_over_and_restarts_the_level_at_scale_1",
+]
+
+[[area]]
+name = "contact and a life lost: the collision model, char_hit_check and the spike pit"
+covers = [
+    "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
+    "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
 ]

@@ -91,8 +91,9 @@ impl State {
             // `lives_reset`, `move.w #$32`.
             lives: 0x32,
             hits_taken: 0,
-            // Measured at the sync point: the character falls through the sky, over nothing.
-            clxdat_copy: 0x8000,
+            // Measured at the sync point (T70): pass 1 read what CLXDAT gathered since its last read,
+            // before play's first frame; `char_unhurt_t` keeps it from counting.
+            clxdat_copy: 0xf1ff,
             // `level_init`, `move.w #$999, countdown`; the long's second word is 0.
             countdown: 0x0999_0000,
             // Pass 1's `countdown_step` ran before the sync point (measured, T23).
