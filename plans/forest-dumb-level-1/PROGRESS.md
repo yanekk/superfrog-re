@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | case-picture | T10 | ✅ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
-| T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
+| T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ⬜ | |
 | T15 | recording-compare | T03, T14 | ⬜ | |
 | T16 | app-drill | T13, T14 | ⬜ | |
