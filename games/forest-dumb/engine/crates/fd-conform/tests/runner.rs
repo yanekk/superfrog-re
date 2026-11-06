@@ -254,6 +254,7 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
 fn a_freeze_case_patches_every_listed_entry_and_an_empty_list_is_an_error() {
     let case = Case {
         freeze: true,
+        thaw: Vec::new(),
         ..short(5)
     };
     let am = fd_conform::reach_case(&case, 0).unwrap_or_else(|e| panic!("{e}"));

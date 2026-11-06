@@ -103,9 +103,10 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
-    /// A conformance case froze the original (`Game::freeze_as_a_case`): the routines
-    /// [`FROZEN_IN_A_CASE`] names are left out here too. Never set in play.
-    pub frozen: bool,
+    /// A conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0 offsets of the
+    /// routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the case thaws
+    /// (`Game::thaw_in_a_case`). Empty in play.
+    pub frozen: &'a [u32],
 }
 
 /// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
@@ -135,7 +136,7 @@ pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
 
 /// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
 fn frozen(l: &LevelCtx, offset: u32) -> bool {
-    l.frozen && FROZEN_IN_A_CASE.iter().any(|f| f.offset == offset)
+    l.frozen.contains(&offset)
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks

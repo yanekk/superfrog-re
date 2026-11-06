@@ -457,3 +457,65 @@ fn a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it() {
         assert!(fd_conform::STATUS_ROWS.contains(&y), "{how:?}: {why}");
     }
 }
+
+/// fd-core's game as [`Watched`], thawing what the case thaws (T72).
+struct Thawed(Watched);
+
+impl Transplant for Thawed {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.0.transplant(mem)
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.0.probe(v)
+    }
+}
+
+impl Engine for Thawed {
+    fn freeze(&mut self) {
+        self.0.freeze();
+    }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.0.game, offset);
+    }
+    fn pass(&mut self, input: FrameInput) {
+        self.0.pass(input)
+    }
+    fn picture(&self) -> Option<Picture> {
+        self.0.picture()
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.0.events()
+    }
+}
+
+/// The character drops into the pool at `W1-1:148,66` to `149,66` with `h0_6882` thawed, so both sides draw the
+/// water (T25's `h0_62b6`): three contact passes in a row cost a life at frame 7062 and the next one
+/// after the hold at 7204, every pass's variables and every frame's picture equal to the original's.
+/// The character stays where the water hurt it.
+#[test]
+fn falling_into_the_water_loses_a_life_as_the_originals() {
+    let case = load("death-water");
+    assert_eq!(case.thaw, ["h0_6882"]);
+    let mut w = Thawed(Watched {
+        game: game(),
+        seen: Vec::new(),
+    });
+    let v = run(&case, &mut w);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(v.events.is_empty(), "{v}");
+    assert_eq!(v.goal_met, Some(7204), "the second life lost");
+    assert!(v.passes > 860 && v.pictures > 900, "{v}");
+    assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
+    // Thawed: the original adds the cells in view, the water among them, to the animated cells.
+    assert!(hits(&v, "h0_6882") > 0, "{v}");
+    let seen = &w.0.seen;
+    let lost: Vec<usize> = (1..seen.len())
+        .filter(|&k| seen[k].0 < seen[k - 1].0)
+        .collect();
+    assert_eq!(lost.len(), 2, "{seen:?}");
+    for k in lost {
+        let (_, x, _, dying) = seen[k];
+        assert_eq!(dying, 1);
+        assert!((148..=149).contains(&(x / 16)), "{x}: not over the pool");
+    }
+}
