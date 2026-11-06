@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 🔄 | Owner, T24: T73 added: `edge_latch_right` differs from pass 1211 on T24's planner route, creature code off too; `confirm::EDGE_LATCH_RIGHT` excludes it. The route parts at pass 2656: the engine stomps a creature the frozen original lacks (T46). |
+| 2026-11-06 | 📌 | T24: T54's `h0_2fea` generator lays no creature flags, so kind 7 clearing slot `creature_slot_index`'s flag rather than `d0`'s is invisible on the rig (a mutant passed); in play `h0_2fae` keeps them equal. Left. |
 | 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge, since T22 unfroze the bonus blits and T45's collect cases failed with it. T71 added: the lives redraw races a pass; blocks T27. |
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
 | 2026-11-06 | 📌 | T70: contact costs about 25 µs a step in release (was about 3 µs a whole step; `fd-core` dev opt-level 2); `fd-plan` `route.rs` went from about 7 s to 60 s warm under load. |
@@ -13,11 +15,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. `h0_2e0e` waits for T46. |
 | 2026-11-06 | 📌 | T22 review: case comments still call taking and bonus blits frozen: `stretch-scroll.toml:4` ("T22's freeze entry"), `camera-right-left.toml:2`, `camera-bottom-right.toml:2` ("every object frozen"). Cases themselves pass. Left. |
 | 2026-11-06 | 🔄 | T22 (owner): freeze.rs lost T22's five entries; frozen cases take items both sides and the planner chases coins. Since T70 its short route stalls at `W1-1:198,92` (6236 frames, 158 coins left), agreeing on every pass (`route.rs`). |
-| 2026-11-06 | 📌 | T26, measured: `level-end` sets `cheat_flag` at sync (case key `set`); HELP read by pass 224 runs `next_world` at frame 6525; comparison stops there (`AFTER_NEXT_WORLD`). The engine keeps `level_exit_touched`, which `char_object_cells` clears (T22). |
-| 2026-11-06 | 📌 | T26: until T22 only HELP with the cheat ends the level (script line `cheat`, `Game::set_cheat`); a bug zip, inputs only, cannot. The message has no "press fire" hint; §2.5 names none. |
-| 2026-11-06 | 📌 | T23, measured: the step after pass `32k` shows `game_over_screen`; no pass runs after. Fire counts from its 21st step; letting go enters the high scores (`h0+$89d0`), where the engine restarts. Screen pixel-equal. |
+| 2026-11-06 | 📌 | T26, measured: `level-end` sets `cheat_flag` at sync (case key `set`, script line `cheat`, `Game::set_cheat`); HELP by pass 224 runs `next_world` at frame 6525, where comparison stops (`AFTER_NEXT_WORLD`). A bug zip cannot cheat. No "press fire" hint (§2.5). |
+| 2026-11-06 | 📌 | T23, measured: the step after pass `32k` shows `game_over_screen`, no pass after; fire counts from step 21; letting go enters the high scores (`h0+$89d0`), where the engine restarts. `death-countdown` (full) matches to 000, game over frame 69245. |
 | 2026-11-06 | 📌 | T23: fd-app strips the Amiga's P from game input (DESIGN §2.7, no pause): the default map binds the Mac's P and the engine now pauses on it. The Amiga's Esc reaches play only when rebound. |
-| 2026-11-06 | 📌 | T23, measured: the countdown run out from frame 6400 matches every pass and picture down to 000, game over at frame 69245 (`death-countdown`, full set, 140 s release). |
 | 2026-11-06 | 📌 | T19, worker-driven: `fd-routeview`'s page from disk, headless Chrome 1280×800: map, track, 332 coins, 282 needed, no page request. Toolkit `page.html` loads Google Fonts and calls clean routes "reaches the exit"; `fd-routeview` strips and overrides both. |
 | 2026-11-06 | 📌 | T11, measured: six W1-1 stretches match on variables and picture together; `stretch-pit` runs past the spikes' lost life to 6600 since T70. Score and items digits never redraw on stretches. |
 | 2026-11-06 | 🔄 | Owner amended at checkpoint 3 (DESIGN §4.4): `task_pack.py` packs start every pending task; workers' unused tools denied, run started with `ENABLE_CLAUDEAI_MCP_SERVERS=false`; Muse writes porting engine code with a quality loop (`reshape.py --all`), T66's answer. Run stopped for the edit. |

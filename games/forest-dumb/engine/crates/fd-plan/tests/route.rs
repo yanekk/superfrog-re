@@ -24,14 +24,18 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06 with T22's items and T70's contact): stalled with
-/// 158 of 282 coins still to take, 6 236 frames in, no life lost.
-const END: &str = "W1-1:198,92";
-const FRAMES: usize = 6236;
-const COINS_LEFT: u16 = 158;
-/// The passes the original and the engine are compared on, all agreeing (T70); the rest of the
-/// route's frames and the idle slack the original ended unseen, two in one step.
-const AGREED: u32 = 6032;
+/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact and T24's
+/// creatures): stalled with 136 of 282 coins still to take, 7 600 frames in, no life lost.
+const END: &str = "W1-1:173,58";
+const FRAMES: usize = 7600;
+const COINS_LEFT: u16 = 136;
+/// The pass the original and the engine first differ at (T24): the engine stomps, at its step 2655,
+/// a creature its edge redraw started at `W1-1:83,3`, which the frozen original (`h0_681c`) never
+/// spawned, and bounces: `char_x` one pixel apart. T46 lifts that freeze. Every pass before agrees,
+/// `edge_latch_right` aside ([`confirm::EDGE_LATCH_RIGHT`], T73).
+const PARTS_AT: u32 = 2656;
+/// The passes `edge_latch_right` differs on, from pass 1211 (T73).
+const LATCH_PASSES: u32 = 2;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -202,16 +206,23 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
-    let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert!(v.goal_met.is_some(), "{v}");
-    // Every pass was compared but those the original ended unseen (two in one step): the route's
-    // frames and the idle slack after it.
-    assert_eq!(v.passes, AGREED, "{v}");
-    assert_eq!(v.passes + v.unseen, FRAMES as u32 + confirm::SLACK, "{v}");
-    // The whole route is the original's, past the level's middle and no life lost.
-    let g = replay(&d, &p.route.inputs);
-    assert!(g.location().col >= 120, "{}", g.location());
+    let v = confirm::confirm_excluding(&d, &p.route.inputs, &[confirm::EDGE_LATCH_RIGHT])
+        .unwrap_or_else(|e| panic!("{e}"));
+    // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
+    // T46 or T73 closes its gap this fails, and the constants above go.
+    let Outcome::Differs { pass, ref var, .. } = v.outcome else {
+        panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
+    };
+    assert_eq!((pass, var.as_str()), (PARTS_AT, "char_x"), "{v}");
+    let latch: Vec<_> = v
+        .excluded
+        .iter()
+        .map(|(e, n)| (e.task.as_str(), *n))
+        .collect();
+    assert_eq!(latch, vec![("T73", LATCH_PASSES)], "{v}");
+    // Up to there, past the level's first third, no life lost.
+    let g = replay(&d, &p.route.inputs[..PARTS_AT as usize]);
+    assert!(g.location().col >= 80, "{}", g.location());
     assert_eq!(g.lives(), 32);
 }
 

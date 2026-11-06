@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T24, then T73 and T46 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
-| T24 | enemies | T20, T21, T22, T23 | ⬜ | |
+| T24 | enemies | T20, T21, T22, T23 | 🔍 | Creatures move, sort, stomp in `game_frame`; 12 routines plus `char_hit_check` pass the rig, 8 new tests, three mutants. Deviations: no `ObjectKind` (creatures live in slots, as T22's items); no planner-danger test: creatures hurt only once T52 draws them (T46); route test re-measured, T73 added (owner). |
 | T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
@@ -93,8 +93,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
 | T71 | status-redraw-race | T70; blocks T27 | ⬜ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
+| T73 | edge-latch-gap | T24; blocks T46, T27 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T24
 
 ## Blocked on the user
 

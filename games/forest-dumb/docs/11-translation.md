@@ -826,6 +826,17 @@ What each porting task did with its share of the table above, and which routines
   Muse wrote it (`reshape.py --task T70 --all`, first try, one tidy round, no quality issue, $0.0054),
   shown T23's `esc_key` and `lives_minus_one`; fitted: `CONTACT`, the hurt sound's writes as one list,
   the `bmi` as a signed compare. Its input, CLXDAT, comes from the engine's frame (`render::contact`).
+- **T24** (2026-11-06): `h0_2fae`, `h0_2fea`, `h0_320a`, `h0_3222`, `h0_32f8`, `h0_3322`, the probes
+  `h0_3530`, `h0_3566`, `h0_35a0`, `h0_35dc`, the sort `h0_3698` and `h0_3dd8`, as
+  `fd_core::objects::creature` (`Creatures` over the slots, its `Ground` the collision map and the
+  program's step tables), on 10 000 states of T54's and T38's generators (`tests/enemy_routines.rs`;
+  paths 238, 23, 1, 1, 1, 1, 2, 2, 2, 2, 17, 4); `char_hit_check` again with its creatures (114 paths).
+  By hand: `step_back` and `wall_left`, Muse's examples, and `overlaps` (`h0_3dd8`, a free function) and
+  `Play::stomp` (in `character::death`, outside the `[T24]` impl). From Muse (`reshape.py --task T24
+  --all`, then `--only move_all`): the other nine, all passing with no quality issue, $0.053 in all, 18
+  calls; `move_all` and `move_slot` failed their first rounds only because they ran before the units they
+  call. Fitted by hand: `move_slot`'s seven per-kind helpers folded into one `match` with shared
+  `turn`, `walk` and `fly`, and `move_all` written as a `for` over the slots.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

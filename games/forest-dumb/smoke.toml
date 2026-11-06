@@ -108,6 +108,8 @@ workspace = "engine"
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
 # T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
 "crates/fd-conform/tests/collect_routines.rs" = "smoke"
+# T24: the creatures' twelve routines on the rig, the in-play move and sort, two mutants: about 9 s warm.
+"crates/fd-conform/tests/enemy_routines.rs" = "smoke"
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
@@ -377,4 +379,12 @@ name = "contact and a life lost: the collision model, char_hit_check and the spi
 covers = [
     "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
     "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
+]
+
+[[area]]
+name = "level 1's creatures moving, sorted and stomped, against the original"
+covers = [
+    "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
+    "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
 ]
