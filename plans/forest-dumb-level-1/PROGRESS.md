@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T72, then T24, T47 and T52 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T47 and T52 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -92,9 +92,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
-| T72 | water-contact | T25, T70; blocks T47, T27 | 🔍 | death-water: two lives lost in the pool at W1-1:148,66, every pass and frame equal; 2 tests, 2 parse tests. Deviations: new case key `thaw` (case.rs, freeze.rs, `Engine::thaw`), since freeze.rs keeps h0_6882; `edge_latch_down`, `edge_latch_up` excluded naming T47 (late passes); test 2 changed: the pool tiles carry colour 29 themselves. |
+| T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | Clean, no fix commit. Mutation: engine ignoring the thaw turns death-water and the pool contact test red (picture, pass 298). Probed: without its exclusions the case first differs at pass 293 on edge_latch_down; the frozen run compares both latches equal. Test 2's replacement held: tiles carry colour 29. Contact test 5 runs green. |
 
-**Review queue:** T72
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
