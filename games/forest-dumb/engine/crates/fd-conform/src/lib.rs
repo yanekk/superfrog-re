@@ -432,19 +432,182 @@ fn run_title(case: &Case, opts: &Options) -> Result<Verdict, String> {
 /// The original at a level case's sync frame, frozen as the case asks, with room for its frames
 /// and `slack` more. From the cached level sync point, then the sync script up to the case's frame.
 pub fn reach_case(case: &Case, slack: u32) -> Result<Amiga, String> {
+    reach_case_with(case, slack, |_, _| Ok(()))
+}
+
+/// [`reach_case`], calling `each` once at the level sync point with `None` and after every step
+/// up to the case's frame with the input that step ran on.
+fn reach_case_with(
+    case: &Case,
+    slack: u32,
+    mut each: impl FnMut(&mut Amiga, Option<FrameInput>) -> Result<(), String>,
+) -> Result<Amiga, String> {
     if !case.is_level() {
         return Err(format!("{}: not a level case", case.name));
     }
     let inputs = Inputs::load(case)?;
     let lead = case.sync_frame - sync::LEVEL_1_SYNC;
     let mut am = sync::reach_level_1(lead + case.frames + slack)?;
+    each(&mut am, None)?;
     for frame in sync::LEVEL_1_SYNC..case.sync_frame {
-        am.step(inputs.at(frame)).map_err(|e| e.to_string())?;
+        let input = inputs.at(frame);
+        am.step(input).map_err(|e| e.to_string())?;
+        each(&mut am, Some(input))?;
     }
     if case.freeze {
         freeze::apply(&mut am, freeze::FROZEN)?;
     }
     Ok(am)
+}
+
+/// `read_joystick`, `h0+$8dfc`: `game_frame` reads JOY1DAT here once a pass while not paused.
+pub const READ_JOYSTICK: (u8, u32) = (0, 0x8dfc);
+/// `game_frame`'s paused branch, `h0+$200e` (`bsr.w play_keys` after `tst.w paused`): a paused
+/// pass runs this and no `read_joystick`.
+pub const PAUSED_BRANCH: (u8, u32) = (0, 0x200e);
+/// `read_joystick` stops counting `input_log_index` here (`cmpi.l #$2ee0`).
+const INPUT_LOG_FULL: u32 = 12000;
+
+/// The input each pass of the original read, pass by pass, from T31's counter (T67).
+///
+/// Every pass of `game_frame` runs exactly one of [`READ_JOYSTICK`] and [`PAUSED_BRANCH`], and
+/// passes run one after another (`level3_handler` is not re-entered), so the hits of the two, in
+/// step order, are the passes' in pass order: the `k`th hit after the anchor is pass `anchor + k`'s,
+/// whatever step that pass started in. While the camera scrolls a pass usually reads in the step
+/// after its start (57 of 76 slide passes, T41), so the step a pass started in is not the one whose
+/// joystick it saw.
+///
+/// A pass's keys are the keys of the step it started in (measured, T67: P held from step `N`, idle
+/// or sliding, reached `pause_key_down` in the pass started in step `N`, whose `play_keys` ran in
+/// step `N + 1` when sliding; `level2_handler` puts the byte in `last_key_byte` before that step's
+/// level-3 interrupt). A paused pass reads no joystick: it gets the joystick of the step its paused
+/// branch ran in, which nothing reads.
+pub struct PassInputs {
+    /// `irq_count` at the last step's end: passes up to it have started.
+    started: u32,
+    /// The last pass whose `game_frame` read the joystick or took the paused branch.
+    decided: u32,
+    /// `input_log_index` as the counter says it must be.
+    log: u32,
+    /// (pass, the input of the step it started in) for passes started and not yet decided.
+    starts: Vec<(u32, FrameInput)>,
+    /// (pass, its input) for passes decided and not yet taken.
+    ready: Vec<(u32, FrameInput)>,
+    pcs: [u32; 2],
+}
+
+impl PassInputs {
+    /// Anchored at the original as it is now. It holds only where every pass so far read the
+    /// joystick, the last started one included: `input_log_index` equals `irq_count` and nothing
+    /// is paused. W1-1's sync point is such a place (measured: both 1).
+    pub fn anchor(am: &Amiga) -> Result<PassInputs, String> {
+        let var = |n: &str| layout_var(n).ok_or_else(|| format!("no {n} in LAYOUT"));
+        let started = Live(am).value(var("irq_count")?);
+        let log = Live(am).value(var("input_log_index")?);
+        let paused = Live(am).value(var("paused")?);
+        if log != started || paused != 0 {
+            return Err(format!(
+                "cannot anchor the input pairing: irq_count {started}, input_log_index {log}, \
+                 paused {paused}; it needs every pass so far to have read the joystick"
+            ));
+        }
+        Ok(PassInputs {
+            started,
+            decided: started,
+            log,
+            starts: Vec::new(),
+            ready: Vec::new(),
+            pcs: [READ_JOYSTICK, PAUSED_BRANCH].map(|(h, o)| HUNK_BASES[h as usize] + o),
+        })
+    }
+
+    /// The addresses [`Amiga::watch_pcs`] must count for [`PassInputs::step`].
+    pub fn pcs(&self) -> [u32; 2] {
+        self.pcs
+    }
+
+    /// Account for the step just run on `input`. The counter must be watching [`PassInputs::pcs`].
+    /// `input_log_index` checks the count: a read the counter missed, or one it saw twice, is an
+    /// error, never a silent mispairing.
+    pub fn step(&mut self, am: &Amiga, input: FrameInput) -> Result<(), String> {
+        let var = |n: &str| layout_var(n).ok_or_else(|| format!("no {n} in LAYOUT"));
+        // irq_count wraps at $10000, far past any level case.
+        let now = Live(am).value(var("irq_count")?);
+        self.starts
+            .extend((self.started + 1..=now).map(|n| (n, input)));
+        self.started = now;
+        let hits = |pc: u32| {
+            am.pc_hits()
+                .iter()
+                .find(|(p, _)| *p == pc)
+                .map_or(0, |(_, n)| *n)
+        };
+        let (reads, paused) = (hits(self.pcs[0]), hits(self.pcs[1]));
+        for _ in 0..reads + paused {
+            self.decided += 1;
+            let n = self.decided;
+            let i = self
+                .starts
+                .iter()
+                .position(|(p, _)| *p == n)
+                .ok_or_else(|| format!("pass {n} read its input before it started"))?;
+            let (_, start) = self.starts.remove(i);
+            self.ready.push((
+                n,
+                FrameInput {
+                    joy: input.joy,
+                    keys: start.keys,
+                },
+            ));
+        }
+        self.log = (self.log + reads).min(INPUT_LOG_FULL);
+        let log = Live(am).value(var("input_log_index")?);
+        if log != self.log {
+            return Err(format!(
+                "input_log_index is {log} on the original, the counter says {}: a joystick read \
+                 was missed or counted twice",
+                self.log
+            ));
+        }
+        Ok(())
+    }
+
+    /// Forget passes up to `n`: the engine starts after them.
+    pub fn drop_through(&mut self, n: u32) {
+        self.ready.retain(|(p, _)| *p > n);
+        self.starts.retain(|(p, _)| *p > n);
+    }
+
+    /// Pass `n`'s input, once its `game_frame` has read it.
+    pub fn take(&mut self, n: u32) -> Option<FrameInput> {
+        let i = self.ready.iter().position(|(p, _)| *p == n)?;
+        Some(self.ready.remove(i).1)
+    }
+}
+
+/// [`reach_case`] with its passes' inputs counted from the level sync point, and the counter
+/// watching `extra` as well (the coverage register), counts reset at the case's sync point.
+pub fn reach_case_counting(
+    case: &Case,
+    slack: u32,
+    extra: &[u32],
+) -> Result<(Amiga, PassInputs), String> {
+    let mut tracker: Option<PassInputs> = None;
+    let am = reach_case_with(case, slack, |am, input| {
+        match (input, &mut tracker) {
+            (None, _) => {
+                let t = PassInputs::anchor(am)?;
+                let mut pcs = extra.to_vec();
+                pcs.extend(t.pcs());
+                am.watch_pcs(&pcs);
+                tracker = Some(t);
+            }
+            (Some(input), Some(t)) => t.step(am, input)?,
+            (Some(_), None) => unreachable!("anchored before the first step"),
+        }
+        Ok(())
+    })?;
+    Ok((am, tracker.expect("anchored at the sync point")))
 }
 
 /// Whether any pixel in `rows` (clipped to both pictures) differs. `ours` is row-major colours of
@@ -460,7 +623,8 @@ fn differs_in(ours: &[u16], width: u16, theirs: &Rgb12Frame, rows: &Range<u16>) 
 /// Run a level case with `engine` on the engine's side.
 ///
 /// The original's passes are numbered by its own `irq_count`, which `level3_handler` raises as a
-/// pass starts: pass `n`'s input is the input of the step in which the count reached `n`, and its
+/// pass starts: pass `n`'s joystick is the input of the step in which its `read_joystick` ran, and
+/// its keys that of the step in which the count reached `n` ([`PassInputs`], T67); its
 /// state is RAM at the pass's end ([`PASS_END`], `Amiga::watch_write`), captured in whichever step
 /// the end falls. The engine is transplanted at the first pass end after the sync point and then
 /// runs each later pass on that pass's input, so it is compared with the original pass for pass
@@ -485,9 +649,8 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
         _ => Vec::new(),
     };
     let irq = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
-    let mut am = reach_case(case, 0)?;
     let pcs: Vec<u32> = opts.register.iter().map(coverage::address).collect();
-    am.watch_pcs(&pcs);
+    let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
 
     let mut verdict = Verdict::new(opts.register);
@@ -507,9 +670,6 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
         .collect();
     let tol = Tolerance::OWNER;
     let mut judge = PictureJudge::new(tol, case.frames);
-    let mut started = Live(&am).value(irq);
-    // (pass, its input) for passes started on the original and not yet run on the engine.
-    let mut pending: Vec<(u32, FrameInput)> = Vec::new();
     // (the pass the engine was transplanted at, the last pass it ran).
     let mut at: Option<(u32, u32)> = None;
     let mut passes_run = 0u32;
@@ -519,10 +679,7 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
         am.step(input).map_err(|e| e.to_string())?;
         let frame = am.frame();
         verdict.coverage.add(opts.register, am.pc_hits());
-        // irq_count wraps at $10000, far past any level case.
-        let now = Live(&am).value(irq);
-        pending.extend((started + 1..=now).map(|n| (n, input)));
-        started = now;
+        read.step(&am, input)?;
         let Some(mem) = am.watched_memory() else {
             continue;
         };
@@ -531,18 +688,16 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
         let Some((first, last)) = at else {
             engine.transplant(&theirs);
             at = Some((ended, ended));
-            pending.retain(|(n, _)| *n > ended);
+            read.drop_through(ended);
             continue;
         };
         if ended <= last {
             continue;
         }
         for n in last + 1..=ended {
-            let i = pending
-                .iter()
-                .position(|(p, _)| *p == n)
-                .ok_or_else(|| format!("pass {n} ended on the original but never started"))?;
-            let (_, pass_input) = pending.remove(i);
+            let pass_input = read.take(n).ok_or_else(|| {
+                format!("pass {n} ended on the original but never read its input")
+            })?;
             engine.pass(pass_input);
             passes_run += 1;
             for e in engine.events() {

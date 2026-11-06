@@ -32,6 +32,9 @@ workspace = "engine"
 # sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/runner.rs" = "smoke"
 "crates/fd-conform/tests/input_timing.rs" = "smoke"
+# T67: the input each pass read: the slide with up changed mid-scroll on Game and on the old pairing,
+# and the keys measured standing and sliding, about 2 s warm from the cached sync point.
+"crates/fd-conform/tests/pass_input.rs" = "smoke"
 # T07: the level engine entering W1-1 against the original, and its idle case (200 frames, also
 # through the command line): 2 s warm. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/level_entry.rs" = "smoke"
@@ -52,6 +55,9 @@ workspace = "engine"
 # T09: the camera's engine port against the original, 10 000 states a routine and the negative
 # checks: about 3 s on the program from disk 1.
 "crates/fd-conform/tests/camera_routines.rs" = "smoke"
+# T43: the camera cases, three scripted runs to all four level ends against the original, a
+# negative check and collision_map at the right wall: about 6 s warm, from the cached sync point.
+"crates/fd-conform/tests/camera_cases.rs" = "smoke"
 # T55: the edge redraws' engine port. Registration, the pointer tables, the d0 carry's negative check
 # and collision_map after a scroll each way from the cached sync point, about 7 s. The 10 000-state
 # check of all 14 routines (about 7 min) and the cell-table filter's count (16 s) stay in full.
@@ -97,6 +103,9 @@ workspace = "engine"
 # T08: the character's movement against the original, 14 routines at 10 000 states each and 5
 # mutants, about 9 s (one rig per test, run in parallel).
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
+# T41: the character's runs in play against the original, five cases from the cached sync point in
+# parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/character_run.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -179,6 +188,10 @@ name = "the character's movement against the original"
 covers = ["crates/fd-conform/tests/character_routines.rs::every_t08_routine_is_registered_and_passes_the_rig"]
 
 [[area]]
+name = "the character running and jumping in play, against the original"
+covers = ["crates/fd-conform/tests/character_run.rs"]
+
+[[area]]
 name = "entering level 1 on the engine"
 covers = ["crates/fd-conform/tests/level_entry.rs"]
 
@@ -189,3 +202,7 @@ covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py", "tools/
 [[area]]
 name = "having Muse write a generator, judged by its coverage on the original"
 covers = ["tools/test_generate.py", "tools/test_generate_judge.py"]
+
+[[area]]
+name = "the camera scrolling both ways to every level end, against the original"
+covers = ["crates/fd-conform/tests/camera_cases.rs::each_camera_case_passes_on_the_level_engine_and_reaches_its_goal"]

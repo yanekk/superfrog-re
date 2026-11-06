@@ -1,0 +1,9 @@
+# T43: the camera at the top and left ends of W1-1 (scripts/camera-top-left.txt). fd-core's Game against
+# the original, state only: the camera, the character and the edge-redraw hand-off every pass.
+# Nothing in view is an object, so nothing is frozen.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "camera-top-left"
+frames = 200
+compare = ["vars"]
+vars = ["camera_x", "camera_y", "char_screen_x", "char_x", "char_y", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "irq_count", "hits_taken"]
+goal = { all = [{ var = "camera_x", value = 0 }, { var = "camera_y", value = 0 }], by_frame = 6501 }
