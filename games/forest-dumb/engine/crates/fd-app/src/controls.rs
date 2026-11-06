@@ -58,7 +58,9 @@ impl App {
 
     /// A key pressed while the window has the keyboard.
     pub(crate) fn controls_key(&mut self, code: KeyCode) {
-        let (Some(c), Some(run)) = (&mut self.controls, &mut self.run) else { return };
+        let (Some(c), Some(run)) = (&mut self.controls, &mut self.run) else {
+            return;
+        };
         let o = c.model.key(code, &mut run.settings);
         self.controls_outcome(o);
     }
@@ -113,7 +115,9 @@ impl App {
     }
 
     fn show_controls(&mut self) {
-        let (Some(c), Some(run)) = (&mut self.controls, &self.run) else { return };
+        let (Some(c), Some(run)) = (&mut self.controls, &self.run) else {
+            return;
+        };
         if c.window.shown_status() != Some(c.model.status.as_str()) {
             eprintln!("fd-app: controls: {}", c.model.status);
         }

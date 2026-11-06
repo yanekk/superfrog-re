@@ -73,11 +73,17 @@ pub fn build_menu() -> MenuBar {
     let game = Submenu::with_items(
         "Game",
         true,
-        &[&MenuItem::with_id(Command::Controls.id(), "Controls…", true, None)],
+        &[&MenuItem::with_id(
+            Command::Controls.id(),
+            "Controls…",
+            true,
+            None,
+        )],
     );
     let menu = Menu::new();
     for m in [app, game] {
-        menu.append(&m.expect("a menu")).expect("a menu in the menu bar");
+        menu.append(&m.expect("a menu"))
+            .expect("a menu in the menu bar");
     }
     MenuBar { menu }
 }

@@ -51,7 +51,8 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
     while let Some(arg) = it.next() {
         let name = arg.to_string_lossy().into_owned();
         let mut value = |what: &str| -> Result<OsString, String> {
-            it.next().ok_or_else(|| format!("{name} needs {what}\n{USAGE}"))
+            it.next()
+                .ok_or_else(|| format!("{name} needs {what}\n{USAGE}"))
         };
         match name.as_str() {
             "--home" => a.home = Some(value("a folder")?.into()),
@@ -64,7 +65,9 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             "--scale" => {
                 let s = number(&name, value("a number")?)?;
                 if !(1..=16).contains(&s) {
-                    return Err(format!("--scale {s}: the scale is a whole number from 1 to 16"));
+                    return Err(format!(
+                        "--scale {s}: the scale is a whole number from 1 to 16"
+                    ));
                 }
                 a.scale = Some(s as u32);
             }
@@ -79,9 +82,12 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
 }
 
 fn number(name: &str, v: OsString) -> Result<u64, String> {
-    v.to_string_lossy()
-        .parse()
-        .map_err(|_| format!("{name} {:?}: not a whole number\n{USAGE}", v.to_string_lossy()))
+    v.to_string_lossy().parse().map_err(|_| {
+        format!(
+            "{name} {:?}: not a whole number\n{USAGE}",
+            v.to_string_lossy()
+        )
+    })
 }
 
 #[cfg(test)]
@@ -95,8 +101,22 @@ mod tests {
     #[test]
     fn every_flag_is_read() {
         let a = p(&[
-            "--home", "/h", "--disks", "/d", "--script", "/s", "--capture", "/c", "--max-frames", "5",
-            "--timeout", "9", "--scale", "3", "--bugs-dir", "/b",
+            "--home",
+            "/h",
+            "--disks",
+            "/d",
+            "--script",
+            "/s",
+            "--capture",
+            "/c",
+            "--max-frames",
+            "5",
+            "--timeout",
+            "9",
+            "--scale",
+            "3",
+            "--bugs-dir",
+            "/b",
         ])
         .unwrap();
         assert_eq!(a.home, Some("/h".into()));
@@ -104,18 +124,30 @@ mod tests {
         assert_eq!(a.script, Some("/s".into()));
         assert_eq!(a.capture, Some("/c".into()));
         assert_eq!(a.bugs_dir, Some("/b".into()));
-        assert_eq!((a.max_frames, a.timeout_s, a.scale), (Some(5), Some(9), Some(3)));
+        assert_eq!(
+            (a.max_frames, a.timeout_s, a.scale),
+            (Some(5), Some(9), Some(3))
+        );
     }
 
     #[test]
     fn a_script_gets_the_watchdog_unless_it_names_one() {
-        assert_eq!(p(&["--script", "/s"]).unwrap().timeout_s, Some(SCRIPT_TIMEOUT_S));
+        assert_eq!(
+            p(&["--script", "/s"]).unwrap().timeout_s,
+            Some(SCRIPT_TIMEOUT_S)
+        );
         assert_eq!(p(&[]).unwrap().timeout_s, None);
     }
 
     #[test]
     fn bad_arguments_are_refused_with_the_usage() {
-        for bad in [&["--scale", "0"][..], &["--scale", "x"], &["--home"], &["--fly"], &["--max-frames", "-1"]] {
+        for bad in [
+            &["--scale", "0"][..],
+            &["--scale", "x"],
+            &["--home"],
+            &["--fly"],
+            &["--max-frames", "-1"],
+        ] {
             assert!(p(bad).is_err(), "{bad:?}");
         }
         assert!(p(&["--fly"]).unwrap_err().contains(USAGE));

@@ -17,9 +17,14 @@ use fd_core::program::PROGRAM_FILE;
 /// itself, else the lookup's.
 pub fn folder(arg: Option<&Path>) -> Result<PathBuf, String> {
     match arg {
-        Some(d) => fd_tools::zip_paths(d).map(|_| d.to_path_buf()).map_err(|e| {
-            format!("Forest Dumb Forever's zips not found. Looked in --disks {}: {e}", d.display())
-        }),
+        Some(d) => fd_tools::zip_paths(d)
+            .map(|_| d.to_path_buf())
+            .map_err(|e| {
+                format!(
+                    "Forest Dumb Forever's zips not found. Looked in --disks {}: {e}",
+                    d.display()
+                )
+            }),
         None => fd_tools::disk_dir(),
     }
 }
@@ -37,11 +42,12 @@ pub fn read(dir: &Path) -> Result<Arc<GameData>, String> {
         // The main program is disk 1's; every level file is disk 2's (as fd-conform's game_data).
         let i = if name == PROGRAM_FILE { 0 } else { 1 };
         let (zip, image) = &images[i];
-        let packed = image
-            .read_file(name)
-            .map_err(|e| AssetError::missing(name, format!("disk {} ({}): {e}", i + 1, zip.display())))?;
-        fd_tools::unpack(&packed)
-            .map_err(|e| AssetError::missing(name, format!("disk {} ({}): {e}", i + 1, zip.display())))
+        let packed = image.read_file(name).map_err(|e| {
+            AssetError::missing(name, format!("disk {} ({}): {e}", i + 1, zip.display()))
+        })?;
+        fd_tools::unpack(&packed).map_err(|e| {
+            AssetError::missing(name, format!("disk {} ({}): {e}", i + 1, zip.display()))
+        })
     };
     GameData::read(&files)
         .map(Arc::new)

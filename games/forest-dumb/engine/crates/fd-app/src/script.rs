@@ -11,7 +11,9 @@
 //! ```
 
 use amiga_app::controls_window::ControlsAction;
-use amiga_app::script_core::{CoreScript, HostInput, Line, ScriptError, ScriptGame, parse_script_core};
+use amiga_app::script_core::{
+    CoreScript, HostInput, Line, ScriptError, ScriptGame, parse_script_core,
+};
 
 use crate::menu::Command;
 
@@ -43,7 +45,8 @@ impl ScriptGame for Game {
     fn event(&mut self, line: &Line, words: &[&str]) -> Result<Option<Vec<Event>>, ScriptError> {
         Ok(Some(vec![match words {
             ["menu", id] => Event::Command(
-                Command::from_id(id).ok_or_else(|| line.error(&format!("no menu item is called {id}")))?,
+                Command::from_id(id)
+                    .ok_or_else(|| line.error(&format!("no menu item is called {id}")))?,
             ),
             ["controls", rest @ ..] => Event::Controls(
                 ControlsAction::named(rest).ok_or_else(|| line.error("bad `controls` event"))?,
@@ -65,7 +68,10 @@ pub fn parse(text: &str) -> Result<Script, ScriptError> {
 
 /// Step `n`'s events, in file order.
 pub fn at(s: &Script, n: u64) -> impl Iterator<Item = Event> + '_ {
-    s.events.iter().filter(move |(f, _)| *f == n).map(|(_, e)| *e)
+    s.events
+        .iter()
+        .filter(move |(f, _)| *f == n)
+        .map(|(_, e)| *e)
 }
 
 #[cfg(test)]
@@ -83,9 +89,24 @@ mod tests {
             s.events,
             vec![
                 (10, Event::Command(Command::Controls)),
-                (11, Event::Controls(ControlsAction::Rebind(OriginalInput::Up, Device::Keys))),
-                (12, Event::Input(HostInput::Key { code: KeyCode::KeyW, pressed: true })),
-                (12, Event::Input(HostInput::Key { code: KeyCode::KeyW, pressed: false })),
+                (
+                    11,
+                    Event::Controls(ControlsAction::Rebind(OriginalInput::Up, Device::Keys))
+                ),
+                (
+                    12,
+                    Event::Input(HostInput::Key {
+                        code: KeyCode::KeyW,
+                        pressed: true
+                    })
+                ),
+                (
+                    12,
+                    Event::Input(HostInput::Key {
+                        code: KeyCode::KeyW,
+                        pressed: false
+                    })
+                ),
                 (13, Event::Shot),
                 (14, Event::Resize(640, 600)),
                 (15, Event::Hang),

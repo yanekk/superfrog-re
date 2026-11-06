@@ -26,7 +26,13 @@ pub fn inputs(c: &Captured) -> BTreeMap<u64, FrameInput> {
             for k in w.next().unwrap_or("").split(',').filter(|k| !k.is_empty()) {
                 keys.0 |= 1u128 << u8::from_str_radix(k, 16).unwrap();
             }
-            (n, FrameInput { joy: Joy(joy), keys })
+            (
+                n,
+                FrameInput {
+                    joy: Joy(joy),
+                    keys,
+                },
+            )
         })
         .collect()
 }
@@ -34,7 +40,9 @@ pub fn inputs(c: &Captured) -> BTreeMap<u64, FrameInput> {
 /// The joystick at each step from `from` to `to`, inclusive (0 where nothing was fed).
 pub fn joy(c: &Captured, from: u64, to: u64) -> Vec<u8> {
     let i = inputs(c);
-    (from..=to).map(|n| i.get(&n).map_or(0, |e| e.joy.0)).collect()
+    (from..=to)
+        .map(|n| i.get(&n).map_or(0, |e| e.joy.0))
+        .collect()
 }
 
 /// `hashes.txt`: the state hash of each frame, frame 0 first.
@@ -53,7 +61,8 @@ pub fn hashes(c: &Captured) -> Vec<String> {
 /// The game's data from the owner's disks, read once per test process.
 pub fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
-    D.get_or_init(|| fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"))).clone()
+    D.get_or_init(|| fd_conform::game_data().unwrap_or_else(|e| panic!("{e}")))
+        .clone()
 }
 
 /// A headless game at the app's start.
@@ -74,10 +83,18 @@ pub fn picture(g: &Game) -> Image {
     for px in rgba.chunks_exact_mut(4) {
         px[3] = 255;
     }
-    Image { width: p.width as u32, height: p.height as u32, rgba }
+    Image {
+        width: p.width as u32,
+        height: p.height as u32,
+        rgba,
+    }
 }
 
 /// Every line the Controls window showed, in order.
 pub fn said(c: &Captured) -> Vec<String> {
-    c.stderr.lines().filter_map(|l| l.strip_prefix("fd-app: controls: ")).map(String::from).collect()
+    c.stderr
+        .lines()
+        .filter_map(|l| l.strip_prefix("fd-app: controls: "))
+        .map(String::from)
+        .collect()
 }

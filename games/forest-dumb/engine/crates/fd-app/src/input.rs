@@ -41,7 +41,10 @@ impl Input {
     /// Take one host event: `Some` when it is the app's, not the game's.
     pub fn event(&mut self, e: HostInput) -> Option<Command> {
         match e {
-            HostInput::Key { code, pressed: true } => {
+            HostInput::Key {
+                code,
+                pressed: true,
+            } => {
                 if code == KeyCode::Escape {
                     return Some(Command::Quit);
                 }
@@ -53,7 +56,10 @@ impl Input {
                     self.tapped = t.apply(self.tapped);
                 }
             }
-            HostInput::Key { code, pressed: false } => {
+            HostInput::Key {
+                code,
+                pressed: false,
+            } => {
                 if let Some(i) = self.keys.iter().position(|&h| h == code) {
                     self.keys.remove(i);
                 }
@@ -146,7 +152,11 @@ mod tests {
     fn losing_focus_lets_go_of_keys_but_not_pads() {
         let mut i = input();
         i.event(HostInput::Pad(PadEvent::Connected(1)));
-        i.event(HostInput::Pad(PadEvent::Button { pad: 1, button: PadInput::DPadLeft, pressed: true }));
+        i.event(HostInput::Pad(PadEvent::Button {
+            pad: 1,
+            button: PadInput::DPadLeft,
+            pressed: true,
+        }));
         i.event(key(KeyCode::Space, true));
         i.frame();
         i.event(HostInput::FocusLost);

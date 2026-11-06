@@ -243,7 +243,8 @@ impl App {
             Some(dir) => {
                 let made = Capture::new(dir, RATE).and_then(|mut c| {
                     c.frame(0, (size.0, size.1, &rgba))?;
-                    let mut h = std::io::BufWriter::new(std::fs::File::create(dir.join(fd_app::HASHES))?);
+                    let mut h =
+                        std::io::BufWriter::new(std::fs::File::create(dir.join(fd_app::HASHES))?);
                     h.write_all(fd_app::hash_line(0, &game).as_bytes())?;
                     Ok((c, h))
                 });
@@ -332,7 +333,10 @@ impl App {
         let Some(run) = &self.run else { return };
         // Step n's events land before it.
         let n = run.steps + 1;
-        let events: Vec<Event> = self.script.as_ref().map_or(Vec::new(), |s| script::at(s, n).collect());
+        let events: Vec<Event> = self
+            .script
+            .as_ref()
+            .map_or(Vec::new(), |s| script::at(s, n).collect());
         for e in events {
             match e {
                 // While the Controls window is open it has the keyboard, as it would for a person.
@@ -347,7 +351,12 @@ impl App {
                 Event::Controls(a) => self.controls_action(a),
                 Event::Shot => self.run.as_mut().expect("running").shot = Some(n),
                 Event::Resize(w, h) => {
-                    let _ = self.run.as_ref().expect("running").window.request_inner_size(LogicalSize::new(w, h));
+                    let _ = self
+                        .run
+                        .as_ref()
+                        .expect("running")
+                        .window
+                        .request_inner_size(LogicalSize::new(w, h));
                 }
                 Event::Hang => {
                     eprintln!("fd-app: the script hangs at frame {n}");
@@ -366,7 +375,9 @@ impl App {
         run.game.step(input);
         for e in run.game.take_events() {
             match e {
-                GameEvent::Unported(v) => eprintln!("fd-app: object value {v} is not ported; left out"),
+                GameEvent::Unported(v) => {
+                    eprintln!("fd-app: object value {v} is not ported; left out")
+                }
                 other => eprintln!("fd-app: {other:?}"),
             }
         }
@@ -419,11 +430,13 @@ impl App {
     /// A `shot` the script asked for: what the window shows for the newest frame.
     fn take_shot(&mut self, event_loop: &ActiveEventLoop) {
         let Some(run) = &mut self.run else { return };
-        let (Some(n), Some(c)) = (run.shot.take(), &mut run.capture) else { return };
-        let written = run
-            .video
-            .shot(&c.window_path(n))
-            .and_then(|shown| c.window_shown(n, run.uploaded, &shown).map_err(|e| e.to_string()));
+        let (Some(n), Some(c)) = (run.shot.take(), &mut run.capture) else {
+            return;
+        };
+        let written = run.video.shot(&c.window_path(n)).and_then(|shown| {
+            c.window_shown(n, run.uploaded, &shown)
+                .map_err(|e| e.to_string())
+        });
         if let Err(e) = written {
             self.fail(event_loop, &format!("shot: {e}"));
         }
@@ -451,7 +464,12 @@ impl ApplicationHandler for App {
         while let Some(a) = ControlsWindow::next_click() {
             self.controls_action(a);
         }
-        while let Some(e) = self.run.as_mut().and_then(|r| r.pads.as_mut()).and_then(|p| p.next()) {
+        while let Some(e) = self
+            .run
+            .as_mut()
+            .and_then(|r| r.pads.as_mut())
+            .and_then(|p| p.next())
+        {
             self.pad_event(e);
         }
         let Some(run) = &mut self.run else { return };
@@ -489,14 +507,18 @@ impl ApplicationHandler for App {
         if due > 0 {
             self.show_newest();
         }
-        event_loop.set_control_flow(ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(2)));
+        event_loop.set_control_flow(ControlFlow::WaitUntil(
+            Instant::now() + Duration::from_millis(2),
+        ));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
         if self.controls.as_ref().is_some_and(|c| c.window.id() == id) {
             match event {
                 WindowEvent::CloseRequested => self.close_controls(),
-                WindowEvent::KeyboardInput { event, .. } if !event.repeat && event.state == ElementState::Pressed => {
+                WindowEvent::KeyboardInput { event, .. }
+                    if !event.repeat && event.state == ElementState::Pressed =>
+                {
                     if let PhysicalKey::Code(code) = event.physical_key {
                         self.controls_key(code);
                     }
@@ -506,7 +528,9 @@ impl ApplicationHandler for App {
             return;
         }
         match event {
-            WindowEvent::CloseRequested if self.run.is_some() => self.on_command(event_loop, Command::Quit),
+            WindowEvent::CloseRequested if self.run.is_some() => {
+                self.on_command(event_loop, Command::Quit)
+            }
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => {
                 if let Some(run) = &mut self.run {
@@ -525,10 +549,13 @@ impl ApplicationHandler for App {
             }
             WindowEvent::KeyboardInput { event, .. } if !event.repeat => {
                 if let PhysicalKey::Code(code) = event.physical_key {
-                    self.host(event_loop, HostInput::Key {
-                        code,
-                        pressed: event.state == ElementState::Pressed,
-                    });
+                    self.host(
+                        event_loop,
+                        HostInput::Key {
+                            code,
+                            pressed: event.state == ElementState::Pressed,
+                        },
+                    );
                 }
             }
             WindowEvent::Focused(false) => self.host(event_loop, HostInput::FocusLost),
@@ -543,8 +570,17 @@ mod tests {
 
     #[test]
     fn the_window_opens_at_the_scale_and_auto_is_twice() {
-        assert_eq!(initial_size(Scale::N(1), (320, 256)), LogicalSize::new(320, 256));
-        assert_eq!(initial_size(Scale::N(3), (320, 256)), LogicalSize::new(960, 768));
-        assert_eq!(initial_size(Scale::Auto, (320, 256)), LogicalSize::new(640, 512));
+        assert_eq!(
+            initial_size(Scale::N(1), (320, 256)),
+            LogicalSize::new(320, 256)
+        );
+        assert_eq!(
+            initial_size(Scale::N(3), (320, 256)),
+            LogicalSize::new(960, 768)
+        );
+        assert_eq!(
+            initial_size(Scale::Auto, (320, 256)),
+            LogicalSize::new(640, 512)
+        );
     }
 }

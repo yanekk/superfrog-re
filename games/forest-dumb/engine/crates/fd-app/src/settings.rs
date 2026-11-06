@@ -9,9 +9,9 @@
 
 use std::path::Path;
 
-pub use amiga_app::settings::{Scale, Settings, save};
 use amiga_app::controls_window::JOYSTICK;
 use amiga_app::keys::{KeyMap, OriginalInput};
+pub use amiga_app::settings::{Scale, Settings, save};
 use winit::keyboard::KeyCode;
 
 /// This game's key map: the toolkit's, with the joystick on the owner's keys. Space and Left Option
@@ -41,7 +41,8 @@ pub fn read(home: &Path) -> (Settings, Option<String>) {
     if damaged.is_some() {
         return (defaults(), damaged);
     }
-    let named = named_keys(&std::fs::read_to_string(amiga_app::settings::path(home)).unwrap_or_default());
+    let named =
+        named_keys(&std::fs::read_to_string(amiga_app::settings::path(home)).unwrap_or_default());
     let ours = default_keys();
     for o in JOYSTICK {
         if !named.contains(&o.name()) {
@@ -78,7 +79,10 @@ mod tests {
         assert_eq!(k.0[&OriginalInput::Up], [KeyCode::Space]);
         assert_eq!(k.0[&OriginalInput::Fire], [KeyCode::AltLeft]);
         assert_eq!(k.0[&OriginalInput::Left], [KeyCode::ArrowLeft]);
-        assert_eq!(k.targets(KeyCode::Space).collect::<Vec<_>>(), [OriginalInput::Up]);
+        assert_eq!(
+            k.targets(KeyCode::Space).collect::<Vec<_>>(),
+            [OriginalInput::Up]
+        );
         assert_eq!(k.targets(KeyCode::ArrowUp).count(), 0);
     }
 
@@ -92,7 +96,11 @@ mod tests {
     #[test]
     fn a_file_s_bindings_are_kept_and_the_ones_it_leaves_out_are_this_game_s() {
         let h = home("partial");
-        std::fs::write(h.join("settings.toml"), "scale = 2\n[keys]\nup = [\"KeyW\"]\n").unwrap();
+        std::fs::write(
+            h.join("settings.toml"),
+            "scale = 2\n[keys]\nup = [\"KeyW\"]\n",
+        )
+        .unwrap();
         let (s, msg) = read(&h);
         assert_eq!(msg, None);
         assert_eq!(s.scale, Scale::N(2));
@@ -119,7 +127,10 @@ mod tests {
         let (s, msg) = read(&h);
         assert_eq!(s, defaults());
         assert!(msg.unwrap().starts_with("Your settings could not be read"));
-        assert_eq!(std::fs::read_to_string(h.join("settings.toml")).unwrap(), "scale = 0\n");
+        assert_eq!(
+            std::fs::read_to_string(h.join("settings.toml")).unwrap(),
+            "scale = 0\n"
+        );
         std::fs::remove_dir_all(&h).unwrap();
     }
 }

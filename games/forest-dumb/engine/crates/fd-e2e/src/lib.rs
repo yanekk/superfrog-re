@@ -9,7 +9,9 @@
 //! Every launch passes `--home`, `--max-frames` and `--timeout`, and puts the app in its own
 //! process group, so a run always ends and leaves nothing behind (DESIGN §5.2).
 
-pub use amiga_e2e::{AppSpec, Captured, Flags, Image, Key, LaunchOpts, Mods, Shot, group_alive, os_permissions};
+pub use amiga_e2e::{
+    AppSpec, Captured, Flags, Image, Key, LaunchOpts, Mods, Shot, group_alive, os_permissions,
+};
 
 use std::io;
 use std::ops::{Deref, DerefMut};
@@ -71,7 +73,8 @@ impl DerefMut for App {
 impl App {
     /// A temporary home, every launch reading the owner's disks (`--disks`).
     pub fn launch(mut opts: LaunchOpts) -> App {
-        opts.extra_args.splice(0..0, ["--disks".to_string(), disks().display().to_string()]);
+        opts.extra_args
+            .splice(0..0, ["--disks".to_string(), disks().display().to_string()]);
         App(amiga_e2e::App::launch(spec(), opts))
     }
 
