@@ -1,7 +1,8 @@
 # T44: the engine's picture against the original's while the view scrolls right, up, down and left
 # (scripts/picture-scroll.txt), the character walking and jumping both ways. Goal: back at the left
-# wall, char_x $1b, the view at the left end. Every object frozen, as T43's camera cases. The countdown ticks every 63 passes in the original and not yet in the engine
-# (T23), so its three digits are excluded, a box that leaves the items' digits beside them compared.
+# wall, char_x $1b, the view at the left end. Every object frozen, as T43's camera cases. The
+# countdown ticks every 63 passes in the original and not yet in the engine (T23), so its three digits
+# are excluded, a box that leaves the items' digits beside them compared.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "picture-scroll"
 frames = 220
