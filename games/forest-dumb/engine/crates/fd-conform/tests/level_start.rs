@@ -27,9 +27,18 @@ fn a_new_games_collision_map_is_the_originals_at_the_sync_point() {
         .collect();
     assert!(
         differ.is_empty(),
-        "{} byte(s) differ, first at collision_map{:+#x}",
+        "{} byte(s) differ, first at collision_map{}",
         differ.len(),
-        differ.first().map_or(0, |&a| a as i32)
+        // Slack before the map has negative offsets; `{:+#x}` of an i32 would print them as
+        // two's complement (`+0xffffffcb`).
+        differ.first().map_or(String::new(), |&a| {
+            let o = a as i32;
+            if o < 0 {
+                format!("-{:#x}", -o)
+            } else {
+                format!("+{o:#x}")
+            }
+        })
     );
     // Not a comparison of two empty planes: the first view has ground.
     assert!(theirs.iter().filter(|&&b| b != 0).count() > 100);

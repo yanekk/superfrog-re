@@ -1593,7 +1593,7 @@ name = "h0_4b0e"
 kind = "func"
 note = "up pressed: the jump starts, or the fall (T08)"
 
-# T55, the edge redraws' helpers (docs/09, "The edge redraws").
+# T65, level_init's first view (docs/12).
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -1626,6 +1626,8 @@ offset = 0x708
 name = "view_shape"
 kind = "func"
 note = "copies the shape of cell d6 (row), d7 (column) into collision_map, 16 words $2e apart (T65: level::start::shape_cell)"
+
+# T55, the edge redraws' helpers (docs/09, "The edge redraws").
 
 [[sym]]
 exe = "forest_dumb_forever"
