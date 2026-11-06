@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 59 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T45, T52, T68 and T70 as their dependencies finish; T47 once T45 is ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -63,7 +63,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
-| T25 | mechanics | T11, T20, T21, T22 | 🔍 | Springs (`h0_24ce` by hand, `h0_21c0` Muse, $0.0089) and animated cells (`h0_62b6` by hand) pass the rig; 9 tests plus a planner test. Deviations: map cells, no `ObjectKind` (as T22); `spring.rs`, `animated.rs` (flame, vanish one routine); one Muse example (two routines only); freeze entries kept (owner); route.rs re-measured; `Blit::Element`, `Picture` added. |
+| T25 | mechanics | T11, T20, T21, T22 | ✅ | Reviewed ✅, one fix: the play screen's `Blit::Element`/`Picture` drawing had no test; one now compares it with the rig's blitter (stride mutants red). Probed: rig mutants on view bound and release compare red; branch coverage full bar waits; unfrozen cases fail at pass 495 as recorded; route.rs long test green. Engine runs mechanics in frozen cases (FINDINGS). |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
@@ -92,7 +92,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** T25
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
