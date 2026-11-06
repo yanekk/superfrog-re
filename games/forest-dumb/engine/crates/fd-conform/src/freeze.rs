@@ -28,7 +28,9 @@ pub struct Frozen {
 /// items, bonuses and the exit as the original does, so a frozen case lets both. T25 ported its two
 /// (springs, the animated cells) but keeps them (owner, 2026-11-06): unfrozen, the original's pass runs
 /// late and `main_loop`'s redraws are cut short, which the engine does not model, so three frozen cases
-/// would fail (plans/forest-dumb-level-1 FINDINGS). T47's unfrozen cases remove them.
+/// would fail (plans/forest-dumb-level-1 FINDINGS). A frozen case's engine leaves the same two out
+/// (`fd_core::level::FROZEN_IN_A_CASE`, entry for entry). T47's unfrozen cases remove both lists' T25
+/// entries.
 pub const FROZEN: &[Frozen] = &[
     Frozen {
         hunk: 0,

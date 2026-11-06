@@ -12,6 +12,7 @@
 //! [`Colours`]) and the sprite composition (`amiga_chips::sprite`, moved there from the first game's
 //! renderer by this task). Agreement with the original's picture is T44's.
 
+pub mod contact;
 pub mod message;
 pub mod objects;
 pub mod palette;
@@ -46,11 +47,15 @@ const TILES: u32 = 0x1_3540;
 /// Where world 1's load list puts `_ELEMENTY.RAWM` and `.MASK`, hunk 4.
 const ELEMENTS: u32 = 0;
 const ELEMENT_MASKS: u32 = 0x1900;
+/// Where it puts `_WYBIJACZKA`, `_ZNIKAJKA1` and `_Plomien1`, hunk 4 (docs/07).
+const KNOCKER: u32 = crate::objects::spring::PICTURES[0];
+const VANISHING: u32 = crate::objects::animated::VANISH_PICTURE;
+const FLAME: u32 = crate::objects::animated::FLAME_PICTURE;
 
 /// What the display reads that the disks decide, at the original's addresses: hunk 1 (the copper
 /// list, the level palette, the sprites' blocks), hunk 4 (the status bar's picture, the font, the
-/// icons) with world 1's `_ELEMENTY` loaded over it, and the tiles. A test's data without the
-/// program reads as 0.
+/// icons) with world 1's `_ELEMENTY` and the mechanics' pictures loaded over it, and the tiles. A
+/// test's data without the program reads as 0.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DisplayData {
     h1: Vec<u8>,
@@ -81,6 +86,11 @@ impl DisplayData {
         if let Some(m) = &sprites.elements.mask {
             put(ELEMENT_MASKS, m);
         }
+        // The mechanics' pictures (T25), where world 1's load list puts them: the spring's first copy
+        // only (its second slot keeps the program's bytes, docs/06), the vanishing block, the flame.
+        put(KNOCKER, &sprites.knocker.picture);
+        put(VANISHING, &sprites.vanishing.picture);
+        put(FLAME, &sprites.flame.picture);
         // `level_init` for worlds 1 and 2: the level palette from `h1+$384` over `h1+$304`
         // (docs/06, "The palette"; measured at the sync point, `drawing_routines.rs`).
         h1.copy_within(0x384..0x404, 0x304);
@@ -211,7 +221,7 @@ impl Display {
 }
 
 /// Chip memory as the display reads it: the engine's [`Display`] over the disks' [`DisplayData`].
-struct Chip<'a> {
+pub(crate) struct Chip<'a> {
     data: &'a DisplayData,
     display: &'a Display,
     /// Hunk 1 with the engine's copper and sprite values written in.
@@ -219,7 +229,7 @@ struct Chip<'a> {
 }
 
 impl<'a> Chip<'a> {
-    fn new(
+    pub(crate) fn new(
         data: &'a DisplayData,
         display: &'a Display,
         camera: (u16, u16),
@@ -250,7 +260,7 @@ impl<'a> Chip<'a> {
         Chip { data, display, h1 }
     }
 
-    fn byte(&self, a: u32) -> u8 {
+    pub(crate) fn byte(&self, a: u32) -> u8 {
         let a = a & 0xff_ffff;
         let at = |base: u32, len: u32| {
             let i = a.wrapping_sub(base);
@@ -268,17 +278,37 @@ impl<'a> Chip<'a> {
         self.data.byte(a)
     }
 
-    fn word(&self, a: u32) -> u16 {
+    /// `out.len()` bytes from `a`: a slice of the play screen or the status bar at once when they lie
+    /// in one, else byte by byte.
+    pub(crate) fn read(&self, a: u32, out: &mut [u8]) {
+        let a = a & 0xff_ffff;
+        let n = out.len() as u32;
+        let within = |base: u32, len: u32| {
+            let i = a.wrapping_sub(base);
+            (i < len && len - i >= n).then_some(i as usize)
+        };
+        if let Some(i) = within(h(3, SCREEN), SCREEN_BYTES) {
+            out.copy_from_slice(&self.display.screen.bytes[i..i + out.len()]);
+        } else if let Some(i) = within(h(4, STATUS), STATUS_BYTES) {
+            out.copy_from_slice(&self.display.status.bytes[i..i + out.len()]);
+        } else {
+            for (k, b) in out.iter_mut().enumerate() {
+                *b = self.byte(a.wrapping_add(k as u32));
+            }
+        }
+    }
+
+    pub(crate) fn word(&self, a: u32) -> u16 {
         u16::from_be_bytes([self.byte(a), self.byte(a.wrapping_add(1))])
     }
 }
 
 /// The line on which every sprite fetches its control words afresh (PAL).
-const SPRITE_RESET_LINE: u16 = 25;
+pub(crate) const SPRITE_RESET_LINE: u16 = 25;
 
 /// One sprite channel as Agnus runs it: its pointer, window, and the line's data.
 #[derive(Debug, Clone, Copy, Default)]
-struct Channel {
+pub(crate) struct Channel {
     pt: u32,
     pos: u16,
     ctl: u16,
@@ -288,7 +318,7 @@ struct Channel {
 impl Channel {
     /// The line's sprite DMA: the control words on the reset line and at the stop line, a line of
     /// data inside the window.
-    fn dma(&mut self, line: u16, chip: &Chip) {
+    pub(crate) fn dma(&mut self, line: u16, chip: &Chip) {
         let (start, stop) = sprite::lines(self.pos, self.ctl);
         self.shown = None;
         if line == SPRITE_RESET_LINE || (line > SPRITE_RESET_LINE && line == stop) {
@@ -301,7 +331,7 @@ impl Channel {
         }
     }
 
-    fn line(&self) -> Option<SpriteLine> {
+    pub(crate) fn line(&self) -> Option<SpriteLine> {
         self.shown.map(|data| SpriteLine {
             hstart: sprite::hstart(self.pos, self.ctl),
             data,
@@ -347,15 +377,20 @@ pub fn game_over_picture(data: &DisplayData, display: &Display, program: &Progra
 
 /// The frame copper list `list` draws from `chip`.
 fn run_list(chip: &Chip, list: u32) -> Picture {
+    let (writes, start) = frame_writes(chip, list);
+    draw(chip, &writes, start)
+}
+
+/// The copper's writes over one frame of `list`, and the bitplane setup the frame starts with: the
+/// one the list leaves at its end.
+pub(crate) fn frame_writes(chip: &Chip, list: u32) -> (Vec<Write>, Fetch) {
     let word = |a: u32| chip.word(a);
     let frame = amiga_clock::FRAME_LINES;
-    // The frame starts with the bitplane setup the list leaves at its end.
     let mut start = Fetch::default();
     for w in copper::run(&word, list, start, frame) {
         start.write(w.reg, w.value);
     }
-    let writes = copper::run(&word, list, start, frame);
-    draw(chip, &writes, start)
+    (copper::run(&word, list, start, frame), start)
 }
 
 fn draw(chip: &Chip, writes: &[Write], start: Fetch) -> Picture {

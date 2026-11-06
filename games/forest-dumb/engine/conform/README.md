@@ -74,7 +74,8 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
 - **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
-  original at the sync point. The list is empty until T21 measures the object entry points, so
+  original at the sync point, and has the engine leave out the ones it ports
+  (`fd_core::level::FROZEN_IN_A_CASE`, T25's springs and animated cells, through `Engine::freeze`). The list is empty until T21 measures the object entry points, so
   `freeze = true` is an error until then.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
@@ -117,6 +118,16 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
   under `build/`, never into git.
+- **A redraw cut short** (T71, owner 2026-11-06). `main_loop`'s status bar redraw after pass `32k` is
+  cut by pass `32k + 1` at a point that varies with the cycles each pass took (docs/09, "The status
+  bar's redraw and the next pass"), which sub-frame timing the engine does not model (DESIGN §2.1). The
+  runner samples the original's lines in the step starting pass `32k + 1`, reads the PC the interrupt
+  took (`interrupted_pc`) and how many of `h0_6a96`'s reads came before it (`redraw_cut`). Only when
+  the redraw was cut, on the frames of passes `32k + 1` to `32k + 31`, a frame failing as the engine
+  draws it passes if the bar equals `Engine::cut_redraw` at that count: the bar redrawn from the old
+  and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
+  a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
+  it off clears the frame just drawn, so the runner turns it off before the next step.
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it.
 

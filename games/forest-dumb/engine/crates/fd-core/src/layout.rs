@@ -130,6 +130,8 @@ pub const LAYOUT: &[Var] = &[
     var("spring_kind", 0, 0x21be, Width::Word),
     var("anim_tick", 0, 0x62b2, Width::Word),
     var("water_cycle", 0, 0x6342, Width::Word),
+    // CLXDAT as `char_hit_check` copied it (T70).
+    var("clxdat_copy", 0, 0x1fe6, Width::Word),
 ];
 
 /// The variable called `name`.

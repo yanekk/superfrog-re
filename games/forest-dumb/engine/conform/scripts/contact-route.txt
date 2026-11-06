@@ -1,0 +1,41 @@
+# T70: fd-plan's W1-1 route (seed 1, 100 rounds, 2026-11-06), from the sync point to the exit's cells,
+# W1-1:207,90: down the first slope over the spike pit's edge, under the water (25 rows below it).
+0: L
+4: R
+76: U R
+116: U L
+136: R
+220: -
+228: U R
+260: R
+276: U
+280: U R
+296: R
+376: U L
+408: R
+460: L
+464: R
+496: U R
+564: D
+572: -
+604: R
+644: D
+708: U R
+764: D
+780: R
+812: U R
+864: L
+880: U L
+912: U R
+944: U L
+960: U R
+1120: R
+1140: U R
+1180: L
+1184: -
+1200: U
+1232: L
+1240: U R
+1280: L
+1284: D
+1292: -

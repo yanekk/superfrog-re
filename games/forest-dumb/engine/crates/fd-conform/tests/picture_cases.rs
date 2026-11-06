@@ -73,6 +73,9 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.pass(input);
         self.frames.push(self.game.display().sprite.frame);
@@ -116,6 +119,8 @@ fn each_picture_case_matches_with_nothing_differing_but_its_exclusions() {
         assert!(v.goal_met.is_some(), "{v}");
         // Nothing tolerated: every frame not excluded is the original's to the pixel.
         assert_eq!(v.tolerated, [0, 0, 0], "{v}");
+        // Nor a bar accepted as a cut redraw draws it (T71).
+        assert_eq!(v.cut_redraws, 0, "{v}");
         // A picture a frame, but for the first (the transplant's step) and a frame now and then
         // that shows a pass whose end comes later.
         assert!(v.pictures + 3 >= c.frames, "{v}");

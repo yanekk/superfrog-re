@@ -66,9 +66,14 @@ cell). `h0_3698` sorts the slots by y for drawing; `h0_5820` cuts them onto the 
 restores behind them. Kind 6's frame table points at blank frames ([06](06-graphics-and-rendering.md)), and
 no value spawns it. The movements per kind are readings of the listing; T24 measures them by porting.
 
-**Contact (measured, T59, `object_claims.rs`).** `char_hit_check` reads CLXDAT (`$dff00e`, its bits 1 and
-2: odd bitplanes against sprites 0 and 2), not a box test. CLXCON is `$37dd` from the play copper list
-(`h1+$118`): a playfield pixel of colour 21, 23, 29 or 31 under the character's sprites. Contact does
+**Contact (measured, T59, `object_claims.rs`; modelled, T70, `contact.rs`).** `char_hit_check` reads CLXDAT
+(`$dff00e`, its bits 1 and 2: odd bitplanes against sprites 0 and 2), not a box test. CLXCON is `$37dd` from
+the play copper list (`h1+$118`). In single playfield the oracle compares the odd planes only where the even
+ones match too (vAmiga's `checkS2PCollisions`), so contact is a pixel of colour 29 alone under the
+character's sprites, drawn in front; 21, 23 and 31 match the odd planes but not the even. The status bar
+holds colour 29, so bit 0 (playfield against playfield) is always set in play, and pass 1 reads `$f1ff`.
+The level-3 interrupt comes at line 233, so a pass's read covers the play area of the frame shown since the
+last pass: the engine models it from that frame (`fd_core::render::contact`). Contact does
 nothing while `h0+$4b62` is set (after a life is lost). With `h0+$4ed0` set (falling), `h0_3dd8` tests
 each creature's 48 x 32 box against the character + (`$10`, `$24`); the first one hit becomes kind 7 and
 scores 250, and no hit is counted that pass. Otherwise, once `h0+$9b04` is 0, `hits_taken` counts
@@ -79,7 +84,7 @@ the third; one 200 pixels away, no contact. A creature under the falling charact
 `$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
 tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
 133, a life lost at 135). Which tiles carry the colours there is not measured. Those colours are in
-134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1`. The oracle reports
+134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1` (counted for 21, 23, 29, 31). The oracle reports
 collision only since T59 (`DENISE_CLX_SPR_PLF`, off in vAmiga by default; before it CLXDAT read `$8000`).
 
 **Springs (`$10` to `$13`).** `h0_24ce` reads the cell under the feet (`char_x + $e`, `char_y + $23`) each
@@ -145,7 +150,9 @@ from the table at `h0+$3b988`, which holds `n * $a0`). The engine adds it to the
 flames). Rig: `fd-conform/tests/mechanic_routines.rs`. Like collectibles they stay map cells: no
 `ObjectKind` is registered for `$10`, `$11`, `$28`, `$30` to `$33`.
 
-Frozen cases still freeze `h0_6882` and `h0_24ce` (owner, 2026-11-06). Measured unfrozen: the original's
+Frozen cases still freeze `h0_6882` and `h0_24ce` (owner, 2026-11-06), and their engine leaves the same
+two out (`level::FROZEN_IN_A_CASE`, set only through `fd-conform`'s `Engine::freeze`; owner, at T25's
+merge with T70, whose contact reads the engine's picture). Measured unfrozen: the original's
 pass grows with the animated cells' blits and some passes end late, so `main_loop`'s edge redraws are cut
 short (`camera-bottom-right` differs at pass 495 on `edge_latch_down`) and more pass ends go unseen
 (`stretch-slope` 11, `camera-right-left` 24); every compared value and picture otherwise matched. T47's

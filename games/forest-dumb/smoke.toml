@@ -109,14 +109,18 @@ workspace = "engine"
 # T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
 "crates/fd-conform/tests/collect_routines.rs" = "smoke"
 # T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
-# 2026-11-05), the two in-play checks and the screen's blits, under a second; the four mutants (27 s)
-# stay in full.
+# 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
+# in full.
 "crates/fd-conform/tests/mechanic_routines.rs" = [
     "every_t25_routine_is_registered_and_checked_here",
     "every_t25_routine_matches_the_original",
     "a_vanishing_block_in_view_makes_its_cell_solid_in_play",
     "a_spring_under_the_falling_character_fires_in_play",
     "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
+    "the_engine_holds_the_mechanics_pictures_the_original_loaded",
+    "only_a_frozen_case_leaves_springs_and_animated_cells_out",
+    "the_engines_freeze_is_the_originals_entry_for_entry",
+    "the_engines_freeze_is_set_by_the_case_runner_alone",
 ]
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
@@ -135,6 +139,9 @@ workspace = "engine"
     "every_stretch_matches_the_original_on_variables_and_picture_together",
     "a_mutated_jump_constant_fails_the_jump_stretch",
 ]
+# T45: collecting in play against the original, the ledge and the way back from the cached sync point
+# in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
+"crates/fd-conform/tests/collect_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -183,7 +190,22 @@ workspace = "engine"
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
 # two scales, about 5 s warm.
 "crates/fd-conform/tests/death_routines.rs" = "smoke"
-"crates/fd-conform/tests/death.rs" = "smoke"
+# T70: death.rs's death-pit (a life lost on the spikes, about 2 s warm) is smoke; death-spikes (all 32
+# lives to the game over screen, about 12 s debug) is full. contact.rs, the collision model over
+# fd-plan's route and its parts, about 3 s warm. The planner's route tests above it slowed with contact
+# (about 25 us a step in release): about 58 s warm on a loaded machine.
+"crates/fd-conform/tests/death.rs" = [
+    "giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "an_engine_that_misses_the_screen_or_leaves_it_early_fails",
+    "a_recording_runs_through_game_over_and_the_restart_and_replays_alike",
+    "the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar",
+    "falling_into_the_spike_pit_loses_a_life_as_the_originals",
+    "a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
+]
+# T71: where pass 32k+1 cuts main_loop's status bar redraw, idle and on death-spikes, 1600 frames each
+# side by side, about 7 s warm.
+"crates/fd-conform/tests/status_race.rs" = "smoke"
+"crates/fd-conform/tests/contact.rs" = "smoke"
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
 # status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
@@ -207,6 +229,9 @@ workspace = "engine"
     "the_routes_stretch_is_confirmed_on_the_original_where_modelled",
     "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
 ]
+# T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
+# seven in about 40 s in release, as Superfrog's recorder_drill.rs.
+"crates/fd-e2e/tests/drill_os.rs" = "full"
 
 [python]
 "tools/test_call_tree.py" = "smoke"
@@ -314,6 +339,7 @@ name = "the engine's picture against the original's over whole runs, scrolling a
 covers = [
     "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
     "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
+    "crates/fd-conform/tests/death.rs::a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
 ]
 
 [[area]]
@@ -351,6 +377,13 @@ covers = [
 ]
 
 [[area]]
+name = "taking items and bonuses in play, score and status bar, against the original"
+covers = [
+    "crates/fd-conform/tests/collect_cases.rs::collecting_matches_the_original_on_variables_and_picture_together",
+    "crates/fd-conform/tests/collect_cases.rs::the_engine_alone_meets_each_collecting_goal",
+]
+
+[[area]]
 name = "the countdown, giving up, the game over screen and the level's restart"
 covers = [
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
@@ -363,4 +396,11 @@ name = "the level's end: next_world as the original runs it, Level 1 complete un
 covers = [
     "crates/fd-conform/tests/level_end.rs::the_level_end_matches_the_original_up_to_next_world_and_stops_there_by_name",
     "crates/fd-e2e/tests/level_end.rs::the_level_end_in_the_app_shows_level_1_complete_and_fire_restarts_at_scale_1",
+]
+
+[[area]]
+name = "contact and a life lost: the collision model, char_hit_check and the spike pit"
+covers = [
+    "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
+    "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
 ]

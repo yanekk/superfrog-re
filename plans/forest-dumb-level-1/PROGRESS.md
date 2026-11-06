@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 59 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 63 of 73 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T24, T45, T52, T68 and T70 as their dependencies finish; T47 once T45 is ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T52 and T72 (now unblocked by T25), then T47 and T46 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -61,9 +61,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
-| T45 | case-collect | T22 | ⬜ | |
+| T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
-| T25 | mechanics | T11, T20, T21, T22 | ✅ | Reviewed ✅, one fix: the play screen's `Blit::Element`/`Picture` drawing had no test; one now compares it with the rig's blitter (stride mutants red). Probed: rig mutants on view bound and release compare red; branch coverage full bar waits; unfrozen cases fail at pass 495 as recorded; route.rs long test green. Engine runs mechanics in frozen cases (FINDINGS). |
+| T25 | mechanics | T11, T20, T21, T22 | ✅ | Reviewed ✅, two fixes: play screen's `Blit::Element`/`Picture` untested (test added); `DisplayData` lacked `_ZNIKAJKA`, `_WYBIJACZKA`, `_Plomien` (drawn black; test fails without). Probed: rig mutants, branch coverage, unfreezing. Merge with T70: frozen cases freeze the engine's `h0_6882`, `h0_24ce` too (owner); route.rs re-measured. |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
@@ -89,8 +89,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
-| T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
-| T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
+| T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
+| T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
+| T71 | status-redraw-race | T70; blocks T27 | ✅ | |
+| T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
 **Review queue:** *(empty)*
 

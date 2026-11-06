@@ -479,8 +479,9 @@ fn new_game() -> fd_core::Game {
     )
 }
 
-#[test]
-fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
+/// The vanishing block at (4, 4) as list 2's first animated cell, one pass on a game frozen as a case
+/// or not: its cell's first `collision_map` long after the pass.
+fn vanishing_block_after_a_pass(frozen: bool) -> Vec<u8> {
     use fd_core::Transplant;
     let game = new_game();
     // Cell (4, 4), in the first view, as list 2's first entry: the step after the start runs list 2.
@@ -490,6 +491,9 @@ fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
     used[24] = 0xff;
     cells[24 * 8..24 * 8 + 5].copy_from_slice(&[0, x as u8, 0, y as u8, 0x30]);
     let mut g = game.clone();
+    if frozen {
+        g.freeze_as_a_case();
+    }
     g.transplant(&Placed {
         game: &game,
         cells: &[(4, 4, 0x30)],
@@ -505,23 +509,32 @@ fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
     };
     assert_eq!(at(&g), [0, 0, 0, 0]);
     g.step(amiga_oracle::FrameInput::NONE);
+    // The phase steps either way, as the frozen original's `h0_62b6` still does.
     assert_eq!(g.state().animation.phase, 2);
+    at(&g)
+}
+
+#[test]
+fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
     // Tick 0, block `$30`: the table's first frame, not the empty one.
     assert_eq!(
-        at(&g),
+        vanishing_block_after_a_pass(false),
         [0xff, 0xff, 0xff, 0xf0],
         "h0_62b6 did not run in game_frame"
     );
 }
 
-#[test]
-fn a_spring_under_the_falling_character_fires_in_play() {
+/// The character falling with a spring's left half under its feet, one pass on a game frozen as a
+/// case or not: `spring_timer`, `spring_x`, `spring_y` after it.
+fn spring_after_a_pass(frozen: bool) -> (u16, u32, u32) {
     use fd_core::Transplant;
     let game = new_game();
-    // The character falling at its start, a spring's left half under its feet.
     let (cx, cy) = (0x70u32, 0x70u32);
     let feet = ((cx + 0xe) >> 4, (cy + 0x23) >> 4);
     let mut g = game.clone();
+    if frozen {
+        g.freeze_as_a_case();
+    }
     g.transplant(&Placed {
         game: &game,
         cells: &[(feet.0 as u16, feet.1 as u16, 0x10)],
@@ -530,11 +543,88 @@ fn a_spring_under_the_falling_character_fires_in_play() {
     });
     g.step(amiga_oracle::FrameInput::NONE);
     let s = g.state();
+    (s.spring.timer, s.spring.x, s.spring.y)
+}
+
+#[test]
+fn a_spring_under_the_falling_character_fires_in_play() {
     assert_eq!(
-        (s.spring.timer, s.spring.x, s.spring.y),
-        (1, cx + 0xe, cy + 0x23),
+        spring_after_a_pass(false),
+        (1, 0x70 + 0xe, 0x70 + 0x23),
         "h0_24ce did not run in game_frame"
     );
+}
+
+// ---------------------------------------------------------------------------------------------
+// A case that freezes the original: the engine leaves out the same routines, and nothing else does.
+// ---------------------------------------------------------------------------------------------
+
+/// A frozen case's engine leaves the spring and the vanishing block out (`h0_24ce`, `h0_6882`), as
+/// the frozen original does; the game as the app and the planner play it runs both (above).
+#[test]
+fn only_a_frozen_case_leaves_springs_and_animated_cells_out() {
+    assert_eq!(vanishing_block_after_a_pass(true), [0, 0, 0, 0]);
+    assert_eq!(spring_after_a_pass(true), (0, 0, 0));
+    assert_ne!(vanishing_block_after_a_pass(false), [0, 0, 0, 0]);
+    assert_ne!(spring_after_a_pass(false).0, 0);
+}
+
+/// The engine's exclusion is the original's freeze, entry for entry: each routine
+/// `FROZEN_IN_A_CASE` leaves out is frozen in `freeze.rs` for the same task, and each T25 entry there
+/// is left out here. T47 removes T25's `freeze.rs` entries, and this makes it remove these with them.
+#[test]
+fn the_engines_freeze_is_the_originals_entry_for_entry() {
+    use fd_conform::freeze::FROZEN;
+    use fd_core::level::FROZEN_IN_A_CASE;
+    for e in FROZEN_IN_A_CASE {
+        assert!(
+            FROZEN
+                .iter()
+                .any(|f| (f.hunk, f.offset, f.task) == (0, e.offset, e.task)),
+            "{} ({}) is left out of the engine but not frozen in the original",
+            e.name,
+            e.task
+        );
+    }
+    for f in FROZEN.iter().filter(|f| f.task == "T25") {
+        assert!(
+            FROZEN_IN_A_CASE.iter().any(|e| e.offset == f.offset),
+            "{:#x} is frozen in the original for T25 but run by the engine",
+            f.offset
+        );
+    }
+}
+
+/// Nothing but the case runner sets the engine's freeze: no file of the app, the planner, the map
+/// page, the end-to-end harness or the tools names `freeze_as_a_case` or `Engine::freeze`; the
+/// planner reaches the case's engine only through `fd_conform::engine_for`, which the case's own
+/// `freeze` decides.
+#[test]
+fn the_engines_freeze_is_set_by_the_case_runner_alone() {
+    let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut found = Vec::new();
+    for c in ["fd-app", "fd-plan", "fd-routeview", "fd-e2e", "fd-tools"] {
+        let mut dirs = vec![crates.join(c)];
+        while let Some(d) = dirs.pop() {
+            for e in std::fs::read_dir(&d).unwrap_or_else(|e| panic!("{}: {e}", d.display())) {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    dirs.push(p);
+                } else if p.extension().is_some_and(|x| x == "rs") {
+                    let text = std::fs::read_to_string(&p).unwrap();
+                    if ["freeze_as_a_case", "Engine::freeze", ".freeze()"]
+                        .iter()
+                        .any(|w| text.contains(w))
+                    {
+                        found.push(p);
+                    }
+                }
+            }
+        }
+    }
+    assert!(found.is_empty(), "{found:?}");
+    let lib = std::fs::read_to_string(crates.join("fd-conform/src/lib.rs")).unwrap();
+    assert_eq!(lib.matches("freeze_as_a_case").count(), 1);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -632,4 +722,30 @@ fn the_play_screen_draws_each_t25_blit_as_the_blitter_does() {
             wrong[0]
         );
     }
+}
+
+/// The pictures the mechanics' blits copy (`Blit::Picture`: `_WYBIJACZKA`, `_ZNIKAJKA1`, `_Plomien1`
+/// from `h4+$9618` to the flame's end) are in the engine's display data as the original holds them at
+/// the level sync point, so the play screen draws them, not the program's bytes under them.
+#[test]
+fn the_engine_holds_the_mechanics_pictures_the_original_loaded() {
+    use fd_core::objects::animated::{FLAME_PICTURE, VANISH_PICTURE};
+    use fd_core::objects::spring::PICTURES;
+    // `_Plomien1`: 8 bytes a line, 32 lines, five planes.
+    let end = FLAME_PICTURE + 8 * 32 * 5;
+    let am = fd_conform::sync::reach_level_1(0).unwrap_or_else(|e| panic!("{e}"));
+    let game = new_game();
+    let display = &game.data().display;
+    let (from, to) = (h(4, PICTURES[0]), h(4, end));
+    let held = am.peek(from, (to - from) as usize);
+    let wrong: Vec<u32> = (from..to)
+        .filter(|&a| display.byte(a) != held[(a - from) as usize])
+        .collect();
+    assert!(
+        wrong.is_empty(),
+        "{} bytes differ, first at {:#x} (h4+$9618 spring, $9b18 vanishing block {VANISH_PICTURE:#x}, \
+         $a298 flame)",
+        wrong.len(),
+        wrong.first().map_or(0, |a| a - h(4, 0))
+    );
 }
