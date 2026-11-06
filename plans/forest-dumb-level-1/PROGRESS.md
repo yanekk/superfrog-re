@@ -10,7 +10,7 @@
 
 **Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
 **Last updated:** 2026-11-05
-**Next `pir-work` will:** review T15 (bug compare); T69 is new and ⬜.
+**Next `pir-work` will:** T69 (level-start-state), new and ⬜.
 
 ## Tasks
 
@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
-| T15 | recording-compare | T03, T14 | 🔍 | `bug compare`: retimed by pass, judged by `run_inputs`; 6 tests, 1 ignored. Deviations: engine transplanted at the first pass end, start difference printed (owner; T69 added). Known gaps excluded, printed (T23, T24). Esc to game over stands for high score/Complete. Also writes a case and script. PassInputs fix (Escape T67). |
+| T15 | recording-compare | T03, T14 | ✅ | Review: one fix, `cargo run -p fd-conform` refused (two binaries); `default-run` added, BUG-FIX.md steps 1, 2, 5 then ran on a zip. Mutated the pass offset and the cut-read allowance: caught. Original's `input_log` matches the measured lag. Level-end exit untested (T20). Deviations held; T69 addition valid. |
 | T16 | app-drill | T13, T14 | ⬜ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
@@ -88,7 +88,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ⬜ | |
 
-**Review queue:** T15
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
