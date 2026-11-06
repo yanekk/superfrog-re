@@ -324,14 +324,15 @@ impl App {
     }
 
     /// The app's windows on screen, panels included, front to back: their numbers and bounds in
-    /// points (the window server's list).
+    /// points (the window server's list). A window run modally (`runModalForWindow`) sits on
+    /// layer 8, the modal-panel level, not 0, so both are listed (measured: a Start Level window).
     pub fn os_windows(&self) -> Vec<(u32, [i32; 4])> {
         let pid = self.os_pid();
         let script = format!(
             "ObjC.import('CoreGraphics'); \
              const l = ObjC.deepUnwrap(ObjC.castRefToObject(\
                $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))); \
-             l.filter(w => w.kCGWindowOwnerPID == {pid} && w.kCGWindowLayer == 0) \
+             l.filter(w => w.kCGWindowOwnerPID == {pid} && (w.kCGWindowLayer == 0 || w.kCGWindowLayer == 8)) \
               .map(w => [w.kCGWindowNumber, w.kCGWindowBounds.X, w.kCGWindowBounds.Y, \
                          w.kCGWindowBounds.Width, w.kCGWindowBounds.Height].join(' ')).join(';')"
         );
@@ -630,6 +631,8 @@ mod ax {
         fn CFStringGetCString(s: CFRef, buf: *mut c_char, len: isize, enc: u32) -> bool;
         fn CFGetTypeID(r: CFRef) -> usize;
         fn CFStringGetTypeID() -> usize;
+        fn CFStringGetLength(s: CFRef) -> isize;
+        fn CFStringGetMaximumSizeForEncoding(len: isize, enc: u32) -> isize;
         fn CFArrayGetTypeID() -> usize;
         fn CFNumberGetTypeID() -> usize;
         fn CFNumberGetValue(n: CFRef, kind: isize, out: *mut c_void) -> bool;
@@ -792,15 +795,36 @@ mod ax {
     /// A string attribute, empty when there is none.
     pub fn text(e: &Cf, name: &str) -> String {
         let Ok(t) = attr(e, name) else { return String::new() };
-        let mut buf = [0 as c_char; 512];
-        // SAFETY: type-checked; the buffer's length is passed.
+        string_of(&t).unwrap_or_default()
+    }
+
+    /// A CFString's text, `None` for anything else. The buffer is sized from the string: a fixed
+    /// one made a long field (a pasted 2 000-character note) read as empty.
+    fn string_of(t: &Cf) -> Option<String> {
+        // SAFETY: type-checked before any string call; the buffer's length is passed.
         unsafe {
-            if CFGetTypeID(t.0) != CFStringGetTypeID()
-                || !CFStringGetCString(t.0, buf.as_mut_ptr(), buf.len() as isize, UTF8)
-            {
-                return String::new();
+            if CFGetTypeID(t.0) != CFStringGetTypeID() {
+                return None;
             }
-            std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned()
+            let size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(t.0), UTF8) + 1;
+            let mut buf = vec![0 as c_char; size as usize];
+            if !CFStringGetCString(t.0, buf.as_mut_ptr(), size, UTF8) {
+                return None;
+            }
+            Some(std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn a_string_longer_than_512_bytes_reads_whole() {
+            let long: String = (0..400).map(|k| format!("w{k:03}é")).collect();
+            assert_eq!(long.len(), 2400);
+            assert_eq!(string_of(&string(&long)).as_deref(), Some(long.as_str()));
+            assert_eq!(string_of(&string("")).as_deref(), Some(""));
         }
     }
 }
