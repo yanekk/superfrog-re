@@ -103,6 +103,9 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
+    /// Whether the pass draws the creatures (T52): always, but in a conformance case that freezes
+    /// them in the original (`Game::freeze_creature_drawing`).
+    pub draw_creatures: bool,
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -213,7 +216,9 @@ pub fn game_frame(
     let s = &mut *l.state;
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
-    crate::render::objects::in_play(l, |c| c.restore_all());
+    if l.draw_creatures {
+        crate::render::objects::in_play(l, |c| c.restore_all());
+    }
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
     // h0+$2fae .. h0+$62b6: the objects (T24, T25); until they are ported, the dispatch's kinds run
@@ -224,7 +229,9 @@ pub fn game_frame(
     // h0+$3698 (T24).
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
-    crate::render::objects::in_play(l, |c| c.cut_all());
+    if l.draw_creatures {
+        crate::render::objects::in_play(l, |c| c.cut_all());
+    }
     let s = &mut *l.state;
     s.creature_draw.drawn = s.edges.creatures.active;
     s.joy.read_joystick(&mut s.input_log, &input);

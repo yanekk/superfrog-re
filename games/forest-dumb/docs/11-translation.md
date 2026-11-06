@@ -826,6 +826,16 @@ What each porting task did with its share of the table above, and which routines
   Muse wrote it (`reshape.py --task T70 --all`, first try, one tidy round, no quality issue, $0.0054),
   shown T23's `esc_key` and `lives_minus_one`; fitted: `CONTACT`, the hurt sound's writes as one list,
   the `bmi` as a signed compare. Its input, CLXDAT, comes from the engine's frame (`render::contact`).
+- **T52** (2026-11-06): `h0_2c7e`, `h0_5e44`, `h0_2d4c`, `h0_5820`, as `fd_core::render::objects::Creatures`
+  methods over `CreatureDraw` and the slots (`tests/creature_drawing_routines.rs`, 10 000 states; paths 456,
+  21, 254, 9). By hand: `restore` (`h0_5e44`), because it is `by_hand` (200 instructions of its own flow, over
+  180) and the batch answered `too-big`; `restore_all` (`h0_2c7e`), blocked behind it, so no literal port
+  exists; and `cut_all` (`h0_2d4c`), the example Muse is shown, the only other routine with a literal port.
+  Each matched on its first check. From Muse (`reshape.py --task T52 --all`): `cut` (`h0_5820`), passing on
+  its second try after two tidy rounds, $0.019, one quality note left (the frame table's relocated pointer
+  turned into a hunk 0 offset with `h(0, 0)`, kept). `examples` lists `cut` second only so `cut_all`'s own
+  prompt has one. Blits are `CreatureBlit`s, turned into the register writes by the rig's `DrawIo` and drawn
+  into the play screen by `PlayDraw`; registers are not compared.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

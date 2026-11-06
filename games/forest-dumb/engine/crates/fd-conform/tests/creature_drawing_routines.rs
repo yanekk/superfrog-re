@@ -536,7 +536,13 @@ fn game_frame_restores_and_cuts_the_creatures() {
         // nothing moves the creatures yet (T24).
         let mut want = g.clone();
         want.foreground();
+        let undrawn = want.display().screen.clone();
         let (want, _) = drawn(&want, &creatures, &creatures);
+        // A case freezing creatures in the original skips the drawing, and only that (owner,
+        // 2026-11-06): its step leaves the screen as the foreground does.
+        let mut frozen = g.clone();
+        frozen.freeze_creature_drawing();
+        frozen.step(amiga_oracle::FrameInput::NONE);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
         // A creature written back (T22) or an item taken redraws more than this test models.
@@ -552,7 +558,52 @@ fn game_frame_restores_and_cuts_the_creatures() {
             g.display().screen.bytes == want.bytes,
             "pass {f}: game_frame's drawing differs from the ports run in its order"
         );
+        assert!(
+            frozen.display().screen.bytes == undrawn.bytes,
+            "pass {f}: a frozen case drew the creatures"
+        );
+        // Beyond the drawing's own variables, which it leaves as they were.
+        let mut fs = frozen.state().clone();
+        fs.creature_draw = s.creature_draw;
+        fs.edges.creatures.current = s.edges.creatures.current;
+        assert!(
+            &fs == s,
+            "pass {f}: the skip changed more than the drawing's state"
+        );
         checked += 1;
     }
     assert!(checked > 50, "{checked} passes with a creature checked");
+}
+
+#[test]
+fn only_a_frozen_case_skips_the_creature_drawing() {
+    // The skip is a conformance case's exclusion (T24's), never play's: only the transplant from an
+    // original whose `h0_681c` a frozen case patched sets it, a frozen case's engine-alone run
+    // (collect_cases.rs) and this test.
+    let engine = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+    let mut callers = Vec::new();
+    let mut stack = vec![std::path::PathBuf::from(engine)];
+    while let Some(d) = stack.pop() {
+        for e in std::fs::read_dir(&d).unwrap() {
+            let p = e.unwrap().path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs")
+                && std::fs::read_to_string(&p)
+                    .unwrap()
+                    .contains("freeze_creature_drawing()")
+            {
+                callers.push(p.strip_prefix(engine).unwrap().display().to_string());
+            }
+        }
+    }
+    callers.sort();
+    assert_eq!(
+        callers,
+        [
+            "fd-conform/tests/collect_cases.rs",
+            "fd-conform/tests/creature_drawing_routines.rs",
+            "fd-core/src/game.rs"
+        ]
+    );
 }

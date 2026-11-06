@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
-| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | 🔍 | Four routines pass the rig, 10 000 states (paths 456, 21, 254, 9); 922 cuts equal the original's screen at pass ends; 8 tests. Muse wrote `cut` ($0.019); `restore`, `restore_all`, `cut_all` by hand (no literal port). Deviations: one example, not two; frozen cases skip drawing (owner); `character-run-slide` compares `hits_taken`; picture compared over 520 passes. |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |
@@ -94,7 +94,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T52
 
 ## Blocked on the user
 

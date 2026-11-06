@@ -173,6 +173,10 @@ fn the_engine_alone_meets_each_collecting_goal() {
         let (all, by_frame) = goal(&case);
         let input = input(&case);
         let mut game = Game::new(data.clone(), Start::Level1);
+        // Frozen in the original, so no creature drawn on the engine (T52; T24 lifts both).
+        if case.freeze {
+            game.freeze_creature_drawing();
+        }
         let mut met = None;
         let mut scores = Vec::new();
         for f in 0..by_frame - case.sync_frame {
