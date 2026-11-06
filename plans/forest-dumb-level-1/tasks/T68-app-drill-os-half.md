@@ -2,6 +2,8 @@
 
 **Phase:** 3 · **Depends on:** T16 · **Weight:** light
 
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T68` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+
 Added by T16 with the owner's yes, given by the coordinator agent on the owner's behalf (2026-11-06): the screen was locked overnight and nobody could unlock it. T16 drove the script-layer half of the app drill (`fd-e2e/tests/drill.rs`, `drill_sizes.rs`). The real-window half cannot run on a locked screen: the window never becomes key, so focus is never lost, and the Accessibility API does not see the buttons in the app's windows (`no element "up-keys"`). Keys posted to the app, menu clicks and window captures did work locked. T28 waits for it (`blocks T28`).
 
 ## Goal

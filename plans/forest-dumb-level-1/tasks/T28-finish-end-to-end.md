@@ -2,6 +2,8 @@
 
 **Phase:** 6 · **Depends on:** T16, T48 · **Weight:** medium
 
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T28` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+
 ## Goal
 A test plays the planned route in the real app, from launch to the end of the level, the plan's final proof; a short version really runs in smoke.
 ## Design sections this implements

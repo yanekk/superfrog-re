@@ -2,6 +2,8 @@
 
 **Phase:** 4 · **Depends on:** T11, T18 · **Weight:** light
 
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T19` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+
 ## Goal
 Level 1's HTML map with the character's path from a scripted run.
 ## Design sections this implements
