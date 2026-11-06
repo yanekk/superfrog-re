@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T45; T24, T25, T52, T68, T70 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T25, T52, T68, T70 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -61,7 +61,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
-| T45 | case-collect | T22 | 🔍 | Two frozen cases, `collect-ledge` and `collect-return`, match on variables and picture; engine alone meets both goals and pickup order; mutated orange score fails. 3 tests, 2.6 s, smoke, `[[area]]`. Deviations: `h0_2e0e` (T46) and `countdown_plus_100` (no `$4c` in W1-1, T48 exception) named unreached (owner); only orange and apple bonus values taken. |
+| T45 | case-collect | T22 | ✅ | Review clean, no fix commit. Probed: collect-return's goal met only after camera_x reached 0 (frame 728). Mutations red: items_left skipped for `$21` fails both case tests; untaken bonuses `$42`+ scored wrong pass cases, fail `collect_routines` rig. Unreached `h0_2e0e`, `countdown_plus_100` approved by the coordinator, not owner. 5 runs green, 2.6-3.4 s. |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
@@ -92,7 +92,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** T45
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

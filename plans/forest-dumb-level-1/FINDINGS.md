@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-06 | 📌 | T45 (owner): `countdown_plus_100` (time bonus `$4c`) is proven on the routine rig only; W1-1 holds no `$4c`. T48's all-routines coverage lists it as a named exception, not a miss. `h0_2e0e` waits for T46. |
+| 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. `h0_2e0e` waits for T46. |
 | 2026-11-06 | 📌 | T22 review: case comments still call taking and bonus blits frozen: `stretch-scroll.toml:4` ("T22's freeze entry"), `camera-right-left.toml:2`, `camera-bottom-right.toml:2` ("every object frozen"). Cases themselves pass. Left. |
 | 2026-11-06 | 🔄 | T22 (owner): freeze.rs lost T22's five entries; frozen cases take items both sides. The planner chases coins: its short route stalls at `W1-1:177,92`, agreeing to pass 134 (first slope's wall); route.rs's exclusion lifts with T70 `playfield-contact`, T24. |
 | 2026-11-06 | 📌 | T26, measured: `level-end` sets `cheat_flag` at sync (case key `set`); HELP read by pass 224 runs `next_world` at frame 6525; comparison stops there (`AFTER_NEXT_WORLD`). The engine keeps `level_exit_touched`, which `char_object_cells` clears (T22). |
@@ -52,6 +52,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T33: `char_hit_check` (183 instructions) answers `too-big` though the spike passed it. The routine oracle skips line-mode blits and has no fill mode; `RigReport::unmodelled_blits` counts them and `translate.py` answers `no-oracle`. |
+| 2026-11-05 | 📌 | T12, T18, worker-driven: `recorder_bar` OS test failed once at load 15 ("second recording's bar: not within 30 s"), then passed. page.html keys on `tile coin`, `level exit`, `wN `. |
 | 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; `tools/call_tree.py` decodes from each reached address. `char_probe` (199), `h0_5e44` (200), `h0_62b6` (224), `redraw_edge_c` (181) are over 180, translated by hand. |
 | 2026-11-05 | 📌 | T31: oracle hash `c453a4b584dc`, both games' oracle smoke green; `level_entry` 523 s cold, 15 s warm. Kickstart idle, load 6 to 13: 611 frames/s before patch 0006, 562 with 200 watched addresses (owner accepted). |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed, maps rebuild once; pin bench 38.9 s before, 33.5 to 35.4 s after, load 6-10. Under load wall time swings 20-38 s; A/B timing uses user CPU time (`/usr/bin/time -p`). |
