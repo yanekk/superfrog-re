@@ -197,6 +197,51 @@ fn a_recording_runs_through_game_over_and_the_restart_and_replays_alike() {
     assert_eq!(a.game, fresh);
 }
 
+/// `main_loop` branches to `game_over_screen` (`h0+$264`..`$282`) before `bsr h0_6a96`, its status
+/// bar redraw, so the frame of the pass its check finds the game over after keeps the bar's old
+/// numbers. The runner never compares that frame (the screen switches in it), so this holds the
+/// engine to the listing: the countdown loses one at pass 63, and pass 64's frame still shows 999
+/// when Esc was given up between, 998 when not.
+#[test]
+fn the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar() {
+    let (mut over, mut on) = (game(), game());
+    let step = |g: &mut Game, i: FrameInput| {
+        g.step(i);
+        assert_eq!(*g.scene(), Scene::Level);
+    };
+    while over.state().irq_count < 40 {
+        step(&mut over, FrameInput::NONE);
+        step(&mut on, FrameInput::NONE);
+    }
+    for i in [FrameInput::key(0x45), FrameInput::NONE] {
+        step(&mut over, i);
+        step(&mut on, FrameInput::NONE);
+    }
+    assert_eq!(over.state().give_up, 1);
+    let mut before = None;
+    while over.state().irq_count < 64 {
+        before = Some(over.picture());
+        step(&mut over, FrameInput::NONE);
+        step(&mut on, FrameInput::NONE);
+    }
+    assert_eq!((over.energy(), on.energy()), (998, 998));
+    // The countdown's digits (`stretch-pit`'s old exclusion box, rows 223..231 cols 144..168).
+    let digits = |p: &Picture| -> Vec<u16> {
+        let rgb = to_rgb(p);
+        (223..231)
+            .flat_map(|y| (144..168).map(move |x| (y, x)))
+            .map(|(y, x)| rgb[y * p.width as usize + x])
+            .collect()
+    };
+    let (shown, redrawn) = (digits(&over.picture()), digits(&on.picture()));
+    assert_ne!(shown, redrawn, "998 is drawn when the game goes on");
+    assert_eq!(
+        shown,
+        digits(&before.unwrap()),
+        "the bar as pass 63 left it"
+    );
+}
+
 fn to_rgb(p: &Picture) -> Vec<u16> {
     amiga_chips::to_rgb12(p)
 }
