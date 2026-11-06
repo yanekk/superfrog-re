@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T22; then T23, T45 and T25 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | planner-level-1 | T11, T17, T19 | ✅ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
-| T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
+| T22 | collectibles | T11, T20, T21, T40, T49 | 🔍 | Eight routines as `MapObjects` (objects/collectible.rs), rig 10 000 states each, four mutants, two planner tests. Muse wrote six ($0.039). Deviations: no `ObjectKind` or `scan` (no object list; edge redraws scan), no scan.rs, `Blit::Cell` added, freeze.rs's T22 entries removed, route.rs re-measured (owner). |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T22
 
 ## Blocked on the user
 

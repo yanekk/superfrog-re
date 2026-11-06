@@ -174,6 +174,26 @@ fn on_objects(cpu: &mut Cpu, f: impl FnOnce(&mut MapObjects)) {
     store(cpu, &before, &s);
 }
 
+fn object_cells(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.object_cells());
+}
+
+fn add_score(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.add_score());
+}
+
+fn write_back(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.write_back());
+}
+
+fn add_time(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.add_time());
+}
+
+fn count_item(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.count_item());
+}
+
 /// `h0_26ec` takes the pixel in `d0`, `d1`.
 fn take(cpu: &mut Cpu) {
     let (x, y) = (cpu.d[0], cpu.d[1]);
@@ -198,39 +218,14 @@ fn write_back_slot(cpu: &mut Cpu) {
 fn routines() -> Vec<(&'static str, u32, fn(&mut Cpu), RegsCompared)> {
     let none = RegsCompared::NONE;
     vec![
-        (
-            "char_object_cells",
-            0x2698,
-            |c| on_objects(c, |o| o.object_cells()),
-            none,
-        ),
+        ("char_object_cells", 0x2698, object_cells, none),
         ("h0_26ec", 0x26ec, take, none),
         ("h0_29ca", 0x29ca, redraw_cell, RegsCompared::d(&[0])),
-        (
-            "score_add_routine",
-            0x2a6e,
-            |c| on_objects(c, |o| o.add_score()),
-            none,
-        ),
-        (
-            "h0_2dd6",
-            0x2dd6,
-            |c| on_objects(c, |o| o.write_back()),
-            none,
-        ),
+        ("score_add_routine", 0x2a6e, add_score, none),
+        ("h0_2dd6", 0x2dd6, write_back, none),
         ("h0_2e0e", 0x2e0e, write_back_slot, none),
-        (
-            "countdown_plus_100",
-            0x6a04,
-            |c| on_objects(c, |o| o.add_time()),
-            none,
-        ),
-        (
-            "items_left_minus_one",
-            0x6a4c,
-            |c| on_objects(c, |o| o.count_item()),
-            none,
-        ),
+        ("countdown_plus_100", 0x6a04, add_time, none),
+        ("items_left_minus_one", 0x6a4c, count_item, none),
     ]
 }
 
