@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T19, then T20 once it is ✅; T68 and the rest as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** build T20 (T19 is ✅); T68 and the rest as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -54,7 +54,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | app-drill | T13, T14 | ✅ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
-| T19 | map-page | T11, T18 | 🔍 | `fd-routeview` plays an input script on `Game` from W1-1's start, 100 frames past its last line, and writes `amiga-routeview`'s page to `build/route-viz`. 7 tests (4 unit, 3 in `page.rs`). Deviations, beyond the doc: the page shows No verdict (status rewritten to `unknown`, level end is T26) and drops `page.html`'s web-font link; `page.html` untouched. |
+| T19 | map-page | T11, T18 | ✅ | `fd-routeview` writes W1-1's page to `build/route-viz`. Review: page test checked only the track's end (100 idle frames), so a one-frame shift passed; reproduced by mutation, fixed, test locks it. Both deviations held by mutation. Worker-driven headless Chrome 1280×800 from disk: map, track, No verdict, 332 coins, no page request. |
 | T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** T19
+**Review queue:** empty
 
 ## Blocked on the user
 
