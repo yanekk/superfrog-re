@@ -360,3 +360,70 @@ fn the_rig_catches_a_missing_item_sound() {
     });
     assert!(!f.is_empty());
 }
+
+/// The engine's own state as the original's memory, but with creature slot 0 active and well right of
+/// the view: `game_frame` must run `h0_2dd6` in play (the rig above proves the routine, not the call).
+struct OneCreature<'a> {
+    game: &'a fd_core::Game,
+    slot: CreatureSlot,
+}
+
+impl fd_core::Mem for OneCreature<'_> {
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+        use fd_core::Transplant;
+        let s = self.game.state();
+        match (hunk, offset, len) {
+            (0, fd_core::level::redraw::OBJECT_MAP, _) => return s.object_map[..len].to_vec(),
+            (0, ACTIVE, 5) => return vec![1, 0, 0, 0, 0],
+            (0, SLOTS, 40) => {
+                let mut b = vec![0; 40];
+                b[0..2].copy_from_slice(&self.slot.x.to_be_bytes());
+                b[2..4].copy_from_slice(&self.slot.y.to_be_bytes());
+                b[4..6].copy_from_slice(&self.slot.kind.to_be_bytes());
+                return b;
+            }
+            _ => {}
+        }
+        match fd_core::LAYOUT
+            .iter()
+            .find(|v| (v.hunk, v.offset, v.width.bytes()) == (hunk, offset, len))
+        {
+            Some(v) => self.game.probe(v).to_be_bytes()[4 - len..].to_vec(),
+            None => vec![0; len],
+        }
+    }
+}
+
+#[test]
+fn a_creature_out_of_view_is_written_back_in_play() {
+    use fd_core::objects::collectible::{MAP_COLUMN, map_cell};
+    use fd_core::{Game, Start, Transplant};
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let game = Game::new(data, Start::Level1);
+    let camera_x = game.state().camera.x;
+    // Past the right edge (`camera_x + $130`): written one column right of its cell, if empty.
+    let slot = CreatureSlot {
+        x: camera_x + 0x200,
+        y: 0x40,
+        kind: 0x10,
+        facing: 0,
+        phase: 0,
+    };
+    let cell = (map_cell(slot.x as u32, slot.y as u32) + MAP_COLUMN
+        - fd_core::level::redraw::OBJECT_MAP) as usize;
+    assert_eq!(
+        game.state().object_map[cell],
+        0,
+        "the test's cell is not empty"
+    );
+    let mut g = game.clone();
+    g.transplant(&OneCreature { game: &game, slot });
+    assert_eq!(g.state().edges.creatures.active[0], 1);
+    g.step(amiga_oracle::FrameInput::NONE);
+    let s = g.state();
+    assert_eq!(
+        (s.object_map[cell], s.edges.creatures.active[0]),
+        (0x11, 0),
+        "h0_2dd6 did not run in game_frame"
+    );
+}
