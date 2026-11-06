@@ -1,5 +1,6 @@
 # T70: a life lost on the spikes (scripts/stretch-pit.txt): right held from frame 6410, the slide down the
-# first slope flies off its end into the spike pit (frame 6521). Draft.
+# first slope flies off its end into the spike pit (frame 6521); lives
+# 0x32 to 0x30 by frame 6661, the character held still through each hurt frame and hold.
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "stretch-pit"
 frames = 330
