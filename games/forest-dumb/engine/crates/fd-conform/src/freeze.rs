@@ -70,6 +70,25 @@ pub fn for_case(thaw: &[String]) -> Vec<Frozen> {
         .collect()
 }
 
+/// What a `freeze = true` case skips in the engine to mirror [`FROZEN`]: an exclusion, each naming
+/// the task whose port removes it together with the frozen entry at `mirrors` (owner, 2026-11-06, T52).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Skipped {
+    pub what: &'static str,
+    pub task: &'static str,
+    /// The hunk 0 offset of the [`FROZEN`] entry it mirrors.
+    pub mirrors: u32,
+}
+
+/// Every engine skip of a frozen case beyond `fd_core::level::FROZEN_IN_A_CASE`'s: a frozen case's
+/// engine (`Game::freeze_as_a_case`, set by the case runner) leaves these out of `game_frame`.
+pub const ENGINE_SKIPS: &[Skipped] = &[Skipped {
+    what: "T52's creature drawing (h0_2c7e, h0_2d4c): the frozen h0_681c starts no creature in the \
+           original, the engine's redraws still start them, so the engine draws none",
+    task: "T24",
+    mirrors: 0x681c,
+}];
+
 /// `rts`.
 const RTS: [u8; 2] = [0x4e, 0x75];
 
@@ -82,4 +101,17 @@ pub fn apply(am: &mut Amiga, list: &[Frozen]) -> Result<(), String> {
         am.poke(HUNK_BASES[f.hunk as usize] + f.offset, &RTS);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn each_engine_skip_goes_with_the_frozen_entry_it_mirrors() {
+        for s in ENGINE_SKIPS {
+            let f = FROZEN.iter().find(|f| f.hunk == 0 && f.offset == s.mirrors);
+            assert_eq!(f.map(|f| f.task), Some(s.task), "{}", s.what);
+        }
+    }
 }

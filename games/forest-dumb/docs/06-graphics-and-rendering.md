@@ -100,6 +100,24 @@ Interruptible points of the ported routines (porting rule 1), listed before port
 | `h0_3ab4` | callers in `game_frame` | a blitter-busy loop; the engine's blits finish at once |
 | `h0_6a96` and its digit routines | foreground (`main_loop`) | any instruction: a pass can cut a redraw short; picture only, for one frame |
 | `h0_9a34`, `h0_988a` | start-up | none |
+| `h0_2c7e`, `h0_5e44`, `h0_2d4c`, `h0_5820` (T52) | level-3 interrupt (`game_frame`) | a blitter-busy loop before each blit (6 in `h0_5e44`, up to 2 in `h0_5820`); the slot loops keep their index in memory (`h0+$2c7a`, `$2c7c`) but finish in the pass; no beam wait, so a cut behind the beam shows a frame late |
+
+**Creatures (T52, `render::objects::Creatures`).** Each pass `game_frame` restores, then cuts, the five
+creature slots. `h0_2c7e` runs with the flags of the slots the last pass drew (`creature_active+$c`)
+swapped in for the live ones (kept at `+6`): for each, `h0_5e44` copies the map's tiles back over it, 3
+across and 2 down from its cell (the second row the map's 16 rows higher when the creature is more than
+`$c0` lines below `camera_y`), a third row for kinds 0, 3 and 7 off a cell's top line and above
+`camera_y + $b0`; the screen wraps at line 256. After the creatures move, `h0_2d4c` sets the cut modulos
+(A, B `$22`; C, D `$28`; A's last word masked) and `h0_5820` cuts each active one, 32 by 32, from
+`StworkiNew` (`h3+$20c18`, masks `h3+$2bb18`; kind 7 from `h4+$3200`, masks `h4+$4b00`), its frame from
+its kind's table at `h0+$3a18` by phase bits 2-4 and facing (`$20` on when the sign is clear). A creature
+reaching past line 256 is cut in two, the rest from the screen's top; at `y & $ff = $e0` the first part is
+31 lines and there is no second, so its last line is never drawn. Then `creature_active+$c` takes the
+live flags. A case with `freeze = true` starts no creature in the original, while the engine's redraws
+still do, so its engine skips this drawing (owner, 2026-11-06; T24 lifts it with `h0_681c`'s freeze).
+Measured over 520 passes (`creature_drawing_routines.rs`): every screen byte the drawing writes equals the
+original's where the pass ends (`watch_write`), not where the step ends, which falls before the cuts on
+most moving frames.
 
 Measured (2026-11-06): with the original's display memory transplanted, the engine's picture equals the
 oracle's `picture_in` at frame 6340 in every pixel; at 6640, scrolled and moving, 1 211 pixels differ around

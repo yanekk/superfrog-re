@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 65 of 73 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T24, T47 and T52 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24 and T47 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
-| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ✅ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |

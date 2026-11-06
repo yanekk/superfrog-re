@@ -103,10 +103,10 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
-    /// A conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0 offsets of the
-    /// routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the case thaws
-    /// (`Game::thaw_in_a_case`). Empty in play.
-    pub frozen: &'a [u32],
+    /// `Some` when a conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0
+    /// offsets of the routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the
+    /// case thaws (`Game::thaw_in_a_case`, T72). `None` in play.
+    pub frozen: Option<&'a [u32]>,
 }
 
 /// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
@@ -136,7 +136,7 @@ pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
 
 /// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
 fn frozen(l: &LevelCtx, offset: u32) -> bool {
-    l.frozen.contains(&offset)
+    l.frozen.is_some_and(|f| f.contains(&offset))
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -242,7 +242,18 @@ pub fn game_frame(
         Play { state: l.state }.play_keys();
         return;
     }
-    // h0+$2c7e, h0+$2fae: the creatures (T24, T52); until they are ported, the dispatch's kinds run
+    // h0+$2c7e: the tiles behind the creatures the last pass drew restored, run with their flags
+    // (`creature_active+$c`) in place of the live ones, which wait at `creature_active+6` (T52).
+    let s = &mut *l.state;
+    s.creature_draw.saved = s.edges.creatures.active;
+    s.edges.creatures.active = s.creature_draw.drawn;
+    // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
+    if l.frozen.is_none() {
+        crate::render::objects::in_play(l, |c| c.restore_all());
+    }
+    let s = &mut *l.state;
+    s.edges.creatures.active = s.creature_draw.saved;
+    // h0+$2fae: the creatures (T24); until they are ported, the dispatch's kinds run
     // here.
     update_objects(l, objects, dispatch, events);
     // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25). A frozen case's `h0_6882`
@@ -254,7 +265,14 @@ pub fn game_frame(
     crate::objects::in_play(l, |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
+    // h0+$3698 (T24).
+    // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
+    // restore (T52).
+    if l.frozen.is_none() {
+        crate::render::objects::in_play(l, |c| c.cut_all());
+    }
     let s = &mut *l.state;
+    s.creature_draw.drawn = s.edges.creatures.active;
     s.joy.read_joystick(&mut s.input_log, &input);
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
     let mut play = Play { state: l.state };

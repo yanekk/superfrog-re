@@ -108,11 +108,12 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
-    /// A conformance case froze the original: the hunk 0 offsets of the routines the engine leaves
-    /// out, from `level::FROZEN_IN_A_CASE` less those the case thaws. Set only by
-    /// [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
+    /// `Some` when a conformance case froze the original: the hunk 0 offsets of the routines the
+    /// engine leaves out, from `level::FROZEN_IN_A_CASE` less those the case thaws (T72). `Some` even
+    /// when every one is thawed, since a frozen case also skips the creature drawing (T52). Set only
+    /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
     /// (`fd-conform/tests/mechanic_routines.rs`).
-    frozen: Vec<u32>,
+    frozen: Option<Vec<u32>>,
 }
 
 impl Game {
@@ -163,7 +164,7 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
-                    frozen: Vec::new(),
+                    frozen: None,
                 }
             }
         }
@@ -220,7 +221,7 @@ impl Game {
                     display: &mut self.display,
                     display_data: &self.data.display,
                     clxdat,
-                    frozen: &self.frozen,
+                    frozen: self.frozen.as_deref(),
                 };
                 level::game_frame(
                     &mut ctx,
@@ -278,15 +279,18 @@ impl Game {
     /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
     /// frozen original does. A restart keeps it.
     pub fn freeze_as_a_case(&mut self) {
-        self.frozen = level::FROZEN_IN_A_CASE.iter().map(|f| f.offset).collect();
+        self.frozen = Some(level::FROZEN_IN_A_CASE.iter().map(|f| f.offset).collect());
     }
 
     /// For a frozen case that thaws the routine at hunk 0 `offset` (a case's `thaw`, T72): the
     /// engine runs it again, as the original does. False when it was not left out.
     pub fn thaw_in_a_case(&mut self, offset: u32) -> bool {
-        let before = self.frozen.len();
-        self.frozen.retain(|&f| f != offset);
-        self.frozen.len() < before
+        let Some(frozen) = &mut self.frozen else {
+            return false;
+        };
+        let before = frozen.len();
+        frozen.retain(|&f| f != offset);
+        frozen.len() < before
     }
 
     fn restart(&mut self) {
@@ -581,6 +585,14 @@ impl Game {
             };
         }
         c.current = word(&mem.read(0, 0x581c, 2), 0);
+        // The creature drawing's (T52): `h0+$2c7a`, `$2c7c`, `$5818`..`$581f`, the flag sets.
+        let d = &mut s.creature_draw;
+        d.restore_index = word(&mem.read(0, 0x2c7a, 2), 0);
+        d.cut_index = word(&mem.read(0, 0x2c7c, 2), 0);
+        let at = mem.read(0, 0x5818, 8);
+        (d.x, d.y, d.restoring) = (word(&at, 0), word(&at, 2), word(&at, 6));
+        d.saved.copy_from_slice(&mem.read(0, 0x67e0, 5));
+        d.drawn.copy_from_slice(&mem.read(0, 0x67e6, 5));
         let last = mem.read(0, 0x687e, 4);
         c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
         let used = mem.read(2, 0x1680, 48);

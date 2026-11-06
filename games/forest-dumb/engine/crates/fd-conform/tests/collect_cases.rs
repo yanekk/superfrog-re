@@ -172,7 +172,7 @@ fn the_engine_alone_meets_each_collecting_goal() {
         let case = load(name);
         let (all, by_frame) = goal(&case);
         let input = input(&case);
-        let mut game = Game::new(data.clone(), Start::Level1);
+        let mut game = fd_conform::engine_for(&case, data.clone());
         let mut met = None;
         let mut scores = Vec::new();
         for f in 0..by_frame - case.sync_frame {
