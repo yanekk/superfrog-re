@@ -1878,3 +1878,38 @@ offset = 0x2e0e
 name = "h0_2e0e"
 kind = "func"
 note = "slot d0 out of view: kind + 1 written into a free cell near it, its flag cleared (T22)"
+
+# T25, the mechanics: springs and the animated cells (docs/10, "Mechanics, ported").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21c0
+name = "h0_21c0"
+kind = "func"
+note = "the spring's picture: pressed with a sound at spring_timer 1, its four tiles back at 6 (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x24ce
+name = "h0_24ce"
+kind = "func"
+note = "a spring ($10-$13) under the falling character's feet throws it up and starts spring_timer (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x62b6
+name = "h0_62b6"
+kind = "func"
+note = "one of the four animated-cell lists a pass: items, water, vanishing blocks, flames drawn (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6342
+name = "water_cycle"
+kind = "var"
+size = 2
+note = "set, $28 water cycles four _ELEMENTY frames, else two; load_list_world_1 and _2 set it, 3 to 6 clear it (T25)"

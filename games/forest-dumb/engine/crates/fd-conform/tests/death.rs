@@ -92,6 +92,9 @@ impl Transplant for Changed {
 }
 
 impl Engine for Changed {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -263,6 +266,9 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -366,6 +372,9 @@ impl Transplant for Cut {
 }
 
 impl Engine for Cut {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }

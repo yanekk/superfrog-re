@@ -91,6 +91,9 @@ impl Transplant for Changed {
 }
 
 impl Engine for Changed {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.passes += 1;
         self.game.step(input)

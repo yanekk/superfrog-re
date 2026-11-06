@@ -122,6 +122,14 @@ pub const LAYOUT: &[Var] = &[
     var("pause_key_down", 0, 0x2102, Width::Word),
     var("esc_down", 0, 0x21b0, Width::Word),
     var("cheat_flag", 0, 0x780c, Width::Word),
+    // The mechanics (T25): the spring that fired last, the animated cells' phase and tick, and the
+    // water's speed the level's load list sets.
+    var("spring_x", 0, 0x21b4, Width::Long),
+    var("spring_y", 0, 0x21b8, Width::Long),
+    var("spring_timer", 0, 0x21bc, Width::Word),
+    var("spring_kind", 0, 0x21be, Width::Word),
+    var("anim_tick", 0, 0x62b2, Width::Word),
+    var("water_cycle", 0, 0x6342, Width::Word),
     // CLXDAT as `char_hit_check` copied it (T70).
     var("clxdat_copy", 0, 0x1fe6, Width::Word),
 ];

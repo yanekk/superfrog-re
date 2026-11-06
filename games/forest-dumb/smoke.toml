@@ -108,6 +108,20 @@ workspace = "engine"
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
 # T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
 "crates/fd-conform/tests/collect_routines.rs" = "smoke"
+# T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
+# 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
+# in full.
+"crates/fd-conform/tests/mechanic_routines.rs" = [
+    "every_t25_routine_is_registered_and_checked_here",
+    "every_t25_routine_matches_the_original",
+    "a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+    "a_spring_under_the_falling_character_fires_in_play",
+    "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
+    "the_engine_holds_the_mechanics_pictures_the_original_loaded",
+    "only_a_frozen_case_leaves_springs_and_animated_cells_out",
+    "the_engines_freeze_is_the_originals_entry_for_entry",
+    "the_engines_freeze_is_set_by_the_case_runner_alone",
+]
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
@@ -354,6 +368,13 @@ covers = [
 [[area]]
 name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
 covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "the mechanics: springs and the animated cells (items, water, vanishing blocks)"
+covers = [
+    "crates/fd-conform/tests/mechanic_routines.rs::every_t25_routine_matches_the_original",
+    "crates/fd-conform/tests/mechanic_routines.rs::a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+]
 
 [[area]]
 name = "taking items and bonuses in play, score and status bar, against the original"

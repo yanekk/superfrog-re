@@ -108,6 +108,10 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
+    /// A conformance case froze the original: the engine leaves out what `level::FROZEN_IN_A_CASE`
+    /// names. Set only by [`Game::freeze_as_a_case`]; the app and the planner never do
+    /// (`fd-conform/tests/mechanic_routines.rs`).
+    frozen: bool,
 }
 
 impl Game {
@@ -158,6 +162,7 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
+                    frozen: false,
                 }
             }
         }
@@ -209,11 +214,12 @@ impl Game {
                     level: &self.data.level,
                     program: &self.data.program,
                     anim: &self.data.anim,
-                    plane: &self.plane,
+                    plane: &mut self.plane,
                     image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
                     clxdat,
+                    frozen: self.frozen,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -267,10 +273,18 @@ impl Game {
 
     /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
     /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
+    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
+    /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
+    /// frozen original does. A restart keeps it.
+    pub fn freeze_as_a_case(&mut self) {
+        self.frozen = true;
+    }
+
     fn restart(&mut self) {
-        let events = std::mem::take(&mut self.events);
+        let (events, frozen) = (std::mem::take(&mut self.events), self.frozen);
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
+        self.frozen = frozen;
         self.events.push(Event::Restart);
     }
 
