@@ -25,6 +25,8 @@ pub struct State {
     /// BCD.
     pub lives: u16,
     pub hits_taken: u16,
+    /// `clxdat_copy` (`h0+$1fe6`): CLXDAT as `char_hit_check` read it this pass (T70).
+    pub clxdat_copy: u16,
     /// BCD in its first word; the original's long, as stored.
     pub countdown: u32,
     /// `countdown_tick` (`h0+$20ac`): passes since the countdown last lost one (T23).
@@ -89,6 +91,8 @@ impl State {
             // `lives_reset`, `move.w #$32`.
             lives: 0x32,
             hits_taken: 0,
+            // Measured at the sync point: the character falls through the sky, over nothing.
+            clxdat_copy: 0x8000,
             // `level_init`, `move.w #$999, countdown`; the long's second word is 0.
             countdown: 0x0999_0000,
             // Pass 1's `countdown_step` ran before the sync point (measured, T23).
@@ -151,6 +155,7 @@ impl State {
             "edge_at_down_y" => self.camera.edges.at[3].1.into(),
             "lives" => self.lives.into(),
             "hits_taken" => self.hits_taken.into(),
+            "clxdat_copy" => self.clxdat_copy.into(),
             "countdown" => self.countdown,
             "countdown_tick" => self.countdown_tick,
             "last_key_byte" => self.keys.last.into(),
@@ -227,6 +232,7 @@ impl State {
             "edge_at_down_y" => self.camera.edges.at[3].1 = w,
             "lives" => self.lives = w,
             "hits_taken" => self.hits_taken = w,
+            "clxdat_copy" => self.clxdat_copy = w,
             "countdown" => self.countdown = value,
             "countdown_tick" => self.countdown_tick = value,
             "last_key_byte" => self.keys.last = b,

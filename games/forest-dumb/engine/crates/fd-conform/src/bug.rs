@@ -88,8 +88,10 @@ const STALL: u32 = 64;
 const SLACK: u32 = 2_000;
 
 /// What a bug compare does not judge yet, and the task that makes it judged (DESIGN §2.2: no gap
-/// is silent): `hits_taken`, which contact raises (`char_hit_check`, T70). Read and counted, printed
-/// in the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
+/// is silent): CLXDAT as `char_hit_check` copies it and the `hits_taken` it counts. T70 models contact
+/// from the engine's own frame, but in play that frame lacks the creatures and animated items the
+/// original draws (T22, T52, T24), so the two differ there until then. Read and counted, printed in
+/// the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
 fn known_gaps() -> Vec<Exclusion> {
     let var = |name: &str, task: &str| Exclusion {
         rows: 0..0,
@@ -98,7 +100,7 @@ fn known_gaps() -> Vec<Exclusion> {
         what: format!("var {name}"),
         task: task.to_string(),
     };
-    vec![var("hits_taken", "T70")]
+    vec![var("hits_taken", "T24"), var("clxdat_copy", "T24")]
 }
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
@@ -660,7 +662,7 @@ mod tests {
         ] {
             assert!(vars.iter().any(|n| n == v), "{v}");
         }
-        for v in ["hits_taken", "mt_counter"] {
+        for v in ["hits_taken", "clxdat_copy", "mt_counter"] {
             assert!(!vars.iter().any(|n| n == v), "{v}");
         }
         // Every gap names its task.

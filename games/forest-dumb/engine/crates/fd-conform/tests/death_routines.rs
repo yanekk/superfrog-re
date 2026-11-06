@@ -1,17 +1,18 @@
-//! What ends a life or the game (`fd_core::character::death`, plans/forest-dumb-level-1 T23) against
-//! the original on the routine rig, over 10 000 states of each T39 generator, on the main program
-//! from the owner's disks.
+//! What ends a life or the game (`fd_core::character::death`, plans/forest-dumb-level-1 T23, T70)
+//! against the original on the routine rig, over 10 000 states of each T39 generator (T38's for
+//! `char_hit_check`, its creature slots inactive: the stomp is T24's), on the main program from the
+//! owner's disks.
 //!
 //! Each check loads the variables the routines touch into a `State`, runs the engine function on
 //! it and stores them back, so the rig compares every byte the original writes with what the
-//! engine wrote. No register is compared: `level3_handler` saves and restores every register round
+//! engine wrote, and `char_hit_check`'s custom-chip writes (the hurt sound). No register is compared: `level3_handler` saves and restores every register round
 //! `game_frame`, and none of these leaves a result a caller reads (docs/09-play-measured.md).
 
-use fd_conform::generators::{self, Gen};
+use fd_conform::generators::{self, Gen, Generator, Setup};
 use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport};
 use fd_core::character::Play;
-use fd_core::{PORTED, State};
+use fd_core::{PORTED, Scratch, State};
 
 const CASES: usize = 10_000;
 
@@ -26,6 +27,20 @@ const COUNTDOWN: u32 = 0x6a80;
 const LIVES: u32 = 0x6a84;
 const ITEMS_LEFT: u32 = 0x6a88;
 const CHEAT: u32 = 0x780c;
+const CLXDAT_COPY: u32 = 0x1fe6;
+const HITS_TAKEN: u32 = 0x3b26;
+const DYING: u32 = 0x4b62;
+const FALLING: u32 = 0x4ed0;
+const UNHURT_T: u32 = 0x9b04;
+const RUN_LEFT: u32 = 0x4710;
+const RUN_RIGHT: u32 = 0x4714;
+const RISING: u32 = 0x4ecf;
+const JUMPED: u32 = 0x4109;
+const JUMP_T: u32 = 0x410a;
+/// `creature_active`: five flag bytes.
+const SLOT_FLAGS: u32 = 0x67da;
+/// CLXDAT, as the CPU reads it.
+const CLXDAT: u32 = 0xdf_f00e;
 
 fn h0(o: u32) -> u32 {
     generators::h(0, o)
@@ -46,6 +61,16 @@ fn load(cpu: &Cpu) -> State {
     s.countdown = m.rl(h0(COUNTDOWN));
     s.lives = m.rw(h0(LIVES));
     s.items_left = m.rw(h0(ITEMS_LEFT));
+    s.clxdat_copy = m.rw(h0(CLXDAT_COPY));
+    s.hits_taken = m.rw(h0(HITS_TAKEN));
+    s.motion.dying = m.rw(h0(DYING));
+    s.motion.falling = m.rb(h0(FALLING));
+    s.motion.unhurt_t = m.rb(h0(UNHURT_T));
+    s.motion.run_left = m.rl(h0(RUN_LEFT));
+    s.motion.run_right = m.rl(h0(RUN_RIGHT));
+    s.motion.rising = m.rb(h0(RISING));
+    s.motion.jumped = m.rb(h0(JUMPED));
+    s.motion.jump_t = m.rb(h0(JUMP_T));
     s
 }
 
@@ -64,6 +89,16 @@ fn store(cpu: &mut Cpu, s: &State) {
     m.wl(h0(COUNTDOWN), s.countdown);
     m.ww(h0(LIVES), s.lives);
     m.ww(h0(ITEMS_LEFT), s.items_left);
+    m.ww(h0(CLXDAT_COPY), s.clxdat_copy);
+    m.ww(h0(HITS_TAKEN), s.hits_taken);
+    m.ww(h0(DYING), s.motion.dying);
+    m.wb(h0(FALLING), s.motion.falling);
+    m.wb(h0(UNHURT_T), s.motion.unhurt_t);
+    m.wl(h0(RUN_LEFT), s.motion.run_left);
+    m.wl(h0(RUN_RIGHT), s.motion.run_right);
+    m.wb(h0(RISING), s.motion.rising);
+    m.wb(h0(JUMPED), s.motion.jumped);
+    m.wb(h0(JUMP_T), s.motion.jump_t);
 }
 
 /// Run `f` on the state loaded from `cpu` and store it.
@@ -93,6 +128,38 @@ fn lives_minus_one(cpu: &mut Cpu) {
     on_play(cpu, |p| p.lives_minus_one());
 }
 
+/// CLXDAT as the case reads it, the engine run with a scratch on the case's beam, and its
+/// custom-chip writes handed to the rig after its memory.
+fn char_hit_check(cpu: &mut Cpu) {
+    let clxdat = cpu.mem.rw(CLXDAT);
+    let mut scratch = Scratch {
+        beam: cpu.mem.beam.get() as u8,
+        ..Scratch::default()
+    };
+    on_play(cpu, |p| p.char_hit_check(clxdat, &mut scratch));
+    cpu.mem.hw_writes.extend(scratch.hw);
+}
+
+/// T38's `char_hit_check` states with every creature slot inactive: the contact path alone (T70).
+fn hit_check_no_creatures(g: &mut Gen) -> Setup {
+    let mut s = (generators::generator("char_hit_check").unwrap().case)(g);
+    for i in 0..5 {
+        s.b(h0(SLOT_FLAGS) + i, 0);
+    }
+    s
+}
+
+/// The generator each routine runs on.
+fn generator(name: &str) -> Generator {
+    match name {
+        "char_hit_check" => Generator {
+            base: None,
+            case: hit_check_no_creatures,
+        },
+        _ => generators::generator(name).unwrap(),
+    }
+}
+
 /// Each routine: its generator's name (T39's, as in `re/translate.toml`), entry in hunk 0 and the
 /// engine port's adapter.
 fn routines() -> Vec<(&'static str, u32, fn(&mut Cpu))> {
@@ -102,11 +169,12 @@ fn routines() -> Vec<(&'static str, u32, fn(&mut Cpu))> {
         ("help_key", 0x2146, help_key),
         ("esc_key", 0x2176, esc_key),
         ("lives_minus_one", 0x69d6, lives_minus_one),
+        ("char_hit_check", 0x3b2a, char_hit_check),
     ]
 }
 
 #[test]
-fn every_t23_routine_is_registered_and_checked_here() {
+fn every_death_routine_is_registered_and_checked_here() {
     // The routines `re/translate.toml` gives T23, and `help_key`, which `play_keys` runs whole (T26's
     // there; T23 ports it with its caller).
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../re/translate.toml");
@@ -123,6 +191,8 @@ fn every_t23_routine_is_registered_and_checked_here() {
         .filter(|b| {
             field(b, "port_task").as_deref() == Some("T23")
                 || field(b, "name").as_deref() == Some("help_key")
+                // T70 ports its contact half; translate.toml gives it T24, which keeps the stomp.
+                || field(b, "name").as_deref() == Some("char_hit_check")
         })
         .map(|b| {
             let off = field(b, "offset").unwrap();
@@ -149,7 +219,7 @@ fn every_death_routine_matches_the_original() {
     let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
     let mut lines = Vec::new();
     for (name, off, port) in routines() {
-        let generator = generators::generator(name).unwrap();
+        let generator = generator(name);
         let rep: RigReport = judge::check_regs(
             &mut r,
             name,
@@ -199,7 +269,7 @@ fn the_generators_lay_no_base_and_load_store_round_trips() {
     // A store of what was loaded changes nothing, so the rig sees only the engine's own writes.
     let base = std::sync::Arc::new(vec![0u8; 1 << 24]);
     for (name, _, _) in routines() {
-        let generator = generators::generator(name).unwrap();
+        let generator = generator(name);
         assert!(generator.base.is_none(), "{name}");
         let mut g = Gen::new(9);
         for _ in 0..200 {
@@ -214,4 +284,34 @@ fn the_generators_lay_no_base_and_load_store_round_trips() {
             assert_eq!(cpu.mem.changed_since(&before), vec![], "{name}");
         }
     }
+}
+
+/// `char_hit_check` counting contact during the grace after a life (`char_unhurt_t` not 0): what a
+/// port that missed the `tst.b h0+$9b04` would do.
+fn hit_check_without_grace(cpu: &mut Cpu) {
+    let clxdat = cpu.mem.rw(CLXDAT);
+    let mut scratch = Scratch::default();
+    on_play(cpu, |p| {
+        let t = p.state.motion.unhurt_t;
+        p.state.motion.unhurt_t = 0;
+        p.char_hit_check(clxdat, &mut scratch);
+        p.state.motion.unhurt_t = t;
+    });
+    cpu.mem.hw_writes.extend(scratch.hw);
+}
+
+#[test]
+fn counting_contact_during_the_grace_fails() {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let f = judge::check_regs(
+        &mut r,
+        "char_hit_check",
+        CASES,
+        h0(0x3b2a),
+        &generator("char_hit_check"),
+        RegsCompared::NONE,
+        hit_check_without_grace,
+    )
+    .unwrap_err();
+    assert!(f.failures > 0, "{f}");
 }

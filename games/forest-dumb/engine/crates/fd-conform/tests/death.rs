@@ -3,8 +3,9 @@
 //! the game over screen to where the original enters its high scores and the engine restarts the
 //! level; the runner's scene checks; and a recording through game over and the restart.
 //!
-//! A life lost (`char_hit_check`, contact on the spikes) and the last one ending the game are T70's:
-//! the engine models no contact yet. Needs the disks and Kickstart, as every case does.
+//! A life lost on the spikes (`death-pit`) and the last one ending the game (`death-spikes`) are
+//! T70's: `char_hit_check` on CLXDAT the engine's own frame sets (`fd_core::render::contact`). Needs
+//! the disks and Kickstart, as every case does.
 
 use std::path::Path;
 
@@ -244,4 +245,91 @@ fn the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar() {
 
 fn to_rgb(p: &Picture) -> Vec<u16> {
     amiga_chips::to_rgb12(p)
+}
+
+/// fd-core's game, watched after every pass: the lives, the place and `char_dying`.
+struct Watched {
+    game: Game,
+    seen: Vec<(u16, u32, u32, u16)>,
+}
+
+impl Transplant for Watched {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.game.transplant(mem)
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl Engine for Watched {
+    fn pass(&mut self, input: FrameInput) {
+        self.game.step(input);
+        let s = self.game.state();
+        self.seen
+            .push((s.lives, s.char_x, s.char_y, s.motion.dying));
+    }
+    fn picture(&self) -> Option<Picture> {
+        Some(self.game.picture())
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.game.take_events()
+    }
+    fn off_play(&mut self, input: FrameInput) {
+        self.game.step(input)
+    }
+    fn game_over(&self) -> bool {
+        matches!(self.game.scene(), Scene::GameOver(_))
+    }
+}
+
+/// The slide drops into the spike pit; three passes of contact cost a life at frame 6524, then the
+/// hurt frame, the hold and the blink, and the next life about 135 passes later: every pass's
+/// variables (CLXDAT as `char_hit_check` copied it among them) and every frame's picture equal the
+/// original's. A life lost moves nobody: the original has no respawn, and the engine's character
+/// stays where it was hurt through the hold.
+#[test]
+fn falling_into_the_spike_pit_loses_a_life_as_the_originals() {
+    let case = load("death-pit");
+    let mut w = Watched {
+        game: game(),
+        seen: Vec::new(),
+    };
+    let v = run(&case, &mut w);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(v.events.is_empty(), "{v}");
+    assert_eq!(v.goal_met, Some(6661), "the second life lost");
+    assert!(v.passes > 320 && v.pictures > 320, "{v}");
+    assert_eq!(v.tolerated, [0, 0, 0], "{v}");
+    assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
+    assert!(hits(&v, "char_hit_check") > 320, "{v}");
+    let lost: Vec<usize> = (1..w.seen.len())
+        .filter(|&k| w.seen[k].0 < w.seen[k - 1].0)
+        .collect();
+    assert_eq!(lost.len(), 2, "{:?}", w.seen);
+    for k in lost {
+        let (_, x, y, dying) = w.seen[k];
+        assert_eq!(dying, 1);
+        let held = w.seen[k..].iter().take_while(|s| s.3 != 0);
+        assert!(held.clone().count() > 20, "{:?}", &w.seen[k..]);
+        for &(_, hx, hy, _) in held {
+            assert_eq!((hx, hy), (x, y), "moved while dying");
+        }
+    }
+}
+
+/// Right held in the spike pit until all 32 lives are gone: each lost as the original loses it, then
+/// `main_loop`'s check shows the game over screen, compared frame by frame, and fire ends it where the
+/// original enters its high scores and the engine restarts (T23's runner end). The lives digits and
+/// icons are left out where `main_loop`'s redraw races a pass (T71).
+#[test]
+fn the_last_life_lost_on_the_spikes_ends_the_game_as_the_originals() {
+    let case = load("death-spikes");
+    let v = run(&case, &mut game());
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert_eq!(v.game_over, Some((10716, Some(10774))), "{v}");
+    let events: Vec<Event> = v.events.iter().map(|(_, e)| *e).collect();
+    assert_eq!(events, [Event::GameOver, Event::Restart], "{v}");
+    assert_eq!(hits(&v, "lives_minus_one"), 32, "{v}");
+    assert!(v.passes > 4300, "{v}");
 }

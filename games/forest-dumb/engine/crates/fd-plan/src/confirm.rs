@@ -4,8 +4,8 @@
 //! case compares the character's, the camera's and the status variables on every pass, and its
 //! goal is where the engine ends.
 //!
-//! Where the two first differ is where the modelled part of the route ends: a life lost on the
-//! spikes (`hits_taken`, T24) is the original's and not yet the engine's.
+//! Where the two first differ is where the modelled part of the route ends. Contact and the lives
+//! it costs are modelled since T70.
 
 use std::sync::Arc;
 

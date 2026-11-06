@@ -3,7 +3,7 @@
 //! any thread count, the budget's stop, and the route played on the original. Needs the disks (and
 //! the Kickstart for the original): absent, it fails naming where it looked.
 //!
-//! While the items (T22), the creatures' contact (T24) and the level's end (T26) are unported the
+//! While the items (T22), the creatures (T24) and the level's end (T26) are unported the
 //! engine never ends the level, so the furthest point possible is the exit's cells: a route is held
 //! to reach them, not to leave the level.
 
@@ -23,12 +23,13 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06): on the exit's top right cell, 984 frames in.
-const END: &str = "W1-1:208,91";
-const FRAMES: usize = 984;
-/// The original and the engine agree on every compared variable for this many passes of it; the
-/// next, the original counts a contact pass (`hits_taken`), which the engine does not model (T24).
-const AGREED: u32 = 952;
+/// Where it ends on the engine (measured 2026-11-06 with contact, T70): beside the exit's cells,
+/// 1292 frames in. Before T70 the engine never counted contact and the route was another.
+const END: &str = "W1-1:207,90";
+const FRAMES: usize = 1292;
+/// The original and the engine agree on every compared variable on every pass of it (T70; before,
+/// they parted at pass 952 where the original counted a contact pass the engine did not model).
+const AGREED: u32 = 1279;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -199,18 +200,18 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
     let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    match &v.outcome {
-        Outcome::Differs { pass, var, .. } => {
-            assert_eq!((*pass, var.as_str()), (AGREED, "hits_taken"), "{v}");
-        }
-        o => panic!("expected the original to count a contact the engine does not: {o:?}\n{v}"),
-    }
-    // Every pass before the one that differs was compared but those the original ended unseen
-    // (two in one step).
-    assert_eq!(v.passes + v.unseen, AGREED - 1, "{v}");
-    // Up to there the route is the original's: the engine at that pass is past the level's
-    // middle, so most of the way to the exit is confirmed.
-    let g = replay(&d, &p.route.inputs[..AGREED as usize]);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(v.goal_met.is_some(), "{v}");
+    // Every pass was compared but those the original ended unseen (two in one step): the route's
+    // frames and the idle slack after it, less one.
+    assert_eq!(v.passes, AGREED, "{v}");
+    assert_eq!(
+        v.passes + v.unseen,
+        (FRAMES as u32) + confirm::SLACK - 1,
+        "{v}"
+    );
+    // The route is the original's past the level's middle, most of the way to the exit.
+    let g = replay(&d, &p.route.inputs);
     assert!(g.location().col >= 120, "{}", g.location());
 }
 
