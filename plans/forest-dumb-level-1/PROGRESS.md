@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T20, then T22 and T23, which T20 unblocks, and T68. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -55,7 +55,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ✅ | |
-| T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
+| T20 | planner-level-1 | T11, T17, T19 | 🔍 | `fd-plan`: PlanState over amiga-plan, facts, confirm on the frozen original, page via `fd_routeview::write_page`. 8 tests (2 unit, 5 smoke, 1 full). Route reaches exit cell `W1-1:208,91`; original agrees 952 passes. Deviations: `facts(level)` (data unused); extra flags `--page --rounds --threads --seed --compass --no-confirm`; fd-routeview unchanged; fd-core dev opt-level 2; added `confirm.rs`. |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T20
 
 ## Blocked on the user
 
