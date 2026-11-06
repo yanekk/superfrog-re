@@ -802,8 +802,8 @@ the spend guard are `translate.py`'s.
 
 ### What it does
 
-- A **unit** is one engine function and the routines its rig test checks with it (`TASKS` in the
-  tool). T09's `follow` serves four flag steps and `scroll` four scrolls, so each is one unit judged on
+- A **unit** is one engine function and the routines its rig test checks with it (`re/reshape.toml`
+  since 2026-11-06; `TASKS` in the tool before). T09's `follow` serves four flag steps and `scroll` four scrolls, so each is one unit judged on
   its four routines, and its prompt holds four literal ports. `char_update`, `char_probe` and
   `camera_update` have no passing literal port and are not units.
 - **Leave one out.** The prompt holds the unit's literal ports (T40's, from `build/translate` here or in
@@ -871,5 +871,55 @@ comments. Passing the rig, they are not yet the code `fd-core` keeps.
 Whether T22, T24, T25 and later porting tasks use `reshape.py` is the owner's. Asked 2026-11-05 with
 the recommendation "Muse drafts, the builder tidies" (the builder writes the rig test and the tool's
 `TASKS` entry first, then tidies and re-proves the passing answer). The owner was asleep, so the
-coordinator set the question aside as T66, `blocks T22`. Awaiting the owner; nothing else changes until
-then.
+coordinator set the question aside as T66, `blocks T22`.
+
+Answered 2026-11-06 (owner): yes, and Muse tidies first. Steer the prompt toward the file's own style
+and treat Muse as a service with an automatic quality check that sends a passing answer back with what
+to fix, so the builder gets polished code and tidies only what is left. How: the next section.
+
+## Reshaping by Muse (porting tasks, owner 2026-11-06)
+
+Every porting task from T22 on (T22, T23, T24, T25, T26, T52) has Muse write its engine functions and
+the builder fit, finish and prove them (DESIGN §4.4). By hand only after Muse fails a unit.
+
+1. **Pack.** `python3 -I games/forest-dumb/tools/task_pack.py T22` and read the pack whole: the task,
+   the plan's notes, each routine's listing, these steps.
+2. **By hand, before any call.** The interruptible-points notes (`toolkit/docs/porting-routines.md`
+   §1), `symbols.toml` and `LAYOUT` entries, the subsystem's typed state, and the rig test with its
+   routine table (`fd-conform/tests/<subsystem>_routines.rs`, as T08's `character_routines.rs`). Write
+   two small units by hand as the examples Muse is shown (a unit's prompt shows an example other than
+   itself; each example's routine needs a passing literal port). Write every other engine function as
+   a stub: its `///` doc, its exact signature, `todo!()` as the body, called by the rig test's table.
+   The rig test prints `paths: <name> N (h hangs), ...` or `<name>: N paths` per routine it ran.
+3. **The table.** Add `[T22]` to `re/reshape.toml` (its header says what each field is): the source
+   file, the impl header, the rig test and its loop line, the state files, the harness items, the
+   example, one unit per engine function.
+4. **Muse.** `python3 -I games/forest-dumb/tools/reshape.py --task T22 --all --max-usd 0.10` (worker
+   bin, DESIGN §5.3). It skips the `examples`, prints one result line a unit as it finishes, and runs
+   each failed unit once more when another passed: the judge's copy fills a still-stubbed function
+   with that unit's passing answer, so a caller judged before its callee gets a second chance.
+   `--only fn_a,fn_b` reruns some. Each unit's answer is `build/reshape/<slug>/port.rs`, an `impl`
+   block that passed the rig on 10 000 states.
+5. **Fit and finish.** Replace each stub with its answer, fix what the result's `quality` list still
+   names, rerun the rig test. Rerun a unit that failed with `--only` once the answers it calls are
+   fitted; then it is the builder's, from the listing, and is listed as by hand below with why.
+6. **Record** under "Ported" below: which functions came from Muse, its spend, and which by hand.
+
+**What Muse is told and checked for.** The prompt's style rules: a `///` doc on every function naming
+the original routine, names not numbers (struct fields, the state's consts, a new `const` for a new
+meaningful number), no register shuffling or memory by address, mirror-image cases as one helper, the
+example's style and length. After a pass, `quality()` checks the answer without a model call: missing
+docs, `cpu.`/`mem.` or `h(0, 0x...)` left in, numbers that are a named const, other bare hex numbers,
+a block of four lines repeated (numbers and left/right aside), and the compiler's warnings on the
+answer's lines. Issues go back to Muse (`--tidy 2` rounds by default); every tidied answer must pass
+the rig again, and the kept answer is the passing one with the fewest issues. On T08's and T09's
+hand-written functions the check finds nothing in 12 of 15 (`test_reshape.py`).
+
+**First run with the style rules and the loop, 2026-11-06** (worker action, `--all --only`, 7 units of
+T08 and T09, against their committed rig tests): all 7 pass on Muse's first answer; 5 had no issue,
+`idle` and `scroll` were clean after one tidy round; $0.0216 in all. 417 non-blank lines against Opus's
+294 for the same functions (T62's answers, without the rules: 717 against 441), with more `///` docs than
+Opus's; `scroll` is one function over a direction, where T62's answer had four near-identical arms.
+
+The judge's copy needs `build/toolkit` linked to the checkout's toolkit since T14's build tag hashes
+`<workspace>/../../../toolkit`; `scratch()` makes the link (the first run failed every unit on it).

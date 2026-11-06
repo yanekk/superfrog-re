@@ -9,13 +9,16 @@
 //! - [`channels`]: each channel's output reduced to a level per frame, and judged.
 //! - [`feed`]: how far a frame of the original's mix swings.
 //! - [`report`]: the diff picture beside a divergence.
-//! - [`screenshot`]: a bug recording's screenshot held against the engine's picture.
+//! - [`screenshot`]: a bug recording's screenshot held against the engine's picture, and the
+//!   original's frame as a PNG.
+//! - [`bug_compare`]: the verdict line of a bug recording compared with the original.
 //! - [`script`]: input scripts, with a hook for a game's own tokens.
 //! - [`sync_cache`]: a sync point's oracle snapshot, cached outside git under a game's key.
 //!
 //! A game keeps its cases, its memory map, its levels and milestones, and the run loop that drives
 //! both sides; it passes in what these read (excluded rows, file headers, an output folder).
 
+pub mod bug_compare;
 pub mod channels;
 pub mod compare;
 pub mod feed;

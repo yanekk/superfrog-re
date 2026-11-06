@@ -131,6 +131,23 @@ impl InputScript {
         InputScript { lines: from_frame(&self.lines, from) }
     }
 
+    /// A recording's inputs, one a step, as a script of steps: a line where the input changes.
+    pub fn from_steps(inputs: &[FrameInput]) -> InputScript {
+        let mut s = InputScript::default();
+        for (k, &i) in inputs.iter().enumerate() {
+            if s.lines.last().map(|l| l.1) != Some(i) {
+                s.lines.push((k as u32, i));
+            }
+        }
+        s
+    }
+
+    /// The script as its text: one `frame: tokens` line each ([`InputScript::format_input`]),
+    /// which [`parse`] reads back.
+    pub fn to_text(&self) -> String {
+        self.lines.iter().map(|&(f, i)| format!("{f}: {}\n", InputScript::format_input(i))).collect()
+    }
+
     /// One input as a script writes it: `R F`, `K19`, `-` ([`amiga_input::format_tokens`]).
     pub fn format_input(input: FrameInput) -> String {
         format_tokens(input)
@@ -154,6 +171,16 @@ mod tests {
         assert_eq!(InputScript::format_input(s.input_at(120)), "R F");
         let from = s.from_frame(130);
         assert_eq!(from.lines, vec![(0, s.input_at(130)), (20, s.input_at(150)), (70, FrameInput::NONE)]);
+    }
+
+    #[test]
+    fn steps_become_lines_where_the_input_changes() {
+        let r = FrameInput { joy: Joy::RIGHT, ..FrameInput::NONE };
+        let s = InputScript::from_steps(&[FrameInput::NONE, r, r, FrameInput::NONE]);
+        assert_eq!(s.lines, vec![(0, FrameInput::NONE), (1, r), (3, FrameInput::NONE)]);
+        assert_eq!(s.to_text(), "0: -\n1: R\n3: -\n");
+        assert_eq!(parse(&s.to_text()).unwrap(), s);
+        assert_eq!(InputScript::from_steps(&[]).lines, vec![]);
     }
 
     #[test]

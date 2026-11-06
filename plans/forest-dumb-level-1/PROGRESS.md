@@ -8,9 +8,11 @@
 **Amendment reviewed:** 2026-11-05 — 15 fixed, 4 decided with the owner (T49 added)
 **Amended mid-run:** 2026-11-05 — Muse writes generators (T60, T61; T49 uses them) and an engine-shape trial (T62) (owner). Read back 2026-11-05: 11 fixed, 1 decided (T62 measures on T08's and T09's routines, blocks nothing).
 
-**Status:** Amendment read back and its 4 decisions settled; ready to build. Nothing built.
-**Last updated:** 2026-11-05
-**Next `pir-work` will:** T00 and T32, because every level task rests on T00's measurements and every port on T32's rig.
+**Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
+
+**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-06
+**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -39,17 +41,17 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | level-entry | T05, T06, T32 | ✅ | |
 | T08 | character-movement | T07, T40 | ✅ | |
 | T09 | camera-scroll | T07, T40 | ✅ | |
-| T10 | level-drawing | T08, T09, T40 | ⬜ | |
+| T10 | level-drawing | T08, T09, T40 | ✅ | |
 | T41 | case-run-jump | T08, T09 | ✅ | |
 | T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
-| T44 | case-picture | T10 | ⬜ | |
+| T44 | case-picture | T10 | ✅ | |
 | T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
 | T12 | app-toolkit-move | — | ✅ | |
-| T13 | forest-dumb-app | T01, T10, T12 | ⬜ | |
-| T14 | recorder | T12, T13 | ⬜ | |
-| T15 | recording-compare | T03, T14 | ⬜ | |
-| T16 | app-drill | T13, T14 | ⬜ | |
+| T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
+| T14 | recorder | T12, T13 | ✅ | |
+| T15 | recording-compare | T03, T14 | ✅ | |
+| T16 | app-drill | T13, T14 | ✅ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
 | T19 | map-page | T11, T18 | ⬜ | |
@@ -83,9 +85,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T62 | engine-shape-trial | T08, T09, T33 | ✅ | |
 | T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ⬜ | |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
-| T66 | reshape-decision | T62; blocks T22 | ⬜ | |
-| T65 | level-start-draw | T55; blocks T13, T20 | ⬜ | |
+| T66 | reshape-decision | T62; blocks T22 | ✅ | Owner answered 2026-11-06: yes, Muse tidies first through a quality loop (DESIGN §4.4, docs/11 "Reshaping by Muse"). Closed by the owner's amendment, no worker. |
+| T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
+| T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
+| T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
 **Review queue:** *(empty)*
 

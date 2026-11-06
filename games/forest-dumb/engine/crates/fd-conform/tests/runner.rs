@@ -43,7 +43,9 @@ fn the_stub_level_case_matches_on_state_and_picture_and_reaches_its_goal() {
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     // One pass a frame; the transplant's own pass and passes ended unseen are not compared.
     assert_eq!(v.passes + v.unseen + 1, case.frames, "{v}");
-    assert_eq!(v.pictures, v.passes, "{v}");
+    // A picture a frame: each frame after the transplant's shows a pass (T44's pairing), the
+    // passes ended unseen included.
+    assert_eq!(v.pictures + 1, case.frames, "{v}");
     assert!(v.passes > 100, "{v}");
     assert!(v.goal_met.is_some(), "{v}");
 }
@@ -115,6 +117,7 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
 
     let bar = Exclusion {
         rows: 194..250,
+        cols: None,
         var: None,
         what: "rows 194..250".into(),
         task: "T10".into(),

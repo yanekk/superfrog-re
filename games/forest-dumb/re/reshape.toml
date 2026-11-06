@@ -1,0 +1,71 @@
+# What tools/reshape.py needs to have Muse write a porting task's engine functions (docs/11-translation.md,
+# "Reshaping by Muse"). One table per task. A porting task adds its own before calling reshape.py: write the
+# typed state and the rig test first, with at least one engine function written by hand as the example.
+#
+# src        the engine source file the task's functions live in (from games/forest-dumb/engine)
+# impl       the impl block header the answer goes in, as written in src
+# test       the rig test file; test_fn the #[test] that runs the routine table
+# loop       the routine table loop's first line in test, exactly; the judge limits it to one unit.
+#            The loop must bind the routine's rig name to `name`, and the test must print
+#            `paths: <name> N (h hangs), ...` or `<name>: N paths` for each routine it ran.
+# state      files shown to Muse as a skeleton (types and consts whole, other fns as signatures), src first
+# layout     true: also show fd-core's LAYOUT variables
+# harness    the test file's top-level items shared by every routine, shown with the example
+# adapter_fn true: the test has an adapter fn named like each engine fn, shown with the example
+# examples   engine fns written by hand, shown as the example (the first that is not the unit itself)
+# compared   one sentence: what the rig compares, and how registers reach it
+# units      one per engine function: fn, routines [[rig name, hunk 0 offset], ...], helpers (private
+#            fns only fn calls, removed with it)
+
+[T08]
+src = "crates/fd-core/src/character/physics.rs"
+impl = "impl Character<'_>"
+test = "crates/fd-conform/tests/character_routines.rs"
+test_fn = "every_t08_routine_is_registered_and_passes_the_rig"
+loop = "for &(name, entry, f) in ROUTINES {"
+state = ["crates/fd-core/src/character/physics.rs", "crates/fd-core/src/character/anim.rs",
+         "crates/fd-core/src/character/input.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/program.rs", "crates/fd-core/src/level/collision.rs"]
+layout = true
+harness = ["vars", "at", "state", "effects", "Run", "port"]
+adapter_fn = false
+examples = ["land_or_fall", "fall_step"]
+compared = """The rig compares every LAYOUT variable the character routines use, and d0-d7 and a0-a6 \
+from `self.scratch` as the original leaves them (set them as the example does), and the custom-chip \
+writes pushed on `self.scratch.hw`."""
+units = [
+  { fn = "step", routines = [["char_step", 0x3e30]], helpers = ["dying_fall", "rise"] },
+  { fn = "idle", routines = [["h0_3ea8", 0x3ea8]], helpers = ["slide", "slide_sound"] },
+  { fn = "land_or_fall", routines = [["h0_410c", 0x410c]] },
+  { fn = "fall_step", routines = [["h0_416c", 0x416c]] },
+  { fn = "rise_step", routines = [["h0_4274", 0x4274]] },
+  { fn = "move_x", routines = [["h0_4696", 0x4696]] },
+  { fn = "left_pressed", routines = [["h0_4718", 0x4718]] },
+  { fn = "run_left_step", routines = [["h0_47e2", 0x47e2]] },
+  { fn = "right_pressed", routines = [["h0_48be", 0x48be]] },
+  { fn = "run_right_step", routines = [["h0_497c", 0x497c]] },
+  { fn = "up_pressed", routines = [["h0_4b0e", 0x4b0e]] },
+  { fn = "probe_flags", routines = [["char_probe_flags", 0x4f90]] },
+]
+
+[T09]
+src = "crates/fd-core/src/level/camera.rs"
+impl = "impl Camera"
+test = "crates/fd-conform/tests/camera_routines.rs"
+test_fn = "every_camera_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/level/camera.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "CAMERA_X", "CAMERA_Y", "SCREEN_X", "SCREEN_Y", "AT", "LATCH", "FRAME_FLAG",
+           "CROSSED", "h0", "load", "store", "on_camera"]
+adapter_fn = true
+examples = ["scroll", "clamp"]
+compared = """The rig loads the Camera and frame_flag from memory, runs your function, stores them back \
+and compares every byte the original writes; registers only where the adapter sets them \
+(d0 from a returned bool: true is -1, false 0)."""
+units = [
+  { fn = "follow", routines = [["h0_4e9a", 0x4e9a], ["h0_4ea6", 0x4ea6], ["h0_4eb4", 0x4eb4], ["h0_4ec2", 0x4ec2]] },
+  { fn = "clamp", routines = [["h0_513c", 0x513c]] },
+  { fn = "scroll", routines = [["h0_51fc", 0x51fc], ["h0_526a", 0x526a], ["h0_52d8", 0x52d8], ["h0_5346", 0x5346]],
+    helpers = ["set"] },
+]

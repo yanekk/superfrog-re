@@ -7,8 +7,8 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 ## What the game is
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
-the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Only the
-first conformance case is built so far, no playable engine. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is being
+built (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Its disks and where they live
 
@@ -54,9 +54,20 @@ A spot is `<level-id>:<col>,<row>`, 0-indexed, top-left origin, 16-pixel cells, 
 ids and their files: [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md). `tools/render_levels.py --spot W1-1:10,20`
 prints what is there; the pictures are in `build/renders/`.
 
+## Playing it
+
+`cd games/forest-dumb/engine && cargo run --release -p fd-app` opens the app straight in `W1-1`, silent.
+Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
+Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
+`~/Library/Application Support/Forest-Dumb-RE/settings.toml` (`--home DIR` or `FOREST_DUMB_HOME`
+elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `--timeout`) are in
+`fd-app/src/args.rs`; `fd-e2e` drives it end to end (`cargo test -p fd-e2e`).
+
 ## Bug-fix procedure
 
-Not written yet: there is no engine to fix. It comes with the recorder, step 8 of the playbook.
+A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it
+(`fd-conform bug replay`), compare it with the original (`fd-conform bug compare`, retimed by pass),
+keep a difference as a case that fails before the fix.
 
 ## Notes
 
@@ -68,6 +79,7 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
 - [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; the freeze list; contact (creatures, water, tiles) measured.
 - [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves), `tools/generate.py` (Muse writes a generator, judged by branch coverage) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
+- [docs/12-level-start-draw.md](docs/12-level-start-draw.md): `level_init`'s first view (tiles, shapes) and what the plane's slack holds at the sync point (the title's music, `_BALLA`), measured.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.

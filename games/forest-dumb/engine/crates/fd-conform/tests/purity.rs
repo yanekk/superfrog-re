@@ -17,13 +17,34 @@ use std::process::Command;
 const PURE: [&str; 2] = ["fd-core", "fd-assets"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
-/// pure crates needs one line saying why it is pure. The two toolkit crates' sources are scanned by
+/// pure crates needs one line saying why it is pure. The toolkit crates' sources are scanned by
 /// the toolkit's own purity test.
 const ALLOWED: &[&str] = &[
     "fd-core",
     "fd-assets",
     "amiga-clock",
     "amiga-input",
+    // The renderer's chips (T10): the copper run, the bitplane fetch and the sprite composition,
+    // functions of the memory and registers handed to them. Pure by the toolkit's own purity test
+    // (`toolkit-checks/tests/purity.rs`), which scans its sources.
+    "amiga-chips",
+    // amiga-chips' sound-side dependency: the mixer's chip-memory trait AmigaMemory implements; pure
+    // by the same toolkit test (its resampler's floats are that test's one named exemption).
+    "amiga-paula",
+    // The recording format (T14): the toolkit's game-free recorder, its text and its zip, pure by the
+    // toolkit's own purity test. Its zip is amiga-disk's, bytes in and bytes out.
+    "amiga-record",
+    "amiga-disk",
+    // amiga-disk's DEFLATE decoder: bytes in, bytes out; no I/O, clock, thread or float.
+    "miniz_oxide",
+    // miniz_oxide's Adler-32 checksum: integer arithmetic over a byte slice.
+    "adler2",
+    // miniz_oxide's SIMD Adler-32, switched on by png in a whole-workspace build. Integer arithmetic
+    // over a byte slice, no I/O.
+    "simd-adler32",
+    // The OFS reader behind amiga-disk's `ofs` module, built without its `std` feature: blocks in,
+    // parsed volume out; no I/O, clock, thread or float, and no dependencies of its own.
+    "amiga-ffs",
     // amiga-input's save-state derive: serde's traits and derive. The derive runs at compile time
     // and emits plain field-by-field code; the traits read and write values handed to them.
     "serde",
