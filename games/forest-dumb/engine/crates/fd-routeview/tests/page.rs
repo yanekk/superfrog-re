@@ -61,8 +61,10 @@ fn a_scripted_run_makes_a_page_whose_track_matches_the_replay() {
     let s = script::parse(&text).unwrap();
     let frames = s.lines.last().unwrap().0 + fd_routeview::TAIL;
     let mut g = Game::new(fd_conform::game_data().unwrap(), Start::Level1);
+    let mut want = Vec::new();
     for k in 0..frames {
         g.step(s.input_at(k));
+        want.push(format!("{},{}", g.state().char_x, g.state().char_y));
     }
     let end = Location::of_character(LevelId::W1_1, g.state().char_x, g.state().char_y);
     // The script runs left to the wall and back: it must end somewhere else than it started, or
@@ -114,6 +116,17 @@ fn a_scripted_run_makes_a_page_whose_track_matches_the_replay() {
     let track = array(&js, "track");
     let points: Vec<&str> = track[1..track.len() - 1].split("],[").collect();
     assert_eq!(points.len() as u32, frames, "a track point a frame");
+    // Point by point: the run idles for its last TAIL frames, so the end alone cannot tell a track
+    // shifted by a frame from the real one.
+    let got: Vec<&str> = points
+        .iter()
+        .map(|p| p.trim_matches(|c| c == '[' || c == ']'))
+        .collect();
+    let at = got.iter().zip(&want).position(|(a, b)| a != b);
+    assert_eq!(
+        at, None,
+        "the page's track leaves the replay's at frame {at:?}"
+    );
     let last: Vec<u32> = points
         .last()
         .unwrap()
