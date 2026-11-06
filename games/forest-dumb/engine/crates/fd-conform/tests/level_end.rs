@@ -70,6 +70,9 @@ struct Changed {
     no_cheat: bool,
     /// Claims the level's end once this many passes have run.
     early: Option<u32>,
+    /// Reports `world_index` one past the game's once the level has ended: a `next_world` that
+    /// moves to the wrong world.
+    world_off: bool,
     passes: u32,
 }
 
@@ -81,7 +84,8 @@ impl Transplant for Changed {
         }
     }
     fn probe(&self, v: &Var) -> u32 {
-        self.game.probe(v)
+        let off = self.world_off && self.game.finished() && v.name == "world_index";
+        self.game.probe(v) + off as u32
     }
 }
 
@@ -105,7 +109,12 @@ impl Engine for Changed {
 fn an_engine_that_misses_the_end_or_finds_it_early_fails() {
     let mut case = load("level-end");
     // What HELP changes with the cheat on would fail first; here the scene check is what fails.
-    let help = ["cheat_flag", "last_key_byte", "level_exit_touched", "items_left"];
+    let help = [
+        "cheat_flag",
+        "last_key_byte",
+        "level_exit_touched",
+        "items_left",
+    ];
     case.vars.retain(|v| !help.contains(&v.as_str()));
     let v = run(
         &case,
@@ -113,6 +122,7 @@ fn an_engine_that_misses_the_end_or_finds_it_early_fails() {
             game: game(),
             no_cheat: true,
             early: None,
+            world_off: false,
             passes: 0,
         },
     );
@@ -130,6 +140,7 @@ fn an_engine_that_misses_the_end_or_finds_it_early_fails() {
             game: game(),
             no_cheat: false,
             early: Some(10),
+            world_off: false,
             passes: 0,
         },
     );
@@ -140,6 +151,39 @@ fn an_engine_that_misses_the_end_or_finds_it_early_fails() {
         why,
         "the engine found the level's end; the original ran a pass"
     );
+}
+
+/// The runner holds `world_index` in the step both sides run `next_world`, which no pass end
+/// compares: an engine that ends the level in the right step on the wrong world fails there.
+#[test]
+fn an_engine_that_moves_to_the_wrong_world_fails_at_next_world() {
+    let case = load("level-end");
+    let v = run(
+        &case,
+        &mut Changed {
+            game: game(),
+            no_cheat: false,
+            early: None,
+            world_off: true,
+            passes: 0,
+        },
+    );
+    let Outcome::Differs {
+        frame,
+        var,
+        engine,
+        oracle,
+        ..
+    } = &v.outcome
+    else {
+        panic!("{v}")
+    };
+    assert_eq!(
+        (*frame, var.as_str(), *engine, *oracle),
+        (6525, "world_index", 2, 1),
+        "{v}"
+    );
+    assert_eq!(v.level_end, None, "{v}");
 }
 
 /// HELP at `irq_count` 40 on a game with the cheat on: the exit touched with no items left from
