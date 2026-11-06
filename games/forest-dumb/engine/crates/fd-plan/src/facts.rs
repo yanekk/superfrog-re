@@ -16,6 +16,13 @@ pub fn is_item(v: u8) -> bool {
     (0x20..=0x23).contains(&v)
 }
 
+/// The mechanics (docs/10, T25): springs (`$10` to `$13`), water (`$28`, `$2a`), vanishing blocks (`$30`
+/// to `$33`) and the flame (`$34`). None is a switch, so none makes a gate; play changes a vanishing
+/// block's `collision_map`, not the level's file the planner's `open` reads.
+pub fn is_mechanic(v: u8) -> bool {
+    matches!(v, 0x10..=0x13 | 0x28 | 0x2a | 0x30..=0x34)
+}
+
 /// The cell's collision shape is solid on every pixel.
 pub fn solid(level: &Level, c: u16, r: u16) -> bool {
     if c >= level.collision.columns || r >= ROWS {
@@ -29,7 +36,7 @@ pub fn solid(level: &Level, c: u16, r: u16) -> bool {
 }
 
 /// The level's facts: its size, the exit's cells and the items' cells, column by column. W1-1 has no
-/// switches, so no gates.
+/// switches, so no gates: its mechanics ([`is_mechanic`]) are not switches.
 pub fn facts(level: &Level) -> Facts {
     let cols = COLS.min(level.objects.columns);
     let cells = |want: fn(u8) -> bool| -> Vec<Cell> {

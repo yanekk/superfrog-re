@@ -423,3 +423,116 @@ fn the_rig_catches_a0_to_a7_drawn_as_items() {
     });
     assert!(!f.is_empty());
 }
+
+// ---------------------------------------------------------------------------------------------
+// In play: the rig proves the routines, not that `game_frame` calls them.
+// ---------------------------------------------------------------------------------------------
+
+/// The engine's own state as the original's memory, with `cells` laid on the object map, `anim` as the
+/// animated cells (used flags, then entries) and `vars` over `LAYOUT`'s values. The collision plane,
+/// the screen and the rest read 0.
+struct Placed<'a> {
+    game: &'a fd_core::Game,
+    cells: &'a [(u16, u16, u8)],
+    anim: Option<(Vec<u8>, Vec<u8>)>,
+    vars: &'a [(&'static str, u32)],
+}
+
+impl fd_core::Mem for Placed<'_> {
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+        use fd_core::Transplant;
+        use fd_core::level::redraw::OBJECT_MAP;
+        match (hunk, offset, len, &self.anim) {
+            (0, OBJECT_MAP, _, _) => {
+                let mut map = self.game.state().object_map[..len].to_vec();
+                for &(c, r, v) in self.cells {
+                    map[c as usize * 0x60 + r as usize] = v;
+                }
+                return map;
+            }
+            (2, 0x1680, 48, Some((used, _))) => return used.clone(),
+            (2, 0x16b0, 384, Some((_, cells))) => return cells.clone(),
+            _ => {}
+        }
+        match fd_core::LAYOUT
+            .iter()
+            .find(|v| (v.hunk, v.offset, v.width.bytes()) == (hunk, offset, len))
+        {
+            Some(v) => {
+                let value = self
+                    .vars
+                    .iter()
+                    .find(|(n, _)| *n == v.name)
+                    .map_or_else(|| self.game.probe(v), |&(_, x)| x);
+                value.to_be_bytes()[4 - len..].to_vec()
+            }
+            None => vec![0; len],
+        }
+    }
+}
+
+fn new_game() -> fd_core::Game {
+    use fd_core::{Game, Start};
+    Game::new(
+        fd_conform::game_data().unwrap_or_else(|e| panic!("{e}")),
+        Start::Level1,
+    )
+}
+
+#[test]
+fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
+    use fd_core::Transplant;
+    let game = new_game();
+    // Cell (4, 4), in the first view, as list 2's first entry: the step after the start runs list 2.
+    let (x, y) = (0x40u16, 0x40u16);
+    let mut used = vec![0; 48];
+    let mut cells = vec![0; 384];
+    used[24] = 0xff;
+    cells[24 * 8..24 * 8 + 5].copy_from_slice(&[0, x as u8, 0, y as u8, 0x30]);
+    let mut g = game.clone();
+    g.transplant(&Placed {
+        game: &game,
+        cells: &[(4, 4, 0x30)],
+        anim: Some((used, cells)),
+        vars: &[],
+    });
+    let at = |g: &fd_core::Game| {
+        // `h0_62b6`'s offset: column byte `x >> 3`, line `y & $f0`, `$2e` bytes a line.
+        let off = (x as u32 >> 3) + (y as u32 & 0xf0) * 0x2e;
+        (0..4)
+            .map(|k| g.plane().kept_byte(off + k))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(at(&g), [0, 0, 0, 0]);
+    g.step(amiga_oracle::FrameInput::NONE);
+    assert_eq!(g.state().animation.phase, 2);
+    // Tick 0, block `$30`: the table's first frame, not the empty one.
+    assert_eq!(
+        at(&g),
+        [0xff, 0xff, 0xff, 0xf0],
+        "h0_62b6 did not run in game_frame"
+    );
+}
+
+#[test]
+fn a_spring_under_the_falling_character_fires_in_play() {
+    use fd_core::Transplant;
+    let game = new_game();
+    // The character falling at its start, a spring's left half under its feet.
+    let (cx, cy) = (0x70u32, 0x70u32);
+    let feet = ((cx + 0xe) >> 4, (cy + 0x23) >> 4);
+    let mut g = game.clone();
+    g.transplant(&Placed {
+        game: &game,
+        cells: &[(feet.0 as u16, feet.1 as u16, 0x10)],
+        anim: None,
+        vars: &[("char_falling", 1)],
+    });
+    g.step(amiga_oracle::FrameInput::NONE);
+    let s = g.state();
+    assert_eq!(
+        (s.spring.timer, s.spring.x, s.spring.y),
+        (1, cx + 0xe, cy + 0x23),
+        "h0_24ce did not run in game_frame"
+    );
+}

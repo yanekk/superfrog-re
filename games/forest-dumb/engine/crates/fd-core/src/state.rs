@@ -133,12 +133,12 @@ impl State {
             // from the original by transplant (T55).
             edges: Edges::default(),
             collect: Collect::default(),
-            // No spring has fired since the level loaded (PLACEHOLDER).
+            // Measured at pass 1's end (T25): no spring has fired; pass 1's `h0_62b6` has stepped the
+            // phase to 1; `load_list_world_1` set `water_cycle`.
             spring: Spring::default(),
-            // `load_list_world_1` sets `water_cycle`; PLACEHOLDER.
             animation: Animation {
                 tick: 0,
-                phase: 0,
+                phase: 1,
                 water_cycle: 1,
             },
             object_map: Vec::new(),

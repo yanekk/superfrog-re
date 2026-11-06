@@ -38,8 +38,10 @@ pub const PICTURE_MODULO: u16 = 0;
 pub const TILE_COLUMN: u32 = 0xc0;
 /// The play screen's 256 lines; a tile redraw that moves past them is moved back once.
 pub const SCREEN_BYTES: u32 = 0xe600;
+/// A cell's pixels, and so the lines of a screen band.
+pub const CELL: u32 = 16;
 /// One 16-line screen band.
-pub const SCREEN_BAND: u32 = 16 * SCREEN_LINE;
+pub const SCREEN_BAND: u32 = CELL * SCREEN_LINE;
 
 /// The spring that fired last (`h0+$21b4` to `$21bf`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -91,7 +93,83 @@ impl MapObjects<'_> {
     /// two rows, the lower row moved back [`SCREEN_BYTES`] if it passes the screen's end, and the timer
     /// stopped; otherwise the timer counts one.
     pub fn spring_redraw(&mut self) {
-        todo!()
+        let timer = self.state.spring.timer;
+        if timer == 0 {
+            return;
+        }
+        if timer.wrapping_sub(RELEASED) & 0x8000 != 0 {
+            if timer != PRESSED {
+                self.state.spring.timer = timer.wrapping_add(1);
+                return;
+            }
+            self.spring_pressed();
+            return;
+        }
+        self.spring_released();
+    }
+
+    /// Part of `h0_21c0` (`h0+$21c0`): the pressed spring's picture over its two rows,
+    /// with [`Sound::Spring`], the timer counted on.
+    fn spring_pressed(&mut self) {
+        self.io.sound(Sound::Spring);
+        let spring = &self.state.spring;
+        let (sx, sy) = (spring.x, spring.y);
+        let base = PICTURES[usize::from(spring.kind != 0)];
+        let column = sx.wrapping_shr(4).wrapping_shl(1);
+        let first = (sy & 0xF0).wrapping_mul(SCREEN_LINE);
+        let second = (sy.wrapping_add(CELL) & 0xF0).wrapping_mul(SCREEN_LINE);
+        for (i, row) in [first, second].into_iter().enumerate() {
+            self.io.blit(Blit::Picture {
+                src: base.wrapping_add((i as u32).wrapping_mul(PICTURE_HALF)),
+                modulo: PICTURE_MODULO,
+                dst: column.wrapping_add(row),
+            });
+        }
+        self.state.spring.timer += 1;
+    }
+
+    /// Part of `h0_21c0` (`h0+$21c0`): the spring's 2 x 2 tile map cells redrawn where
+    /// the picture was, the timer stopped.
+    fn spring_released(&mut self) {
+        let (sx, sy) = (self.state.spring.x, self.state.spring.y);
+        let col = ((sx & 0xFFFF) >> 3) & !1;
+        let row = ((sy & 0xFFFF) >> 3) & !1;
+        let screen_col = (sx & 0xFFFF_0000) | col;
+        let screen_row = (sy & 0xF0).wrapping_mul(SCREEN_LINE);
+        let dst_top = screen_col.wrapping_add(screen_row);
+        let mut dst_bottom = dst_top.wrapping_add(SCREEN_BAND);
+        if dst_bottom.wrapping_sub(SCREEN_BYTES) & 0x8000_0000 == 0 {
+            dst_bottom = dst_bottom.wrapping_sub(SCREEN_BYTES);
+        }
+        let map_col = col.wrapping_mul(MAP_COLUMN);
+        let map_row = (sy & 0xFFFF_0000) | row;
+        let tile_top = TILE_MAP.wrapping_add(map_col).wrapping_add(map_row);
+        let tiles = [
+            tile_top,
+            tile_top.wrapping_add(TILE_COLUMN),
+            tile_top.wrapping_add(2),
+            tile_top.wrapping_add(TILE_COLUMN).wrapping_add(2),
+        ];
+        let dsts = [
+            dst_top,
+            dst_top.wrapping_add(2),
+            dst_bottom,
+            dst_bottom.wrapping_add(2),
+        ];
+        for (&tile, &dst) in tiles.iter().zip(dsts.iter()) {
+            self.spring_redraw_cell(tile, dst);
+        }
+        self.state.spring.timer = 0;
+    }
+
+    /// Part of `h0_21c0` (`h0+$21c0`): the tile map cell at hunk 0 offset `tile`
+    /// redrawn on the play screen at `dst`, through the tile table.
+    fn spring_redraw_cell(&mut self, tile: u32, dst: u32) {
+        let index = self.io.rw(tile);
+        let src = self
+            .io
+            .rl(TILE_TABLE.wrapping_add((index as u32).wrapping_mul(4)));
+        self.io.blit(Blit::Cell { src, dst });
     }
 }
 
@@ -154,6 +232,5 @@ mod tests {
         }
         .spring_trigger();
         assert_eq!(d, before);
-        let _ = (MAP_COLUMN, TILE_TABLE, TILE_MAP);
     }
 }
