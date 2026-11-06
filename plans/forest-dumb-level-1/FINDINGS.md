@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T45 (owner): `countdown_plus_100` (time bonus `$4c`) is proven on the routine rig only; W1-1 holds no `$4c`. T48's all-routines coverage lists it as a named exception, not a miss. `h0_2e0e` waits for T46. |
 | 2026-11-06 | 📌 | T22 review: case comments still call taking and bonus blits frozen: `stretch-scroll.toml:4` ("T22's freeze entry"), `camera-right-left.toml:2`, `camera-bottom-right.toml:2` ("every object frozen"). Cases themselves pass. Left. |
 | 2026-11-06 | 🔄 | T22 (owner): freeze.rs lost T22's five entries; frozen cases take items both sides. The planner chases coins: its short route stalls at `W1-1:177,92`, agreeing to pass 134 (first slope's wall); route.rs's exclusion lifts with T70 `playfield-contact`, T24. |
 | 2026-11-06 | 📌 | T26, measured: `level-end` sets `cheat_flag` at sync (case key `set`); HELP read by pass 224 runs `next_world` at frame 6525; comparison stops there (`AFTER_NEXT_WORLD`). The engine keeps `level_exit_touched`, which `char_object_cells` clears (T22). |
@@ -51,14 +52,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T33: `char_hit_check` (183 instructions) answers `too-big` though the spike passed it. The routine oracle skips line-mode blits and has no fill mode; `RigReport::unmodelled_blits` counts them and `translate.py` answers `no-oracle`. |
-| 2026-11-05 | 📌 | T18, worker-driven: old and new route page gave identical PNGs in headless Chrome; the heat layer alternates two images a run. page.html keys on `tile coin`, `level exit`, `wN `. |
 | 2026-11-05 | 🐞 | T34: `re_listing.py`'s linear sweep loses step after data in code; `tools/call_tree.py` decodes from each reached address. `char_probe` (199), `h0_5e44` (200), `h0_62b6` (224), `redraw_edge_c` (181) are over 180, translated by hand. |
 | 2026-11-05 | 📌 | T31: oracle hash `c453a4b584dc`, both games' oracle smoke green; `level_entry` 523 s cold, 15 s warm. Kickstart idle, load 6 to 13: 611 frames/s before patch 0006, 562 with 200 watched addresses (owner accepted). |
 | 2026-11-05 | 📌 | T17: every Superfrog map cache key changed, maps rebuild once; pin bench 38.9 s before, 33.5 to 35.4 s after, load 6-10. Under load wall time swings 20-38 s; A/B timing uses user CPU time (`/usr/bin/time -p`). |
 | 2026-11-05 | 📌 | T05: world 1's load list loads `_WYBIJACZKA` to `h4+$9618` twice, never `$9898`, which keeps program bytes. Play fades its palette in until frame 6331. The view's top-left is level pixel (`camera_x + 17`, `camera_y + 1`). |
 | 2026-11-05 | 📌 | T04, worker-driven: `picture_in(0x2F81, 0x29C1)` at frame 6500 opened as PNG: sky, moon, ledge, character from sprites 0-3, black gap lines 226-241, whole status bar. Title window is 320x238; Kickstart's 320x308 from line 5. |
 | 2026-11-05 | 📌 | T03: sync snapshots end in a SHA-1 (`.sync2`); Superfrog sync points rebuilt once, `level_entry.rs` 597 s cold. A cached reach leaves `Amiga::df0()` `None` (a boot `Some(1)`): do not trust it after `reach_level_1`. |
-| 2026-11-05 | 📌 | T12, worker-driven: OS layer of controls, recorder_start_level, recorder_save_window, recorder_bar, persist green on the moved windows. `recorder_bar` OS test failed once at load 15 ("second recording's bar: not within 30 s"), passed on rerun. |
 | 2026-11-05 | 🔄 | Owner kept DESIGN §2.7: Esc quits, no pause key, though the original's play acts on P (pause) and Esc (give up, game over). The engine models both for cases (T00). |
 | 2026-11-05 | 📌 | T30 review: `game_file` reads any `read_file` error as "no such file"; only a damaged zip reaches it. Left. |
 | 2026-11-05 | 📌 | T01 smoke after the move: 761 s cold, load 9; before 887 s warm, 904 s fresh (budget 900 s). Cold compile about 8 GB. Accessibility, Screen Recording granted; headless Chrome runs. |

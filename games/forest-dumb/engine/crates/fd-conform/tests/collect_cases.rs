@@ -38,7 +38,7 @@ const NOT_REACHED: [(&str, &str); 2] = [
     // from taking a slot (T24) no slot is ever filled, so it never runs.
     ("h0_2e0e", "T46"),
     // The time bonus `$4c`: W1-1 holds none (docs/10-object-system.md, "Values W1-1 does not hold").
-    ("countdown_plus_100", "no W1-1 case"),
+    ("countdown_plus_100", "T48, as a named exception"),
 ];
 
 /// The block above the ledge, W1-1:29..33,8..10, which both cases empty: five oranges (`$40`, +20),
