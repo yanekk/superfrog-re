@@ -1,0 +1,22 @@
+[package]
+name = "fd-e2e"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The driver: launches the app, feeds it scripts, reads its captures (toolkit-extract T08). This
+# crate gives it Forest Dumb's spec.
+amiga-e2e = { path = "../../../../../toolkit/crates/amiga-e2e" }
+# Finds the owner's disks, so every launch names them (DESIGN §2.9).
+fd-tools = { path = "../fd-tools" }
+
+[dev-dependencies]
+# The engine the captures are compared with, headless, and the state hash the app writes.
+fd-core = { path = "../fd-core" }
+fd-app = { path = "../fd-app" }
+# The game's data from the disks for the headless run (test side only; the app never links it).
+fd-conform = { path = "../fd-conform" }
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# libc checks a process group is gone after the watchdog.
+libc = "0.2"

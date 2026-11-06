@@ -136,6 +136,14 @@ workspace = "engine"
 "crates/fd-tools/tests/locate.rs" = "smoke"
 "crates/fd-tools/tests/real_disks.rs" = "smoke"
 "crates/fd-tools/tests/unpack.rs" = "smoke"
+# T13: the app's own tests and its dependency test, under a second; the end-to-end files launch the
+# real app on the disks: smoke.rs 9 s, controls.rs 6 s, window.rs 5 s, disks.rs 1 s, alone and warm.
+"crates/fd-app/src" = "smoke"
+"crates/fd-app/tests/deps.rs" = "smoke"
+"crates/fd-e2e/tests/smoke.rs" = "smoke"
+"crates/fd-e2e/tests/controls.rs" = "smoke"
+"crates/fd-e2e/tests/disks.rs" = "smoke"
+"crates/fd-e2e/tests/window.rs" = "smoke"
 
 [python]
 "tools/test_call_tree.py" = "smoke"
@@ -225,6 +233,10 @@ covers = ["crates/fd-conform/tests/level_start.rs::a_new_games_collision_map_is_
 [[area]]
 name = "the camera scrolling both ways to every level end, against the original"
 covers = ["crates/fd-conform/tests/camera_cases.rs::each_camera_case_passes_on_the_level_engine_and_reaches_its_goal"]
+
+[[area]]
+name = "the app plays level 1"
+covers = ["crates/fd-e2e/tests/smoke.rs::up_and_right_by_key_play_as_the_headless_game_does_every_frame"]
 
 [[area]]
 name = "the engine's picture against the original's over whole runs, scrolling and the status bar's digits"
