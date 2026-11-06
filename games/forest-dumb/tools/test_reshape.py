@@ -268,5 +268,115 @@ class OpusCost(unittest.TestCase):
         self.assertEqual(c['T51'], {'sessions': [], 'usd': 0.0, 'routines': 6, 'usd_per_routine': 0.0})
 
 
+TIDY_CODE = """impl Character<'_> {
+    /// Rises one step: the original's `h0_4274` (h0+$4274).
+    pub fn rise_step(&mut self) {
+        self.motion.y = self.motion.y.wrapping_sub(RISE);
+    }
+}
+"""
+
+ROUGH_CODE = """impl Character<'_> {
+    pub fn rise_step(&mut self) {
+        let t = h(0, 0x431e);
+        if self.left {
+            self.a = self.a.wrapping_add(3);
+            self.b = self.b.wrapping_sub(1);
+            self.c = 0x1234;
+            self.d = 1;
+        }
+        if self.right {
+            self.a = self.a.wrapping_add(4);
+            self.b = self.b.wrapping_sub(2);
+            self.c = 0x1234;
+            self.d = 1;
+        }
+    }
+}
+"""
+
+
+class Quality(unittest.TestCase):
+    def test_a_rough_answer_gets_every_kind_of_issue(self):
+        issues = r.quality(ROUGH_CODE, r.TASKS['T08'])
+        text = '\n'.join(issues)
+        self.assertIn('`fn rise_step` has no `///` doc comment', text)
+        self.assertIn('memory by address', text)
+        self.assertIn('`0x431e` is `RISE_TABLE`', text)
+        self.assertIn('`0x1234`', text)
+        self.assertIn('appear twice', text)
+
+    def test_a_tidy_answer_and_named_table_loads_pass(self):
+        self.assertEqual(r.quality(TIDY_CODE, r.TASKS['T08']), [])
+        named = TIDY_CODE.replace('wrapping_sub(RISE);', 'wrapping_sub(RISE);\n        self.scratch.a[0] = h(0, RISE_TABLE);')
+        self.assertEqual(r.quality(named, r.TASKS['T08']), [])
+
+    def test_hand_written_engine_functions_mostly_pass(self):
+        # The check's bar is the file's own code: most of what Opus wrote for T08 and T09 has no issue.
+        clean = total = 0
+        for cfg in r.TASKS.values():
+            text = r.read(os.path.join(r.ENGINE, cfg['src']))
+            for u in cfg['units']:
+                total += 1
+                clean += not r.quality(''.join(r.fn_text(text, f) for f in r.removed(u)), cfg)
+        self.assertGreaterEqual(clean / total, 0.7)
+
+    def test_compiler_warnings_on_the_answer_are_numbered_from_its_first_line(self):
+        cfg = r.TASKS['T08']
+        with tempfile.TemporaryDirectory() as eng:
+            p = os.path.join(eng, cfg['src'])
+            os.makedirs(os.path.dirname(p))
+            with open(p, 'w') as f:
+                f.write('fn a() {}\n\n' + r.MARK + '\nimpl X {\n    fn b() { let unused = 1; }\n}\n')
+            err = (f"{cfg['src']}:5:22: warning: unused variable: `unused`\n"
+                   f"{cfg['src']}:1:4: warning: function `a` is never used\n"
+                   "crates/other.rs:9:1: warning: elsewhere\n")
+            self.assertEqual(r.warnings(cfg, eng, err),
+                             ['The compiler warns at line 2 of your answer: unused variable: `unused`'])
+
+
+class Tidy(Service):
+    """The rounds after a pass: the quality check's issues go back, and the rig judges every answer."""
+
+    def test_a_rough_pass_is_sent_back_and_the_tidy_one_kept(self):
+        self.answers = [answer(ROUGH_CODE), answer(TIDY_CODE)]
+        self.verdicts = [{'outcome': 'pass', 'paths': 6, 'lint': ['The compiler warns at line 3 of your answer: x']},
+                         {'outcome': 'pass', 'paths': 6, 'lint': []}]
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['tidy_rounds'], res['quality']), ('pass', 1, 1, []))
+        self.assertIn('It passes the rig', self.sent[1])
+        self.assertIn('no `///` doc comment', self.sent[1])
+        self.assertIn('The compiler warns at line 3', self.sent[1])
+        self.assertEqual(r.read(res['port']), TIDY_CODE)
+
+    def test_a_tidy_answer_that_fails_the_rig_keeps_the_passing_one(self):
+        self.answers = [answer(ROUGH_CODE), answer(TIDY_CODE), answer(TIDY_CODE)]
+        self.verdicts = [{'outcome': 'pass', 'paths': 6},
+                         {'outcome': 'fail', 'feedback': 'differs:\ncase 3'},
+                         {'outcome': 'fail', 'feedback': 'differs:\ncase 4'}]
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tidy_rounds'], res['paths']), ('pass', 2, 6))
+        self.assertIn('no longer behaves as your passing one', self.sent[2])
+        self.assertEqual(r.read(res['port']), ROUGH_CODE)
+        self.assertTrue(res['quality'], 'what is left goes to the builder')
+
+    def test_tidy_zero_takes_the_first_pass(self):
+        self.answers = [answer(ROUGH_CODE)]
+        self.verdicts = [{'outcome': 'pass', 'paths': 6}]
+        res = self.run_it(tidy=0)
+        self.assertEqual((res['result'], res['tidy_rounds'], len(self.sent)), ('pass', 0, 1))
+        self.assertTrue(res['quality'])
+
+
+class Tasks(unittest.TestCase):
+    def test_reshape_toml_loads_every_field_the_tool_reads(self):
+        for task, cfg in r.TASKS.items():
+            with self.subTest(task=task):
+                for k in ('src', 'impl', 'test', 'test_fn', 'loop', 'state', 'harness', 'examples', 'compared', 'units'):
+                    self.assertIn(k, cfg)
+                self.assertTrue(all(isinstance(o, int) for u in cfg['units'] for _, o in u['routines']))
+                self.assertTrue(set(cfg['examples']) <= {u['fn'] for u in cfg['units']})
+
+
 if __name__ == '__main__':
     unittest.main()

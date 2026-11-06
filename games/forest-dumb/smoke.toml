@@ -169,6 +169,8 @@ workspace = "engine"
 "tools/test_reshape.py" = "smoke"
 "tools/test_reshape_judge.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
+# Owner amendment 2026-11-06: builds every pending task's pack from the committed plan, --no-prep: about 5 s.
+"tools/test_task_pack.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"
