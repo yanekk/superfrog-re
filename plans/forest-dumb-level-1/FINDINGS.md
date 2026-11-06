@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T22 review: case comments still call taking and bonus blits frozen: `stretch-scroll.toml:4` ("T22's freeze entry"), `camera-right-left.toml:2`, `camera-bottom-right.toml:2` ("every object frozen"). Cases themselves pass. Left. |
 | 2026-11-06 | 🔄 | T22 (owner): freeze.rs lost T22's five entries; frozen cases take items both sides. The planner chases coins: its short route stalls at `W1-1:177,92`, agreeing to pass 134 (first slope's wall); route.rs's exclusion lifts with T70 `playfield-contact`, T24. |
 | 2026-11-06 | 📌 | T20, measured: 100 rounds (0.8 s) plan W1-1 to the exit's cell `W1-1:208,91` in 984 frames; the frozen original agrees 952 passes, then counts a contact (`hits_taken`, T24). `fd-core` dev opt-level 2: unoptimised, 8 000 frames/s a thread. |
 | 2026-11-06 | 📌 | T19, worker-driven: `fd-routeview`'s page from disk, headless Chrome 1280×800: map, track, 332 coins, 282 needed, no page request. Toolkit `page.html` loads Google Fonts and calls clean routes "reaches the exit"; `fd-routeview` strips and overrides both. |
@@ -43,7 +44,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 🐞 | T57: every red of `os_layer_scale_and_fullscreen…` was a locked screen (`loginwindow`); `os_layer()` now refuses one (`CGSSessionScreenIsLocked`). Review: fullscreen `os_window` (`amiga-e2e/src/os.rs`) can return a 1920×32 layer-0 strip at y −32; `find` takes the first. |
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR runs on across calls, so raster waits (`h0_3ac2`) differ between runs; `gen_edge_redraw.rs` sets it per state. `generators::generator` returns the first of duplicate names, unchecked; `judge.rs` uses the spike's duplicate `h0+$774`. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
-| 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
 | 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the byte is already 0. |
 | 2026-11-05 | 🔄 | T06's counter corrects T00 in docs/09: idle, `game_frame` returns before the step ends in 2 968 of 3 000 frames; moving, after in 2 977. Owner: correct the note, keep T00's wording dated. |
