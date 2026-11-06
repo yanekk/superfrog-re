@@ -8,6 +8,7 @@
 //! (`sync.rs`) and compares at the end of each pass of `game_frame`: in play a pass usually ends
 //! after the frame does, so the state at a frame's end is mid-pass (docs/09-play-measured.md).
 
+pub mod bug;
 pub mod case;
 pub mod coverage;
 pub mod disks;

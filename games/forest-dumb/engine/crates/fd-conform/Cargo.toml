@@ -22,3 +22,5 @@ fd-assets = { path = "../fd-assets" }
 # The main program's hunks, for the routine rig's loader at the oracle's hunk bases.
 amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 
+# A bug zip's recording (T14), read as the app writes it.
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }

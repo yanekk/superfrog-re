@@ -11,6 +11,7 @@ pub mod layout;
 pub mod level;
 pub mod ported;
 pub mod program;
+pub mod recording;
 pub mod render;
 pub mod scene;
 pub mod state;

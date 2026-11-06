@@ -167,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-record"
+version = "0.1.0"
+dependencies = [
+ "amiga-chips",
+ "amiga-disk",
+ "amiga-input",
+]
+
+[[package]]
 name = "android-activity"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -927,6 +936,7 @@ dependencies = [
  "amiga-conform",
  "amiga-disk",
  "amiga-oracle",
+ "amiga-record",
  "fd-assets",
  "fd-core",
  "fd-tools",
@@ -939,6 +949,7 @@ dependencies = [
  "amiga-chips",
  "amiga-clock",
  "amiga-input",
+ "amiga-record",
  "fd-assets",
 ]
 

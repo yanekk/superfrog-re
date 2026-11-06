@@ -15,6 +15,10 @@ use amiga_disk::{ADF_SIZE, zip};
 pub use locate::{disk_dir, locate, main_checkout, zip_paths};
 pub use unpack::{game_file, unpack};
 
+/// The engine build a bug recording is stamped with and its replay checks (`build.rs`): the
+/// version and a hash of the engine's sources, the same in `fd-app` and `fd-conform`.
+pub const ENGINE_BUILD: &str = env!("FD_ENGINE_BUILD");
+
 /// One extracted file of the inventory.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InventoryFile {
