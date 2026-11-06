@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T71; then T24, T25, T52 and T72 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T24, T25, T52 and T72 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -91,10 +91,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
-| T71 | status-redraw-race | T70; blocks T27 | 🔍 | Measured: pass 32k+1 cuts `h0_6a96` at no fixed read, so per owner the engine offers `Game::cut_redraw` and the runner accepts it at the cut measured on the original, bar only. 3 tests (status_race.rs, death.rs, lib). Deviations: no engine split (owner); new interface (`cut_redraw`, `interrupted_pc`, `redraw_cut`, `Verdict::cut_redraws`); picture_cases.rs unchanged. |
+| T71 | status-redraw-race | T70; blocks T27 | ✅ | Review: one fix, a missing test: removing the bar-only check survived; `HidesPlayArea` locks it; picture and stretch cases assert no cut redraws. Probed: every interrupted PC is an instruction start (listing); mutations of `bar_only` and the late-numbers pass went red. Approval was the coordinator's. docs/09's "20 PCs over 220 redraws" read-only. |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 
-**Review queue:** T71
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
