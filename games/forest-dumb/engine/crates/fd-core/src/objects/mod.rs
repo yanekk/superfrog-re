@@ -13,6 +13,7 @@
 //! off the level reaches is the byte the original's would be (`level::redraw` does the same).
 
 pub mod collectible;
+pub mod creature;
 
 use crate::State;
 use crate::level::LevelCtx;

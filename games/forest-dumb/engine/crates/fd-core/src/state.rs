@@ -6,6 +6,7 @@
 use crate::character::{Anim, InputLog, JoyFlags, Keys, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
+use crate::objects::creature::Moving;
 use crate::objects::Collect;
 
 /// The game state of a level in play. BCD variables are held as stored.
@@ -57,6 +58,8 @@ pub struct State {
     pub edges: Edges,
     /// What taking objects keeps besides the counters (T22, `objects`).
     pub collect: Collect,
+    /// What moving the creatures keeps besides their slots (T24, `objects::creature`).
+    pub moving: Moving,
     /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
     /// started. Filled from the level by `Game::new`.
     pub object_map: Vec<u8>,
@@ -132,6 +135,7 @@ impl State {
             // from the original by transplant (T55).
             edges: Edges::default(),
             collect: Collect::default(),
+            moving: Moving::default(),
             object_map: Vec::new(),
         }
     }

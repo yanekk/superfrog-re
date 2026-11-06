@@ -1,6 +1,6 @@
 //! What ends a life or the game (`fd_core::character::death`, plans/forest-dumb-level-1 T23, T70)
 //! against the original on the routine rig, over 10 000 states of each T39 generator (T38's for
-//! `char_hit_check`, its creature slots inactive: the stomp is T24's), on the main program from the
+//! `char_hit_check`, creatures and their stomp included since T24), on the main program from the
 //! owner's disks.
 //!
 //! Each check loads the variables the routines touch into a `State`, runs the engine function on
@@ -8,11 +8,12 @@
 //! engine wrote, and `char_hit_check`'s custom-chip writes (the hurt sound). No register is compared: `level3_handler` saves and restores every register round
 //! `game_frame`, and none of these leaves a result a caller reads (docs/09-play-measured.md).
 
-use fd_conform::generators::{self, Gen, Generator, Setup};
+use fd_conform::generators::{self, Gen, Generator};
 use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport};
 use fd_core::character::Play;
-use fd_core::{PORTED, Scratch, State};
+use fd_core::level::redraw::CreatureSlot;
+use fd_core::{Scratch, State, PORTED};
 
 const CASES: usize = 10_000;
 
@@ -37,8 +38,14 @@ const RUN_RIGHT: u32 = 0x4714;
 const RISING: u32 = 0x4ecf;
 const JUMPED: u32 = 0x4109;
 const JUMP_T: u32 = 0x410a;
-/// `creature_active`: five flag bytes.
+/// `creature_active`: five flag bytes; `creature_slots`, eight bytes a slot.
 const SLOT_FLAGS: u32 = 0x67da;
+const SLOTS: u32 = 0x67ec;
+const CHAR_X: u32 = 0x1e5a;
+const CHAR_Y: u32 = 0x1e5e;
+const SCORE: u32 = 0x2a66;
+const SCORE_ADD: u32 = 0x2a6a;
+const JUMP_3B28: u32 = 0x3b28;
 /// CLXDAT, as the CPU reads it.
 const CLXDAT: u32 = 0xdf_f00e;
 
@@ -71,6 +78,23 @@ fn load(cpu: &Cpu) -> State {
     s.motion.rising = m.rb(h0(RISING));
     s.motion.jumped = m.rb(h0(JUMPED));
     s.motion.jump_t = m.rb(h0(JUMP_T));
+    s.motion.jump_3b28 = m.rw(h0(JUMP_3B28));
+    s.char_x = m.rl(h0(CHAR_X));
+    s.char_y = m.rl(h0(CHAR_Y));
+    s.score = m.rl(h0(SCORE));
+    s.collect.score_add = m.rl(h0(SCORE_ADD));
+    let c = &mut s.edges.creatures;
+    for i in 0..5u32 {
+        c.active[i as usize] = m.rb(h0(SLOT_FLAGS + i));
+        let a = h0(SLOTS + 8 * i);
+        c.slots[i as usize] = CreatureSlot {
+            x: m.rw(a),
+            y: m.rw(a + 2),
+            kind: m.rw(a + 4),
+            facing: m.rb(a + 6),
+            phase: m.rb(a + 7),
+        };
+    }
     s
 }
 
@@ -99,6 +123,22 @@ fn store(cpu: &mut Cpu, s: &State) {
     m.wb(h0(RISING), s.motion.rising);
     m.wb(h0(JUMPED), s.motion.jumped);
     m.wb(h0(JUMP_T), s.motion.jump_t);
+    m.ww(h0(JUMP_3B28), s.motion.jump_3b28);
+    m.wl(h0(CHAR_X), s.char_x);
+    m.wl(h0(CHAR_Y), s.char_y);
+    m.wl(h0(SCORE), s.score);
+    m.wl(h0(SCORE_ADD), s.collect.score_add);
+    let c = &s.edges.creatures;
+    for i in 0..5u32 {
+        m.wb(h0(SLOT_FLAGS + i), c.active[i as usize]);
+        let v = c.slots[i as usize];
+        let a = h0(SLOTS + 8 * i);
+        m.ww(a, v.x);
+        m.ww(a + 2, v.y);
+        m.ww(a + 4, v.kind);
+        m.wb(a + 6, v.facing);
+        m.wb(a + 7, v.phase);
+    }
 }
 
 /// Run `f` on the state loaded from `cpu` and store it.
@@ -140,24 +180,10 @@ fn char_hit_check(cpu: &mut Cpu) {
     cpu.mem.hw_writes.extend(scratch.hw);
 }
 
-/// T38's `char_hit_check` states with every creature slot inactive: the contact path alone (T70).
-fn hit_check_no_creatures(g: &mut Gen) -> Setup {
-    let mut s = (generators::generator("char_hit_check").unwrap().case)(g);
-    for i in 0..5 {
-        s.b(h0(SLOT_FLAGS) + i, 0);
-    }
-    s
-}
-
-/// The generator each routine runs on.
+/// The generator each routine runs on: T39's, and T38's for `char_hit_check`, its creature slots
+/// active or not, so the stomp (T24) is held too.
 fn generator(name: &str) -> Generator {
-    match name {
-        "char_hit_check" => Generator {
-            base: None,
-            case: hit_check_no_creatures,
-        },
-        _ => generators::generator(name).unwrap(),
-    }
+    generators::generator(name).unwrap()
 }
 
 /// Each routine: its generator's name (T39's, as in `re/translate.toml`), entry in hunk 0 and the
@@ -311,6 +337,44 @@ fn counting_contact_during_the_grace_fails() {
         &generator("char_hit_check"),
         RegsCompared::NONE,
         hit_check_without_grace,
+    )
+    .unwrap_err();
+    assert!(f.failures > 0, "{f}");
+}
+
+/// `char_hit_check` stomping a creature already stomped (kind 7): what a port that missed the
+/// `cmpi.w #7, $4(a0)` would do (T24).
+fn hit_check_stomping_the_stomped(cpu: &mut Cpu) {
+    let clxdat = cpu.mem.rw(CLXDAT);
+    let mut scratch = Scratch::default();
+    on_play(cpu, |p| {
+        let c = &mut p.state.edges.creatures;
+        let stomped: Vec<usize> = (0..5).filter(|&i| c.slots[i].kind == 7).collect();
+        for &i in &stomped {
+            c.slots[i].kind = 0;
+        }
+        p.char_hit_check(clxdat, &mut scratch);
+        let c = &mut p.state.edges.creatures;
+        for &i in &stomped {
+            if c.slots[i].kind == 0 {
+                c.slots[i].kind = 7;
+            }
+        }
+    });
+    cpu.mem.hw_writes.extend(scratch.hw);
+}
+
+#[test]
+fn stomping_a_stomped_creature_fails() {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let f = judge::check_regs(
+        &mut r,
+        "char_hit_check",
+        CASES,
+        h0(0x3b2a),
+        &generator("char_hit_check"),
+        RegsCompared::NONE,
+        hit_check_stomping_the_stomped,
     )
     .unwrap_err();
     assert!(f.failures > 0, "{f}");
