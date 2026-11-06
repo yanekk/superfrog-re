@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** review T11, then T19, T22 and T68 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T19, T22 and T68 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T42 | case-walls-pits | T08, T09, T41 | ✅ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
 | T44 | case-picture | T10 | ✅ | |
-| T11 | character-cases | T01, T41, T42, T43, T44 | 🔍 | Six stretches (run, jump, slope, pit edge, scroll, wall), vars and picture together; 3 tests, 2 smoke with area. Deviations: pit stretch ends before the spikes (hurt frame T24); seven T10 routines named unreachable with tasks (T22, T23, T46/T47, start-up T44); T41's cases now compare char_unhurt_t (FINDINGS). |
+| T11 | character-cases | T01, T41, T42, T43, T44 | ✅ | Review clean, no fix commit. Six stretches pass with vars and picture; goal-moved test (33 s, full) run. Probed: pit stretch run past 6522 differs on hits_taken at 6524 (deviation held); sprite drawn a pixel right fails stretch-run at once. Seven T10 routines excluded with tasks, held by the test. Smoke +9 s on 761 s. |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** T11
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
