@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T19, worker-driven: `fd-routeview`'s page from disk, headless Chrome 1280×800: map, track, 332 coins, 282 needed, no page request. Toolkit `page.html` loads Google Fonts and calls clean routes "reaches the exit"; `fd-routeview` strips and overrides both. |
 | 2026-11-06 | 📌 | T11, measured: six W1-1 stretches match on variables and picture together. The spike pit's lost life shows a hurt frame (T24), so `stretch-pit` stops at 6522. Score, items and lives digits never redraw on stretches. |
 | 2026-11-06 | 📌 | T42, measured: a life lost on W1-1's spikes holds the character about 30 passes (`char_dying`, `char_dying_t`, its hurt frame), input ignored, no respawn; another every ~135 passes standing. Unported (T24). |
 | 2026-11-06 | 🔄 | Owner amended at checkpoint 3 (DESIGN §4.4): `task_pack.py` packs start every pending task; workers' unused tools denied, run started with `ENABLE_CLAUDEAI_MCP_SERVERS=false`; Muse writes porting engine code with a quality loop (`reshape.py --all`), T66's answer. Run stopped for the edit. |
@@ -42,8 +43,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR runs on across calls, so raster waits (`h0_3ac2`) differ between runs; `gen_edge_redraw.rs` sets it per state. `generators::generator` returns the first of duplicate names, unchecked; `judge.rs` uses the spike's duplicate `h0+$774`. |
 | 2026-11-05 | 📌 | T54: creature probes (`h0_3530`..`h0_35dc`) index `collision_map` by `(x >> 3)` with x a level coordinate, reading up to `$4dd2` bytes past `h3+$fa50`, beyond its `$2e00`. T24 ports that reach as is. `h0_3698` compares the middle slot pairs as bytes. |
 | 2026-11-05 | 📌 | T21 review: objects-W1-1.toml `port_task` is the value's behaviour; its routines keep translate.toml's tasks, so spawn, bonus blits and creature drawing port in T55 and T52, not T22 or T24. |
-| 2026-11-05 | 📌 | T21: no object dispatch tables; the scan, `h0_2fea`, `h0_26ec`, `h0_62b6` branch by compares. Every object routine was already in `re/translate.toml`, so T21 appended none and T49 has nothing to translate. |
-| 2026-11-05 | 📌 | T21: W1-1 holds 332 coins (`$20`-`$23`); `items_left` starts at 282 from `load_list_world_1`, so 50 are spare. docs/06's untraced `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
+| 2026-11-05 | 📌 | T21: no object dispatch tables (`h0_2fea`, `h0_26ec`, `h0_62b6` compare); every object routine was in `re/translate.toml`, so T49 had none. 332 coins (`$20`-`$23`), `items_left` 282, 50 spare. docs/06's `_ELEMENTY` second row is `h0_a06`'s bonuses (`h4+$c80`). |
 | 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the byte is already 0. |
 | 2026-11-05 | 🔄 | T06's counter corrects T00 in docs/09: idle, `game_frame` returns before the step ends in 2 968 of 3 000 frames; moving, after in 2 977. Owner: correct the note, keep T00's wording dated. |

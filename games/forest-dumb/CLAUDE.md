@@ -63,6 +63,13 @@ Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are 
 elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `--timeout`) are in
 `fd-app/src/args.rs`; `fd-e2e` drives it end to end (`cargo test -p fd-e2e`).
 
+## Seeing a run on the map
+
+`cargo run --release -p fd-routeview -- --script FILE` in `engine/` plays an input script
+(`engine/conform/scripts/*.txt`) from W1-1's start and writes level 1's map with the character's path
+to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
+holds disk graphics: keep it under `build/`.
+
 ## Bug-fix procedure
 
 A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it
