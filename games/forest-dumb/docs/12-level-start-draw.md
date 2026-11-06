@@ -61,3 +61,14 @@ once too, in 32 minutes, 2026-11-06). The cell routines add their offsets to the
 in `a3` to `a5`, so their states set those. Tile numbers from `$90e` read past the oracle's 512 KB of
 chip RAM, which there reads back from 0 (a later cell can read the screen an earlier one drew); the
 rig's flat memory does not model that, so the generators stay below it. The level's tiles stop at `$3ed`.
+
+## The state at the sync point and pass 1's end
+
+Measured 2026-11-06 (T69). The sync point's frame 6301 ends inside pass 1, at `char_update`'s
+start: it has written `char_update_t = 3` and run none of its four sub-steps. `State::level_1` holds
+the state there and is right; the four values T15 saw differ (`char_anim_ptr`, `char_falling`,
+`char_jump_t`, `char_update_t`) are what that `char_update` writes. The rest of pass 1 is nothing
+else, since `char_update` is `game_frame`'s last call, so `Game::new` runs it and is the original at
+pass 1's end (frame 6302, `irq_count` 1), where cases transplant. `level_entry.rs` holds every
+`LAYOUT` variable there; idle, the engine then stays equal for 62 passes until the countdown (T23).
+`char_update` writes nothing of the plane or the screen, so the checks above still hold.

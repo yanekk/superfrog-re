@@ -261,7 +261,7 @@ Readings the port keeps:
 - `h0_47e2` and `h0_497c` return their step in d0 and the callers move `char_y` by it.
 - A table indexed past its end reads what follows: `h0+$40cb + $3d` is `char_slide_t` itself. The
   engine reads a modelled variable there from the state (found on the rig).
-- `char_update_t` is 3 at the sync point, not the 0 a whole pass leaves; why is not known.
+- `char_update_t` is 3 at the sync point: frame 6301 ends inside pass 1 at `char_update`'s start, none of its sub-steps run (T69, docs/12).
 
 ## The camera (T09)
 

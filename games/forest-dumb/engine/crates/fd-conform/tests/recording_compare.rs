@@ -44,7 +44,7 @@ fn compare(rec: &Recording) -> Compared {
 }
 
 /// The jumps of `character-run-jumps` (a tap, then up held), 200 steps: no creature or bonus comes
-/// into view, so every play variable and picture is judged.
+/// into view, so every play variable and picture is judged, the engine from `Game::new` (T69).
 #[test]
 fn a_scripted_recording_stays_in_step_on_the_original() {
     let rec = recording(&script_steps("character-run-jumps", 200), "jumps");
@@ -55,9 +55,12 @@ fn a_scripted_recording_stays_in_step_on_the_original() {
     assert!(v.passes > 190 && v.pictures > 190, "{}", c.report());
     assert_eq!(c.retimed.passes, 200);
     assert!(c.retimed.lagged.is_empty());
-    // The engine's own start is not the original's yet (T69), and the report says so.
-    assert!(c.start_differs.iter().any(|d| d.0 == "char_falling"));
-    assert!(c.report().contains("(T69)"));
+    // The engine runs from its own start, not the original's (T69), and it is the original's.
+    assert!(c.start_differs.is_empty(), "{:?}", c.start_differs);
+    assert!(
+        c.report()
+            .contains("the engine's own start equals the original's at the first pass end")
+    );
 }
 
 /// Running left into the wall and back is lag-free: one frame a pass, every pass reading the

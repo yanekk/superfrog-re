@@ -300,18 +300,17 @@ pub fn retime(rec: &Recording) -> Result<Retimed, String> {
     })
 }
 
-/// The owner's game as the case runner drives it: `Game::new`, taken from the original at the
-/// runner's first pass end, then stepped through the recording's own inputs, one step a pass, never
-/// the inputs the original read. The start is the original's because `Game::new` differs from it at
-/// that pass end (T15, measured: `char_falling`, `char_jump_t`, `char_anim_ptr`, `char_update_t`);
-/// T69 makes them equal. What differed is kept for the report. `before_step(step, game)` runs
-/// before each step (a test plants a mutation there).
+/// The owner's game as the case runner drives it: `Game::new`, as the app starts it, stepped
+/// through the recording's own inputs, one step a pass, never the inputs the original read. It is
+/// not taken from the original: `Game::new` equals the original at the runner's first pass end
+/// (T69), and where it does not, what differs there is kept for the report and judged from then on.
+/// `before_step(step, game)` runs before each step (a test plants a mutation there).
 struct Owners<'a> {
     game: Game,
     inputs: &'a [FrameInput],
     done: u32,
     before_step: &'a mut dyn FnMut(u32, &mut Game),
-    /// (variable, `Game::new`'s value, the original's) at the first pass end.
+    /// (variable, the owner's game's value, the original's) at the first pass end.
     start_differs: Vec<(&'static str, u32, u32)>,
 }
 
@@ -337,10 +336,12 @@ impl Transplant for Owners<'_> {
             .map(|v| (v.name, self.game.probe(v), mem.value(v)))
             .filter(|&(_, ours, theirs)| ours != theirs)
             .collect();
-        self.game.transplant(mem);
-        // The original has run the passes up to this end on the recording's inputs.
+        // No transplant: the owner's game keeps its own start. Should the runner's first end be
+        // past pass 1 (two passes ended in one step), the game catches up on the recording's inputs.
         let ended = layout_var("irq_count").map_or(START_PASS, |v| mem.value(v));
-        self.done = ended.saturating_sub(START_PASS);
+        while self.done < ended.saturating_sub(START_PASS) {
+            self.one();
+        }
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -370,7 +371,7 @@ pub struct Compared {
     /// The engine's picture at Stop (the recording's last step).
     pub engine_stop: Picture,
     /// (variable, `Game::new`'s value, the original's) where the engine's own start differs from
-    /// the original at the first pass end; the compare starts from the original's (T69).
+    /// the original at the first pass end; empty since T69.
     pub start_differs: Vec<(&'static str, u32, u32)>,
 }
 
@@ -476,8 +477,7 @@ impl Compared {
                         .collect();
                     format!(
                         "the engine's own start differs from the original's at the first pass end in \
-                         {}: {}; the engine was started from the original's state there, so a bug \
-                         that comes from this start difference is not seen here (T69)\n",
+                         {}: {}; a difference below may come from the start, not the recording\n",
                         d.len(),
                         vars.join(", ")
                     )

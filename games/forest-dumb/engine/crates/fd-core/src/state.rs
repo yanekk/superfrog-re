@@ -54,9 +54,10 @@ pub struct State {
 }
 
 impl State {
-    /// W1-1 at the level sync point (DESIGN §2.3): oracle frame 6301 of `boot-to-level1`, the
-    /// state after play's first pass. Every value is measured there (`fd-conform/tests/level_entry.rs`
-    /// holds them against the original); where it comes from is read from the listing.
+    /// W1-1 at the level sync point (DESIGN §2.3): oracle frame 6301 of `boot-to-level1`, whose end
+    /// falls inside play's first pass, at `char_update`'s start (T69). Every value is measured there;
+    /// where it comes from is read from the listing. `Game::new` runs that `char_update`, so a new
+    /// game is the original at pass 1's end (`fd-conform/tests/level_entry.rs`).
     pub fn level_1() -> State {
         State {
             // `(5001 - 4922) % 6`: the boot script's fire at the title stops the song on frame 5001,
@@ -102,8 +103,8 @@ impl State {
             // Idle: play's first pass read no direction and appended its one byte, 0.
             joy: JoyFlags::default(),
             input_log: InputLog::at(1),
-            // Measured at the sync point (`level_entry.rs`). `char_update_t` is 3 there, not the 0
-            // a whole `char_update` leaves: why is not known. `char_unhurt_t` is counted by a routine
+            // Measured at the sync point. `char_update_t` is 3 there because pass 1's `char_update`
+            // has written it and run none of its sub-steps (T69). `char_unhurt_t` is counted by a routine
             // another task ports (T59: contact hurts once it wraps to 0). The rest are 0.
             motion: Motion {
                 update_t: 3,
