@@ -81,6 +81,11 @@ pub const PORTED: &[Ported] = &[
     port("h0_681c", 0x681c, "level::redraw::CreatureSlots::start"),
     port("h0_6852", 0x6852, "level::redraw::CreatureSlots::fill"),
     port("h0_6882", 0x6882, "level::redraw::AnimatedCells::add"),
+    // T65, level_init's first view (level/start.rs).
+    port("view_tiles", 0x62e, "level::start::draw_tiles"),
+    port("view_tile", 0x672, "level::start::tile_cell"),
+    port("view_shapes", 0x6c4, "level::start::draw_shapes"),
+    port("view_shape", 0x708, "level::start::shape_cell"),
     // T10, the renderer (render/): the drawing routines of re/translate.toml, then the status bar's
     // and the start-up's copper list pointers, which are outside it.
     port("h0_3ab4", 0x3ab4, "render::playfield::blit_done"),

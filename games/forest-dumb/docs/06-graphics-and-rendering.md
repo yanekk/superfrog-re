@@ -87,7 +87,7 @@ screen (`h3+$398`, 256 lines, and its slack to `collision_map`) is what the orig
 the engine applies T55's `Blit` list (tile copies, bobs cut through their masks) as it goes. A blit word
 landing outside it is dropped: the stray bob after a full creature table lands in low chip RAM. The status
 bar's buffer (`h4+$6400`) is the program's picture with the numbers `h0_6a96` draws. `Game`'s equality
-leaves both out. Until T65 ports `level_init`'s first view, a new game's play screen is empty.
+leaves both out. A new game's play screen holds `level_init`'s first view (T65, docs/12), its 16 bands only.
 
 What the start-up and level start leave in hunk 1, which the engine sets up the same way: the sprite
 pointers (`h0_9a34`), the status bar's bitplane pointers (`h0_988a`), the palette block above.
