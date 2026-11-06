@@ -63,7 +63,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
-| T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
+| T25 | mechanics | T11, T20, T21, T22 | 🔍 | Springs (`h0_24ce` by hand, `h0_21c0` Muse, $0.0089) and animated cells (`h0_62b6` by hand) pass the rig; 9 tests plus a planner test. Deviations: map cells, no `ObjectKind` (as T22); `spring.rs`, `animated.rs` (flame, vanish one routine); one Muse example (two routines only); freeze entries kept (owner); route.rs re-measured; `Blit::Element`, `Picture` added. |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
@@ -92,7 +92,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T25
 
 ## Blocked on the user
 

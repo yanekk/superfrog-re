@@ -819,6 +819,14 @@ What each porting task did with its share of the table above, and which routines
   written by hand in `fd_core::level_end`, so no `[T26]` table in `re/reshape.toml`; $0 spent. They
   are proven by the `level-end` case (`tests/level_end.rs`), not the rig: `main_loop` is foreground
   code no rig unit holds.
+- **T25** (2026-11-06): `h0_24ce`, `h0_21c0` (`fd_core::objects::spring`) and `h0_62b6`
+  (`fd_core::objects::animated`), `MapObjects` methods (`tests/mechanic_routines.rs`, 10 000 states;
+  paths 7, 6, 791). Muse wrote `spring_redraw` (`h0_21c0`; `reshape.py --task T25 --all`, pass on try 2,
+  no quality issue, $0.0089); fitted by hand: the timer's count written plainly, the second band's 16
+  named. By hand: `spring_trigger` (`h0_24ce`), the one example Muse is shown, since T25 has only two
+  routines with a literal port; and `animate` (`h0_62b6`), too-big for the service. Its value compares
+  test the N flag only (`cmpi.b #8; bpl`), so `$a0` to `$a7` end the list rather than draw as items; a
+  mutant in the test holds it.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

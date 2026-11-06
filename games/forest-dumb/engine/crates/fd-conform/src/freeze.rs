@@ -25,7 +25,10 @@ pub struct Frozen {
 
 /// Every routine a `freeze = true` case returns from at once. T22 removed its five (the bonus blits
 /// `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, which T55 ported, and `h0_26ec`, taking): the engine takes
-/// items, bonuses and the exit as the original does, so a frozen case lets both.
+/// items, bonuses and the exit as the original does, so a frozen case lets both. T25 ported its two
+/// (springs, the animated cells) but keeps them (owner, 2026-11-06): unfrozen, the original's pass runs
+/// late and `main_loop`'s redraws are cut short, which the engine does not model, so three frozen cases
+/// would fail (plans/forest-dumb-level-1 FINDINGS). T47's unfrozen cases remove them.
 pub const FROZEN: &[Frozen] = &[
     Frozen {
         hunk: 0,

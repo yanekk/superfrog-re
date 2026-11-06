@@ -145,6 +145,12 @@ from the table at `h0+$3b988`, which holds `n * $a0`). The engine adds it to the
 flames). Rig: `fd-conform/tests/mechanic_routines.rs`. Like collectibles they stay map cells: no
 `ObjectKind` is registered for `$10`, `$11`, `$28`, `$30` to `$33`.
 
+Frozen cases still freeze `h0_6882` and `h0_24ce` (owner, 2026-11-06). Measured unfrozen: the original's
+pass grows with the animated cells' blits and some passes end late, so `main_loop`'s edge redraws are cut
+short (`camera-bottom-right` differs at pass 495 on `edge_latch_down`) and more pass ends go unseen
+(`stretch-slope` 11, `camera-right-left` 24); every compared value and picture otherwise matched. T47's
+unfrozen cases remove the two entries.
+
 **Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
 porting. All three run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot cut
 them. What waits: `h0_21c0` waits for BLTBUSY before each of its four tile blits and two picture blits,
