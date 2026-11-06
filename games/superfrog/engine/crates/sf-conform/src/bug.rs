@@ -12,7 +12,7 @@ use sf_core::recording::{Location, Recording, RecordingRng, Superfrog, ZIP_SCREE
 use sf_core::{Game, LoadEnd, Picture, Scene, View};
 use sf_oracle::{Amiga, Rgb12Frame};
 
-pub use amiga_conform::screenshot::{picture_png, picture_rgb, screenshot_differs};
+pub use amiga_conform::screenshot::{frame_png, picture_png, picture_rgb, screenshot_differs};
 
 use crate::sync::{self, Synced};
 use crate::{Case, Divergence, InputScript, Mode, Outcome, SyncPoint};
@@ -186,15 +186,10 @@ fn play(rec: &Recording, pokes: &Pokes) -> Played {
 }
 
 /// Where the original's run left the recording's (T00): under lag the original does not play
-/// what the owner played, and a bug seen after this frame may not occur on it.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Left {
-    /// The original's frame, counted from the start.
-    pub frame: u32,
-    /// The recording's step it was fed.
-    pub step: u32,
-    pub what: String,
-}
+/// what the owner played, and a bug seen after this frame may not occur on it. `frame` counts the
+/// original's frames from the start; `step` is the recording's step it was fed. The toolkit's, as
+/// Forest Dumb's compare reports it too.
+pub use amiga_conform::bug_compare::Left;
 
 /// Where the original was put back on the recording (bug-recorder T14): it had left it (`what`)
 /// by the pass end its frame `frame` ended, and the recording's engine after step `step` was
@@ -546,21 +541,13 @@ impl Compared {
     /// in full.
     pub fn report(&self) -> String {
         let mut out = String::new();
-        match (self.first(), &self.retimed.left) {
-            (None, None) => out += "same\n",
-            (None, Some(l)) => {
-                out += &format!(
-                    "same up to frame {} (engine step {}), not judged after it\n",
-                    l.frame, l.step
-                )
-            }
-            (Some(d), _) => {
-                let (f, s) = self.at(d);
-                let text = d.to_string();
-                let what = text.lines().nth(1).map_or("", str::trim);
-                out += &format!("differs at frame {f} (engine step {s}): {what}\n");
-            }
-        }
+        let text = self.first().map(|d| d.to_string());
+        let first = self.first().zip(text.as_deref()).map(|(d, text)| {
+            let (f, s) = self.at(d);
+            (f, s, text.lines().nth(1).map_or("", str::trim))
+        });
+        out += &amiga_conform::bug_compare::verdict_line(first, self.retimed.left.as_ref());
+        out += "\n";
         let put = &self.retimed.put_back;
         if let Some(p) = put.first() {
             out += &format!(
@@ -853,13 +840,9 @@ pub fn write_case(
 
 /// The recording's inputs as a script of engine steps.
 fn steps_script(rec: &Recording) -> InputScript {
-    let mut s = InputScript::default();
-    for (k, &i) in rec.inputs.iter().enumerate() {
-        if s.lines.last().map(|l| l.1) != Some(i) {
-            s.lines.push((k as u32, i));
-        }
+    InputScript {
+        lines: amiga_conform::script::InputScript::from_steps(&rec.inputs).lines,
     }
-    s
 }
 
 /// The case a recording retimed as `r` is compared as: the setup's start, the script in the
@@ -887,22 +870,6 @@ fn case_of(rec: &Recording, name: &str, r: &Retimed) -> Case {
             pokes: Vec::new(),
         }),
     }
-}
-
-/// The original's picture as a PNG.
-pub fn frame_png(f: &Rgb12Frame) -> Vec<u8> {
-    let rgb: Vec<u8> = f
-        .pixels
-        .iter()
-        .flat_map(|&c| {
-            [
-                (c >> 8 & 15) as u8 * 17,
-                (c >> 4 & 15) as u8 * 17,
-                (c & 15) as u8 * 17,
-            ]
-        })
-        .collect();
-    crate::report::png(f.width as u32, f.height as u32, &rgb)
 }
 
 /// The frames `bug replay` writes: `from..to` (to excluded), every `every`th from `from`.
