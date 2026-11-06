@@ -112,6 +112,31 @@ pub const PORTED: &[Ported] = &[
     port("h0_6c80", 0x6c80, "render::status::Status::lives"),
     port("h0_9a34", 0x9a34, "render::sprite_pointers"),
     port("h0_988a", 0x988a, "render::status_pointers"),
+    // T22, taking objects and the creatures' write-back (objects/collectible.rs).
+    port(
+        "char_object_cells",
+        0x2698,
+        "objects::MapObjects::object_cells",
+    ),
+    port("h0_26ec", 0x26ec, "objects::MapObjects::take"),
+    port("h0_29ca", 0x29ca, "objects::MapObjects::redraw_cell"),
+    port(
+        "score_add_routine",
+        0x2a6e,
+        "objects::MapObjects::add_score",
+    ),
+    port("h0_2dd6", 0x2dd6, "objects::MapObjects::write_back"),
+    port("h0_2e0e", 0x2e0e, "objects::MapObjects::write_back_slot"),
+    port(
+        "countdown_plus_100",
+        0x6a04,
+        "objects::MapObjects::add_time",
+    ),
+    port(
+        "items_left_minus_one",
+        0x6a4c,
+        "objects::MapObjects::count_item",
+    ),
 ];
 
 /// A hunk 0 routine's entry.

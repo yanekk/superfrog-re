@@ -69,3 +69,34 @@ units = [
   { fn = "scroll", routines = [["h0_51fc", 0x51fc], ["h0_526a", 0x526a], ["h0_52d8", 0x52d8], ["h0_5346", 0x5346]],
     helpers = ["set"] },
 ]
+
+[T22]
+src = "crates/fd-core/src/objects/collectible.rs"
+impl = "impl MapObjects<'_>"
+test = "crates/fd-conform/tests/collect_routines.rs"
+test_fn = "every_t22_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/objects/collectible.rs", "crates/fd-core/src/objects/mod.rs",
+         "crates/fd-core/src/state.rs", "crates/fd-core/src/level/redraw.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "CAMERA_X", "CAMERA_Y", "ROW", "EXIT_TOUCHED", "TAKEN", "SCORE", "SCORE_ADD",
+           "SLOT_INDEX", "ACTIVE", "SLOTS", "COUNTDOWN", "ITEMS_LEFT", "h0", "CpuIo", "Io", "load", "store",
+           "on_objects"]
+adapter_fn = true
+examples = ["add_score", "redraw_cell"]
+compared = """The rig loads the State fields the object ports use from memory (char_x, char_y, the camera, \
+level_exit_touched, score, countdown, items_left, `collect`, the creature slots with their flags and index), \
+runs your function with `self.io` over that memory, stores what changed and compares every byte the \
+original writes and every custom-chip write in order: a blit through `self.io.blit`, a sound through \
+`self.io.sound`. Object map cells are read and written through `self.io` at hunk 0 offsets. No register \
+is compared except where the adapter sets it."""
+units = [
+  { fn = "object_cells", routines = [["char_object_cells", 0x2698]] },
+  { fn = "take", routines = [["h0_26ec", 0x26ec]] },
+  { fn = "redraw_cell", routines = [["h0_29ca", 0x29ca]] },
+  { fn = "add_score", routines = [["score_add_routine", 0x2a6e]] },
+  { fn = "write_back", routines = [["h0_2dd6", 0x2dd6]] },
+  { fn = "write_back_slot", routines = [["h0_2e0e", 0x2e0e]] },
+  { fn = "add_time", routines = [["countdown_plus_100", 0x6a04]] },
+  { fn = "count_item", routines = [["items_left_minus_one", 0x6a4c]] },
+]

@@ -6,6 +6,7 @@
 use crate::character::{Anim, InputLog, JoyFlags, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
+use crate::objects::Collect;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,6 +49,8 @@ pub struct State {
     /// What the edge redraws keep: their position, the creature slots and the animated cells (T55).
     /// `collision_map`, which they build as the view scrolls, is `Game`'s collision plane.
     pub edges: Edges,
+    /// What taking objects keeps besides the counters (T22, `objects`).
+    pub collect: Collect,
     /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
     /// started. Filled from the level by `Game::new`.
     pub object_map: Vec<u8>,
@@ -115,6 +118,7 @@ impl State {
             // `collision_map`, started creatures and cleared their cells there. A case takes them
             // from the original by transplant (T55).
             edges: Edges::default(),
+            collect: Collect::default(),
             object_map: Vec::new(),
         }
     }

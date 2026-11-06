@@ -129,6 +129,17 @@ impl Screen {
         }
     }
 
+    /// A tile's 80 words from `src` bytes past `h3+$13540` (A to D, `BLTCON0=$09f0`, modulo 0) to the
+    /// screen at `dst`.
+    fn copy(&mut self, src: u32, dst: u32, word: &impl Fn(u32) -> u16) {
+        let src = h(3, 0x1_3540).wrapping_add(src);
+        let dst = h(3, SCREEN).wrapping_add(dst);
+        for r in 0..80 {
+            let v = word(src.wrapping_add(2 * r));
+            self.set_word(dst.wrapping_add(r * PLANE_BYTES), v);
+        }
+    }
+
     /// Apply one of the redraws' blits, its sources read by chip address through `chip`. Both are
     /// one word wide and 80 rows (`BLTSIZE=$1401`, five planes of 16 lines), D's modulo `$2c`. A word
     /// whose destination falls outside the play screen lands elsewhere in chip RAM, where nothing the
@@ -137,14 +148,9 @@ impl Screen {
         let word = |a: u32| u16::from_be_bytes([chip(a), chip(a.wrapping_add(1))]);
         match *b {
             // `h0_774`: A to D, `BLTCON0=$09f0`, A from tile `tile` of `h3+$13540`, modulo 0.
-            Blit::Tile { tile, dst } => {
-                let src = h(3, 0x1_3540).wrapping_add(tile as u32 * 0xa0);
-                let dst = h(3, SCREEN).wrapping_add(dst);
-                for r in 0..80 {
-                    let v = word(src + 2 * r);
-                    self.set_word(dst.wrapping_add(r * PLANE_BYTES), v);
-                }
-            }
+            Blit::Tile { tile, dst } => self.copy(tile as u32 * 0xa0, dst, &word),
+            // `h0_29ca`: the same blit, from the tile table's offset (T22).
+            Blit::Cell { src, dst } => self.copy(src, dst, &word),
             // `h0_a06` and its twins: `BLTCON0=$0fca`, D = A·B + ¬A·C; A the mask (`h4+$2580`), B the
             // picture (`h4+$c80`), modulos `$26`; C and D the screen.
             Blit::Bob { image, dst } => {

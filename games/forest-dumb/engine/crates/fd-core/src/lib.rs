@@ -9,6 +9,7 @@ pub mod character;
 pub mod game;
 pub mod layout;
 pub mod level;
+pub mod objects;
 pub mod ported;
 pub mod program;
 pub mod recording;
