@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-06 | 📌 | T42 review: no case compared `char_unhurt_t` (`h0+$9b04`); T42's cases now do, `character_edges.rs` requires every `char_` variable. T41's six `character-run-*` cases still omit it; left for T11. |
+| 2026-11-06 | 📌 | T11, measured: six W1-1 stretches match on variables and picture together. The spike pit's lost life shows a hurt frame (T24), so `stretch-pit` stops at 6522. Score, items and lives digits never redraw on stretches. |
 | 2026-11-06 | 📌 | T42, measured: a life lost on W1-1's spikes holds the character about 30 passes (`char_dying`, `char_dying_t`, its hurt frame), input ignored, no respawn; another every ~135 passes standing. Unported (T24). |
 | 2026-11-06 | 🔄 | Owner amended at checkpoint 3 (DESIGN §4.4): `task_pack.py` packs start every pending task; workers' unused tools denied, run started with `ENABLE_CLAUDEAI_MCP_SERVERS=false`; Muse writes porting engine code with a quality loop (`reshape.py --all`), T66's answer. Run stopped for the edit. |
 | 2026-11-06 | 📌 | T68 added by T16 with the coordinator's yes (screen locked): the OS-layer drill, the real windows `ScriptedUi` fakes (fake unverified, T14). Locked, the window never becomes key and Accessibility sees no buttons. Blocks T28. |

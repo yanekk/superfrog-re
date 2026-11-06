@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T11, then T19, T22 and T68 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T42 | case-walls-pits | T08, T09, T41 | ✅ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
 | T44 | case-picture | T10 | ✅ | |
-| T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
+| T11 | character-cases | T01, T41, T42, T43, T44 | 🔍 | Six stretches (run, jump, slope, pit edge, scroll, wall), vars and picture together; 3 tests, 2 smoke with area. Deviations: pit stretch ends before the spikes (hurt frame T24); seven T10 routines named unreachable with tasks (T22, T23, T46/T47, start-up T44); T41's cases now compare char_unhurt_t (FINDINGS). |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T11
 
 ## Blocked on the user
 
