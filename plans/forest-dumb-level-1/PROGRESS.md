@@ -86,9 +86,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T66 | reshape-decision | T62; blocks T22 | ⬜ | |
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
-| T69 | level-start-state | T07, T65; blocks T20, T28 | 🔍 | `Game::new` runs pass 1's `char_update` (the sync frame ends at its start); `State::level_1` unchanged. Owners no longer transplants. 1 test moved: level_entry's LAYOUT check now at the first pass end (doc put it in level_start.rs). 3 fd-core unit tests updated. |
+| T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | Review clean, no fix commit. Probed: 600 steps of `character-run-jumps` from `Game::new` compare `same` with the start equal; mutation dropping `Game::new`'s `char_update` turns level_entry and recording_compare red. Test moved to level_entry.rs held. Idle equal 62 passes is read-only. |
 
-**Review queue:** T69
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
