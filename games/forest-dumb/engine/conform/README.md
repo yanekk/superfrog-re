@@ -43,8 +43,9 @@ frames = 130                 # oracle frames run after the sync point
 compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
-exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var countdown", task = "T23" }]  # optional
+exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 freeze = false               # optional
+set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
 
@@ -58,6 +59,14 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
   where only state is expected to stay in step: the run reaches its last frame with no engine event and
   every listed variable compared on every pass; a pass whose end the original hides (below) fails it.
+  `game_over = true` (T23): both sides show the game over screen and leave it in the same step.
+  `level_end = true` (T26): both sides find the level's end in the same step, the original running
+  `next_world` (`h0+$1ba`) and the engine entering its level end, `world_index` equal. Both take a
+  `by_frame`.
+- **The comparison ends at `next_world`** (T26, DESIGN §2.5): world 2's load and screen are not built,
+  so a level case stops in the step the original runs it, named in the report as `AFTER_NEXT_WORLD`
+  (`fd-conform/src/lib.rs`). An engine that finds the level's end while the original runs a pass, or
+  not when it runs `next_world`, fails with a scene difference.
 - **`exclude`.** Picture rows (`"rows A..B"`), a box of them (`"rows A..B cols C..D"`, x from the
   window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
   task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
@@ -67,6 +76,9 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
 - **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
   original at the sync point. The list is empty until T21 measures the object entry points, so
   `freeze = true` is an error until then.
+- **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
+  its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
+  sets, so HELP ends the level (T26).
 
 The oracle's frame cap is the case's last frame. A disk change is in the case and not in the script,
 because a script holds only what the player holds (`amiga-conform`'s `script` module has the format).

@@ -63,6 +63,22 @@ Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are 
 elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `--timeout`) are in
 `fd-app/src/args.rs`; `fd-e2e` drives it end to end (`cargo test -p fd-e2e`).
 
+## Seeing a run on the map
+
+`cargo run --release -p fd-routeview -- --script FILE` in `engine/` plays an input script
+(`engine/conform/scripts/*.txt`) from W1-1's start and writes level 1's map with the character's path
+to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
+holds disk graphics: keep it under `build/`.
+
+## Planning a route
+
+`cargo run --release -p fd-plan -- level W1-1` in `engine/` plans W1-1 on the engine (`--rounds N`,
+`--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
+`build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
+it on the original with creatures, animated cells and springs frozen, saying for how many passes the
+two agree. The engine takes coins (T22), so the search chases them; until contact and the level's end
+are ported (T70, T24, T26) the level never ends, so a route stalls with coins left and exits 1.
+
 ## Bug-fix procedure
 
 A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it

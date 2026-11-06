@@ -118,6 +118,26 @@ adds 100 to `countdown` with its own sound. Only `$40`-`$44` and `$48` are in W1
 **The exit (`$ff`).** See [09](09-play-measured.md), "Level end". The scan in the edge redraws also stops
 at a `$ff` cell. Measured here: `level_exit_touched` set on each pass on it, nothing else with items left.
 
+## Taking and writing back, ported (T22)
+
+`fd-core/src/objects/collectible.rs` ports `char_object_cells`, `h0_26ec`, `h0_29ca`, `score_add_routine`,
+`countdown_plus_100`, `items_left_minus_one`, `h0_2dd6` and `h0_2e0e` (rig: `fd-conform/tests/collect_routines.rs`).
+
+**Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
+porting. All eight run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot
+cut them, and `main_loop` runs only once the pass ends. What waits: `item_sound` (`h0+$2648`, and its
+twin inline for `$4c`) waits for four VHPOSR line changes between switching the channel's DMA off and
+on, and `h0_29ca` waits for BLTBUSY before its blit. Neither changes game state, and both finish
+inside the pass. Values latched: `object_row` (`h0+$2692`) and `object_taken` (`h0+$29c6`) are
+written before each read on every path; `creature_slot_index` (`h0+$2faa`) is set by `h0_2dd6`'s
+loop. The ABCD and SBCD adds take the X flag as 0: `score_add_routine` and `items_left_minus_one`
+clear it, and `countdown_plus_100`'s only caller reaches it after `h0_29ca`'s `lsl.l #2` of a word,
+which shifts out a 0. Nothing is a loop left and re-entered on a later pass.
+
+**The screen is state?** The taken cell's tile is blitted over the play screen (`h0_29ca`, tile offset
+from the table at `h0+$3b988`, which holds `n * $a0`). The engine adds it to the screen's blits
+(`Blit::Cell`); nothing reads the screen back as game state.
+
 ## Values W1-1 does not hold
 
 Read, not measured: `7` to `$f` and `$14` to `$1f` are skipped by the scan and by `h0_24ce`; `$12`, `$13`

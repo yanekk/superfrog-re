@@ -63,9 +63,10 @@ fn the_idle_case_passes_on_the_level_engine() {
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     // Every pass after the transplant's own, one a frame, none unseen.
     assert_eq!((v.passes, v.unseen), (case.frames - 1, 0), "{v}");
-    // countdown loses one at passes 441 and 504 of play, both inside the stretch.
-    assert_eq!(v.excluded.len(), 1, "{v}");
-    assert!(v.excluded[0].1 > 100, "{v}");
+    // countdown loses one at passes 441 and 504 of play, both inside the stretch, compared since
+    // T23 ported `countdown_step`.
+    assert!(case.vars.iter().any(|v| v == "countdown"), "{v}");
+    assert!(v.excluded.is_empty(), "{v}");
     assert!(v.events.is_empty(), "{v}");
 
     // The command line runs it too, and says so.

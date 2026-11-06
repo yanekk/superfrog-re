@@ -204,8 +204,8 @@ hunk = 0
 offset = 0x1f78
 name = "last_key_byte"
 kind = "var"
-size = 2
-note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed"
+size = 1
+note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed; move.b only, h0+$1f79 is padding (T23)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -1820,3 +1820,61 @@ offset = 0x9a34
 name = "h0_9a34"
 kind = "func"
 note = "start-up: the level copper list's sprite pointers at h1+$d8 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2648
+name = "item_sound"
+kind = "func"
+note = "starts the item sample h4+$12acc on audio channel 2 after four raster lines (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2692
+name = "object_row"
+kind = "var"
+size = 4
+note = "the row offset char_object_cells reads at, $19 then 9; h0_26ec adds it to char_y (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x26ec
+name = "h0_26ec"
+kind = "func"
+note = "takes what the object map holds at d0, d1: the exit, an item or a bonus (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x29c6
+name = "object_taken"
+kind = "var"
+size = 4
+note = "h0_26ec's d0 when it takes a cell, the value in its low byte; h0_29ca returns it (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x29ca
+name = "h0_29ca"
+kind = "func"
+note = "redraws a taken cell's 16x16 tile from the tile map onto the play screen (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2dd6
+name = "h0_2dd6"
+kind = "func"
+note = "each active creature slot out of view is written back into the object map (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2e0e
+name = "h0_2e0e"
+kind = "func"
+note = "slot d0 out of view: kind + 1 written into a free cell near it, its flag cleared (T22)"

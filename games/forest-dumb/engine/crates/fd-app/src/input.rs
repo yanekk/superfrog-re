@@ -9,6 +9,7 @@
 use amiga_app::keys::KeyMap;
 use amiga_app::pad::{PadMap, PadState};
 use amiga_input::FrameInput;
+use fd_core::character::death::KEY_P;
 use winit::keyboard::KeyCode;
 
 pub use amiga_app::script_core::HostInput;
@@ -88,6 +89,10 @@ impl Input {
     }
 
     /// This frame's input: what is held, plus anything pressed and released since the last frame.
+    ///
+    /// Never the Amiga's P: the app has no pause (DESIGN §2.7; the owner kept it, 2026-11-05), and
+    /// since T23 the engine pauses on P as the original's `play_keys` does, which cases need. The
+    /// default map would otherwise give it the Mac's P.
     pub fn frame(&mut self) -> FrameInput {
         let mut f = std::mem::take(&mut self.tapped);
         for &code in &self.keys {
@@ -100,6 +105,7 @@ impl Input {
                 f = t.apply(f);
             }
         }
+        f.keys = f.keys.without(KEY_P);
         f
     }
 }
@@ -146,6 +152,17 @@ mod tests {
         assert_eq!(i.event(key(KeyCode::KeyQ, true)), Some(Command::Quit));
         assert_eq!(i.event(key(KeyCode::Space, true)), None);
         assert_eq!(i.frame(), FrameInput::NONE, "a key with ⌘ is the app's");
+    }
+
+    #[test]
+    fn p_never_reaches_the_game_though_the_default_map_names_it() {
+        let mut i = input();
+        assert!(
+            i.map.targets(KeyCode::KeyP).next().is_some(),
+            "the default map binds P"
+        );
+        i.event(key(KeyCode::KeyP, true));
+        assert_eq!(i.frame(), FrameInput::NONE);
     }
 
     #[test]

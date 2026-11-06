@@ -167,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-input",
+ "libc",
+ "serde",
+]
+
+[[package]]
 name = "amiga-record"
 version = "0.1.0"
 dependencies = [
@@ -174,6 +183,10 @@ dependencies = [
  "amiga-disk",
  "amiga-input",
 ]
+
+[[package]]
+name = "amiga-routeview"
+version = "0.1.0"
 
 [[package]]
 name = "android-activity"
@@ -967,6 +980,31 @@ dependencies = [
  "fd-core",
  "fd-tools",
  "libc",
+]
+
+[[package]]
+name = "fd-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-conform",
+ "amiga-input",
+ "amiga-plan",
+ "fd-assets",
+ "fd-conform",
+ "fd-core",
+ "fd-routeview",
+]
+
+[[package]]
+name = "fd-routeview"
+version = "0.1.0"
+dependencies = [
+ "amiga-conform",
+ "amiga-input",
+ "amiga-routeview",
+ "fd-assets",
+ "fd-conform",
+ "fd-core",
 ]
 
 [[package]]

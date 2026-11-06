@@ -1,0 +1,11 @@
+# T23: from frame 6400 standing: P pressed and released (paused), again (unpaused), then Esc pressed and
+# released (give up). main_loop finds give_up at pass 160 and shows the game over screen; fire held long
+# after its 21-frame wait and let go ends it where the high scores would start.
+0: K19
+3: -
+40: K19
+43: -
+80: K45
+83: -
+140: F
+143: -

@@ -579,6 +579,8 @@ impl App {
                         .window
                         .request_inner_size(LogicalSize::new(w, h));
                 }
+                // The title's cheat code, which the app has no title for: HELP then ends the level.
+                Event::Cheat => self.run.as_mut().expect("running").game.set_cheat(true),
                 Event::Hang => {
                     eprintln!("fd-app: the script hangs at frame {n}");
                     loop {
@@ -593,12 +595,26 @@ impl App {
         let run = self.run.as_mut().expect("running");
         run.steps = n;
         let input = run.input.frame();
+        let finished = run.game.finished();
         run.game.step(input);
         run.recorder.step(input);
         for e in run.game.take_events() {
             match e {
                 GameEvent::Unported(v) => {
                     eprintln!("fd-app: object value {v} is not ported; left out")
+                }
+                GameEvent::GameOver => eprintln!("fd-app: game over"),
+                // Fire on the game over screen: where the original shows its high scores, which
+                // the engine skips (DESIGN §2.4: never saved, no title to return to), the level
+                // starts again, lives full and score zero. A recording runs on through it (§2.8).
+                GameEvent::Restart if !finished => eprintln!(
+                    "fd-app: the high scores are skipped; W1-1 restarts, lives full, score zero"
+                ),
+                // `next_world`: where the original loads world 2, the app shows "Level 1 complete"
+                // until fire, then plays the level again from its start (DESIGN §2.5).
+                GameEvent::LevelEnd => eprintln!("fd-app: level 1 complete"),
+                GameEvent::Restart => {
+                    eprintln!("fd-app: fire on the message; W1-1 restarts, lives full, score zero")
                 }
                 other => eprintln!("fd-app: {other:?}"),
             }

@@ -33,7 +33,8 @@ use amiga_oracle::{
 use std::sync::Arc;
 
 use fd_core::{
-    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, layout_var,
+    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, Width,
+    layout_var,
 };
 
 pub use case::{Case, Compare, Exclusion, Goal, Swap};
@@ -55,6 +56,21 @@ pub const PLAY_WINDOW: (u16, u16) = (0x2F81, 0x29C1);
 /// The end of a pass: `level3_handler` writes `INTREQ=$4010` at `h0+$1f02`, just after
 /// `game_frame` returns (custom register `$9c`, value).
 pub const PASS_END: (u16, u16) = (0x9c, 0x4010);
+
+/// `game_over_screen` (`h0+$4c4`): `main_loop` has found the game over; no pass runs after it.
+pub const GAME_OVER_SCREEN: (u8, u32) = (0, 0x4c4);
+/// The high scores (`h0+$89d0`), after the game over screen: where the engine restarts the level
+/// instead (DESIGN §2.4), so where a comparison ends.
+pub const HIGH_SCORES: (u8, u32) = (0, 0x89d0);
+/// `next_world` (`h0+$1ba`): `main_loop` has found the level's end; its first instruction adds one
+/// to `world_index` (T26).
+pub const NEXT_WORLD: (u8, u32) = (0, 0x1ba);
+
+/// What a level case never compares, by name: the original after `next_world`. A level case's
+/// comparison ends in the step the original runs it, holding `world_index` (DESIGN §2.5); world 2
+/// is no task of this plan, so the exclusion stays until world 2 is built.
+pub const AFTER_NEXT_WORLD: &str = "world 2's load and its SCENA screen after `next_world`, where \
+     the engine shows \"Level 1 complete\" until world 2 is built (DESIGN §2.5)";
 
 /// `engine/conform/`, wherever this is run from.
 pub fn conform_dir() -> PathBuf {
@@ -110,6 +126,17 @@ pub trait Engine: Transplant {
     fn events(&mut self) -> Vec<Event> {
         Vec::new()
     }
+    /// A step the original spends on the game over screen, where no pass runs: the engine steps on
+    /// the step's input (T23). An engine without the screen does nothing.
+    fn off_play(&mut self, _input: FrameInput) {}
+    /// Whether the engine shows the game over screen.
+    fn game_over(&self) -> bool {
+        false
+    }
+    /// Whether the engine has found the level's end and run `next_world` (T26).
+    fn level_end(&self) -> bool {
+        false
+    }
 }
 
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
@@ -125,6 +152,18 @@ impl Engine for Game {
 
     fn events(&mut self) -> Vec<Event> {
         self.take_events()
+    }
+
+    fn off_play(&mut self, input: FrameInput) {
+        self.step(input);
+    }
+
+    fn game_over(&self) -> bool {
+        matches!(self.scene(), fd_core::Scene::GameOver(_))
+    }
+
+    fn level_end(&self) -> bool {
+        self.finished()
     }
 }
 
@@ -199,6 +238,9 @@ pub enum Outcome {
     Unported { pass: u32, frame: u32, value: u8 },
     /// An exclusion hid no difference over the whole run: it is no longer needed.
     ExclusionUnused { what: String, task: String },
+    /// One side went to the game over screen, or left it, or found the level's end, and the other
+    /// did not (T23, T26).
+    SceneDiffers { frame: u32, why: String },
 }
 
 /// A case's result and its report.
@@ -220,6 +262,13 @@ pub struct Verdict {
     pub events: Vec<(u32, Event)>,
     /// The oracle frame at whose pass end the goal held.
     pub goal_met: Option<u32>,
+    /// The oracle frames after whose steps both sides showed the game over screen and both left it
+    /// for the high scores (T23); the comparison ends at the second.
+    pub game_over: Option<(u32, Option<u32>)>,
+    /// The oracle frame of the step both sides found the level's end in (T26): the original ran
+    /// `next_world`, the engine entered its level end, `world_index` equal. The comparison ends
+    /// there; [`AFTER_NEXT_WORLD`] is not compared.
+    pub level_end: Option<u32>,
     pub coverage: Coverage,
 }
 
@@ -234,6 +283,8 @@ impl Verdict {
             excluded: Vec::new(),
             events: Vec::new(),
             goal_met: None,
+            game_over: None,
+            level_end: None,
             coverage: Coverage::new(register),
         }
     }
@@ -276,6 +327,9 @@ impl fmt::Display for Outcome {
                 f,
                 "exclusion `{what}` ({task}) hid no difference: remove it"
             ),
+            Outcome::SceneDiffers { frame, why } => {
+                write!(f, "scene differs at oracle frame {frame}: {why}")
+            }
         }
     }
 }
@@ -311,6 +365,22 @@ impl fmt::Display for Verdict {
         }
         for (pass, e) in &self.events {
             write!(f, "\nevent at pass {pass}: {e:?}")?;
+        }
+        if let Some((from, to)) = self.game_over {
+            write!(f, "\ngame over screen from oracle frame {from}")?;
+            if let Some(to) = to {
+                write!(
+                    f,
+                    "; the high scores start at {to}, where the engine restarts: compared up to there"
+                )?;
+            }
+        }
+        if let Some(fr) = self.level_end {
+            write!(
+                f,
+                "\nlevel end: both ran `next_world` at oracle frame {fr}, world_index equal; \
+                 compared up to there, excluded after: {AFTER_NEXT_WORLD}"
+            )?;
         }
         if let Some(fr) = self.goal_met {
             write!(f, "\ngoal reached at oracle frame {fr}")?;
@@ -466,6 +536,15 @@ fn reach_case_with(
     }
     if case.freeze {
         freeze::apply(&mut am, freeze::FROZEN)?;
+    }
+    for (name, value) in &case.set {
+        let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
+        let bytes = match v.width {
+            Width::Byte => vec![*value as u8],
+            Width::Word => (*value as u16).to_be_bytes().to_vec(),
+            Width::Long => value.to_be_bytes().to_vec(),
+        };
+        am.poke(address(name)?, &bytes);
     }
     Ok(am)
 }
@@ -712,7 +791,11 @@ pub fn run_inputs(
         _ => Vec::new(),
     };
     let irq = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
-    let pcs: Vec<u32> = opts.register.iter().map(coverage::address).collect();
+    let mut pcs: Vec<u32> = opts.register.iter().map(coverage::address).collect();
+    let scene_pcs =
+        [GAME_OVER_SCREEN, HIGH_SCORES, NEXT_WORLD].map(|(h, o)| HUNK_BASES[h as usize] + o);
+    let world = layout_var("world_index").ok_or("no world_index in LAYOUT")?;
+    pcs.extend(scene_pcs);
     let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
 
@@ -768,6 +851,13 @@ pub fn run_inputs(
                         })?;
                         engine.pass(pass_input);
                         passes_run += 1;
+                        if engine.level_end() {
+                            return Ok(scene_differs(
+                                verdict,
+                                frame,
+                                "the engine found the level's end; the original ran a pass",
+                            ));
+                        }
                         if case.compare.picture {
                             drawn.push((n, engine.picture().ok_or(NO_PICTURE)?));
                         }
@@ -825,6 +915,99 @@ pub fn run_inputs(
             }
         }
 
+        // After the pass ends: pass 32k can end in the step `main_loop` then finds the game over in.
+        let ran = |pc: u32| am.pc_hits().iter().any(|&(p, n)| p == pc && n > 0);
+        let (entered, scores) = (ran(scene_pcs[0]), ran(scene_pcs[1]));
+        if ran(scene_pcs[2]) {
+            // `next_world` (T26): no pass runs after it; the engine steps on the step's input, must
+            // find the level's end in it with `world_index` equal, and the comparison ends.
+            engine.off_play(input);
+            for e in engine.events() {
+                verdict.events.push((at.map_or(0, |(f, l)| l - f), e));
+            }
+            if !engine.level_end() {
+                return Ok(scene_differs(
+                    verdict,
+                    frame,
+                    "the original ran `next_world`; the engine did not find the level's end",
+                ));
+            }
+            let (ours, theirs) = (engine.probe(world), Live(&am).value(world));
+            if ours != theirs {
+                verdict.outcome = Outcome::Differs {
+                    pass: at.map_or(0, |(f, l)| l - f),
+                    frame,
+                    var: world.name.to_string(),
+                    engine: ours,
+                    oracle: theirs,
+                };
+                return Ok(verdict);
+            }
+            verdict.level_end = Some(frame);
+            break;
+        }
+        if verdict.game_over.is_some() || entered {
+            // The game over screen (T23): no pass runs; the engine steps on the step's input and
+            // must enter it, stay on it and leave it in the steps the original does.
+            let first = verdict.game_over.is_none();
+            if first && engine.game_over() {
+                return Ok(scene_differs(
+                    verdict,
+                    frame,
+                    "the engine went to the game over screen a step before the original",
+                ));
+            }
+            engine.off_play(input);
+            for e in engine.events() {
+                verdict.events.push((at.map_or(0, |(f, l)| l - f), e));
+            }
+            if first {
+                verdict.game_over = Some((frame, None));
+            }
+            if engine.game_over() == scores {
+                let why = if scores {
+                    "the original left the game over screen for the high scores; the engine did not"
+                } else if first {
+                    "the original went to the game over screen; the engine did not"
+                } else {
+                    "the engine left the game over screen; the original did not"
+                };
+                return Ok(scene_differs(verdict, frame, why));
+            }
+            if scores {
+                verdict.game_over = verdict.game_over.map(|(from, _)| (from, Some(frame)));
+                break;
+            }
+            // The step that entered the screen draws play above the copper's switch and the
+            // screen below it: its frame is not compared.
+            if case.compare.picture && !first {
+                let ours = engine.picture().ok_or(NO_PICTURE)?;
+                let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
+                verdict.pictures += 1;
+                let class = classify(&ours, &pic, &[], &tol);
+                if class != PictureClass::Same {
+                    let mut why = format!("the game over screen: {class:?}");
+                    if let (Some(dir), Some(m)) = (&opts.diff_dir, picture_except(&ours, &pic, &[]))
+                    {
+                        let d = report::write_diff_png(dir, &case.name, frame, &ours, &pic, m);
+                        why += &format!("; {}", d.path.display());
+                    }
+                    verdict.outcome = Outcome::PictureDiffers {
+                        pass: at.map_or(0, |(f, l)| l - f),
+                        frame,
+                        why,
+                    };
+                    return Ok(verdict);
+                }
+            }
+            continue;
+        } else if scores {
+            return Ok(scene_differs(
+                verdict,
+                frame,
+                "the original entered its high scores without its game over screen",
+            ));
+        }
         // The frame this step drew shows the pass that started at its vertical blank: the last
         // pass started by the step's end less one (measured, T44: every pixel of scrolled frames
         // agrees so, and the frame of the step a pass ended in is a pass behind once passes run
@@ -899,6 +1082,26 @@ pub fn run_inputs(
                     goal: format!("{} by oracle frame {by_frame}", want.join(", ")),
                 })
             }
+            Some(Goal::GameOver { by_frame }) => match verdict.game_over {
+                Some((_, Some(left))) if left <= *by_frame => {
+                    verdict.goal_met = Some(left);
+                    None
+                }
+                _ => Some(Outcome::GoalMissed {
+                    goal: format!(
+                        "the game over screen left for the high scores by oracle frame {by_frame}"
+                    ),
+                }),
+            },
+            Some(Goal::LevelEnd { by_frame }) => match verdict.level_end {
+                Some(end) if end <= *by_frame => {
+                    verdict.goal_met = Some(end);
+                    None
+                }
+                _ => Some(Outcome::GoalMissed {
+                    goal: format!("the level's end (`next_world`) by oracle frame {by_frame}"),
+                }),
+            },
             Some(Goal::Idle) => if let Some((pass, e)) = verdict.events.first() {
                 Some(format!("the engine raised `{e:?}` at pass {pass}"))
             } else if verdict.unseen > 0 || verdict.passes != passes_run {
@@ -927,6 +1130,15 @@ pub fn run_inputs(
     };
     verdict.outcome = failed.or_else(unused).unwrap_or(Outcome::Same);
     Ok(verdict)
+}
+
+/// A scene difference ends the run.
+fn scene_differs(mut verdict: Verdict, frame: u32, why: &str) -> Verdict {
+    verdict.outcome = Outcome::SceneDiffers {
+        frame,
+        why: why.to_string(),
+    };
+    verdict
 }
 
 #[cfg(test)]

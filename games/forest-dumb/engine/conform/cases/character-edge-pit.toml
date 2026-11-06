@@ -1,0 +1,15 @@
+# T42: the spike pit below the first slope's end (scripts/character-edge-pit.txt), every object frozen
+# (unfrozen, char_x differs at 6727; freeze.rs names each routine's task).
+# The slide flies off the slope into it (W1-1 char_x $29d), the spikes cost a life, and the original holds
+# the character still for about 30 passes (char_dying, its hurt frame), which T24's char_hit_check models
+# with the grace count after it (char_unhurt_t); input waits it out. Then the pit's walls (char_x $28b,
+# $29c), a jump straight up, and a jump out left that falls into the pit below, meets its wall at char_x
+# $200 and lands at $25d,$2e4, the goal.
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "character-edge-pit"
+frames = 440
+compare = ["vars"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "irq_count", "countdown"]
+goal = { all = [{ var = "char_x", value = 0x25d }, { var = "char_y", value = 0x2e4 }], by_frame = 6830 }
+exclude = [{ what = "var char_anim_ptr", task = "T24" }, { what = "var char_dying_t", task = "T24" }, { what = "var char_dying", task = "T24" }, { what = "var hits_taken", task = "T24" }, { what = "var char_unhurt_t", task = "T24" }]
+freeze = true

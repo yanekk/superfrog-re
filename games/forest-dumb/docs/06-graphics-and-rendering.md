@@ -111,5 +111,6 @@ vertical blank, `irq_count` at the step's end less one; paired so, the engine's 
 original's in every pixel while scrolling, walking and jumping, the character's sprite included.
 The status bar is the exception inside a frame: `main_loop` redraws it after pass `32k` ends and before
 the beam reaches line 241, so the frame showing pass `32k` has the new numbers; `Game::picture` draws
-that redraw ahead of the next step. Still differing: the countdown's digits until T23 ticks it, and
-creatures, animated cells and springs (T24, T25, T52).
+that redraw ahead of the next step. Still differing: creatures, animated cells and springs (T24, T25,
+T52). The game over screen (`h1+$810`, the picture at `h4+$149e8`) equals the original's in every
+pixel (T23, `fd-conform/tests/death.rs`).

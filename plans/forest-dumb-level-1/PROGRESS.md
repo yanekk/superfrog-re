@@ -10,7 +10,7 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 59 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
 **Next `pir-work` will:** T42, then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
@@ -43,10 +43,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | camera-scroll | T07, T40 | ✅ | |
 | T10 | level-drawing | T08, T09, T40 | ✅ | |
 | T41 | case-run-jump | T08, T09 | ✅ | |
-| T42 | case-walls-pits | T08, T09, T41 | ⬜ | |
+| T42 | case-walls-pits | T08, T09, T41 | ✅ | |
 | T43 | case-scroll | T08, T09 | ✅ | |
 | T44 | case-picture | T10 | ✅ | |
-| T11 | character-cases | T01, T41, T42, T43, T44 | ⬜ | |
+| T11 | character-cases | T01, T41, T42, T43, T44 | ✅ | |
 | T12 | app-toolkit-move | — | ✅ | |
 | T13 | forest-dumb-app | T01, T10, T12 | ✅ | |
 | T14 | recorder | T12, T13 | ✅ | |
@@ -54,17 +54,17 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | app-drill | T13, T14 | ✅ | |
 | T17 | planner-toolkit-move | T02 | ✅ | |
 | T18 | map-page-toolkit-move | T17 | ✅ | |
-| T19 | map-page | T11, T18 | ⬜ | |
-| T20 | planner-level-1 | T11, T17, T19 | ⬜ | |
+| T19 | map-page | T11, T18 | ✅ | |
+| T20 | planner-level-1 | T11, T17, T19 | ✅ | |
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
-| T22 | collectibles | T11, T20, T21, T40, T49 | ⬜ | |
-| T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
+| T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
+| T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
-| T26 | level-end | T11, T13, T14, T23 | ⬜ | |
+| T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
 | T48 | route-on-original | T27 | ⬜ | |
@@ -90,6 +90,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ✅ | Reviewed: one fix, Controls, Start Level, bar and question now captured at 1× too, judged. Unlocked runs: 7 green five times; mutations caught (blur no-op, 512-byte buffer, layer 0 only). Close-wait need not reproduced (2 of 2 passed without). Open flakes logged: `drill_os` once in 12, Superfrog `recorder_start_level` pre-existing. |
+| T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
 **Review queue:** none
 

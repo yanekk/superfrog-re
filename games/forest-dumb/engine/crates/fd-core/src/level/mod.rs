@@ -33,7 +33,7 @@ use amiga_input::FrameInput;
 use fd_assets::Level;
 
 use crate::State;
-use crate::character::{AnimTables, Character};
+use crate::character::{AnimTables, Character, Play};
 use crate::program::{Program, Scratch};
 
 use collision::CollisionPlane;
@@ -45,6 +45,14 @@ use collision::CollisionPlane;
 pub enum Event {
     /// An object of this value was met with no [`ObjectKind`] registered: it was left out.
     Unported(u8),
+    /// `main_loop` found the game over: the game over screen shows from this step (T23).
+    GameOver,
+    /// The game over screen ended where the original enters its high scores; the level restarted
+    /// as at its start (T23, DESIGN §2.4); or fire ended "Level 1 complete" (T26, DESIGN §2.5).
+    Restart,
+    /// `main_loop` found the level's end and ran `next_world` in this step (T26); "Level 1
+    /// complete" shows from the next.
+    LevelEnd,
 }
 
 /// One object in play.
@@ -85,6 +93,9 @@ pub struct LevelCtx<'a> {
     pub anim: &'a AnimTables,
     /// The collision plane, play state (T08; T55 draws it, T25 changes it).
     pub plane: &'a CollisionPlane,
+    /// The level's buffers as the original lays them out in hunk 0 (T55): the tile map a taken
+    /// cell is redrawn from (T22).
+    pub image: &'a redraw::LevelImage,
     /// What the display shows (T10): picture state, which play logic never reads.
     pub display: &'a mut crate::render::Display,
     /// What the display reads from the disks: the level palette the fade reaches.
@@ -191,15 +202,19 @@ pub fn game_frame(
         .sprite
         .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
     if l.state.paused != 0 {
-        // play_keys (T23).
+        Play { state: l.state }.play_keys();
         return;
     }
-    // h0+$2c7e .. h0+$2d4c: the objects (T22, T24, T25, T52); until they are ported, the
-    // dispatch's kinds run here.
+    // h0+$2c7e .. h0+$62b6: the objects (T24, T25, T52); until they are ported, the dispatch's kinds
+    // run here.
     update_objects(l, objects, dispatch, events);
+    // h0+$2dd6: creatures out of view written back into the object map (T22).
+    crate::objects::in_play(l, |o| o.write_back());
     let s = &mut *l.state;
     s.joy.read_joystick(&mut s.input_log, &input);
-    // char_hit_check (T24), countdown_step (T23), h0+$24ce (T25).
+    // char_hit_check (T70, T24).
+    Play { state: l.state }.countdown_step();
+    // h0+$24ce (T25).
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
     Character {
         state: l.state,
@@ -209,7 +224,10 @@ pub fn game_frame(
         scratch: &mut Scratch::default(),
     }
     .update();
-    // char_object_cells (T22), play_keys (T23).
+    // char_object_cells (T22).
+    crate::objects::in_play(l, |o| o.object_cells());
+    // play_keys (T23).
+    Play { state: l.state }.play_keys();
 }
 
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
