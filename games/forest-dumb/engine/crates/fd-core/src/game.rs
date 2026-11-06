@@ -201,6 +201,7 @@ impl Game {
                     program: &self.data.program,
                     anim: &self.data.anim,
                     plane: &self.plane,
+                    image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
                 };
@@ -747,20 +748,26 @@ mod tests {
     fn help_with_the_cheat_ends_the_level_and_fire_on_the_message_restarts_it() {
         let mut g = Game::new(data(), Start::Level1);
         g.set_cheat(true);
-        // HELP pressed: `help_key` at the pass's end touches the exit, no items left (T23's port).
-        g.step(FrameInput::key(0x5f));
-        assert_eq!((g.state().level_exit_touched, g.state().items_left), (1, 0));
-        while g.state().irq_count != 32 {
+        while g.state().irq_count != 31 {
             assert_eq!(*g.scene(), Scene::Level);
             assert!(!g.finished());
             g.step(FrameInput::NONE);
         }
+        // HELP read by pass 32: `help_key` at the pass's end touches the exit, no items left (T23's
+        // port). Read by any earlier pass, the next one's `char_object_cells` clears the touch (T22).
+        g.step(FrameInput::key(0x5f));
+        assert_eq!((g.state().level_exit_touched, g.state().items_left), (1, 0));
+        assert_eq!(g.state().irq_count, 32);
         assert!(g.take_events().is_empty());
         g.state.score = 0x1234;
         let before = g.state().clone();
         let play = g.picture();
-        // `main_loop`'s check after pass 32: `next_world`, no pass.
-        g.step(FrameInput::joy(Joy::FIRE));
+        // `main_loop`'s check after pass 32: `next_world`, no pass. HELP stays down so the keyboard
+        // state, which a step takes before the check, is unchanged.
+        g.step(FrameInput {
+            joy: Joy::FIRE,
+            ..FrameInput::key(0x5f)
+        });
         assert_eq!(g.take_events(), [Event::LevelEnd]);
         assert_eq!(*g.scene(), Scene::LevelEnd(LevelEnd { world: 1 }));
         assert!(g.finished());

@@ -68,6 +68,9 @@ impl Io for CpuIo<'_> {
                 m.ww(0xdf_f042, 0);
                 m.ww(0xdf_f058, 0x1401);
             }
+            Blit::Cell { .. } => {
+                unreachable!("only a taken item's redraw (T22) starts a cell blit")
+            }
             Blit::Bob { image, dst } => {
                 let d = SCREEN.wrapping_add(dst);
                 m.wl(0xdf_f054, d);

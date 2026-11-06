@@ -1,5 +1,5 @@
-//! T26: the level's end through the real app (DESIGN §2.5). Until items and the exit are ported
-//! (T22) HELP with the title's cheat code on is the one way there: the script's `cheat` line stands
+//! T26: the level's end through the real app (DESIGN §2.5). HELP with the title's cheat code on
+//! gets there without collecting W1-1's items: the script's `cheat` line stands
 //! in for the code, and H is bound to the Amiga's HELP in `settings.toml`, as Game ▸ Controls…
 //! saves it. `main_loop`'s check after pass 64 ends the level, "LEVEL 1 COMPLETE" shows, fire held
 //! from before and other keys are ignored, and a fresh fire press restarts the level with lives full
@@ -14,10 +14,11 @@ use fd_core::render::message;
 use fd_core::{Event, Scene};
 use fd_e2e::{App, Captured, Image, LaunchOpts};
 
-/// The cheat from step 1, H (HELP) tapped in step 40, fire on Left Option held over the level's end
-/// (steps 60 to 66), Up and an arrow on the message, a shot of it, fire pressed in step 90, then
+/// The cheat from step 1, fire on Left Option held over the level's end (steps 60 to 66), H (HELP)
+/// tapped in step 63, read by pass 64 (any earlier and the next pass's `char_object_cells` clears
+/// `level_exit_touched`, T22), Up and an arrow on the message, a shot of it, fire pressed in step 90, then
 /// right held.
-const SCRIPT: &str = "1: cheat\n40: press KeyH\n60: down AltLeft\n66: up AltLeft\n\
+const SCRIPT: &str = "1: cheat\n60: down AltLeft\n63: press KeyH\n66: up AltLeft\n\
                       70: press Space\n72: press ArrowLeft\n75: shot\n90: down AltLeft\n\
                       92: up AltLeft\n100: down ArrowRight\n";
 const FRAMES: u64 = 140;

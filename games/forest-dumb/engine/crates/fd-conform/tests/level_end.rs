@@ -3,8 +3,9 @@
 //! original runs `next_world` in and stopped there by name; the runner's scene checks; the status
 //! bar the check skips; and a recording through "Level 1 complete" and the restart.
 //!
-//! Until items and the exit are ported (T22: `char_object_cells`) HELP with `cheat_flag` on is the
-//! one way to the level's end, on both sides. Needs the disks and Kickstart, as every case does.
+//! HELP with `cheat_flag` on reaches the level's end without collecting W1-1's 282 items; it
+//! counts only when read by a pass `main_loop`'s check follows, since `char_object_cells` (T22)
+//! clears `level_exit_touched` each pass. Needs the disks and Kickstart, as every case does.
 
 use std::path::Path;
 
@@ -186,16 +187,16 @@ fn an_engine_that_moves_to_the_wrong_world_fails_at_next_world() {
     assert_eq!(v.level_end, None, "{v}");
 }
 
-/// HELP at `irq_count` 40 on a game with the cheat on: the exit touched with no items left from
-/// then on, so `main_loop`'s check after pass 64 finds the level's end.
+/// A game with the cheat on, run to `irq_count` 63: HELP in its next step is read by pass 64's
+/// `help_key`, whose exit touched with no items left `main_loop`'s check after that pass finds.
+/// HELP any earlier is forgotten: the next pass's `char_object_cells` clears `level_exit_touched`
+/// (T22), as the original's does.
 fn ending() -> Game {
     let mut g = game();
     g.set_cheat(true);
-    while g.state().irq_count < 40 {
+    while g.state().irq_count < 63 {
         g.step(FrameInput::NONE);
     }
-    g.step(FrameInput::key(HELP));
-    assert_eq!(g.state().level_exit_touched, 1);
     g
 }
 
@@ -210,13 +211,14 @@ fn the_frame_main_loop_finds_the_level_end_after_keeps_the_old_status_bar() {
     while on.state().irq_count < end.state().irq_count {
         on.step(FrameInput::NONE);
     }
-    let mut before = None;
-    while end.state().irq_count < 64 {
-        before = Some(end.picture());
-        end.step(FrameInput::NONE);
-        on.step(FrameInput::NONE);
-        assert_eq!(*end.scene(), Scene::Level);
-    }
+    let before = end.picture();
+    end.step(FrameInput::key(HELP));
+    on.step(FrameInput::NONE);
+    assert_eq!(*end.scene(), Scene::Level);
+    assert_eq!(
+        (end.state().irq_count, end.state().level_exit_touched),
+        (64, 1)
+    );
     assert_eq!((end.energy(), on.energy()), (998, 998));
     let digits = |p: &Picture| -> Vec<u16> {
         let rgb = amiga_chips::to_rgb12(p);
@@ -227,11 +229,7 @@ fn the_frame_main_loop_finds_the_level_end_after_keeps_the_old_status_bar() {
     };
     let (shown, redrawn) = (digits(&end.picture()), digits(&on.picture()));
     assert_ne!(shown, redrawn, "998 is drawn when the level goes on");
-    assert_eq!(
-        shown,
-        digits(&before.unwrap()),
-        "the bar as pass 63 left it"
-    );
+    assert_eq!(shown, digits(&before), "the bar as pass 63 left it");
     // The step after: next_world, the play colours black, then the message.
     end.step(FrameInput::NONE);
     assert_eq!(end.take_events().last(), Some(&Event::LevelEnd));
@@ -248,11 +246,18 @@ fn the_frame_main_loop_finds_the_level_end_after_keeps_the_old_status_bar() {
 #[test]
 fn a_recording_runs_through_level_1_complete_and_the_restart_and_replays_alike() {
     let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
-    // Right for a while, HELP, the check after pass 64 ends the level, the message ignores keys
-    // and a held fire, fire pressed restarts, then right again until Stop.
+    // Right for a while, then fire held (play reads no fire) through HELP read by pass 64 (an
+    // earlier one is cleared by the next pass's `char_object_cells`, T22); the check after it ends
+    // the level, the message ignores keys and the held fire, fire pressed restarts, then right
+    // again until Stop.
     let mut inputs = vec![FrameInput::joy(Joy::RIGHT); 40];
-    inputs.extend([FrameInput::key(HELP); 3]);
-    inputs.extend(vec![FrameInput::joy(Joy::FIRE); 30]);
+    inputs.extend(vec![FrameInput::joy(Joy::FIRE); 22]);
+    let help_and_fire = FrameInput {
+        joy: Joy::FIRE,
+        ..FrameInput::key(HELP)
+    };
+    inputs.extend([help_and_fire; 3]);
+    inputs.extend(vec![FrameInput::joy(Joy::FIRE); 8]);
     inputs.extend(vec![FrameInput::joy(Joy::LEFT | Joy::UP); 10]);
     inputs.extend(vec![FrameInput::NONE; 5]);
     inputs.extend([FrameInput::joy(Joy::FIRE); 3]);

@@ -3,9 +3,15 @@
 //! any thread count, the budget's stop, and the route played on the original. Needs the disks (and
 //! the Kickstart for the original): absent, it fails naming where it looked.
 //!
-//! While the items (T22), the creatures' contact (T24) and the level's end (T26) are unported the
-//! engine never ends the level, so the furthest point possible is the exit's cells: a route is held
-//! to reach them, not to leave the level.
+//! Since T22 the engine takes items, so the search chases coins; while contact (T70, T24) and the
+//! level's end (T26) are unported it never ends the level, and the short search stalls short of the
+//! exit with coins still to take.
+//!
+//! Exclusion, lifted by T70 (`playfield-contact`) and T24: the route is confirmed on the original only
+//! up to the pass where the original first counts a contact with the playfield's harmful colours
+//! (`hits_taken`), which the engine does not model yet. Since T22's route that is pass 134, at the
+//! first slope's wall; T20's old route reached pass 952. Once contact is ported the whole route must
+//! agree.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -23,12 +29,15 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06): on the exit's top right cell, 984 frames in.
-const END: &str = "W1-1:208,91";
-const FRAMES: usize = 984;
+/// Where it ends on the engine (measured 2026-11-06, T22): stalled with 151 of 282 coins still to
+/// take, 6 292 frames in.
+const END: &str = "W1-1:177,92";
+const FRAMES: usize = 6292;
+const COINS_LEFT: u16 = 151;
 /// The original and the engine agree on every compared variable for this many passes of it; the
-/// next, the original counts a contact pass (`hits_taken`), which the engine does not model (T24).
-const AGREED: u32 = 952;
+/// next, the original counts a contact pass (`hits_taken`), which the engine does not model (the
+/// exclusion above: T70, T24).
+const AGREED: u32 = 134;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -109,15 +118,15 @@ fn the_facts_match_the_levels_readings() {
 }
 
 #[test]
-fn a_planned_route_reaches_the_exit_on_replay_and_the_page_shows_it() {
+fn a_planned_route_replays_to_its_end_and_the_page_shows_it() {
     let d = data();
     let p = short();
     assert_eq!(p.route.inputs.len(), FRAMES);
     assert_eq!(p.end.to_string(), END);
-    assert!(near((p.end.col, p.end.row), &facts(&d.level).exits));
-    // The level does not end (T22, T26), so the search stops at its rounds with the furthest route.
+    // The level does not end (T26), so the search stops at its rounds with the furthest route, coins
+    // taken on the way.
     let why = p.stalled.as_ref().expect("the engine has no level end yet");
-    assert_eq!(why.coins_left, 282);
+    assert_eq!(why.coins_left, COINS_LEFT);
 
     // The route as its script, read back and replayed on a fresh engine.
     let text = script_text(&["test".into()], &p.route.inputs);
@@ -127,6 +136,7 @@ fn a_planned_route_reaches_the_exit_on_replay_and_the_page_shows_it() {
     let g = replay(&d, &inputs);
     assert_eq!(g.location().to_string(), END);
     assert!(g.playing() && g.lives() == 32);
+    assert_eq!(g.collectibles_left(), COINS_LEFT);
 
     // The map page drawn from the script: its track at the route's last frame is the replay's.
     let dir = temp("page");
@@ -208,20 +218,21 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     // Every pass before the one that differs was compared but those the original ended unseen
     // (two in one step).
     assert_eq!(v.passes + v.unseen, AGREED - 1, "{v}");
-    // Up to there the route is the original's: the engine at that pass is past the level's
-    // middle, so most of the way to the exit is confirmed.
+    // Up to there the route is the original's: down the first slope to its wall (W1-1:42,35, the
+    // tiles docs/10 measures contact on).
     let g = replay(&d, &p.route.inputs[..AGREED as usize]);
-    assert!(g.location().col >= 120, "{}", g.location());
+    assert!(g.location().col >= 38, "{}", g.location());
 }
 
 /// A stretch the two agree on all the way is confirmed whatever its length: the original ends its
 /// passes about one behind the frames run, so a case of exactly the route's frames missed its goal
-/// on the last pass at 600 and 900 steps (and met it at 300 and 950).
+/// on the last pass at 600 and 900 steps of T20's route. T22's agrees for 133 passes (the exclusion
+/// above), so the lengths are inside that.
 #[test]
 fn a_route_the_original_agrees_with_meets_its_goal_at_any_length() {
     let d = data();
     let p = short();
-    for n in [600, 900] {
+    for n in [60, 120] {
         let v = confirm::confirm(&d, &p.route.inputs[..n]).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(v.outcome, Outcome::Same, "{n} steps: {v}");
         assert!(v.goal_met.is_some(), "{n} steps: {v}");
@@ -252,9 +263,9 @@ fn the_command_plans_a_longer_search_confirms_it_and_draws_it() {
     let s = script::parse(&std::fs::read_to_string(&out).unwrap()).unwrap();
     let n = s.lines.last().unwrap().0;
     let inputs: Vec<_> = (0..n).map(|k| s.input_at(k)).collect();
-    // Shorter than the short search's, and as far.
-    assert!((n as usize) < FRAMES, "{n} frames");
+    // More coins than the short search's (measured 2026-11-06, T22: 48 left, 15 420 frames, stalled
+    // at W1-1:187,16).
     let d = data();
     let g = replay(&d, &inputs);
-    assert!(near(g.cell(), &facts(&d.level).exits), "{}", g.location());
+    assert!(g.collectibles_left() < COINS_LEFT, "{n} frames, {}", g.location());
 }

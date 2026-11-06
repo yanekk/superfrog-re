@@ -64,6 +64,9 @@ pub enum Blit {
     /// `h0_a06` and its twins: the `_ELEMENTY` bob at byte `image` of its pictures (`h4+$c80`, B) and
     /// masks (`h4+$2580`, A) cut over the screen (C and D, `BLTCON0=$0fca`).
     Bob { image: u32, dst: u32 },
+    /// `h0_29ca` (T22, `objects::collectible`): a taken cell's tile redrawn as `h0_774` draws one, its
+    /// source `src` bytes past `h3+$13540`, the offset the tile table at `h0+$3b988` holds for it.
+    Cell { src: u32, dst: u32 },
 }
 
 /// What the redraws read and write outside their typed state.
@@ -120,6 +123,9 @@ pub struct CreatureSlots {
     pub current: u16,
     /// `h0+$687e`, a long: the same, `h0_6852`'s own copy.
     pub last: u32,
+    /// `creature_slot_index` (`h0+$2faa`), a long: the slot the per-pass loops over the five are at;
+    /// `h0_2dd6` leaves it at 5 (T22, `objects::collectible`).
+    pub index: u32,
 }
 
 impl CreatureSlots {
