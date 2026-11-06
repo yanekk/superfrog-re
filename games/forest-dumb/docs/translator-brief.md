@@ -67,8 +67,16 @@ generators and the judge already exist.
 - Tier: per root CLAUDE.md ("Before building something"), the translator is built in the game first and
   moved to the toolkit when a second game uses it. Write its instruction and runtime parts naming no
   game so the move is a file move. The planner may propose the toolkit from the start; the owner decides.
-- Decoding: `toolkit/tools/hunk_listing.py` already uses capstone; a Rust decoder of its own is the
-  alternative. The planner settles it; stage 1's per-instruction test makes either safe.
+- Reuse Ghidra before writing anything it already does (owner's question, 2026-11-06). Ghidra
+  (`toolkit/tools/ghidra_headless.py`, `toolkit/tools/setup/install-ghidra.sh`) already decodes the
+  68000, finds functions and jump tables, and describes every instruction's effect in P-code, the
+  language its own emulator runs. Stage 1 starts from that P-code as the instructions' meaning and
+  stage 2 from Ghidra's analysis; capstone (`toolkit/tools/hunk_listing.py`) or a Rust decoder of its
+  own is the fallback. The stage 1 test against Moira still runs on every instruction, since P-code
+  for rare instructions or flags may be wrong. Ghidra's decompiled C is not a source: it is written
+  for reading, drops what the game depends on (exact flags, cycle counts, the order of hardware
+  writes) and is not meant to compile. What Ghidra does not have is the rest of the plan: the Amiga
+  runtime, the `untranslated` stop, the oracle comparison, the seam and the app.
 - Purity: the generated crate is pure in the sense of `fd-conform/tests/purity.rs` (no clock, file,
   float, seeded hash). How the table bar applies to generated code is the planner's to settle with the
   owner, since the code itself is the game's.
