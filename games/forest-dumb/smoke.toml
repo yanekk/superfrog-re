@@ -166,6 +166,13 @@ workspace = "engine"
 # seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
 "crates/fd-e2e/tests/drill.rs" = "smoke"
 "crates/fd-e2e/tests/drill_sizes.rs" = "full"
+# T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
+# game over screen to the high scores, the scene mismatches and a recording through the restart (about
+# 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
+# two scales, about 5 s warm.
+"crates/fd-conform/tests/death_routines.rs" = "smoke"
+"crates/fd-conform/tests/death.rs" = "smoke"
+"crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
@@ -313,4 +320,12 @@ name = "planning a route through level 1 and confirming it on the original"
 covers = [
     "crates/fd-plan/tests/route.rs::a_planned_route_reaches_the_exit_on_replay_and_the_page_shows_it",
     "crates/fd-plan/tests/route.rs::the_routes_stretch_is_confirmed_on_the_original_where_modelled",
+]
+
+[[area]]
+name = "the countdown, giving up, the game over screen and the level's restart"
+covers = [
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+    "crates/fd-conform/tests/death.rs::giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "crates/fd-e2e/tests/game_over.rs::giving_up_in_the_app_shows_game_over_and_restarts_the_level_at_scale_1",
 ]

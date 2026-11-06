@@ -600,6 +600,13 @@ impl App {
                 GameEvent::Unported(v) => {
                     eprintln!("fd-app: object value {v} is not ported; left out")
                 }
+                GameEvent::GameOver => eprintln!("fd-app: game over"),
+                // Fire on the game over screen: where the original shows its high scores, which
+                // the engine skips (DESIGN §2.4: never saved, no title to return to), the level
+                // starts again, lives full and score zero. A recording runs on through it (§2.8).
+                GameEvent::Restart => eprintln!(
+                    "fd-app: the high scores are skipped; W1-1 restarts, lives full, score zero"
+                ),
                 other => eprintln!("fd-app: {other:?}"),
             }
         }
