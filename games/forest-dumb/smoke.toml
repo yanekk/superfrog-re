@@ -116,6 +116,13 @@ workspace = "engine"
 # the status bar's numbers set in both sides and the old pairing's failure: about 8 s warm. The boot
 # counting the start-up's two routines (about 10 s) is #[ignore]d, so the full set runs it.
 "crates/fd-conform/tests/picture_cases.rs" = "smoke"
+# T11: six stretches of W1-1 compared by variables and picture together, from the cached sync point in
+# parallel, about 9.5 s warm at load 18, and the mutated jump table, 1 s. Each goal moved a cell four
+# ways (24 runs, about 26 s) stays in full.
+"crates/fd-conform/tests/stretches.rs" = [
+    "every_stretch_matches_the_original_on_variables_and_picture_together",
+    "a_mutated_jump_constant_fails_the_jump_stretch",
+]
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -267,6 +274,10 @@ covers = [
     "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
     "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
 ]
+
+[[area]]
+name = "level 1's character against the original"
+covers = ["crates/fd-conform/tests/stretches.rs::every_stretch_matches_the_original_on_variables_and_picture_together"]
 
 [[area]]
 name = "a recording made in the app replays headless to the same result"
