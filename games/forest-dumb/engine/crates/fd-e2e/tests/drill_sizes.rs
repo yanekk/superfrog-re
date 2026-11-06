@@ -91,12 +91,13 @@ fn the_picture_is_whole_and_centred_at_the_default_scale_at_scale_1_and_resized(
 
 #[test]
 fn the_recording_bar_adds_its_height_under_the_picture_at_every_size_and_goes_with_it() {
+    // The shrink lands as late as the resize: under load, measured 840 steps after the stop.
     let (_app, _, c) = run(
-        1110,
+        2010,
         None,
         &format!(
             "10: menu start-level\nform start\n60: shot\n70: resize 700 600\n{}\
-             610: menu stop-recording\nnote discard\n1100: shot\n",
+             610: menu stop-recording\nnote discard\n2000: shot\n",
             shots(80, 600)
         ),
     );
@@ -109,7 +110,7 @@ fn the_recording_bar_adds_its_height_under_the_picture_at_every_size_and_goes_wi
     assert!(bar_points > 20 && bar_points < 60, "a bar of {bar_points} points: {s:?}");
     assert_eq!(assert_whole_and_centred(&c, 60, bar).viewport.1, 0, "the picture is at the top");
     let before = resized_by(&c, 80, 600, bar, (700, 600));
-    let s = assert_whole_and_centred(&c, 1100, 0);
+    let s = assert_whole_and_centred(&c, 2000, 0);
     assert_eq!(
         s.surface,
         (before.surface.0, before.surface.1 - bar),

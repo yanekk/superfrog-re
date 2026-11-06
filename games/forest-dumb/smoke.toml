@@ -150,7 +150,7 @@ workspace = "engine"
 "crates/fd-e2e/tests/recorder_app.rs" = "smoke"
 "crates/fd-e2e/tests/recorder_replay.rs" = "smoke"
 # T16, the app drill's script layer: eight scripted runs in parallel, about 9 s warm. Its sizes need
-# seconds of steps for a resize to land under load (a debug build capturing every frame): 56 s, full.
+# seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
 "crates/fd-e2e/tests/drill.rs" = "smoke"
 "crates/fd-e2e/tests/drill_sizes.rs" = "full"
 
