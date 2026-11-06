@@ -45,6 +45,7 @@ vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 freeze = false               # optional
+thaw = ["h0_6882"]           # optional, with freeze = true: entries of freeze.rs left running
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
@@ -77,6 +78,10 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   original at the sync point, and has the engine leave out the ones it ports
   (`fd_core::level::FROZEN_IN_A_CASE`, T25's springs and animated cells, through `Engine::freeze`). The list is empty until T21 measures the object entry points, so
   `freeze = true` is an error until then.
+- **`thaw`.** Names `freeze.rs` entries (`h0_6882`) a frozen case leaves running on both sides: the
+  original is not patched there and the engine runs the routine (`Engine::thaw`, `Game::thaw_in_a_case`).
+  `death-water` thaws `h0_6882` so both draw the water while creatures stay frozen (T72). An unknown
+  name, a name given twice or `thaw` without `freeze = true` is an error.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
   sets, so HELP ends the level (T26).

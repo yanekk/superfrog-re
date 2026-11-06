@@ -85,6 +85,9 @@ pub struct Case {
     pub exclude: Vec<Exclusion>,
     /// Freeze what `freeze.rs` lists in the original at the sync point.
     pub freeze: bool,
+    /// Entries of `freeze.rs` this frozen case leaves running on both sides, by name
+    /// (`thaw = ["h0_6882"]`, T72): the water a case needs drawn while creatures stay frozen.
+    pub thaw: Vec<String>,
     /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
     /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
     /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
@@ -187,6 +190,23 @@ impl Case {
             Some(other) => return Err(format!("freeze = {other:?}: expected true or false")),
             None => false,
         };
+        let thaw = match get("thaw") {
+            Some(v) => v.strings("thaw")?,
+            None => Vec::new(),
+        };
+        if !thaw.is_empty() && !freeze {
+            return Err(
+                "`thaw` names entries of a freeze, but the case has no `freeze = true`".into(),
+            );
+        }
+        for (k, name) in thaw.iter().enumerate() {
+            if crate::freeze::named(name).is_none() {
+                return Err(format!("thaw `{name}`: not an entry of freeze.rs"));
+            }
+            if thaw[..k].contains(name) {
+                return Err(format!("thaw `{name}` is given twice"));
+            }
+        }
 
         if goal == Some(Goal::Idle) && !compare.vars {
             return Err(
@@ -273,13 +293,15 @@ impl Case {
             goal,
             exclude,
             freeze,
+            thaw,
             set,
         })
     }
 }
 
-const KEYS: [&str; 10] = [
-    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze", "set",
+const KEYS: [&str; 11] = [
+    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze", "thaw",
+    "set",
 ];
 
 fn known(var: &str) -> Result<(), String> {
@@ -687,6 +709,7 @@ mod tests {
                 goal: None,
                 exclude: vec![],
                 freeze: false,
+                thaw: Vec::new(),
                 set: vec![],
             }
         );
@@ -802,6 +825,18 @@ mod tests {
         }
     }
 
+    /// A frozen case thaws an entry by name: the original's patch list leaves it out (T72).
+    #[test]
+    fn a_frozen_case_thaws_an_entry_by_name() {
+        let text = LEVEL.replace("freeze = false", "freeze = true\nthaw = [\"h0_6882\"]");
+        let case = Case::parse("l", &text).unwrap();
+        assert_eq!(case.thaw, ["h0_6882"]);
+        let patched = crate::freeze::for_case(&case.thaw);
+        assert_eq!(patched.len(), crate::freeze::FROZEN.len() - 1);
+        assert!(patched.iter().all(|f| f.offset != 0x6882));
+        assert_eq!(crate::freeze::for_case(&[]), crate::freeze::FROZEN);
+    }
+
     #[test]
     fn what_the_level_format_does_not_say_is_refused() {
         let goal = "goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }";
@@ -851,6 +886,21 @@ mod tests {
             (", task = \"T10\"", "", "no `task`"),
             ("[\"vars\", \"picture\"]", "[\"vars\"]", "no \"picture\""),
             ("freeze = false", "freeze = 1", "true or false"),
+            (
+                "freeze = false",
+                "freeze = false\nthaw = [\"h0_6882\"]",
+                "no `freeze = true`",
+            ),
+            (
+                "freeze = false",
+                "freeze = true\nthaw = [\"h0_1234\"]",
+                "not an entry of freeze.rs",
+            ),
+            (
+                "freeze = false",
+                "freeze = true\nthaw = [\"h0_6882\", \"h0_6882\"]",
+                "given twice",
+            ),
             (
                 "[\"vars\", \"picture\"]\nvars = [\"char_x\", \"camera_x\"]\ngoal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",
                 "[\"picture\"]\ngoal = { idle = true }",

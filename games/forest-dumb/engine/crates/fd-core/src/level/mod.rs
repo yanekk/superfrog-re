@@ -103,9 +103,10 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
-    /// A conformance case froze the original (`Game::freeze_as_a_case`): the routines
-    /// [`FROZEN_IN_A_CASE`] names are left out here too. Never set in play.
-    pub frozen: bool,
+    /// `Some` when a conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0
+    /// offsets of the routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the
+    /// case thaws (`Game::thaw_in_a_case`, T72). `None` in play.
+    pub frozen: Option<&'a [u32]>,
 }
 
 /// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
@@ -135,7 +136,7 @@ pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
 
 /// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
 fn frozen(l: &LevelCtx, offset: u32) -> bool {
-    l.frozen && FROZEN_IN_A_CASE.iter().any(|f| f.offset == offset)
+    l.frozen.is_some_and(|f| f.contains(&offset))
 }
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
@@ -247,7 +248,7 @@ pub fn game_frame(
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
     // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
-    if !l.frozen {
+    if l.frozen.is_none() {
         crate::render::objects::in_play(l, |c| c.restore_all());
     }
     let s = &mut *l.state;
@@ -267,7 +268,7 @@ pub fn game_frame(
     // h0+$3698 (T24).
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
-    if !l.frozen {
+    if l.frozen.is_none() {
         crate::render::objects::in_play(l, |c| c.cut_all());
     }
     let s = &mut *l.state;

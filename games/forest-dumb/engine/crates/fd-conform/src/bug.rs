@@ -539,6 +539,7 @@ pub fn compare_with(
         goal: None,
         exclude: known_gaps(),
         freeze: false,
+        thaw: Vec::new(),
         set: Vec::new(),
     };
     let mut start_differs = Vec::new();

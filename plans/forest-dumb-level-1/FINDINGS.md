@@ -6,11 +6,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-06 | 📌 | T72, measured: W1-1's pool tiles carry colour 29, so `death-water` loses its lives with the water undrawn too; the water changes CLXDAT on a few passes. Its `thaw = ["h0_6882"]` makes late passes: `edge_latch_down`, `edge_latch_up` excluded (T47). |
 | 2026-11-06 | 🔄 | Owner, T52: frozen cases skip the engine's creature drawing: `Game::transplant` sees `h0_681c` patched to `rts` (`freeze.rs` `ENGINE_SKIPS`, T24); `collect_cases.rs`'s engine-alone run sets it from `case.freeze`. Never reachable from app or planner. |
 | 2026-11-06 | 📌 | T52, measured: moving, a step ends before the cuts; at pass ends (`watch_write`) 922 cuts over 520 passes equal the original's screen; the third-row restore never ran there (rig only). Drawn creatures count contact: `character-run-slide` compares `hits_taken`. |
 | 2026-11-06 | 🔄 | T25 (owner): `freeze.rs` keeps `h0_6882`, `h0_24ce` (unfrozen, `camera-bottom-right` differs at pass 495, `edge_latch_down`). At T70's merge, frozen cases' engine leaves them out too (`FROZEN_IN_A_CASE`, `Engine::freeze` only); four checks broke without. T47 removes both. |
 | 2026-11-06 | 🔄 | Owner, T71: pass `32k+1` cuts the bar redraw at no fixed read (cycle-dependent, docs/09), outside the faithful bar (DESIGN §2.1); the runner accepts `Game::cut_redraw` at the measured cut, bar only (README). `set_profile(false)` clears the frame just drawn. |
-| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). Review: T72 water-contact added; water is unshown: `h0_62b6` (T25) draws it, frozen cases stop it. |
+| 2026-11-06 | 🔄 | Owner, T70: a `freeze = true` case dropped the engine's bonus bobs (`Game::freeze_as_a_case`); removed at T70's merge (T22 unfroze the bonus blits). |
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
 | 2026-11-06 | 📌 | T70: contact costs about 25 µs a step in release (was about 3 µs a whole step; `fd-core` dev opt-level 2); `fd-plan` `route.rs` went from about 7 s to 60 s warm under load. |
 | 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. `h0_2e0e` waits for T46. |
