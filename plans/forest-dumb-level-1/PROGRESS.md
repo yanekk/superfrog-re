@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 58 of 71 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T23, T45 and T25 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T45, T25, T70 and T68 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -59,12 +59,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | object-meanings | T05, T06, T32 | ✅ | |
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | Review: one fix, a test that `game_frame` runs `h0_2dd6` in play (mutant dropping the call passed everything). Probed every bonus value and the tile table through `PlayIo` against the listing; mutated `PROBE_ROWS` (rig red). Frozen cases, route.rs incl. ignored test green. No `scan`/`ObjectKind`: held, edge redraws scan. |
-| T23 | lives-and-game-over | T11, T13, T14, T20 | ⬜ | |
+| T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ⬜ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
-| T26 | level-end | T11, T13, T14, T23 | ⬜ | |
+| T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
 | T48 | route-on-original | T27 | ⬜ | |
@@ -90,8 +90,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T67 | pass-input-read | T06; blocks T42, T43, T44, T15 | ✅ | |
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ⬜ | |
+| T70 | playfield-contact | T23; blocks T24, T46 | ⬜ | |
 
-**Review queue:** none
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

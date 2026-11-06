@@ -3,7 +3,7 @@
 //! original adds its fields here and, if a case compares them, a `LAYOUT` entry and an arm in
 //! [`State::get`] and [`State::set`].
 
-use crate::character::{Anim, InputLog, JoyFlags, Motion};
+use crate::character::{Anim, InputLog, JoyFlags, Keys, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
 use crate::objects::Collect;
@@ -28,6 +28,8 @@ pub struct State {
     pub hits_taken: u16,
     /// BCD in its first word; the original's long, as stored.
     pub countdown: u32,
+    /// `countdown_tick` (`h0+$20ac`): passes since the countdown last lost one (T23).
+    pub countdown_tick: u32,
     /// BCD.
     pub items_left: u16,
     /// BCD.
@@ -38,6 +40,8 @@ pub struct State {
     pub paused: u16,
     pub level_exit_touched: u16,
     pub give_up: u16,
+    /// The keyboard and the keys' latches (T23).
+    pub keys: Keys,
     /// The character's animation frame and what picks it (T51).
     pub anim: Anim,
     /// The joystick flags `read_joystick` sets each pass (T51).
@@ -90,6 +94,8 @@ impl State {
             hits_taken: 0,
             // `level_init`, `move.w #$999, countdown`; the long's second word is 0.
             countdown: 0x0999_0000,
+            // Pass 1's `countdown_step` ran before the sync point (measured, T23).
+            countdown_tick: 1,
             items_left: 0x282,
             score: 0,
             world_index: 0,
@@ -97,6 +103,8 @@ impl State {
             paused: 0,
             level_exit_touched: 0,
             give_up: 0,
+            // No key has been pressed since the boot (measured at the sync point, T23).
+            keys: Keys::default(),
             // The program's own initial frame, `h0+$419c8`, at the oracle's hunk 0 base: no picker
             // has run (`char_anim_ptr`'s note, `character::anim`). The rest are 0 as loaded.
             anim: Anim {
@@ -148,6 +156,11 @@ impl State {
             "lives" => self.lives.into(),
             "hits_taken" => self.hits_taken.into(),
             "countdown" => self.countdown,
+            "countdown_tick" => self.countdown_tick,
+            "last_key_byte" => self.keys.last.into(),
+            "pause_key_down" => self.keys.pause_down.into(),
+            "esc_down" => self.keys.esc_down.into(),
+            "cheat_flag" => self.keys.cheat.into(),
             "items_left" => self.items_left.into(),
             "score" => self.score,
             "world_index" => self.world_index,
@@ -219,6 +232,11 @@ impl State {
             "lives" => self.lives = w,
             "hits_taken" => self.hits_taken = w,
             "countdown" => self.countdown = value,
+            "countdown_tick" => self.countdown_tick = value,
+            "last_key_byte" => self.keys.last = b,
+            "pause_key_down" => self.keys.pause_down = w,
+            "esc_down" => self.keys.esc_down = w,
+            "cheat_flag" => self.keys.cheat = w,
             "items_left" => self.items_left = w,
             "score" => self.score = value,
             "world_index" => self.world_index = value,

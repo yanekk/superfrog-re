@@ -805,6 +805,20 @@ What each porting task did with its share of the table above, and which routines
   first answer inlined it, written before that unit passed), `write_back_slot` folded to one try list, and
   the 17-entry bonus table moved into the program's own code (purity). The first run's prompts lacked the
   rig table lines (rustfmt had wrapped them); the adapters are named since, and `test_reshape.py` passes.
+- **T23** (2026-11-06): `countdown_step`, `play_keys`, `help_key`, `esc_key`, `lives_minus_one`, as
+  `fd_core::character::Play` methods (`tests/death_routines.rs`, 10 000 states; paths 3, 5, 3, 4, 2).
+  `help_key` is T26's in the table, but `play_keys` runs it whole, so T23 ported it with its caller.
+  Muse wrote `countdown_step`, `play_keys` and `help_key` (`reshape.py --task T23 --all`, all passing,
+  no quality issue, $0.0080 in all); fitted: `play_keys` calls `help_key` and `esc_key` instead of
+  inlining them, and `countdown_step` uses the file's `sbcd`. By hand: `esc_key` and `lives_minus_one`,
+  the two examples Muse is shown. `sbcd` follows the rig's 68000 digit by digit: a carry-chain formula
+  differs on bad digits (`$be - 1`).
+- **T26** (2026-11-06): nothing for Muse. Its one routine, `help_key`, was ported with its caller by
+  T23. The rest is `main_loop`'s level-end test (`h0+$286`..`$298`) and `next_world`'s first
+  instruction (`addi.l #1, world_index`), outside `re/translate.toml` and five instructions in all,
+  written by hand in `fd_core::level_end`, so no `[T26]` table in `re/reshape.toml`; $0 spent. They
+  are proven by the `level-end` case (`tests/level_end.rs`), not the rig: `main_loop` is foreground
+  code no rig unit holds.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

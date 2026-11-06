@@ -168,6 +168,18 @@ workspace = "engine"
 # seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
 "crates/fd-e2e/tests/drill.rs" = "smoke"
 "crates/fd-e2e/tests/drill_sizes.rs" = "full"
+# T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
+# game over screen to the high scores, the scene mismatches and a recording through the restart (about
+# 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
+# two scales, about 5 s warm.
+"crates/fd-conform/tests/death_routines.rs" = "smoke"
+"crates/fd-conform/tests/death.rs" = "smoke"
+"crates/fd-e2e/tests/game_over.rs" = "smoke"
+# T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
+# status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
+# end in the real app at two scales, about 5 s warm.
+"crates/fd-conform/tests/level_end.rs" = "smoke"
+"crates/fd-e2e/tests/level_end.rs" = "smoke"
 # T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
@@ -320,3 +332,18 @@ covers = [
 [[area]]
 name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
 covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "the countdown, giving up, the game over screen and the level's restart"
+covers = [
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+    "crates/fd-conform/tests/death.rs::giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "crates/fd-e2e/tests/game_over.rs::giving_up_in_the_app_shows_game_over_and_restarts_the_level_at_scale_1",
+]
+
+[[area]]
+name = "the level's end: next_world as the original runs it, Level 1 complete until fire, the restart"
+covers = [
+    "crates/fd-conform/tests/level_end.rs::the_level_end_matches_the_original_up_to_next_world_and_stops_there_by_name",
+    "crates/fd-e2e/tests/level_end.rs::the_level_end_in_the_app_shows_level_1_complete_and_fire_restarts_at_scale_1",
+]

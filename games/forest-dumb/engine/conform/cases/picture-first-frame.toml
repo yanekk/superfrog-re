@@ -2,7 +2,7 @@
 # with nothing pressed: the palette fading in (to frame 6331), the character falling in and landing at
 # char_y $8c (frame 6316), the status bar with the level's starting numbers (countdown 999, lives 32,
 # items 282, score 0). Every pixel equal on every frame (measured 2026-11-06). It ends before the
-# countdown first ticks (63 passes, T23), so nothing is excluded.
+# countdown first ticks (63 passes).
 sync = { script = "boot-to-level1", frame = 6301 }
 frames = 60
 compare = ["vars", "picture"]

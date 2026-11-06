@@ -70,5 +70,5 @@ the state there and is right; the four values T15 saw differ (`char_anim_ptr`, `
 `char_jump_t`, `char_update_t`) are what that `char_update` writes. The rest of pass 1 is nothing
 else, since `char_update` is `game_frame`'s last call, so `Game::new` runs it and is the original at
 pass 1's end (frame 6302, `irq_count` 1), where cases transplant. `level_entry.rs` holds every
-`LAYOUT` variable there; idle, the engine then stays equal for 62 passes until the countdown (T23).
+`LAYOUT` variable there; idle, the engine then stays equal, the countdown included since T23.
 `char_update` writes nothing of the plane or the screen, so the checks above still hold.

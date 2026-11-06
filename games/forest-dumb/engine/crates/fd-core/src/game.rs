@@ -3,13 +3,15 @@
 
 use std::sync::Arc;
 
-use amiga_input::FrameInput;
+use amiga_input::{FrameInput, Joy};
 use fd_assets::{AssetError, Files, Level, read_level};
 
 use crate::character::{AnimTables, Character};
+use crate::game_over::{self, GameOver};
 use crate::level::collision::{self, CollisionPlane};
 use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
+use crate::level_end::{self, Complete, LevelEnd};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program, Scratch};
 use crate::render::{self, Display, DisplayData};
 use crate::{Mem, Scene, State, Transplant, Var};
@@ -75,6 +77,11 @@ impl GameData {
 pub enum Start {
     /// `W1-1` at the level sync point (DESIGN §2.3).
     Level1,
+}
+
+/// A BCD word's value.
+fn bcd(w: u16) -> u16 {
+    (0..4).rev().fold(0, |v, k| v * 10 + (w >> (4 * k) & 0xf))
 }
 
 /// The whole game.
@@ -155,11 +162,37 @@ impl Game {
     /// A state is the original's as a pass leaves it, before the foreground has run (measured, T55:
     /// `h0+$1e66` lags the latches by one pass), so the foreground of the frame before comes first.
     /// Events it raises are kept until [`Game::take_events`].
+    ///
+    /// When `main_loop`'s check finds the game over (`game_over::game_is_over`), that step enters
+    /// the game over screen instead and runs no pass ([`Event::GameOver`]); each later step is a
+    /// frame of the screen, and the one that ends it restarts the level as [`Game::new`] starts it,
+    /// skipping the original's high scores (DESIGN §2.4, [`Event::Restart`]).
+    ///
+    /// When the check finds the level's end instead (`level_end::level_is_over`), that step runs
+    /// `next_world` and no pass ([`Event::LevelEnd`], [`Scene::LevelEnd`]); from the next, "Level 1
+    /// complete" shows until fire restarts the level as the game over screen's end does (T26,
+    /// DESIGN §2.5).
     pub fn step(&mut self, i: FrameInput) {
         self.blits.clear();
-        self.foreground();
+        // `level2_handler` takes key events whatever the scene.
+        self.state.keys.feed(i.keys);
         match self.scene {
+            Scene::Level if game_over::game_is_over(&self.state) => {
+                // `main_loop`'s check comes before its status bar and its edge redraws.
+                self.scene = Scene::GameOver(GameOver::default());
+                self.events.push(Event::GameOver);
+            }
+            Scene::Level if level_end::level_is_over(&self.state) => {
+                // `next_world`, then `h0+$500`: the level copper list's colours cleared.
+                level_end::next_world(&mut self.state);
+                self.display.fade.now = [0; 32];
+                self.scene = Scene::LevelEnd(LevelEnd {
+                    world: self.state.world_index,
+                });
+                self.events.push(Event::LevelEnd);
+            }
             Scene::Level => {
+                self.foreground();
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
                 self.state.irq_count = self.state.irq_count.wrapping_add(1);
                 let mut ctx = LevelCtx {
@@ -182,12 +215,64 @@ impl Game {
                 // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
                 self.state.frame_flag = 0xffff;
             }
+            Scene::GameOver(mut screen) => {
+                if screen.step(i.joy.contains(Joy::FIRE)) {
+                    self.restart();
+                } else {
+                    self.scene = Scene::GameOver(screen);
+                }
+            }
+            Scene::LevelEnd(_) | Scene::Complete(_) => {
+                let mut message = match self.scene {
+                    Scene::Complete(c) => c,
+                    _ => Complete::default(),
+                };
+                if message.step(i.joy.contains(Joy::FIRE)) {
+                    self.restart();
+                } else {
+                    self.scene = Scene::Complete(message);
+                }
+            }
         }
+    }
+
+    /// Whether the level's end has been reached: `next_world` has run and "Level 1 complete" shows
+    /// or is about to, until fire restarts the level.
+    pub fn finished(&self) -> bool {
+        matches!(self.scene, Scene::LevelEnd(_) | Scene::Complete(_))
+    }
+
+    /// `cheat_flag` on or off: what the title's cheat code sets (`title_code_world`), which the
+    /// engine has no title to type in. With it on, HELP touches the exit with no items left
+    /// (`help_key`), the one way to the level's end until items and the exit are ported (T22). A
+    /// script and a test turn it on; a restart turns it off, as a new game starts.
+    pub fn set_cheat(&mut self, on: bool) {
+        self.state.keys.cheat = on as u16;
+    }
+
+    /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
+    /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
+    fn restart(&mut self) {
+        let events = std::mem::take(&mut self.events);
+        *self = Game::new(self.data.clone(), Start::Level1);
+        self.events = events;
+        self.events.push(Event::Restart);
+    }
+
+    /// The lives left, as a number (`lives` is BCD).
+    pub fn lives(&self) -> i16 {
+        bcd(self.state.lives) as i16
+    }
+
+    /// The countdown, as a number: the energy the status bar shows, which ends the game at 0
+    /// (`countdown`'s first word, BCD).
+    pub fn energy(&self) -> u16 {
+        bcd((self.state.countdown >> 16) as u16)
     }
 
     /// What the foreground does between passes: `main_loop`'s status bar every 32 interrupts (T10),
     /// then its edge redraws (T55), whose blits are added to [`Game::blits`] and drawn into the play
-    /// screen.
+    /// screen. Nothing on the game over screen.
     pub fn foreground(&mut self) {
         match self.scene {
             Scene::Level => {
@@ -213,6 +298,7 @@ impl Game {
                     self.display.screen.apply(b, &|a| data.byte(a));
                 }
             }
+            Scene::GameOver(_) | Scene::LevelEnd(_) | Scene::Complete(_) => {}
         }
     }
 
@@ -239,11 +325,29 @@ impl Game {
     /// foreground redraws it once the pass has ended, before the beam reaches the bar at line 241,
     /// so the frame showing pass `32k` already shows its numbers (measured, T44:
     /// `picture_cases.rs`, idle and scrolling alike). The engine runs that redraw at its next step.
+    ///
+    /// On the game over screen, that screen ([`render::game_over_picture`]); at the level's end,
+    /// play with `h0+$500`'s black colours, then "Level 1 complete" in play's window
+    /// ([`render::message::level_complete`]).
     pub fn picture(&self) -> Picture {
+        if let Scene::GameOver(_) = self.scene {
+            return render::game_over_picture(
+                &self.data.display,
+                &self.display,
+                &self.data.program,
+            );
+        }
         let c = &self.state.camera;
         let draw =
             |d: &Display| render::picture(&self.data.display, d, (c.x, c.y), &self.data.program);
-        if self.state.irq_count & 0x1f != 0 {
+        if let Scene::Complete(_) = self.scene {
+            return render::message::level_complete(&draw(&self.display));
+        }
+        // `main_loop` skips the status bar when its check finds the game over or the level's end.
+        if self.state.irq_count & 0x1f != 0
+            || game_over::game_is_over(&self.state)
+            || level_end::level_is_over(&self.state)
+        {
             return draw(&self.display);
         }
         let mut status = self.display.status.clone();
@@ -599,6 +703,137 @@ mod tests {
         want.edges = g.state().edges.clone();
         want.object_map = g.state().object_map.clone();
         assert_eq!(*g.state(), want);
+    }
+
+    #[test]
+    fn the_game_over_check_shows_the_screen_and_fire_restarts_the_level() {
+        let mut g = Game::new(data(), Start::Level1);
+        // Esc pressed, then let go: `play_keys` gives up at the pass's end (T23).
+        g.step(FrameInput::key(0x45));
+        assert_eq!(g.state().keys.esc_down, 1);
+        g.step(FrameInput::NONE);
+        assert_eq!(g.state().give_up, 1);
+        // Passes run on until `main_loop`'s check after pass 32; the step after shows the screen
+        // and runs no pass.
+        while g.state().irq_count != 32 {
+            assert_eq!(*g.scene(), Scene::Level);
+            g.step(FrameInput::NONE);
+        }
+        assert!(g.take_events().is_empty());
+        g.state.score = 0x1234;
+        let before = g.state().clone();
+        g.step(FrameInput::NONE);
+        assert_eq!(g.take_events(), [Event::GameOver]);
+        assert!(matches!(g.scene(), Scene::GameOver(_)));
+        assert_eq!(*g.state(), before, "no pass ran");
+        // Fire before the wait's end is ignored; pressed after it, its release restarts.
+        for _ in 0..20 {
+            g.step(FrameInput::joy(Joy::FIRE));
+        }
+        g.step(FrameInput::NONE);
+        assert!(matches!(g.scene(), Scene::GameOver(_)));
+        g.step(FrameInput::joy(Joy::FIRE));
+        assert!(g.take_events().is_empty());
+        g.step(FrameInput::NONE);
+        assert_eq!(g.take_events(), [Event::Restart]);
+        let fresh = Game::new(data(), Start::Level1);
+        assert_eq!(
+            g, fresh,
+            "the level as at its start: lives full, score zero"
+        );
+        assert_eq!((g.lives(), g.energy(), g.state().score), (32, 999, 0));
+    }
+
+    #[test]
+    fn help_with_the_cheat_ends_the_level_and_fire_on_the_message_restarts_it() {
+        let mut g = Game::new(data(), Start::Level1);
+        g.set_cheat(true);
+        while g.state().irq_count != 31 {
+            assert_eq!(*g.scene(), Scene::Level);
+            assert!(!g.finished());
+            g.step(FrameInput::NONE);
+        }
+        // HELP read by pass 32: `help_key` at the pass's end touches the exit, no items left (T23's
+        // port). Read by any earlier pass, the next one's `char_object_cells` clears the touch (T22).
+        g.step(FrameInput::key(0x5f));
+        assert_eq!((g.state().level_exit_touched, g.state().items_left), (1, 0));
+        assert_eq!(g.state().irq_count, 32);
+        assert!(g.take_events().is_empty());
+        g.state.score = 0x1234;
+        let before = g.state().clone();
+        let play = g.picture();
+        // `main_loop`'s check after pass 32: `next_world`, no pass. HELP stays down so the keyboard
+        // state, which a step takes before the check, is unchanged.
+        g.step(FrameInput {
+            joy: Joy::FIRE,
+            ..FrameInput::key(0x5f)
+        });
+        assert_eq!(g.take_events(), [Event::LevelEnd]);
+        assert_eq!(*g.scene(), Scene::LevelEnd(LevelEnd { world: 1 }));
+        assert!(g.finished());
+        assert_eq!(
+            *g.state(),
+            State {
+                world_index: 1,
+                ..before
+            },
+            "no pass ran"
+        );
+        assert_eq!(g.display().fade.now, [0; 32], "h0+$500's colours");
+        // The message: every input but a fresh fire press is ignored, fire held since the end too.
+        let others = [
+            FrameInput::joy(Joy::FIRE),
+            FrameInput::joy(Joy::RIGHT | Joy::UP),
+            FrameInput::key(0x45),
+            FrameInput::key(0x5f),
+            FrameInput::NONE,
+            FrameInput::joy(Joy::LEFT),
+        ];
+        for i in others {
+            g.step(i);
+            assert!(matches!(g.scene(), Scene::Complete(_)), "{i:?}");
+            assert_eq!(g.state().world_index, 1);
+        }
+        assert!(g.take_events().is_empty());
+        let message = g.picture();
+        assert_eq!(
+            (message.width, message.height, message.left, message.top),
+            (play.width, play.height, play.left, play.top)
+        );
+        g.step(FrameInput::joy(Joy::FIRE | Joy::LEFT));
+        assert_eq!(g.take_events(), [Event::Restart]);
+        assert_eq!(
+            g,
+            Game::new(data(), Start::Level1),
+            "lives full, score zero"
+        );
+        assert!(!g.finished());
+        assert_eq!(g.state().keys.cheat, 0, "a new game, as at the start");
+    }
+
+    #[test]
+    fn the_exit_with_items_left_or_off_the_check_does_not_end_the_level() {
+        let mut g = Game::new(data(), Start::Level1);
+        g.state.level_exit_touched = 1;
+        for _ in 0..100 {
+            g.step(FrameInput::NONE);
+        }
+        assert_eq!(*g.scene(), Scene::Level, "items left");
+        g.state.items_left = 0;
+        g.state.irq_count = 0x40;
+        g.state.give_up = 1;
+        g.step(FrameInput::NONE);
+        assert!(matches!(g.scene(), Scene::GameOver(_)), "game over first");
+    }
+
+    #[test]
+    fn the_game_over_screen_draws_its_own_picture() {
+        let mut g = Game::new(data(), Start::Level1);
+        let play = g.picture();
+        g.scene = Scene::GameOver(GameOver::default());
+        let over = g.picture();
+        assert_eq!((over.width, over.height), (play.width, play.height));
+        // Equal to the oracle's frame on every pixel: `fd-conform/tests/death.rs`.
     }
 
     #[test]

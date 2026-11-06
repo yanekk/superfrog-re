@@ -88,9 +88,8 @@ const STALL: u32 = 64;
 const SLACK: u32 = 2_000;
 
 /// What a bug compare does not judge yet, and the task that makes it judged (DESIGN §2.2: no gap
-/// is silent): the countdown, which the engine does not tick (T23), its three digits in the status
-/// bar, `give_up` and `paused`, which `play_keys` sets on Esc and P and the engine does not run yet
-/// (T23), and `hits_taken`, which creatures raise (T24). Read and counted, printed in the report.
+/// is silent): `hits_taken`, which contact raises (`char_hit_check`, T70). Read and counted, printed
+/// in the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
 fn known_gaps() -> Vec<Exclusion> {
     let var = |name: &str, task: &str| Exclusion {
         rows: 0..0,
@@ -99,19 +98,7 @@ fn known_gaps() -> Vec<Exclusion> {
         what: format!("var {name}"),
         task: task.to_string(),
     };
-    vec![
-        var("countdown", "T23"),
-        var("give_up", "T23"),
-        var("paused", "T23"),
-        var("hits_taken", "T24"),
-        Exclusion {
-            rows: 223..231,
-            cols: Some(144..168),
-            var: None,
-            what: "rows 223..231 cols 144..168 (the countdown's digits)".to_string(),
-            task: "T23".to_string(),
-        },
-    ]
+    vec![var("hits_taken", "T70")]
 }
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
@@ -550,6 +537,7 @@ pub fn compare_with(
         goal: None,
         exclude: known_gaps(),
         freeze: false,
+        set: Vec::new(),
     };
     let mut start_differs = Vec::new();
     let verdict = if retimed.frames == 0 {
@@ -664,7 +652,16 @@ mod tests {
         ] {
             assert!(vars.iter().any(|n| n == v), "{v}");
         }
-        for v in ["countdown", "give_up", "paused", "hits_taken", "mt_counter"] {
+        for v in [
+            "countdown",
+            "give_up",
+            "paused",
+            "countdown_tick",
+            "esc_down",
+        ] {
+            assert!(vars.iter().any(|n| n == v), "{v}");
+        }
+        for v in ["hits_taken", "mt_counter"] {
             assert!(!vars.iter().any(|n| n == v), "{v}");
         }
         // Every gap names its task.

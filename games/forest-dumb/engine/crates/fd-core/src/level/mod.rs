@@ -33,7 +33,7 @@ use amiga_input::FrameInput;
 use fd_assets::Level;
 
 use crate::State;
-use crate::character::{AnimTables, Character};
+use crate::character::{AnimTables, Character, Play};
 use crate::program::{Program, Scratch};
 
 use collision::CollisionPlane;
@@ -45,6 +45,14 @@ use collision::CollisionPlane;
 pub enum Event {
     /// An object of this value was met with no [`ObjectKind`] registered: it was left out.
     Unported(u8),
+    /// `main_loop` found the game over: the game over screen shows from this step (T23).
+    GameOver,
+    /// The game over screen ended where the original enters its high scores; the level restarted
+    /// as at its start (T23, DESIGN §2.4); or fire ended "Level 1 complete" (T26, DESIGN §2.5).
+    Restart,
+    /// `main_loop` found the level's end and ran `next_world` in this step (T26); "Level 1
+    /// complete" shows from the next.
+    LevelEnd,
 }
 
 /// One object in play.
@@ -194,7 +202,7 @@ pub fn game_frame(
         .sprite
         .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
     if l.state.paused != 0 {
-        // play_keys (T23).
+        Play { state: l.state }.play_keys();
         return;
     }
     // h0+$2c7e .. h0+$62b6: the objects (T24, T25, T52); until they are ported, the dispatch's kinds
@@ -204,7 +212,9 @@ pub fn game_frame(
     crate::objects::in_play(l, |o| o.write_back());
     let s = &mut *l.state;
     s.joy.read_joystick(&mut s.input_log, &input);
-    // char_hit_check (T24), countdown_step (T23), h0+$24ce (T25).
+    // char_hit_check (T70, T24).
+    Play { state: l.state }.countdown_step();
+    // h0+$24ce (T25).
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
     Character {
         state: l.state,
@@ -217,6 +227,7 @@ pub fn game_frame(
     // char_object_cells (T22).
     crate::objects::in_play(l, |o| o.object_cells());
     // play_keys (T23).
+    Play { state: l.state }.play_keys();
 }
 
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when

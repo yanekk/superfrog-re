@@ -3,10 +3,9 @@
 # still, and no step in the stretch ends two passes (main_loop's first 32-interrupt check, which does,
 # is at frame 6334), so every pass is compared. Measured 2026-11-05.
 # T08 added the character's variables: its movement runs every pass (char_update), standing still.
-# `countdown` loses one every 63 passes (`countdown_step`), which T23 ports; until then it is excluded.
+# `countdown` loses one every 63 passes (`countdown_step`), compared since T23 ported it.
 sync = { script = "boot-to-level1", frame = 6400 }
 frames = 200
 compare = ["vars"]
-vars = ["mt_counter", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "hits_taken", "items_left", "score", "world_index", "irq_count", "paused", "level_exit_touched", "give_up", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t"]
+vars = ["mt_counter", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "hits_taken", "items_left", "score", "world_index", "irq_count", "paused", "level_exit_touched", "give_up", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "countdown"]
 goal = { idle = true }
-exclude = [{ what = "var countdown", task = "T23" }]

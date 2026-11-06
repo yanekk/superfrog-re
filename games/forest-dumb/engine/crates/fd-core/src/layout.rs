@@ -116,6 +116,12 @@ pub const LAYOUT: &[Var] = &[
     var("char_samples_c", 0, 0x54fc, Width::Long),
     var("char_update_t", 0, 0x3e2c, Width::Long),
     var("char_unhurt_t", 0, 0x9b04, Width::Byte),
+    // What ends a life or the game (T23): the countdown's pass count and the keys play acts on.
+    var("countdown_tick", 0, 0x20ac, Width::Long),
+    var("last_key_byte", 0, 0x1f78, Width::Byte),
+    var("pause_key_down", 0, 0x2102, Width::Word),
+    var("esc_down", 0, 0x21b0, Width::Word),
+    var("cheat_flag", 0, 0x780c, Width::Word),
 ];
 
 /// The variable called `name`.
