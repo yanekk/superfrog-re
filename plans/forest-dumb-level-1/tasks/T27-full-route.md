@@ -2,7 +2,7 @@
 
 **Phase:** 6 · **Depends on:** T20, T26, T45, T46, T47 · **Weight:** medium
 
-**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T27` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T27` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again. A reviewer's pack has no FINDINGS: read it after your cold read.
 
 ## Goal
 The planner finds a complete route to the end of `W1-1` on the engine. This is the owner's requirement that the plan ends with the whole level planned. Checking that route on the original is T48's, in its own session (DESIGN §4.3).

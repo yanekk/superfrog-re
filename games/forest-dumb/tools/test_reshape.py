@@ -188,7 +188,7 @@ class Service(unittest.TestCase):
             self.sent.append(messages[-1]['content'])
             return self.answers.pop(0), usage()
 
-        def run_rig(task, u, code, root=r.ENGINE):
+        def run_rig(task, u, code, root=r.ENGINE, out=None):
             self.judged.append(code)
             return self.verdicts.pop(0)
 
@@ -366,6 +366,68 @@ class Tidy(Service):
         res = self.run_it(tidy=0)
         self.assertEqual((res['result'], res['tidy_rounds'], len(self.sent)), ('pass', 0, 1))
         self.assertTrue(res['quality'])
+
+
+class All(Service):
+    """--all over a new subsystem: examples stay by hand, a caller is retried once its callee passes."""
+
+    def test_examples_are_skipped_and_a_failure_is_retried_after_another_pass(self):
+        seen = []
+        verdicts = {}
+
+        def reshape(routine, task, tries, max_usd, out, tidy=2):
+            u = r.find_unit(task, routine)[1]
+            n = seen.count(u['fn'])
+            seen.append(u['fn'])
+            res = verdicts.get(u['fn'], ['pass'])[min(n, len(verdicts.get(u['fn'], ['pass'])) - 1)]
+            return {'routine': routine, 'fn': u['fn'], 'result': res}
+
+        verdicts['step'] = ['fail', 'pass']
+        reported = []
+        with mock.patch.object(r, 'reshape', reshape):
+            res = r.reshape_all('T08', report=reported.append)
+        units = [u['fn'] for u in r.TASKS['T08']['units'] if u['fn'] not in r.TASKS['T08']['examples']]
+        self.assertEqual([x['fn'] for x in res], units)
+        self.assertNotIn('land_or_fall', seen)
+        self.assertEqual(seen.count('step'), 2)
+        self.assertEqual(next(x for x in res if x['fn'] == 'step')['result'], 'pass')
+        self.assertEqual(len(reported), len(units) + 1)
+
+    def test_a_task_with_one_example_is_a_usage_error_not_a_crash(self):
+        cfg = dict(r.TASKS['T08'], examples=['rise_step'])
+        u = next(x for x in cfg['units'] if x['fn'] == 'rise_step')
+        with self.assertRaises(r.Usage):
+            r.example_unit(cfg, u)
+
+
+class Stubs(unittest.TestCase):
+    def test_another_units_stub_takes_its_passing_answer(self):
+        cfg = r.TASKS['T08']
+        units = {u['fn']: u for u in cfg['units']}
+        src = ("impl Character<'_> {\n    /// a\n    pub fn rise_step(&mut self) { todo!() }\n\n"
+               "    /// b\n    pub fn fall_step(&mut self) { todo!() }\n\n"
+               "    /// c\n    pub fn move_x(&mut self) { self.x = 1; }\n}\n")
+        with tempfile.TemporaryDirectory() as out:
+            for fn in ('fall_step', 'move_x'):
+                d = os.path.join(out, r.slug(units[fn]))
+                os.makedirs(d)
+                with open(os.path.join(d, 'result.json'), 'w') as f:
+                    json.dump({'result': 'pass'}, f)
+                with open(os.path.join(d, 'port.rs'), 'w') as f:
+                    f.write(f"impl Character<'_> {{ pub fn {fn}(&mut self) {{ /* muse */ }} }}\n")
+            got = r.fill_stubs(src, cfg, units['rise_step'], out)
+        self.assertIn('pub fn rise_step(&mut self) { todo!() }', got, 'the unit itself is left to scratch()')
+        self.assertNotIn('pub fn fall_step(&mut self) { todo!() }', got)
+        self.assertIn('pub fn fall_step(&mut self) { /* muse */ }', got)
+        self.assertIn('self.x = 1;', got, 'a written function is never replaced')
+        self.assertNotIn('pub fn move_x(&mut self) { /* muse */ }', got)
+
+
+class Masks(unittest.TestCase):
+    def test_masks_and_shifts_are_not_bare_numbers_and_decimals_are_not_renamed(self):
+        code = ("impl Camera {\n    /// Scrolls (h0+$51fc).\n    pub fn scroll(&mut self) {\n"
+                "        let b = self.x & 0xfff0;\n        let c = self.y >> 12;\n        let n = 17154;\n    }\n}\n")
+        self.assertEqual(r.quality(code, r.TASKS['T09']), [])
 
 
 class Tasks(unittest.TestCase):

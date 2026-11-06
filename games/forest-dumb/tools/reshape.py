@@ -326,9 +326,17 @@ def rig_text(cfg, u, test_src):
 
 
 def example_unit(cfg, u):
-    """The first of the task's examples that is not `u`."""
-    fn = next(f for f in cfg['examples'] if f != u['fn'])
-    return next(x for x in cfg['units'] if x['fn'] == fn)
+    """The first of the task's examples that is not `u`: a hand-written unit whose routine has a
+    passing literal port. Raises Usage when there is none."""
+    for f in cfg['examples']:
+        if f == u['fn']:
+            continue
+        for x in cfg['units']:
+            if x['fn'] == f:
+                return x
+        raise Usage(f'example `{f}` is not one of the task\'s units in re/reshape.toml')
+    raise Usage(f"`{u['fn']}` is the task's only example: name a second hand-written unit in `examples` "
+                'to reshape it, or keep it by hand')
 
 
 def removed(u):
@@ -433,6 +441,13 @@ def number(text):
     return int(t, 16) if t.lower().startswith('0x') else int(t)
 
 
+def masked(line, lit):
+    """A literal used as a bit mask or a shift: `x & 0xfff0`, `0x8000 | y`, `y >> 12`."""
+    before, after = line[:lit.start()].rstrip(), line[lit.end():].lstrip()
+    return before.endswith(('&', '|', '^', '>>', '<<', '&=', '|=', '^=', '>>=', '<<=')) or \
+        after.startswith(('&', '|', '^', '>>', '<<'))
+
+
 def named_values(cfg, root=ENGINE):
     """{value: const name} for every const of the task's typed state."""
     names = {}
@@ -466,9 +481,11 @@ def quality(code, cfg, root=ENGINE):
             continue
         for lit in NUM.finditer(line):
             v = number(lit.group(1))
-            if v < 16 or v in MASKS:
+            if v < 16 or v in MASKS or masked(line, lit):
                 continue
-            if v in names and names[v] not in defined:
+            hexed = lit.group(1).lower().startswith('0x')
+            # A decimal that equals some const is too often a count that means something else.
+            if hexed and v in names and names[v] not in defined:
                 known.setdefault(lit.group(1), names[v])
             elif lit.group(1).lower().startswith('0x') and v >= 0x100:
                 if lit.group(1) not in bare:
@@ -512,9 +529,42 @@ def absolute_paths(manifest, crate_dir, engine):
     return re.sub(r'(path\s*=\s*)"([^"]+)"', fix, manifest)
 
 
-def scratch(task, u, answer, root=ENGINE):
-    """A copy of the engine under SCRATCH with the unit's functions cut out of its source, the
-    answer appended, and the rig test's loop limited to the routines in RESHAPE_ONLY. -> its folder."""
+def passing_port(out, v):
+    """Unit `v`'s kept answer under `out`, if it passed. -> code or None."""
+    d = os.path.join(out, slug(v))
+    r = tr.read_result(d) or {}
+    p = os.path.join(d, 'port.rs')
+    return read(p) if r.get('result') == 'pass' and os.path.exists(p) else None
+
+
+def fill_stubs(src, cfg, u, out):
+    """`src` with every other unit whose engine function is still a `todo!()` stub replaced by its
+    passing answer under `out`: in a new subsystem a unit's routine may call another unit's function,
+    and a stub there panics on the rig whatever the answer (review of the 2026-11-06 amendment)."""
+    added = []
+    for v in cfg['units']:
+        if v is u or v['fn'] == u['fn']:
+            continue
+        try:
+            (a, b), = fn_spans(src, [v['fn']])
+        except Usage:
+            continue
+        if 'todo!(' not in mask(src[a:b]):
+            continue
+        code = passing_port(out, v)
+        if code is None:
+            continue
+        src = src[:a] + src[b:]
+        added.append(code.rstrip('\n'))
+    if added:
+        src = src.rstrip('\n') + '\n\n// Other units\' passing answers (tools/reshape.py).\n' + '\n\n'.join(added) + '\n'
+    return src
+
+
+def scratch(task, u, answer, root=ENGINE, out=OUT):
+    """A copy of the engine under SCRATCH with the unit's functions cut out of its source, other
+    units' stubs filled with their passing answers under `out`, the answer appended, and the rig
+    test's loop limited to the routines in RESHAPE_ONLY. -> its folder."""
     cfg = TASKS[task]
     base = SCRATCH
     eng = os.path.join(base, 'engine')
@@ -542,6 +592,7 @@ def scratch(task, u, answer, root=ENGINE):
     src = read(src_path)
     for a, b in sorted(fn_spans(src, removed(u)), reverse=True):
         src = src[:a] + src[b:]
+    src = fill_stubs(src, cfg, u, out)
     with open(src_path, 'w', encoding='utf-8') as f:
         f.write(src.rstrip('\n') + '\n\n' + MARK + '\n' + answer.rstrip('\n') + '\n')
     test_path = os.path.join(eng, cfg['test'])
@@ -573,7 +624,7 @@ def warnings(cfg, eng, stderr):
     return out
 
 
-def run_rig(task, u, answer, root=ENGINE):
+def run_rig(task, u, answer, root=ENGINE, out=OUT):
     """Build the scratch copy and run the unit's routines on the task's rig test. -> {'outcome':
     'pass'|'fail'|'compile'|'hang', 'feedback', 'paths'}."""
     cfg = TASKS[task]
@@ -583,7 +634,7 @@ def run_rig(task, u, answer, root=ENGINE):
     test = os.path.splitext(os.path.basename(cfg['test']))[0]
     with open(os.path.join(SCRATCH, 'judge.lock'), 'w') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        eng = scratch(task, u, answer, root)
+        eng = scratch(task, u, answer, root, out)
         b = subprocess.run(['cargo', 'test', '-q', '-p', 'fd-conform', '--test', test, '--no-run',
                             '--message-format', 'short'], cwd=eng, env=env, capture_output=True, text=True,
                            timeout=BUILD_SECONDS)
@@ -697,7 +748,7 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
         code = blocks[-1]
         with open(os.path.join(d, f'try{n_call}.rs'), 'w', encoding='utf-8') as f:
             f.write(code)
-        j = run_rig(task, u, code)
+        j = run_rig(task, u, code, out=out)
         if j['outcome'] == 'pass':
             issues = quality(code, cfg) + j.get('lint', [])
             log(dict(rec, outcome='pass', issues=len(issues)))
@@ -706,7 +757,7 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
             user = TIDY.format(issues='\n'.join(f'- {i}' for i in best[0]))
             # The next round tidies the best version, whichever answer that was.
             if code != best[1]:
-                user = ('That version has more issues than your earlier passing one, shown here; tidy that one:\n\n'
+                user = ('That version has no fewer issues than your earlier passing one, shown here; tidy that one:\n\n'
                         f'```rust\n{best[1]}```\n\n' + user)
         else:
             log(dict(rec, outcome=j['outcome'], feedback=j.get('feedback', '')[:300]))
@@ -715,7 +766,7 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
         final = os.path.join(d, 'port.rs')
         with open(final, 'w', encoding='utf-8') as f:
             f.write(best[1])
-        res.update(result='pass', port=os.path.relpath(final), paths=best[2], quality=best[0])
+        res.update(result='pass', port=os.path.abspath(final), paths=best[2], quality=best[0])
     else:
         res['result'] = 'fail'
     res['usd'] = round(res['usd'], 6)
@@ -724,16 +775,33 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
     return res
 
 
-def reshape_all(task, tries=3, max_usd=0.10, out=OUT, tidy=2, only=None):
-    """reshape() every unit of `task` (or those whose fn is in `only`), one after another. -> results."""
+def reshape_all(task, tries=3, max_usd=0.10, out=OUT, tidy=2, only=None, report=None):
+    """reshape() every unit of `task` but its hand-written examples (or those whose fn is in `only`),
+    one after another, then once more each that failed while another passed: a caller judged before
+    its callee's answer existed met the callee's stub (fill_stubs). `report(res)` is called on each
+    result as it comes, so a later crash loses none. -> results, the last of each unit."""
     if task not in TASKS:
         raise Usage(f'--task is one of {", ".join(TASKS)}')
-    results = []
-    for u in TASKS[task]['units']:
-        if only and u['fn'] not in only:
-            continue
-        results.append(reshape(f"h0+${u['routines'][0][1]:x}", task, tries, max_usd, out, tidy=tidy))
-    return results
+    cfg = TASKS[task]
+    units = [u for u in cfg['units'] if (u['fn'] in only if only else u['fn'] not in cfg['examples'])]
+    done = {}
+
+    def run(u):
+        try:
+            res = reshape(f"h0+${u['routines'][0][1]:x}", task, tries, max_usd, out, tidy=tidy)
+        except Usage as e:
+            res = {'routine': f"h0+${u['routines'][0][1]:x}", 'fn': u['fn'], 'result': 'usage', 'error': str(e)}
+        done[u['fn']] = res
+        if report:
+            report(res)
+        return res
+
+    first = [run(u) for u in units]
+    if any(r['result'] == 'pass' for r in first):
+        for u in units:
+            if done[u['fn']]['result'] == 'fail':
+                run(u)
+    return [done[u['fn']] for u in units]
 
 
 # --- Opus's cost ------------------------------------------------------------------------------------
@@ -786,12 +854,11 @@ def main(argv=None):
     if a.all and a.task:
         try:
             results = reshape_all(a.task, a.tries, a.max_usd, a.out, a.tidy,
-                                  set(a.only.split(',')) if a.only else None)
+                                  set(a.only.split(',')) if a.only else None,
+                                  report=lambda res: print(json.dumps(res, separators=(',', ':')), flush=True))
         except tr.Usage as e:
             print(f'reshape: {e}', file=sys.stderr)
             return 2
-        for res in results:
-            print(json.dumps(res, separators=(',', ':')))
         return 0 if all(res['result'] == 'pass' for res in results) else 1
     if not a.routine or not a.task:
         ap.error('a routine and --task (or --task and --all) are needed')

@@ -2,7 +2,7 @@
 
 **Phase:** 6 · **Depends on:** T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 · **Weight:** small
 
-**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T63` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T63` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again. A reviewer's pack has no FINDINGS: read it after your cold read.
 
 Added by T08 with the owner's yes (2026-11-05): `game_frame` is in T08's share of `re/translate.toml`, but it calls 20 routines owned by T09, T10, T22 to T26, T51, T52 and T55, all after T08, so its engine port cannot pass the rig until they land. T08 put the character's calls into `level::game_frame` in the original's order and did not register `game_frame`.
 

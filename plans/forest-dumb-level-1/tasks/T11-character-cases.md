@@ -2,7 +2,7 @@
 
 **Phase:** 2 · **Depends on:** T01, T41, T42, T43, T44 · **Weight:** light
 
-**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T11` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T11` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again. A reviewer's pack has no FINDINGS: read it after your cold read.
 
 ## Goal
 Stage proof: the same inputs on both sides, movement and picture match together on stretches of `W1-1` with no enemies or collectibles; add the first level smoke test and area. The matching itself was done case by case in T41 to T44; this task joins their runs into stretches compared by variables and picture at once.

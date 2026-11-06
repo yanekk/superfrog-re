@@ -239,11 +239,22 @@ def reshape_entry(task):
 
 # --- Prep -------------------------------------------------------------------------------------------
 
-def prep():
-    """Make the program listing exist in this checkout. -> what was done, as lines."""
-    done = []
+def listing_path():
+    """This checkout's program listing, else the main checkout's: one built once serves every task
+    worktree, as the main checkout's build/translate serves the literal ports."""
     if os.path.exists(LISTING):
-        return [f'listing present: {rel(LISTING)}']
+        return LISTING
+    main = reshape.main_checkout()
+    other = os.path.join(main, os.path.relpath(LISTING, REPO)) if main else None
+    return other if other and os.path.exists(other) else LISTING
+
+
+def prep():
+    """Make a program listing reachable: this checkout's, the main checkout's, or one extracted and
+    written here (a cold fd-tools build, minutes). -> what was done, as lines."""
+    done = []
+    if os.path.exists(listing_path()):
+        return [f'listing present: {rel(listing_path())}']
     if not os.path.exists(PROGRAM):
         r = subprocess.run(['cargo', 'run', '-q', '-p', 'fd-tools', '--', 'extract'], cwd=ENGINE,
                            capture_output=True, text=True, timeout=1800)
@@ -282,7 +293,8 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
     values = object_values(task)
     kinds = (['porting'] if routines or values else []) + \
             (['frame-matching'] if slug.startswith('case-') or task in CASE_TASKS else [])
-    prep_lines = prep() if do_prep and 'porting' in kinds else []
+    # A reviewer reads the diff, not the listing whole: no prep for it.
+    prep_lines = prep() if do_prep and 'porting' in kinds and not review else []
     head = git('log', '-1', '--format=%h %s').strip()
     kind_line = {('porting',): "its routines' listings, how Muse writes the engine code, ",
                  ('frame-matching',): "the conformance runner's notes and cases, "}.get(tuple(kinds), '')
@@ -297,11 +309,15 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
     if prep_lines:
         add('prep', '## Prepared in this checkout\n\n' + '\n'.join(f'- {l}' for l in prep_lines), True)
     add('task', f'## The task: {rel(doc_path)}\n\n{doc}', True)
-    add('progress', f'## PROGRESS.md\n\n{read(os.path.join(PLAN_DIR, "PROGRESS.md"))}', True)
+    progress = read(os.path.join(PLAN_DIR, 'PROGRESS.md'))
+    if review:
+        # The cold read comes before the builder's account: the task's own Notes cell and the branch's
+        # commit messages stay out (root CLAUDE.md, "The files"; review-core).
+        progress = re.sub(rf'(?m)^(\| {task} \|(?:[^|]*\|){{3}}).*\|\s*$', r'\1 (left out of a review pack) |', progress)
+    add('progress', f'## PROGRESS.md\n\n{progress}', True)
     if review:
         base = f'pir/{PLAN}'
-        add('branch', f'## This branch against {base}\n\n```\n'
-            + git('log', '--format=%h %s', f'{base}..HEAD') + '\n'
+        add('branch', f'## This branch against {base}, files only\n\n```\n'
             + git('diff', '--stat', f'{base}...HEAD') + '```', True)
     else:
         add('findings', f'## FINDINGS.md\n\n{read(os.path.join(PLAN_DIR, "FINDINGS.md"))}', True)
@@ -311,11 +327,14 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
     # Only this plan's commits: other plans number their tasks from T00 too.
     since = git('merge-base', 'HEAD', BASE).strip()
     span = f'{since}..HEAD' if since else 'HEAD'
+    commits = [l.split('\x1f') for l in git('log', '--format=%h\x1f%s', span).splitlines() if '\x1f' in l]
     for t in depends(doc):
-        log = git('log', '--format=%h %s', '-E', f'--grep=^{t}([: ]|$)', span).strip().splitlines()
-        if not log:
+        # The subject only: a body line starting `T21` belongs to another task's commit.
+        mine = [(h, subj) for h, subj in commits if re.match(rf'{t}(?:[: ]|$)', subj)]
+        if not mine:
             continue
-        files = git('log', '--name-only', '--format=', '-E', f'--grep=^{t}([: ]|$)', span).split()
+        log = [f'{h} {subj}' for h, subj in mine]
+        files = git('show', '--name-only', '--format=', *[h for h, _ in mine]).split()
         files = [f for f in dict.fromkeys(files) if not f.startswith('plans/')]
         deps.append(f"### {t}\n\n" + '\n'.join(log[:8]) + ('\n...' if len(log) > 8 else '')
                     + '\n\nFiles: ' + (', '.join(f'`{f}`' for f in files[:30]) or 'none outside plans/'))
@@ -340,7 +359,7 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
         add('listings', f'## Its routines (re/translate.toml), with their listings\n\n'
             'Each listing is the flow translate.py sent Muse: the routine with the callees it was not split '
             'at, so a callee at a lower address can come first. '
-            f'The listing of the whole program is `{rel(LISTING)}`; `re/symbols.toml` names its labels.\n\n'
+            f'The listing of the whole program is `{rel(listing_path())}`; `re/symbols.toml` names its labels.\n\n'
             + '\n\n'.join(blocks), True)
         add('reshape', '## Muse writes the engine code\n\n' + reshape_how() + '\n\n' + reshape_entry(task), True)
         add('rules', '## toolkit/docs/porting-routines.md\n\n'

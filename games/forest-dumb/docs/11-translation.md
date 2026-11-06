@@ -887,17 +887,22 @@ the builder fit, finish and prove them (DESIGN §4.4). By hand only after Muse f
 2. **By hand, before any call.** The interruptible-points notes (`toolkit/docs/porting-routines.md`
    §1), `symbols.toml` and `LAYOUT` entries, the subsystem's typed state, and the rig test with its
    routine table (`fd-conform/tests/<subsystem>_routines.rs`, as T08's `character_routines.rs`). Write
-   one small unit by hand as the example Muse is shown. Write every other engine function as a stub:
-   its `///` doc, its exact signature, `todo!()` as the body, called by the rig test's table.
+   two small units by hand as the examples Muse is shown (a unit's prompt shows an example other than
+   itself; each example's routine needs a passing literal port). Write every other engine function as
+   a stub: its `///` doc, its exact signature, `todo!()` as the body, called by the rig test's table.
+   The rig test prints `paths: <name> N (h hangs), ...` or `<name>: N paths` per routine it ran.
 3. **The table.** Add `[T22]` to `re/reshape.toml` (its header says what each field is): the source
    file, the impl header, the rig test and its loop line, the state files, the harness items, the
    example, one unit per engine function.
 4. **Muse.** `python3 -I games/forest-dumb/tools/reshape.py --task T22 --all --max-usd 0.10` (worker
-   bin, DESIGN §5.3). One result line a unit; `--only fn_a,fn_b` reruns some. Each unit's answer is
-   `build/reshape/<slug>/port.rs`, an `impl` block that passed the rig on 10 000 states.
+   bin, DESIGN §5.3). It skips the `examples`, prints one result line a unit as it finishes, and runs
+   each failed unit once more when another passed: the judge's copy fills a still-stubbed function
+   with that unit's passing answer, so a caller judged before its callee gets a second chance.
+   `--only fn_a,fn_b` reruns some. Each unit's answer is `build/reshape/<slug>/port.rs`, an `impl`
+   block that passed the rig on 10 000 states.
 5. **Fit and finish.** Replace each stub with its answer, fix what the result's `quality` list still
-   names, rerun the rig test. A unit that fails gets one more run with `--tries 3`; then it is the
-   builder's, from the listing, and is listed as by hand below with why.
+   names, rerun the rig test. Rerun a unit that failed with `--only` once the answers it calls are
+   fitted; then it is the builder's, from the listing, and is listed as by hand below with why.
 6. **Record** under "Ported" below: which functions came from Muse, its spend, and which by hand.
 
 **What Muse is told and checked for.** The prompt's style rules: a `///` doc on every function naming

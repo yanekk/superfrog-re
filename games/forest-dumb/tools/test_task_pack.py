@@ -54,11 +54,17 @@ class Pack(unittest.TestCase):
         deps = text.split('## What the tasks it depends on did', 1)[1].split('\n## ', 1)[0]
         # T11 and T20 of the first game's plan touched sf- crates; this plan's never do.
         self.assertNotIn('sf-', deps)
+        # A commit whose body mentions T21 is not T21's.
+        t21 = deps.split('### T21', 1)[1].split('### ', 1)[0] if '### T21' in deps else ''
+        self.assertNotIn('T49:', t21)
 
     def test_a_review_pack_leaves_findings_for_after_the_cold_read(self):
         res, text = self.build('T22', review=True)
         self.assertNotIn('## FINDINGS.md', text)
-        self.assertIn('## This branch against pir/forest-dumb-level-1', text)
+        self.assertIn('## This branch against pir/forest-dumb-level-1, files only', text)
+        # The builder's account stays out until after the cold read: its Notes cell, its commit messages.
+        self.assertRegex(text, r'(?m)^\| T22 \|.*\(left out of a review pack\) \|$')
+        self.assertEqual(res['prep'], [])
         self.assertTrue(res['pack'].endswith('T22-review.md'))
 
     def test_what_does_not_fit_is_named_with_where_to_read_it(self):

@@ -2,7 +2,7 @@
 
 **Phase:** 5 · **Depends on:** T11, T13, T14, T20 · **Weight:** medium
 
-**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T23` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again.
+**Start (owner, 2026-11-06, DESIGN §4.4):** run `python3 -I games/forest-dumb/tools/task_pack.py T23` (a reviewer adds `--review`) and read the pack it names whole, in one step, before anything else. It holds this doc, PROGRESS, FINDINGS and the DESIGN sections, so do not read those again. A reviewer's pack has no FINDINGS: read it after your cold read.
 
 ## Goal
 Losing a life, the original's game over screen, and restart with full lives and score zero, skipping high scores.
@@ -30,4 +30,4 @@ impl Game { pub fn lives(&self) -> i16; pub fn energy(&self) -> u16 }
 - [ ] Cases and end-to-end tests pass; death is in `LAYOUT`.
 - [ ] The high score skip is named in the app's code and DESIGN §2.4.
 - [ ] If matching its cases against the original needs more than one session, the owner is asked to add a task for the rest, split by case (DESIGN §4.3).
-- [ ] Engine functions written by Muse through `tools/reshape.py --task T23 --all` and a `[T23]` table in `re/reshape.toml`, after the typed state, the rig test, one example unit and stubs by hand (`docs/11-translation.md`, "Reshaping by Muse"). docs/11's "Ported" line names Muse's functions, its spend, and any written by hand with why.
+- [ ] Engine functions written by Muse through `tools/reshape.py --task T23 --all` and a `[T23]` table in `re/reshape.toml`, after the typed state, the rig test, two example units and stubs by hand (`docs/11-translation.md`, "Reshaping by Muse"). docs/11's "Ported" line names Muse's functions, its spend, and any written by hand with why.

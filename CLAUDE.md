@@ -95,14 +95,17 @@ yes (or the coordinator agent's): it writes the new task on its branch, may name
 **The coordinator agent stands in for the owner** in a parallel build: it may answer what the plan
 settles, settle what the design leaves open, approve going against a design rule or adding a task. It
 never answers an `ask`-bin action or a destructive command. A worker asks as it would ask the owner,
-in its own session. Beyond-routine decisions are listed in `plans/{slug}/REPORT.md`.
+in its own session. Beyond-routine decisions are listed in `plans/{slug}/REPORT.md`. Planning
+sessions and single runs have no stand-in.
 
 **How to ask:** one decision at a time: the goal in a sentence, the options with their cost, your
 recommendation, and what you will do if there is no answer. Do everything that does not depend on it
 meanwhile.
 
 **The owner is your hands on the real machine** (a screen, a login, a device, a reboot): give the exact
-command and what to look for, then wait for the answer before building on it. A live action (a deploy,
+command and what to look for, then wait for the answer before building on it. Do not finish the
+session around it or leave the check as homework in the final report: the session ends when the
+answer is in. A live action (a deploy,
 a paid call) is not on that list: you run it within the bins the owner approved (`DESIGN.md §5.3`).
 
 ## The rules every session follows
