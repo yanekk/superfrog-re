@@ -63,7 +63,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | enemies | T20, T21, T22, T23 | ⬜ | |
 | T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
-| T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
+| T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
