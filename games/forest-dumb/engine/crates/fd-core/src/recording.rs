@@ -333,7 +333,8 @@ mod tests {
         let e = Recording::parse(&v2).unwrap_err();
         assert_eq!(e.line, 1);
         assert!(
-            e.why.contains("format `2` is not one this engine reads (1)"),
+            e.why
+                .contains("format `2` is not one this engine reads (1)"),
             "{e}"
         );
         let w12 = text.replacen("level W1-1", "level W1-2", 1);

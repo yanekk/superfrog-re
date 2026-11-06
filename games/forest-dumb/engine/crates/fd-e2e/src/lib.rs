@@ -47,6 +47,32 @@ pub fn binary() -> &'static Path {
     amiga_e2e::binary(spec())
 }
 
+/// The `fd-conform` binary, built once per test process as the app is: what replays a bug zip
+/// (`fd-conform bug replay`, T14).
+pub fn conform_binary() -> &'static Path {
+    static SPEC: OnceLock<AppSpec> = OnceLock::new();
+    let app = spec();
+    amiga_e2e::binary(SPEC.get_or_init(|| AppSpec {
+        package: "fd-conform",
+        binary: "fd-conform",
+        workspace: app.workspace.clone(),
+        // Unused: the binary is only built here, never launched as an app.
+        flags: Flags {
+            home: "",
+            capture: "",
+            max_frames: "",
+            timeout: "",
+            scale: "",
+            script: "",
+        },
+        clear_env: Vec::new(),
+        keep_env: app.keep_env,
+        scratch: app.scratch,
+        provision,
+        already_running: "",
+    }))
+}
+
 /// The folder holding the owner's two zips; a test that cannot find them fails naming where it
 /// looked, never skips.
 pub fn disks() -> PathBuf {

@@ -422,7 +422,10 @@ impl App {
         let (size, rgba) = frame_of(&run.game);
         run.shown.completed((run.steps, size, rgba));
         let recording = if record { ", recording" } else { "" };
-        eprintln!("fd-app: started {level} after step {}{recording}", run.steps);
+        eprintln!(
+            "fd-app: started {level} after step {}{recording}",
+            run.steps
+        );
         self.show_newest();
     }
 
@@ -518,7 +521,11 @@ impl App {
                 .to_logical::<f64>(run.window.scale_factor());
             run.window
                 .set_min_inner_size(Some(min_size(run.picture, on)));
-            let by = if on { BAR_HEIGHT as f64 } else { -(BAR_HEIGHT as f64) };
+            let by = if on {
+                BAR_HEIGHT as f64
+            } else {
+                -(BAR_HEIGHT as f64)
+            };
             let _ = run
                 .window
                 .request_inner_size(LogicalSize::new(at.width, at.height + by));

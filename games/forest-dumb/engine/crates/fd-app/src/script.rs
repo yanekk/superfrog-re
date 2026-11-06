@@ -109,18 +109,20 @@ impl ScriptGame for Game {
                     ["discard"] => EndChoice::Discard,
                     ["cancel"] => EndChoice::Cancel,
                     _ => {
-                        return Err(line.error(
-                            "`answer-recording` takes `save`, `discard` or `cancel`",
-                        ));
+                        return Err(
+                            line.error("`answer-recording` takes `save`, `discard` or `cancel`")
+                        );
                     }
                 });
                 Ok(true)
             }
             Some("note") => {
-                self.answers.notes.push(match line.text["note".len()..].trim() {
-                    "discard" => None,
-                    note => Some(note.to_string()),
-                });
+                self.answers
+                    .notes
+                    .push(match line.text["note".len()..].trim() {
+                        "discard" => None,
+                        note => Some(note.to_string()),
+                    });
                 Ok(true)
             }
             _ => Ok(false),
@@ -237,10 +239,7 @@ mod tests {
             Answers {
                 starts: vec![
                     vec![
-                        FieldAction::Set(
-                            record,
-                            amiga_app::start_level_window::Value::On(false)
-                        ),
+                        FieldAction::Set(record, amiga_app::start_level_window::Value::On(false)),
                         FieldAction::Start
                     ],
                     vec![FieldAction::Cancel],

@@ -958,8 +958,10 @@ dependencies = [
 name = "fd-e2e"
 version = "0.1.0"
 dependencies = [
+ "amiga-disk",
  "amiga-e2e",
  "amiga-input",
+ "amiga-record",
  "fd-app",
  "fd-conform",
  "fd-core",

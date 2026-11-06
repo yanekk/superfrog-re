@@ -59,7 +59,10 @@ fn main() {
             dir.display()
         );
         println!("cargo:rerun-if-changed={}", dir.join("src").display());
-        println!("cargo:rerun-if-changed={}", dir.join("Cargo.toml").display());
+        println!(
+            "cargo:rerun-if-changed={}",
+            dir.join("Cargo.toml").display()
+        );
         inputs.push(dir.join("Cargo.toml"));
         files(&dir.join("src"), &mut inputs);
     }
@@ -71,7 +74,13 @@ fn main() {
     let mut h = 0xcbf2_9ce4_8422_2325u64;
     for p in &inputs {
         // Relative to the repository, so the tag is the same on every checkout.
-        fnv(&mut h, p.strip_prefix(repo).unwrap_or(p).to_string_lossy().as_bytes());
+        fnv(
+            &mut h,
+            p.strip_prefix(repo)
+                .unwrap_or(p)
+                .to_string_lossy()
+                .as_bytes(),
+        );
         fnv(&mut h, &[0]);
         fnv(&mut h, &std::fs::read(p).unwrap_or_default());
         fnv(&mut h, &[0]);

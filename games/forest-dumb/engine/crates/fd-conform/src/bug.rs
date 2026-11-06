@@ -77,7 +77,11 @@ mod tests {
         assert!(e.contains("`a`") && e.contains("`b`"), "{e}");
         let e = open_zip(&zip("b", b"not a png"), "b").unwrap_err();
         assert!(e.starts_with("screenshot.png: it is not a PNG"), "{e}");
-        assert!(open_zip(b"hello", "b").unwrap_err().starts_with("not a bug zip"));
+        assert!(
+            open_zip(b"hello", "b")
+                .unwrap_err()
+                .starts_with("not a bug zip")
+        );
     }
 
     /// A 1x1 PNG, as the conformance harness writes one.

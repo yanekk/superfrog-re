@@ -20,3 +20,6 @@ fd-conform = { path = "../fd-conform" }
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # libc checks a process group is gone after the watchdog.
 libc = "0.2"
+# The recording a bug zip holds and the zip itself, read and rewritten by the recorder tests (T14).
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }

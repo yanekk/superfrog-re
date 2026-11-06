@@ -114,11 +114,7 @@ fn main_checkout(dir: &Path) -> Option<PathBuf> {
         }
         if git.is_file() {
             let text = std::fs::read_to_string(&git).ok()?;
-            let own = d.join(
-                text.lines()
-                    .find_map(|l| l.strip_prefix("gitdir:"))?
-                    .trim(),
-            );
+            let own = d.join(text.lines().find_map(|l| l.strip_prefix("gitdir:"))?.trim());
             let common = match std::fs::read_to_string(own.join("commondir")) {
                 Ok(c) => own.join(c.trim()),
                 Err(_) => own,
@@ -386,7 +382,11 @@ mod tests {
     fn recording(frames: usize) -> Recording {
         let mut r = recorder(LevelId::W1_1, "test build");
         for n in 0..frames {
-            r.step(FrameInput::joy(if n % 3 == 0 { Joy::RIGHT } else { Joy::NONE }));
+            r.step(FrameInput::joy(if n % 3 == 0 {
+                Joy::RIGHT
+            } else {
+                Joy::NONE
+            }));
         }
         r.finish(at(), "a note".into()).unwrap()
     }
@@ -436,7 +436,10 @@ mod tests {
             Ok(())
         };
         assert!(ui.save_recording(b"", &at(), "x.zip", &mut save));
-        assert!(!ui.save_recording(b"", &at(), "x.zip", &mut save), "none left: discard");
+        assert!(
+            !ui.save_recording(b"", &at(), "x.zip", &mut save),
+            "none left: discard"
+        );
         assert_eq!(saved, ["two lines"]);
     }
 
@@ -452,7 +455,11 @@ mod tests {
         let mut tries = Vec::new();
         let mut save = |n: &str| {
             tries.push(n.to_string());
-            if n == "a" { Err("disk full".into()) } else { Ok(()) }
+            if n == "a" {
+                Err("disk full".into())
+            } else {
+                Ok(())
+            }
         };
         assert!(ui.save_recording(b"", &at(), "x.zip", &mut save));
         assert_eq!(tries, ["a", "b"]);
@@ -476,8 +483,14 @@ mod tests {
     fn the_bugs_folder_is_the_flag_else_home_for_a_script_else_the_checkout_s_else_documents() {
         let d = temp("bugs-dir");
         let home = Some(std::ffi::OsString::from("/Users/u"));
-        assert_eq!(bugs_dir(Some(Path::new("/x")), true, &d), PathBuf::from("/x"));
-        assert_eq!(bugs_dir(None, true, Path::new("/h")), PathBuf::from("/h/bugs"));
+        assert_eq!(
+            bugs_dir(Some(Path::new("/x")), true, &d),
+            PathBuf::from("/x")
+        );
+        assert_eq!(
+            bugs_dir(None, true, Path::new("/h")),
+            PathBuf::from("/h/bugs")
+        );
         let lone = d.join("lone/engine/crates/fd-app");
         std::fs::create_dir_all(&lone).unwrap();
         assert_eq!(
