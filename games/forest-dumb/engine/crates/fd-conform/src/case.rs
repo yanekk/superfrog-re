@@ -42,12 +42,15 @@ pub enum Goal {
     Idle,
 }
 
-/// Picture rows, or a variable, whose differences a case does not fail on, and the task that will
-/// make them compared.
+/// Picture rows, a box of them, or a variable, whose differences a case does not fail on, and the
+/// task that will make them compared.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Exclusion {
     /// Rows of the compared picture (row 0 is the play area's first line); empty for a variable.
     pub rows: Range<u16>,
+    /// Columns of those rows (`"rows A..B cols C..D"`), so the rest of the rows is still compared;
+    /// `None` for whole rows (T44: the countdown's digits share rows with the items').
+    pub cols: Option<Range<u16>>,
     /// A `LAYOUT` variable read each pass and counted where it differs (`what = "var NAME"`).
     pub var: Option<String>,
     /// As the case file wrote it.
@@ -560,17 +563,23 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
         }
         None => None,
     };
-    let rows = if var.is_some() {
-        0..0
-    } else {
-        what.strip_prefix("rows ")
-            .and_then(|r| r.split_once(".."))
+    let range = |r: &str| {
+        r.split_once("..")
             .and_then(|(a, b)| Some(a.trim().parse::<u16>().ok()?..b.trim().parse::<u16>().ok()?))
             .filter(|r| r.start < r.end)
+    };
+    let (rows, cols) = if var.is_some() {
+        (0..0, None)
+    } else {
+        what.strip_prefix("rows ")
+            .and_then(|r| match r.split_once(" cols ") {
+                Some((r, c)) => Some((range(r)?, Some(range(c)?))),
+                None => Some((range(r)?, None)),
+            })
             .ok_or_else(|| {
                 format!(
-                    "exclude what = \"{what}\": expected \"rows A..B\", A below B, or \
-                     \"var NAME\""
+                    "exclude what = \"{what}\": expected \"rows A..B\", \"rows A..B cols C..D\", \
+                     each A below B, or \"var NAME\""
                 )
             })?
     };
@@ -585,6 +594,7 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
     }
     Ok(Exclusion {
         rows,
+        cols,
         var,
         what,
         task,
@@ -651,6 +661,7 @@ mod tests {
             c.exclude,
             vec![Exclusion {
                 rows: 180..250,
+                cols: None,
                 var: None,
                 what: "rows 180..250".into(),
                 task: "T10".into()
@@ -736,6 +747,12 @@ mod tests {
             ),
             ("rows 180..250", "rows 250..180", "A below B"),
             ("rows 180..250", "columns 0..8", "rows A..B"),
+            (
+                "rows 180..250",
+                "rows 180..250 cols 8..0",
+                "rows A..B cols C..D",
+            ),
+            ("rows 180..250", "rows 180..250 cols", "rows A..B cols C..D"),
             ("rows 180..250", "var no_such", "not in fd-core's LAYOUT"),
             ("rows 180..250", "var char_x", "also in `vars`"),
             ("task = \"T10\"", "task = \"later\"", "name the task"),
@@ -754,6 +771,22 @@ mod tests {
     }
 
     #[test]
+    fn a_box_of_rows_and_columns_is_excluded_with_its_task() {
+        let text = LEVEL.replace("rows 180..250", "rows 223..231 cols 152..176");
+        let c = Case::parse("l", &text).unwrap();
+        assert_eq!(
+            c.exclude,
+            vec![Exclusion {
+                rows: 223..231,
+                cols: Some(152..176),
+                var: None,
+                what: "rows 223..231 cols 152..176".into(),
+                task: "T10".into()
+            }]
+        );
+    }
+
+    #[test]
     fn a_variable_is_excluded_by_name_with_its_task() {
         let text = LEVEL.replace("rows 180..250", "var countdown");
         let c = Case::parse("l", &text).unwrap();
@@ -761,6 +794,7 @@ mod tests {
             c.exclude,
             vec![Exclusion {
                 rows: 0..0,
+                cols: None,
                 var: Some("countdown".into()),
                 what: "var countdown".into(),
                 task: "T10".into()

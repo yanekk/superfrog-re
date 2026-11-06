@@ -58,9 +58,10 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
   where only state is expected to stay in step: the run reaches its last frame with no engine event and
   every listed variable compared on every pass; a pass whose end the original hides (below) fails it.
-- **`exclude`.** Picture rows (`"rows A..B"`) or a variable (`"var NAME"`) whose differences do not
-  fail the case, each with the task that removes it. Row 0 is line 47, the play area's top; the status
-  bar is rows 194 to 249. An excluded variable is read every pass and its differing passes counted; it
+- **`exclude`.** Picture rows (`"rows A..B"`), a box of them (`"rows A..B cols C..D"`, x from the
+  window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
+  task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
+  countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
   needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
 - **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
@@ -94,8 +95,13 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
 - **An unported object fails every case.** When the engine meets an object value with no `ObjectKind`
   registered (`fd_core::Event::Unported`), the case stops there with `Outcome::Unported`, naming the
   value, the pass and the frame (DESIGN §4.1).
-- **The picture** is `PLAY_WINDOW`, the play area and the status bar together, from the frame the pass
-  ended in, judged within the owner's tolerance (`amiga_conform::Tolerance::OWNER`, `PictureJudge`). A
+- **The picture** is `PLAY_WINDOW`, the play area and the status bar together, judged within the
+  owner's tolerance (`amiga_conform::Tolerance::OWNER`, `PictureJudge`). Each step's frame is compared
+  with the engine's picture after the pass that frame shows: the one started at its vertical blank,
+  `irq_count` at the step's end less one (T44, measured). Not the frame of the step a pass's end was
+  seen in: once passes end after the frame does (from frame 6334 at the level sync point) that frame
+  shows the pass before, a scroll apart (`tests/picture_cases.rs`). A frame showing a pass the original
+  has not ended yet, or a pass no frame shows, is not compared. A
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
   under `build/`, never into git.

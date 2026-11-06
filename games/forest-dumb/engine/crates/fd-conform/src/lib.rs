@@ -111,15 +111,15 @@ pub trait Engine: Transplant {
     }
 }
 
-/// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass. It draws
-/// nothing until T10.
+/// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
+/// picture ([`Game::picture`], T10) as the pass leaves the display.
 impl Engine for Game {
     fn pass(&mut self, input: FrameInput) {
         self.step(input);
     }
 
     fn picture(&self) -> Option<Picture> {
-        None
+        Some(Game::picture(self))
     }
 
     fn events(&mut self) -> Vec<Event> {
@@ -610,15 +610,42 @@ pub fn reach_case_counting(
     Ok((am, tracker.expect("anchored at the sync point")))
 }
 
-/// Whether any pixel in `rows` (clipped to both pictures) differs. `ours` is row-major colours of
-/// a picture `width` wide.
-fn differs_in(ours: &[u16], width: u16, theirs: &Rgb12Frame, rows: &Range<u16>) -> bool {
+/// Whether any pixel in exclusion `e`'s rows (and columns, for a box), clipped to both pictures,
+/// differs. `ours` is row-major colours of a picture `width` wide.
+fn differs_in(ours: &[u16], width: u16, theirs: &Rgb12Frame, e: &Exclusion) -> bool {
     let height = (ours.len() / width.max(1) as usize) as u16;
     let (w, h) = (width.min(theirs.width), height.min(theirs.height));
-    (rows.start..rows.end.min(h)).any(|y| {
-        (0..w).any(|x| ours[y as usize * width as usize + x as usize] != theirs.pixel(x, y))
+    let cols = e.cols.clone().unwrap_or(0..w);
+    (e.rows.start..e.rows.end.min(h)).any(|y| {
+        (cols.start..cols.end.min(w))
+            .any(|x| ours[y as usize * width as usize + x as usize] != theirs.pixel(x, y))
     })
 }
+
+/// The original's frame with the engine's colours in every excluded box, so a box's differences
+/// are left out of the judgement and the rest of its rows is still compared.
+fn with_boxes_ours(
+    theirs: &Rgb12Frame,
+    ours: &[u16],
+    width: u16,
+    exclude: &[Exclusion],
+) -> Rgb12Frame {
+    let mut f = theirs.clone();
+    let height = (ours.len() / width.max(1) as usize) as u16;
+    let (w, h) = (width.min(f.width), height.min(f.height));
+    for e in exclude.iter().filter(|e| e.var.is_none()) {
+        let Some(cols) = &e.cols else { continue };
+        for y in e.rows.start..e.rows.end.min(h) {
+            for x in cols.start..cols.end.min(w) {
+                f.pixels[y as usize * f.width as usize + x as usize] =
+                    ours[y as usize * width as usize + x as usize];
+            }
+        }
+    }
+    f
+}
+
+const NO_PICTURE: &str = "the case compares the picture but the engine draws none";
 
 /// Run a level case with `engine` on the engine's side.
 ///
@@ -655,10 +682,11 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
 
     let mut verdict = Verdict::new(opts.register);
     verdict.excluded = case.exclude.iter().map(|e| (e.clone(), 0)).collect();
+    // Whole excluded rows; a box is left out by [`with_boxes_ours`].
     let rows: Vec<Range<u16>> = case
         .exclude
         .iter()
-        .filter(|e| e.var.is_none())
+        .filter(|e| e.var.is_none() && e.cols.is_none())
         .map(|e| e.rows.clone())
         .collect();
     // (index in `excluded`, the variable) for each excluded variable.
@@ -674,117 +702,145 @@ pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<
     let mut at: Option<(u32, u32)> = None;
     let mut passes_run = 0u32;
 
+    // The engine's picture after each pass it has run, until the frame showing it is drawn.
+    let mut drawn: Vec<(u32, Picture)> = Vec::new();
+    // The last pass whose picture was compared.
+    let mut shown_last: Option<u32> = None;
+
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
         am.step(input).map_err(|e| e.to_string())?;
         let frame = am.frame();
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
-        let Some(mem) = am.watched_memory() else {
-            continue;
-        };
-        let theirs = OracleMem(&mem);
-        let ended = theirs.value(irq);
-        let Some((first, last)) = at else {
-            engine.transplant(&theirs);
-            at = Some((ended, ended));
-            read.drop_through(ended);
-            continue;
-        };
-        if ended <= last {
-            continue;
-        }
-        for n in last + 1..=ended {
-            let pass_input = read.take(n).ok_or_else(|| {
-                format!("pass {n} ended on the original but never read its input")
-            })?;
-            engine.pass(pass_input);
-            passes_run += 1;
-            for e in engine.events() {
-                verdict.events.push((n - first, e));
-                if let Event::Unported(value) = e {
-                    // Every case fails on an object nobody ported (DESIGN §4.1).
-                    verdict.outcome = Outcome::Unported {
-                        pass: n - first,
-                        frame,
-                        value,
-                    };
-                    return Ok(verdict);
+        if let Some(mem) = am.watched_memory() {
+            let theirs = OracleMem(&mem);
+            let ended = theirs.value(irq);
+            match at {
+                None => {
+                    engine.transplant(&theirs);
+                    at = Some((ended, ended));
+                    read.drop_through(ended);
+                    if case.compare.picture {
+                        drawn.push((ended, engine.picture().ok_or(NO_PICTURE)?));
+                    }
                 }
-            }
-        }
-        verdict.unseen += ended - last - 1;
-        at = Some((first, ended));
-        let pass = ended - first;
+                Some((first, last)) if ended > last => {
+                    for n in last + 1..=ended {
+                        let pass_input = read.take(n).ok_or_else(|| {
+                            format!("pass {n} ended on the original but never read its input")
+                        })?;
+                        engine.pass(pass_input);
+                        passes_run += 1;
+                        if case.compare.picture {
+                            drawn.push((n, engine.picture().ok_or(NO_PICTURE)?));
+                        }
+                        for e in engine.events() {
+                            verdict.events.push((n - first, e));
+                            if let Event::Unported(value) = e {
+                                // Every case fails on an object nobody ported (DESIGN §4.1).
+                                verdict.outcome = Outcome::Unported {
+                                    pass: n - first,
+                                    frame,
+                                    value,
+                                };
+                                return Ok(verdict);
+                            }
+                        }
+                    }
+                    verdict.unseen += ended - last - 1;
+                    at = Some((first, ended));
+                    let pass = ended - first;
 
-        if case.compare.vars {
-            for v in &vars {
-                let (ours, theirs) = (engine.probe(v), theirs.value(v));
-                if ours != theirs {
-                    verdict.outcome = Outcome::Differs {
-                        pass,
-                        frame,
-                        var: v.name.to_string(),
-                        engine: ours,
-                        oracle: theirs,
-                    };
-                    return Ok(verdict);
+                    if case.compare.vars {
+                        for v in &vars {
+                            let (ours, theirs) = (engine.probe(v), theirs.value(v));
+                            if ours != theirs {
+                                verdict.outcome = Outcome::Differs {
+                                    pass,
+                                    frame,
+                                    var: v.name.to_string(),
+                                    engine: ours,
+                                    oracle: theirs,
+                                };
+                                return Ok(verdict);
+                            }
+                        }
+                        for &(i, v) in &excluded_vars {
+                            if engine.probe(v) != theirs.value(v) {
+                                verdict.excluded[i].1 += 1;
+                            }
+                        }
+                        verdict.passes += 1;
+                    }
+                    if let Some(Goal::All { by_frame, .. }) = &case.goal {
+                        let reached = |v: &Var, value: u32| {
+                            engine.probe(v) == value && theirs.value(v) == value
+                        };
+                        if verdict.goal_met.is_none()
+                            && frame <= *by_frame
+                            && goal.iter().all(|(v, value)| reached(v, *value))
+                        {
+                            verdict.goal_met = Some(frame);
+                        }
+                    }
                 }
-            }
-            for &(i, v) in &excluded_vars {
-                if engine.probe(v) != theirs.value(v) {
-                    verdict.excluded[i].1 += 1;
-                }
-            }
-            verdict.passes += 1;
-        }
-        if case.compare.picture {
-            let ours = engine
-                .picture()
-                .ok_or("the case compares the picture but the engine draws none")?;
-            let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
-            let colours = to_rgb12(&ours);
-            for (i, e) in case.exclude.iter().enumerate() {
-                if e.var.is_none() && differs_in(&colours, ours.width, &pic, &e.rows) {
-                    verdict.excluded[i].1 += 1;
-                }
-            }
-            let class = classify(&ours, &pic, &rows, &tol);
-            let failed = match (opts.mode, class) {
-                (_, PictureClass::Same) => None,
-                (Mode::Strict, other) => Some(format!("{other:?}, strict")),
-                (Mode::Faithful, other) => judge.frame(frame, other).err(),
-            };
-            verdict.pictures += 1;
-            verdict.tolerated = [
-                judge.colour_step.len() as u32,
-                judge.few_pixels.len() as u32,
-                judge.glitches.len() as u32,
-            ];
-            if let Some(mut why) = failed {
-                let shown = picture_except(&ours, &pic, &rows);
-                if let Some((x, y, o, e)) = shown.as_ref().and_then(|m| m.first) {
-                    why += &format!(
-                        "; first at ({x}, {y}): {o:03x} in the original, {e:03x} in the engine"
-                    );
-                }
-                if let (Some(dir), Some(m)) = (&opts.diff_dir, shown) {
-                    let d = report::write_diff_png(dir, &case.name, frame, &ours, &pic, m);
-                    why += &format!("; {}", d.path.display());
-                }
-                verdict.outcome = Outcome::PictureDiffers { pass, frame, why };
-                return Ok(verdict);
+                Some(_) => {}
             }
         }
-        if let Some(Goal::All { by_frame, .. }) = &case.goal {
-            let reached =
-                |v: &Var, value: u32| engine.probe(v) == value && theirs.value(v) == value;
-            if verdict.goal_met.is_none()
-                && frame <= *by_frame
-                && goal.iter().all(|(v, value)| reached(v, *value))
-            {
-                verdict.goal_met = Some(frame);
+
+        // The frame this step drew shows the pass that started at its vertical blank: the last
+        // pass started by the step's end less one (measured, T44: every pixel of scrolled frames
+        // agrees so, and the frame of the step a pass ended in is a pass behind once passes run
+        // past the frame's end). A pass no frame shows (a step starting two) is not compared.
+        if !case.compare.picture {
+            continue;
+        }
+        let Some((first, _)) = at else { continue };
+        let shown = Live(&am).value(irq).wrapping_sub(1);
+        if shown_last.is_some_and(|s| shown <= s) {
+            continue;
+        }
+        let Some(k) = drawn.iter().position(|(n, _)| *n == shown) else {
+            continue;
+        };
+        shown_last = Some(shown);
+        let ours = drawn.swap_remove(k).1;
+        drawn.retain(|(n, _)| *n > shown);
+        let pass = shown - first;
+        let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
+        let colours = to_rgb12(&ours);
+        for (i, e) in case.exclude.iter().enumerate() {
+            if e.var.is_none() && differs_in(&colours, ours.width, &pic, e) {
+                verdict.excluded[i].1 += 1;
             }
+        }
+        let theirs = with_boxes_ours(&pic, &colours, ours.width, &case.exclude);
+        let class = classify(&ours, &theirs, &rows, &tol);
+        let failed = match (opts.mode, class) {
+            (_, PictureClass::Same) => None,
+            (Mode::Strict, other) => Some(format!("{other:?}, strict")),
+            (Mode::Faithful, other) => judge.frame(frame, other).err(),
+        };
+        verdict.pictures += 1;
+        verdict.tolerated = [
+            judge.colour_step.len() as u32,
+            judge.few_pixels.len() as u32,
+            judge.glitches.len() as u32,
+        ];
+        if let Some(mut why) = failed {
+            let shown = picture_except(&ours, &theirs, &rows);
+            if let Some((x, y, o, e)) = shown.as_ref().and_then(|m| m.first) {
+                why += &format!(
+                    "; first at ({x}, {y}): {o:03x} in the original, {e:03x} in the engine"
+                );
+            }
+            if let (Some(dir), Some(m)) = (&opts.diff_dir, shown) {
+                let d = report::write_diff_png(dir, &case.name, frame, &ours, &pic, m);
+                why += &format!("; {}", d.path.display());
+            }
+            verdict.outcome = Outcome::PictureDiffers { pass, frame, why };
+            return Ok(verdict);
         }
     }
 
