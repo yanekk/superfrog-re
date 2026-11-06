@@ -133,3 +133,85 @@ impl PlanGame for PlanState {
 
     const ACTS: &'static [Joy] = &ACTS;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fd_core::level::redraw::OBJECT_MAP;
+    use fd_core::{LAYOUT, Mem, Start, Transplant};
+
+    /// The game's own state as the original's memory, with the character moved to (`x`, `y`). Bytes
+    /// no variable or the object map covers read 0: an empty collision plane and a blank screen.
+    struct Moved<'a> {
+        game: &'a Game,
+        at: (u32, u32),
+    }
+
+    impl Mem for Moved<'_> {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            let s = self.game.state();
+            if (hunk, offset) == (0, OBJECT_MAP) {
+                return s.object_map[..len].to_vec();
+            }
+            let Some(v) = LAYOUT
+                .iter()
+                .find(|v| (v.hunk, v.offset, v.width.bytes()) == (hunk, offset, len))
+            else {
+                return vec![0; len];
+            };
+            let value = match v.name {
+                "char_x" => self.at.0,
+                "char_y" => self.at.1,
+                _ => self.game.probe(v),
+            };
+            value.to_be_bytes()[4 - len..].to_vec()
+        }
+    }
+
+    /// A coin taken by the engine is gone from the planner's readings: `collectibles_left` counts it
+    /// down from `items_left` and `collectible_live` reads the object map play has (T22).
+    #[test]
+    fn a_coin_the_engine_takes_leaves_the_planners_readings() {
+        let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+        let game = Game::new(data.clone(), Start::Level1);
+        // W1-1:2,73, a coin (docs/10). Its column under `char_x + $e`, its row under the feet
+        // (`char_y + $19`), four pixels down the cell, so the pass's fall stays in it.
+        let coin = (2u16, 73u16);
+        assert!(crate::facts::is_item(data.level.object(coin.0, coin.1)));
+        let at = (coin.0 as u32 * 16 + 2 - 0xe, coin.1 as u32 * 16 + 4 - 0x19);
+        let mut g = game.clone();
+        g.transplant(&Moved { game: &game, at });
+        let mut p = PlanState(g);
+        assert!(p.collectible_live(coin));
+        let before = p.collectibles_left();
+        assert_eq!(before, 282);
+        p.step(FrameInput::NONE);
+        assert!(!p.collectible_live(coin), "the coin is still in the map");
+        assert_eq!(p.collectibles_left(), before - 1);
+        assert_eq!(p.game().state().score, 0x100);
+    }
+
+    /// A bonus scores what its branch of the program says (`objects::collectible::BONUS_SCORES`, read
+    /// from hunk 0 in play) and leaves the items alone: W1-1:2,37's orange, `$40`, +20.
+    #[test]
+    fn a_bonus_the_engine_takes_scores_from_the_program() {
+        let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+        let game = Game::new(data.clone(), Start::Level1);
+        let bonus = (2u16, 37u16);
+        assert_eq!(data.level.object(bonus.0, bonus.1), 0x40);
+        let at = (
+            bonus.0 as u32 * 16 + 2 - 0xe,
+            bonus.1 as u32 * 16 + 4 - 0x19,
+        );
+        let mut g = game.clone();
+        g.transplant(&Moved { game: &game, at });
+        let mut p = PlanState(g);
+        p.step(FrameInput::NONE);
+        let s = p.game().state();
+        let cell = bonus.0 as usize * ROWS as usize + bonus.1 as usize;
+        assert_eq!(
+            (s.score, s.items_left, s.object_map[cell]),
+            (0x20, 0x282, 0)
+        );
+    }
+}

@@ -168,6 +168,7 @@ impl Game {
                     program: &self.data.program,
                     anim: &self.data.anim,
                     plane: &self.plane,
+                    image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
                 };

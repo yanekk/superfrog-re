@@ -34,12 +34,13 @@ pub const BONUS_FIRST: u8 = 0x40;
 pub const BONUS_END: u8 = 0x60;
 /// The bonus that adds 100 to the countdown instead of scoring.
 pub const TIME_BONUS: u8 = 0x4c;
-/// What bonuses `$40` to `$50` score, BCD, by value less [`BONUS_FIRST`]; the [`TIME_BONUS`]'s entry
-/// is unused.
-pub const BONUS_SCORE: [u32; 17] = [
-    0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0x100, 0x1000, 0x1500, 0x2000, 0, 0x2000,
-    0x3000, 0x4000, 0x5000,
-];
+/// Where `h0_26ec` keeps what each scored bonus is worth: the immediate of its branch's
+/// `move.l #amount, score_add` (BCD), `$1c` bytes a branch, in two runs either side of the
+/// [`TIME_BONUS`]'s longer branch: (first value, last value, the first's immediate, hunk 0 offset).
+/// Read from the program, as the original does, so no table of the game's is copied here.
+pub const BONUS_SCORES: [(u8, u8, u32); 2] = [(0x40, 0x4b, 0x27b8), (0x4d, 0x50, 0x295e)];
+/// Bytes from one bonus's branch to the next.
+pub const BONUS_BRANCH: u32 = 0x1c;
 /// `countdown_plus_100` stops at this many seconds, BCD.
 pub const COUNTDOWN_MAX: u16 = 0x999;
 /// The countdown at or above which `countdown_plus_100` sets [`COUNTDOWN_MAX`], BCD.
@@ -140,7 +141,7 @@ impl MapObjects<'_> {
 
     /// `h0_26ec` (`h0+$26ec`): what the object map holds at pixel (`x`, `y`) is taken. The exit sets
     /// `level_exit_touched`. An item counts down `items_left` and scores [`ITEM_SCORE`]; a bonus scores
-    /// [`BONUS_SCORE`], or the [`TIME_BONUS`] adds time with [`Sound::Time`]; `$51` to `$5f` are taken
+    /// what its branch adds ([`BONUS_SCORES`]), or the [`TIME_BONUS`] adds time with [`Sound::Time`]; `$51` to `$5f` are taken
     /// for nothing. The original's signed byte compares (`bmi`, `bpl`) read `$a0` to `$fe` as below
     /// [`ITEM_FIRST`], which the unsigned ones here reach as past [`BONUS_END`]: the same values do
     /// nothing either way.
@@ -169,9 +170,21 @@ impl MapObjects<'_> {
             self.add_time();
             return;
         }
-        if let Some(&amount) = BONUS_SCORE.get((value - BONUS_FIRST) as usize) {
+        if let Some(amount) = self.bonus_score(value) {
             self.award(amount);
         }
+    }
+
+    /// What bonus `value` scores, read from its branch of `h0_26ec` ([`BONUS_SCORES`]); `None` for
+    /// one whose compare no branch matches.
+    fn bonus_score(&self, value: u8) -> Option<u32> {
+        BONUS_SCORES
+            .iter()
+            .find(|&&(first, last, _)| (first..=last).contains(&value))
+            .map(|&(first, _, at)| {
+                self.io
+                    .rl(at.wrapping_add((value - first) as u32 * BONUS_BRANCH))
+            })
     }
 
     /// Part of `h0_26ec`: the taken cell cleared, `object_taken` kept as the original's `d0` (the

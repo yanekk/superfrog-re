@@ -15,7 +15,9 @@
 pub mod collectible;
 
 use crate::State;
-use crate::level::redraw::Blit;
+use crate::level::LevelCtx;
+use crate::level::redraw::{Blit, IMAGE_END, LevelImage, OBJECT_MAP, SHAPES};
+use crate::program::Program;
 
 /// A sound a port starts. The plan is silent, so play drops them; the routine rig compares the Paula
 /// writes each one makes.
@@ -66,4 +68,61 @@ pub struct Collect {
 pub struct MapObjects<'a> {
     pub state: &'a mut State,
     pub io: &'a mut dyn Io,
+}
+
+/// The object ports' [`Io`] in play: the object map as play has it, the level's buffers from their
+/// image, the program's tables (the tile table) from hunk 0, and the blits kept for the picture. A
+/// write off the object map, which only a coordinate off the level makes, is dropped.
+pub struct PlayIo<'a> {
+    pub map: &'a mut [u8],
+    pub image: &'a LevelImage,
+    pub program: &'a Program,
+    pub blits: Vec<Blit>,
+}
+
+impl PlayIo<'_> {
+    fn cell(&self, a: u32) -> Option<usize> {
+        let i = a.wrapping_sub(OBJECT_MAP) as usize;
+        (i < self.map.len()).then_some(i)
+    }
+}
+
+impl Io for PlayIo<'_> {
+    fn rb(&self, a: u32) -> u8 {
+        match self.cell(a) {
+            Some(i) => self.map[i],
+            None if (SHAPES..IMAGE_END).contains(&a) => self.image.byte(a),
+            None => self.program.byte(a),
+        }
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        if let Some(i) = self.cell(a) {
+            self.map[i] = v;
+        }
+    }
+    fn blit(&mut self, b: Blit) {
+        self.blits.push(b);
+    }
+    /// The plan is silent (DESIGN §2.1).
+    fn sound(&mut self, _: Sound) {}
+}
+
+/// Run `f` on the object ports in play, then draw the blits it started into the play screen.
+pub fn in_play(l: &mut LevelCtx, f: impl FnOnce(&mut MapObjects)) {
+    let mut map = std::mem::take(&mut l.state.object_map);
+    let mut io = PlayIo {
+        map: &mut map,
+        image: l.image,
+        program: l.program,
+        blits: Vec::new(),
+    };
+    f(&mut MapObjects {
+        state: l.state,
+        io: &mut io,
+    });
+    let blits = std::mem::take(&mut io.blits);
+    l.state.object_map = map;
+    for b in &blits {
+        l.display.screen.apply(b, &|a| l.display_data.byte(a));
+    }
 }

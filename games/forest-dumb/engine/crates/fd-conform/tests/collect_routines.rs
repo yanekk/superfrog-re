@@ -287,3 +287,81 @@ fn every_t22_routine_matches_the_original() {
     }
     println!("{}", lines.join("\n"));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Mutants: each a plausible misreading of the listing, each must fail on the rig.
+// ---------------------------------------------------------------------------------------------
+
+fn fails(name: &str, entry: u32, port: fn(&mut Cpu)) -> String {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let generator = generators::generator(name).unwrap();
+    judge::check_regs(
+        &mut r,
+        name,
+        CASES,
+        h0(entry),
+        &generator,
+        RegsCompared::NONE,
+        port,
+    )
+    .map(|rep| panic!("{name}: a mutant passed {rep:?}"))
+    .unwrap_err()
+    .to_string()
+}
+
+#[test]
+fn the_rig_catches_the_write_back_clearing_its_own_slot() {
+    // `h0_2e0e` clears the flag `creature_slot_index` names, not slot `d0`'s.
+    let f = fails("h0_2e0e", 0x2e0e, |cpu| {
+        let i = cpu.d[0] as usize;
+        on_objects(cpu, |o| {
+            o.state.edges.creatures.index = i as u32;
+            o.write_back_slot(i);
+        });
+        cpu.mem.wl(h0(SLOT_INDEX), cpu.d[0]);
+    });
+    assert!(!f.is_empty());
+}
+
+#[test]
+fn the_rig_catches_an_unsigned_countdown_compare() {
+    // `cmpi.w #$899; bmi` read as unsigned: a countdown of `$8899` would stop at `$999`.
+    let f = fails("countdown_plus_100", 0x6a04, |cpu| {
+        on_objects(cpu, |o| {
+            if (o.state.countdown >> 16) as u16 >= 0x899 {
+                o.state.countdown = 0x0999 << 16 | (o.state.countdown & 0xffff);
+            } else {
+                o.add_time();
+            }
+        });
+    });
+    assert!(f.contains("h0+$6a8") || f.contains("countdown"), "{f}");
+}
+
+#[test]
+fn the_rig_catches_water_taken_as_an_item() {
+    // `cmpi.b #$28; bpl` misread as `$30`: water would be taken.
+    let f = fails("h0_26ec", 0x26ec, |cpu| {
+        let (x, y) = (cpu.d[0], cpu.d[1]);
+        let cell = fd_core::objects::collectible::map_cell(x, y);
+        let water = (0x28..0x30).contains(&cpu.mem.rb(h0(cell)));
+        on_objects(cpu, |o| {
+            if water {
+                o.io.wb(cell, 0x20);
+            }
+            o.take(x, y);
+        });
+    });
+    assert!(!f.is_empty());
+}
+
+#[test]
+fn the_rig_catches_a_missing_item_sound() {
+    let f = fails("char_object_cells", 0x2698, |cpu| {
+        on_objects(cpu, |o| o.object_cells());
+        cpu.mem
+            .hw_writes
+            .retain(|&(r, _)| !(0x96..=0xc8).contains(&r) || (0x40..0x78).contains(&r));
+    });
+    assert!(!f.is_empty());
+}
