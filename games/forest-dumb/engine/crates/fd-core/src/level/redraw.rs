@@ -67,6 +67,14 @@ pub enum Blit {
     /// `h0_29ca` (T22, `objects::collectible`): a taken cell's tile redrawn as `h0_774` draws one, its
     /// source `src` bytes past `h3+$13540`, the offset the tile table at `h0+$3b988` holds for it.
     Cell { src: u32, dst: u32 },
+    /// `h0_62b6` (T25, `objects::animated`): an `_ELEMENTY` frame cut over its cell's tile in one blit
+    /// (`BLTCON0=$0fca`, D = A·B + ¬A·C): A the mask at `h4+$1900 + 2 * frame`, B the picture at
+    /// `h4 + 2 * frame` (modulos `$26`), C the tile `tile` bytes past `h3+$13540` (modulo 0).
+    Element { frame: u32, tile: u32, dst: u32 },
+    /// `h0_21c0` and `h0_62b6` (T25): a 32 x 16 picture copied over the screen (A to D,
+    /// `BLTCON0=$09f0`, two words by 80 rows, D's modulo `$2a`), from `src` bytes into hunk 4, its rows
+    /// `4 + modulo` bytes apart.
+    Picture { src: u32, modulo: u16, dst: u32 },
 }
 
 /// What the redraws read and write outside their typed state.

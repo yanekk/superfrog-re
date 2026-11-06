@@ -138,6 +138,33 @@ which shifts out a 0. Nothing is a loop left and re-entered on a later pass.
 from the table at `h0+$3b988`, which holds `n * $a0`). The engine adds it to the screen's blits
 (`Blit::Cell`); nothing reads the screen back as game state.
 
+## Mechanics, ported (T25)
+
+`fd-core/src/objects/spring.rs` ports `h0_24ce` (a spring under the feet) and `h0_21c0` (its picture);
+`fd-core/src/objects/animated.rs` ports `h0_62b6` (the animated cells: items, water, vanishing blocks,
+flames). Rig: `fd-conform/tests/mechanic_routines.rs`. Like collectibles they stay map cells: no
+`ObjectKind` is registered for `$10`, `$11`, `$28`, `$30` to `$33`.
+
+**Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
+porting. All three run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot cut
+them. What waits: `h0_21c0` waits for BLTBUSY before each of its four tile blits and two picture blits,
+and at `spring_timer` 1 for three VHPOSR line changes between switching audio channel 1 off and on
+(`h0+$23aa`); `h0_62b6` waits for BLTBUSY before each blit. None changes game state, and all finish in
+the pass. Values latched: `spring_x`, `spring_y` and `spring_kind` are set by `h0_24ce` in the pass a
+spring fires and read by `h0_21c0` one and six passes later; a spring fired again in between moves them,
+as in the engine, which keeps them in `State`. `anim_tick` carries the phase (which of the four lists runs)
+and the tick from pass to pass. Loops left and re-entered: `h0_62b6` returns mid-list on a value it does not
+draw (`$29`, `$2b` to `$2f`, `$35` to `$7f`), leaving the list's later cells for its next turn, four passes
+on; the engine does the same. `h0_24ce` has none.
+
+**The screen is state?** `h0_62b6`'s item and water blit draws the frame over the cell's tile (C is the
+tile, not the screen); the vanishing block, flame and spring blits copy a picture. None reads the play
+screen, so it stays picture state (`Blit::Element`, `Blit::Picture`, `Blit::Cell`). `collision_map`
+under a vanishing block is game state: the engine writes it into the collision plane.
+
+**`water_cycle`** (`h0+$6342`) is set by `load_list_world_1` (and `_2`), so W1-1's water runs `_ELEMENTY`
+frames 8 to 11.
+
 ## Values W1-1 does not hold
 
 Read, not measured: `7` to `$f` and `$14` to `$1f` are skipped by the scan and by `h0_24ce`; `$12`, `$13`

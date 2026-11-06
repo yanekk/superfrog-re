@@ -140,9 +140,10 @@ impl Screen {
         }
     }
 
-    /// Apply one of the redraws' blits, its sources read by chip address through `chip`. Both are
-    /// one word wide and 80 rows (`BLTSIZE=$1401`, five planes of 16 lines), D's modulo `$2c`. A word
-    /// whose destination falls outside the play screen lands elsewhere in chip RAM, where nothing the
+    /// Apply one of the redraws' or the objects' blits, its sources read by chip address through
+    /// `chip`. All are 80 rows (five planes of 16 lines) with D's modulo making a line: the tile, cell,
+    /// bob and element blits one word wide (`BLTSIZE=$1401`), the picture two (`$1402`). A word whose
+    /// destination falls outside the play screen lands elsewhere in chip RAM, where nothing the
     /// picture shows lies (the stray bob after a full creature table, docs/09), and is dropped.
     pub fn apply(&mut self, b: &Blit, chip: &impl Fn(u32) -> u8) {
         let word = |a: u32| u16::from_be_bytes([chip(a), chip(a.wrapping_add(1))]);
@@ -162,6 +163,30 @@ impl Screen {
                     let d = dst.wrapping_add(r * PLANE_BYTES);
                     let c = self.word(d);
                     self.set_word(d, a & b | !a & c);
+                }
+            }
+            // `h0_62b6`: the same cut with C the cell's tile, not the screen (T25).
+            Blit::Element { frame, tile, dst } => {
+                let mask = h(4, 0x1900).wrapping_add(2 * frame);
+                let pic = h(4, 0).wrapping_add(2 * frame);
+                let tile = h(3, 0x1_3540).wrapping_add(tile);
+                let dst = h(3, SCREEN).wrapping_add(dst);
+                for r in 0..80 {
+                    let (a, b) = (word(mask.wrapping_add(0x28 * r)), word(pic.wrapping_add(0x28 * r)));
+                    let c = word(tile.wrapping_add(2 * r));
+                    self.set_word(dst.wrapping_add(r * PLANE_BYTES), a & b | !a & c);
+                }
+            }
+            // `h0_21c0`, `h0_62b6`: two words a row from hunk 4 (T25).
+            Blit::Picture { src, modulo, dst } => {
+                let src = h(4, 0).wrapping_add(src);
+                let dst = h(3, SCREEN).wrapping_add(dst);
+                let stride = 4 + modulo as u32;
+                for r in 0..80 {
+                    for k in [0, 2] {
+                        let v = word(src.wrapping_add(r * stride + k));
+                        self.set_word(dst.wrapping_add(r * PLANE_BYTES + k), v);
+                    }
                 }
             }
         }

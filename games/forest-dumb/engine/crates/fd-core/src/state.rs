@@ -7,6 +7,8 @@ use crate::character::{Anim, InputLog, JoyFlags, Keys, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
 use crate::objects::Collect;
+use crate::objects::animated::Animation;
+use crate::objects::spring::Spring;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -55,6 +57,10 @@ pub struct State {
     pub edges: Edges,
     /// What taking objects keeps besides the counters (T22, `objects`).
     pub collect: Collect,
+    /// The spring that fired last (T25, `objects::spring`).
+    pub spring: Spring,
+    /// The animated cells' phase and tick, and the water's speed (T25, `objects::animated`).
+    pub animation: Animation,
     /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
     /// started. Filled from the level by `Game::new`.
     pub object_map: Vec<u8>,
@@ -127,6 +133,14 @@ impl State {
             // from the original by transplant (T55).
             edges: Edges::default(),
             collect: Collect::default(),
+            // No spring has fired since the level loaded (PLACEHOLDER).
+            spring: Spring::default(),
+            // `load_list_world_1` sets `water_cycle`; PLACEHOLDER.
+            animation: Animation {
+                tick: 0,
+                phase: 0,
+                water_cycle: 1,
+            },
             object_map: Vec::new(),
         }
     }
@@ -200,6 +214,12 @@ impl State {
             "char_samples_c" => u32::from_be_bytes(self.motion.samples[12..16].try_into().unwrap()),
             "char_update_t" => self.motion.update_t,
             "char_unhurt_t" => self.motion.unhurt_t.into(),
+            "spring_x" => self.spring.x,
+            "spring_y" => self.spring.y,
+            "spring_timer" => self.spring.timer.into(),
+            "spring_kind" => self.spring.kind.into(),
+            "anim_tick" => self.animation.word().into(),
+            "water_cycle" => self.animation.water_cycle.into(),
             _ => return None,
         })
     }
@@ -276,6 +296,12 @@ impl State {
             "char_samples_c" => self.motion.samples[12..16].copy_from_slice(&value.to_be_bytes()),
             "char_update_t" => self.motion.update_t = value,
             "char_unhurt_t" => self.motion.unhurt_t = b,
+            "spring_x" => self.spring.x = value,
+            "spring_y" => self.spring.y = value,
+            "spring_timer" => self.spring.timer = w,
+            "spring_kind" => self.spring.kind = w,
+            "anim_tick" => self.animation.set_word(w),
+            "water_cycle" => self.animation.water_cycle = w,
             _ => return false,
         }
         true

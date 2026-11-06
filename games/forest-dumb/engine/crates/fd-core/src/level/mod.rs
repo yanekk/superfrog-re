@@ -91,8 +91,8 @@ pub struct LevelCtx<'a> {
     /// The main program's hunk 0 as loaded: the tables the original's routines read (T08).
     pub program: &'a Program,
     pub anim: &'a AnimTables,
-    /// The collision plane, play state (T08; T55 draws it, T25 changes it).
-    pub plane: &'a CollisionPlane,
+    /// The collision plane, play state (T08; T55 draws it, T25's vanishing blocks change it).
+    pub plane: &'a mut CollisionPlane,
     /// The level's buffers as the original lays them out in hunk 0 (T55): the tile map a taken
     /// cell is redrawn from (T22).
     pub image: &'a redraw::LevelImage,
@@ -205,22 +205,26 @@ pub fn game_frame(
         Play { state: l.state }.play_keys();
         return;
     }
-    // h0+$2c7e .. h0+$62b6: the objects (T24, T25, T52); until they are ported, the dispatch's kinds
-    // run here.
+    // h0+$2c7e, h0+$2fae: the creatures (T24, T52); until they are ported, the dispatch's kinds run
+    // here.
     update_objects(l, objects, dispatch, events);
+    // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25).
+    crate::objects::in_play(l, |o| o.spring_redraw());
+    crate::objects::in_play(l, |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
     let s = &mut *l.state;
     s.joy.read_joystick(&mut s.input_log, &input);
     // char_hit_check (T70, T24).
     Play { state: l.state }.countdown_step();
-    // h0+$24ce (T25).
+    // h0+$24ce: a spring under the feet (T25).
+    crate::objects::in_play(l, |o| o.spring_trigger());
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
     Character {
         state: l.state,
         program: l.program,
         anim: l.anim,
-        plane: l.plane,
+        plane: &*l.plane,
         scratch: &mut Scratch::default(),
     }
     .update();
