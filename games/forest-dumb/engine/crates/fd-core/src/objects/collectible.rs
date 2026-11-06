@@ -12,7 +12,7 @@
 //! `h0_2e0e`; each is proven on the routine rig (`fd-conform/tests/collect_routines.rs`). The arithmetic
 //! is the original's, at its widths: a wild coordinate reaches where the original's would.
 
-use super::{Io, MapObjects, Sound};
+use super::{MapObjects, Sound};
 use crate::level::redraw::{Blit, OBJECT_MAP, SCREEN_LINE, TILE_MAP};
 
 /// Bytes an object map column: 96 cells.
@@ -40,8 +40,10 @@ pub const BONUS_SCORE: [u32; 17] = [
     0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0x100, 0x1000, 0x1500, 0x2000, 0, 0x2000,
     0x3000, 0x4000, 0x5000,
 ];
-/// `countdown_plus_100` stops at this many seconds, BCD: a countdown of `$899` or more becomes it.
+/// `countdown_plus_100` stops at this many seconds, BCD.
 pub const COUNTDOWN_MAX: u16 = 0x999;
+/// The countdown at or above which `countdown_plus_100` sets [`COUNTDOWN_MAX`], BCD.
+pub const TIME_LIMIT: u16 = 0x899;
 /// A creature leaving the view: the window it stays in, from the camera, in level pixels. Out past
 /// the left edge at `camera_x - $10` or less, the right at more than `camera_x + $130`, the top at
 /// `camera_y - $20` or less, the bottom at more than `camera_y + $c5`.
@@ -124,46 +126,148 @@ impl MapObjects<'_> {
         self.io.blit(Blit::Cell { src, dst });
     }
 
-    /// `char_object_cells` (`h0+$2698`): `level_exit_touched` cleared, then the cells at the
-    /// character's column and each of [`PROBE_ROWS`] taken ([`MapObjects::take`]), `collect.row` set
-    /// to the row first.
+    /// `char_object_cells` (`h0+$2698`): `level_exit_touched` cleared, then the object cells at the
+    /// character's column taken ([`MapObjects::take`]), feet then body, `collect.row` set to each row
+    /// first.
     pub fn object_cells(&mut self) {
-        todo!()
+        self.state.level_exit_touched = 0;
+        let x = self.state.char_x.wrapping_add(PROBE_X);
+        for row in PROBE_ROWS {
+            self.state.collect.row = row;
+            self.take(x, self.state.char_y.wrapping_add(row));
+        }
     }
 
     /// `h0_26ec` (`h0+$26ec`): what the object map holds at pixel (`x`, `y`) is taken. The exit sets
-    /// `level_exit_touched`. An item or a bonus is cleared from the map, `collect.taken` set, and its
-    /// cell redrawn ([`MapObjects::redraw_cell`]) at the character's column and `collect.row`; an item
-    /// then counts down `items_left` and scores [`ITEM_SCORE`] with [`Sound::Item`]; a bonus scores
-    /// [`BONUS_SCORE`] with [`Sound::Item`], or the [`TIME_BONUS`] adds time with [`Sound::Time`].
-    /// The value's compares are signed bytes (`bmi`, `bpl`).
+    /// `level_exit_touched`. An item counts down `items_left` and scores [`ITEM_SCORE`]; a bonus scores
+    /// [`BONUS_SCORE`], or the [`TIME_BONUS`] adds time with [`Sound::Time`]; `$51` to `$5f` are taken
+    /// for nothing. The original's signed byte compares (`bmi`, `bpl`) read `$a0` to `$fe` as below
+    /// [`ITEM_FIRST`], which the unsigned ones here reach as past [`BONUS_END`]: the same values do
+    /// nothing either way.
     pub fn take(&mut self, x: u32, y: u32) {
-        todo!()
+        let cell = map_cell(x, y);
+        let value = self.io.rb(cell);
+        if value == EXIT {
+            self.state.level_exit_touched = 1;
+            return;
+        }
+        if value < ITEM_FIRST {
+            return;
+        }
+        if value < ITEM_END {
+            self.take_cell(cell, x, value);
+            self.count_item();
+            self.award(ITEM_SCORE);
+            return;
+        }
+        if !(BONUS_FIRST..BONUS_END).contains(&value) {
+            return;
+        }
+        self.take_cell(cell, x, value);
+        if value == TIME_BONUS {
+            self.io.sound(Sound::Time);
+            self.add_time();
+            return;
+        }
+        if let Some(&amount) = BONUS_SCORE.get((value - BONUS_FIRST) as usize) {
+            self.award(amount);
+        }
     }
 
-    /// `countdown_plus_100` (`h0+$6a04`): 100 added to the countdown's three BCD bytes, or the
-    /// countdown's word set to [`COUNTDOWN_MAX`] when it is `$899` or more (a signed compare).
+    /// Part of `h0_26ec`: the taken cell cleared, `object_taken` kept as the original's `d0` (the
+    /// column offset with the value in its low byte), and the character's cell at `collect.row`
+    /// redrawn, whatever pixel was taken.
+    fn take_cell(&mut self, cell: u32, x: u32, value: u8) {
+        self.io.wb(cell, 0);
+        let column = ((x >> 4) & 0xffff).wrapping_mul(MAP_COLUMN);
+        self.state.collect.taken = (column & 0xffff_ff00) | value as u32;
+        let px = self.state.char_x.wrapping_add(PROBE_X);
+        let py = self.state.char_y.wrapping_add(self.state.collect.row);
+        self.redraw_cell(px, py);
+    }
+
+    /// Part of `h0_26ec`: `amount` scored through `score_add`, then the item sound.
+    fn award(&mut self, amount: u32) {
+        self.state.collect.score_add = amount;
+        self.add_score();
+        self.io.sound(Sound::Item);
+    }
+
+    /// `countdown_plus_100` (`h0+$6a04`): 100 added to the countdown's three BCD bytes, or its word set
+    /// to [`COUNTDOWN_MAX`] when it is [`TIME_LIMIT`] or more (a signed compare); the long's last byte
+    /// is untouched. The adds start with the carry clear, as the one caller leaves it.
     pub fn add_time(&mut self) {
-        todo!()
+        let s = &mut *self.state;
+        let word = (s.countdown >> 16) as u16;
+        if word.wrapping_sub(TIME_LIMIT) & 0x8000 == 0 {
+            s.countdown = (COUNTDOWN_MAX as u32) << 16 | (s.countdown & 0xffff);
+            return;
+        }
+        let [hi, mid, lo, last] = s.countdown.to_be_bytes();
+        let (lo, c) = abcd(lo, 0, false);
+        let (mid, c) = abcd(mid, 0, c);
+        let (hi, _) = abcd(hi, 1, c);
+        s.countdown = u32::from_be_bytes([hi, mid, lo, last]);
     }
 
     /// `items_left_minus_one` (`h0+$6a4c`): `items_left` counted down one in BCD, unless it is 0.
     pub fn count_item(&mut self) {
-        todo!()
+        if self.state.items_left == 0 {
+            return;
+        }
+        let [hi, lo] = self.state.items_left.to_be_bytes();
+        let (lo, borrow) = sbcd(lo, 1, false);
+        let (hi, _) = sbcd(hi, 0, borrow);
+        self.state.items_left = u16::from_be_bytes([hi, lo]);
     }
 
     /// `h0_2dd6` (`h0+$2dd6`): each active creature slot, by `creatures.index` from 0 to 4, that has
     /// left the view written back ([`MapObjects::write_back_slot`]); the index is left at [`SLOTS`].
     pub fn write_back(&mut self) {
-        todo!()
+        for i in 0..SLOTS {
+            self.state.edges.creatures.index = i;
+            if self.state.edges.creatures.active[i as usize] != 0 {
+                self.write_back_slot(i as usize);
+            }
+        }
+        self.state.edges.creatures.index = SLOTS;
     }
 
     /// `h0_2e0e` (`h0+$2e0e`): creature slot `i`, if it is out of the view the camera leaves (left,
     /// right, top, bottom, tested in that order as signed word differences), is written into the
-    /// object map as its kind plus one, in its cell or the first empty one of two neighbours that
-    /// side's tries name, and the active flag of slot `creatures.index` cleared.
+    /// object map as its kind plus one, in its cell or the first empty one of the two neighbours that
+    /// side tries (the last tried when none is), and the active flag of slot `creatures.index`
+    /// cleared. Top and bottom take the cell a pixel lower.
     pub fn write_back_slot(&mut self, i: usize) {
-        todo!()
+        let slot = self.state.edges.creatures.slots[i];
+        let value = slot.kind.wrapping_add(1) as u8;
+        let (cx, cy) = (self.state.camera.x, self.state.camera.y);
+        let past = |edge: u16, v: u16| edge.wrapping_sub(v) & 0x8000 == 0;
+        let at = map_cell(slot.x as u32, slot.y as u32);
+        let below = map_cell(slot.x as u32, slot.y.wrapping_add(1) as u32);
+        let (left, right) = (
+            |c: u32| c.wrapping_sub(MAP_COLUMN),
+            |c: u32| c.wrapping_add(MAP_COLUMN),
+        );
+        let tries = if past(cx.wrapping_sub(VIEW_LEFT), slot.x) {
+            [at, left(at), right(at)]
+        } else if !past(cx.wrapping_add(VIEW_RIGHT), slot.x) {
+            [right(at), right(right(at)), at]
+        } else if past(cy.wrapping_sub(VIEW_TOP), slot.y) {
+            [below, right(below), below]
+        } else if !past(cy.wrapping_add(VIEW_BOTTOM), slot.y) {
+            [below, right(below), left(below)]
+        } else {
+            return;
+        };
+        let cell = tries[..2]
+            .iter()
+            .copied()
+            .find(|&c| self.io.rb(c) == 0)
+            .unwrap_or(tries[2]);
+        self.io.wb(cell, value);
+        let c = &mut self.state.edges.creatures;
+        c.active[c.index as usize] = 0;
     }
 }
 
