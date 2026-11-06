@@ -159,6 +159,11 @@ pub const PORTED: &[Ported] = &[
         0x3b2a,
         "character::Play::char_hit_check",
     ),
+    // T52: the creatures restored and cut (render/objects.rs).
+    port("h0_2c7e", 0x2c7e, "render::objects::Creatures::restore_all"),
+    port("h0_2d4c", 0x2d4c, "render::objects::Creatures::cut_all"),
+    port("h0_5820", 0x5820, "render::objects::Creatures::cut"),
+    port("h0_5e44", 0x5e44, "render::objects::Creatures::restore"),
 ];
 
 /// A hunk 0 routine's entry.

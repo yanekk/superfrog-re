@@ -206,6 +206,17 @@ workspace = "engine"
 # side by side, about 7 s warm.
 "crates/fd-conform/tests/status_race.rs" = "smoke"
 "crates/fd-conform/tests/contact.rs" = "smoke"
+# T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
+# debug, the restores' blits) and its two mutants (about 1 min each) are full; the register check, the
+# sync-point state, the picture check over 520 passes, game_frame's calls and the frozen case's skip take about
+# 5 s warm.
+"crates/fd-conform/tests/creature_drawing_routines.rs" = [
+    "every_t52_routine_is_registered_and_checked_here",
+    "the_drawing_state_at_the_sync_point_is_the_originals",
+    "the_creatures_on_the_play_screen_are_the_originals",
+    "game_frame_restores_and_cuts_the_creatures",
+    "game_frame_restores_the_creatures_the_last_pass_drew",
+]
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
 # status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
@@ -403,4 +414,12 @@ name = "contact and a life lost: the collision model, char_hit_check and the spi
 covers = [
     "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
     "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
+]
+
+[[area]]
+name = "the creatures restored and cut onto the play screen as the original draws them"
+covers = [
+    "crates/fd-conform/tests/creature_drawing_routines.rs::the_creatures_on_the_play_screen_are_the_originals",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
 ]

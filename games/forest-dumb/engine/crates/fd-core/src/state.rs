@@ -9,6 +9,7 @@ use crate::level::redraw::Edges;
 use crate::objects::Collect;
 use crate::objects::animated::Animation;
 use crate::objects::spring::Spring;
+use crate::render::objects::CreatureDraw;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -59,6 +60,8 @@ pub struct State {
     pub edges: Edges,
     /// What taking objects keeps besides the counters (T22, `objects`).
     pub collect: Collect,
+    /// What the creature drawing keeps between its calls (T52, `render::objects`).
+    pub creature_draw: CreatureDraw,
     /// The spring that fired last (T25, `objects::spring`).
     pub spring: Spring,
     /// The animated cells' phase and tick, and the water's speed (T25, `objects::animated`).
@@ -138,6 +141,16 @@ impl State {
             // from the original by transplant (T55).
             edges: Edges::default(),
             collect: Collect::default(),
+            // Pass 1's `h0_2c7e` and `h0_2d4c` have run their loops to 5 with no slot active; the
+            // place (`h0+$5818`, `$581a`) is left by a routine before play, not traced; the rest are
+            // 0 (measured, `creature_drawing_routines.rs`).
+            creature_draw: CreatureDraw {
+                restore_index: 5,
+                cut_index: 5,
+                x: 0x6e,
+                y: 0xe0,
+                ..CreatureDraw::default()
+            },
             // Measured at pass 1's end (T25): no spring has fired; pass 1's `h0_62b6` has stepped the
             // phase to 1; `load_list_world_1` set `water_cycle`.
             spring: Spring::default(),
