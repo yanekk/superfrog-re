@@ -6,13 +6,19 @@
 //! `screenshot differs (N pixels)`, exit 0 either way; the last frame's picture as `last.png` in
 //! `--out` when given. A zip another build made, or that cannot be read, is refused naming why,
 //! exit 1 (DESIGN §2.12).
+//!
+//! `fd-conform bug compare <zip> [--out DIR]`: the recording played on the original and compared
+//! (`fd_conform::bug::compare`, T15): the report, its first line `same`, `differs at frame F
+//! (engine step S): ...` or `same up to frame F (engine step S), not judged after it`; the
+//! pictures at Stop as `original-stop.png` and `engine-stop.png` in `--out`, else the game's
+//! `build/bugs/<zip stem>/`. Exit 0 only for `same`. Procedure: `games/forest-dumb/docs/BUG-FIX.md`.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use fd_conform::{Case, run};
 
-const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR]";
+const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -20,6 +26,9 @@ fn main() -> ExitCode {
         [cmd, path] if cmd == "run" => run_case(Path::new(path)),
         [bug, replay, zip, rest @ ..] if bug == "bug" && replay == "replay" => {
             bug_replay(Path::new(zip), rest)
+        }
+        [bug, compare, zip, rest @ ..] if bug == "bug" && compare == "compare" => {
+            bug_compare(Path::new(zip), rest)
         }
         _ => {
             eprintln!("{USAGE}");
@@ -71,4 +80,28 @@ fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
             .map_err(|e| format!("{}: {e}", path.display()))?;
     }
     Ok(true)
+}
+
+fn bug_compare(zip: &Path, rest: &[String]) -> Result<bool, String> {
+    use fd_conform::bug;
+    let out = match rest {
+        [] => bug::default_out(zip)?,
+        [flag, dir] if flag == "--out" => PathBuf::from(dir),
+        _ => return Err(USAGE.to_string()),
+    };
+    let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
+    let (rec, _) = bug::open_zip(&bytes, fd_tools::ENGINE_BUILD)
+        .map_err(|e| format!("{}: {e}", zip.display()))?;
+    std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+    let c = bug::compare(fd_conform::game_data()?, &rec, Some(out.clone()))?;
+    print!("{}", c.report());
+    let write = |name: &str, bytes: Vec<u8>| {
+        let path = out.join(name);
+        std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!("{name} {}", path.display());
+        Ok::<_, String>(())
+    };
+    write("original-stop.png", bug::frame_png(&c.retimed.stop))?;
+    write("engine-stop.png", bug::picture_png(&c.engine_stop))?;
+    Ok(c.same())
 }

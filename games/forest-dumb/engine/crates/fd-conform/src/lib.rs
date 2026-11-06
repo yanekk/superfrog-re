@@ -354,6 +354,15 @@ impl Inputs {
         })
     }
 
+    /// The case's sync script, and `after` from its sync frame on: inputs held in memory.
+    pub fn with_after(case: &Case, after: script::InputScript) -> Result<Inputs, String> {
+        Ok(Inputs {
+            sync: load_script(&case.script)?,
+            after: Some(after),
+            sync_frame: case.sync_frame,
+        })
+    }
+
     pub fn at(&self, frame: u32) -> FrameInput {
         match &self.after {
             Some(after) if frame >= self.sync_frame => {
@@ -579,6 +588,17 @@ impl PassInputs {
         self.starts.retain(|(p, _)| *p > n);
     }
 
+    /// The pass whose `game_frame` reads the joystick next: the input fed in the next step is
+    /// its joystick, if it reads in that step.
+    pub fn next_read(&self) -> u32 {
+        self.decided + 1
+    }
+
+    /// The pass the next step starts, if it starts one: its keys are that step's.
+    pub fn next_start(&self) -> u32 {
+        self.started + 1
+    }
+
     /// Pass `n`'s input, once its `game_frame` has read it.
     pub fn take(&mut self, n: u32) -> Option<FrameInput> {
         let i = self.ready.iter().position(|(p, _)| *p == n)?;
@@ -661,13 +681,23 @@ const NO_PICTURE: &str = "the case compares the picture but the engine draws non
 /// was seen in. `amiga_conform::compare::PassMatch` is not used: it pairs ends step by step, and
 /// here the original numbers its own passes.
 pub fn run_with(case: &Case, engine: &mut dyn Engine, opts: &Options) -> Result<Verdict, String> {
+    run_inputs(case, &Inputs::load(case)?, engine, opts)
+}
+
+/// [`run_with`] on `inputs` rather than the scripts the case names: a bug zip's retimed inputs
+/// (`bug::compare`), which are no file. The way to the sync point is still the case's.
+pub fn run_inputs(
+    case: &Case,
+    inputs: &Inputs,
+    engine: &mut dyn Engine,
+    opts: &Options,
+) -> Result<Verdict, String> {
     if !case.is_level() {
         return Err(format!(
             "{}: run_with runs level cases; a title case runs with `run`",
             case.name
         ));
     }
-    let inputs = Inputs::load(case)?;
     let vars = layout_vars(&case.vars)?;
     let goal: Vec<(&Var, u32)> = match &case.goal {
         Some(Goal::All { all, .. }) => all
