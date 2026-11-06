@@ -15,7 +15,7 @@ use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport};
 use fd_core::level::redraw::CreatureSlot;
 use fd_core::objects::creature::{self, Creatures, Ground};
-use fd_core::{State, PORTED};
+use fd_core::{PORTED, State};
 
 const CASES: usize = 10_000;
 
@@ -277,4 +277,145 @@ fn every_t24_routine_matches_the_original() {
         lines.push(format!("{name}: {} paths", rep.paths));
     }
     println!("{}", lines.join("\n"));
+}
+
+/// The engine's own state as the original's memory, but with the creature slots `slots`, all
+/// active: `game_frame` must move and sort them in play (the rig above proves the routines, not the
+/// calls).
+struct WithCreatures<'a> {
+    game: &'a fd_core::Game,
+    slots: [CreatureSlot; 5],
+}
+
+impl fd_core::Mem for WithCreatures<'_> {
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+        use fd_core::Transplant;
+        let s = self.game.state();
+        match (hunk, offset, len) {
+            (0, fd_core::level::redraw::OBJECT_MAP, _) => return s.object_map[..len].to_vec(),
+            (0, ACTIVE, 5) => return vec![0xff; 5],
+            (0, SLOTS, 40) => {
+                let mut b = Vec::new();
+                for v in self.slots {
+                    b.extend(v.x.to_be_bytes());
+                    b.extend(v.y.to_be_bytes());
+                    b.extend(v.kind.to_be_bytes());
+                    b.extend([v.facing, v.phase]);
+                }
+                return b;
+            }
+            _ => {}
+        }
+        match fd_core::LAYOUT
+            .iter()
+            .find(|v| (v.hunk, v.offset, v.width.bytes()) == (hunk, offset, len))
+        {
+            Some(v) => self.game.probe(v).to_be_bytes()[4 - len..].to_vec(),
+            None => vec![0; len],
+        }
+    }
+}
+
+#[test]
+fn creatures_move_and_sort_in_play() {
+    use fd_core::{Game, Start, Transplant};
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let game = Game::new(data, Start::Level1);
+    // In the view (camera at 0, $17): kind 6 does nothing, so only the sort moves those; the kind 1
+    // in slot 4 walks right a pixel and, highest, sorts first.
+    let still = |y| CreatureSlot {
+        x: 0x40,
+        y,
+        kind: 5 + 1,
+        facing: 1,
+        phase: 0,
+    };
+    let walker = CreatureSlot {
+        x: 0x60,
+        y: 0x30,
+        kind: 1,
+        facing: 1,
+        phase: 0,
+    };
+    let slots = [still(0x50), still(0x60), still(0x70), still(0x80), walker];
+    let mut g = game.clone();
+    g.transplant(&WithCreatures { game: &game, slots });
+    g.step(amiga_oracle::FrameInput::NONE);
+    let c = &g.state().edges.creatures;
+    assert_eq!(c.active, [0xff; 5]);
+    assert_eq!(
+        c.slots.map(|s| s.y),
+        [0x30, 0x50, 0x60, 0x70, 0x80],
+        "h0_3698 did not run in game_frame"
+    );
+    // Its phase and facing are the probes' to say: a ledge or a wall resets them.
+    assert_eq!(c.slots[0].x, 0x61, "h0_2fae did not run in game_frame");
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mutants: each a plausible misreading of the listing, each must fail on the rig.
+// ---------------------------------------------------------------------------------------------
+
+fn fails(name: &str, entry: u32, port: fn(&mut Cpu)) {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let generator = generators::generator(name).unwrap();
+    let f = judge::check_regs(
+        &mut r,
+        name,
+        CASES,
+        h0(entry),
+        &generator,
+        RegsCompared::NONE,
+        port,
+    )
+    .map(|rep| panic!("{name}: a mutant passed {rep:?}"))
+    .unwrap_err();
+    assert!(f.failures > 0, "{f}");
+}
+
+#[test]
+fn the_rig_catches_a_sort_comparing_every_pair_as_words() {
+    // `h0_3698`'s middle `cmp.b`s read as `cmp.w`.
+    fails("h0_3698", 0x3698, |cpu| {
+        on_creatures(cpu, |c| {
+            let cs = &mut c.state.edges.creatures;
+            let mut order = [0, 1, 2, 3, 4];
+            let mut ys = cs.slots.map(|s| s.y);
+            for _ in 0..5 {
+                for j in 0..4 {
+                    if (ys[j + 1].wrapping_sub(ys[j]) as i16) < 0 {
+                        ys.swap(j, j + 1);
+                        order.swap(j, j + 1);
+                    }
+                }
+            }
+            let (a, s) = (cs.active, cs.slots);
+            cs.active = order.map(|k| a[k]);
+            cs.slots = order.map(|k| s[k]);
+        });
+        let m = &mut cpu.mem;
+        let after: Vec<u8> = (0..5).map(|i| m.rb(h0(ACTIVE + i))).collect();
+        let slots: Vec<u8> = (0..40).map(|i| m.rb(h0(SLOTS + i))).collect();
+        for (k, b) in after.iter().chain(&[0]).chain(&slots).enumerate() {
+            m.wb(h0(SORTED + k as u32), *b);
+        }
+        m.wb(h0(ACTIVE + 5), 0);
+    });
+}
+
+#[test]
+fn the_rig_catches_kind_5_stepping_before_it_probes() {
+    // Kind 5 probes first, then steps (`h0+$3436`); read as kind 4's order, step then probe.
+    fails("h0_2fea", 0x2fea, |cpu| {
+        let i = cpu.d[0] as usize;
+        on_creatures(cpu, |c| {
+            if c.state.edges.creatures.slots[i].kind == 5 {
+                c.state.edges.creatures.slots[i].kind = 4;
+                c.move_slot(i);
+                c.state.edges.creatures.slots[i].kind = 5;
+            } else {
+                c.move_slot(i);
+            }
+        });
+    });
 }

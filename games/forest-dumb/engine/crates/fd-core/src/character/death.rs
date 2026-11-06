@@ -19,11 +19,11 @@
 
 use amiga_input::KeySet;
 
+use crate::State;
 use crate::objects::collectible::bcd_add;
 use crate::objects::creature;
-use crate::program::{h, Scratch};
+use crate::program::{Scratch, h};
 use crate::render::contact::CONTACT;
-use crate::State;
 
 /// `countdown_tick` counts passes to this, then the countdown loses one (`cmpi.l #$3f`).
 pub const TICKS_PER_COUNT: u32 = 0x3f;

@@ -150,7 +150,11 @@ pub const PORTED: &[Ported] = &[
     ),
     // T70: contact and the life it costs. The creature stomp inside it (`h0_3dd8`'s loop,
     // `character::Play::stomp`) is T24's to port.
-    port("char_hit_check", 0x3b2a, "character::Play::char_hit_check"),
+    port(
+        "char_hit_check",
+        0x3b2a,
+        "character::Play::char_hit_check",
+    ),
     // T24: the creatures' movement and sort (objects/creature.rs), and the stomp's box test.
     port("h0_2fae", 0x2fae, "objects::creature::Creatures::move_all"),
     port("h0_2fea", 0x2fea, "objects::creature::Creatures::move_slot"),

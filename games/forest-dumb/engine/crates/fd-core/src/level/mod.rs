@@ -34,6 +34,7 @@ use fd_assets::Level;
 
 use crate::State;
 use crate::character::{AnimTables, Character, Play};
+use crate::objects::creature::{Creatures, PlayGround};
 use crate::program::{Program, Scratch};
 
 use collision::CollisionPlane;
@@ -208,11 +209,26 @@ pub fn game_frame(
         Play { state: l.state }.play_keys();
         return;
     }
-    // h0+$2c7e .. h0+$62b6: the objects (T24, T25, T52); until they are ported, the dispatch's kinds
-    // run here.
+    // h0+$2c7e (T52), then h0+$2fae: the creatures moved (T24).
+    let ground = PlayGround {
+        plane: l.plane,
+        program: l.program,
+    };
+    Creatures {
+        state: l.state,
+        ground: &ground,
+    }
+    .move_all();
+    // h0+$21c0, h0+$62b6 (T25); until they are ported, the dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
+    // h0+$3698: the slots sorted by y for drawing (T24); h0+$2d4c draws them (T52).
+    Creatures {
+        state: l.state,
+        ground: &ground,
+    }
+    .sort();
     let s = &mut *l.state;
     s.joy.read_joystick(&mut s.input_log, &input);
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.

@@ -6,8 +6,8 @@
 use crate::character::{Anim, InputLog, JoyFlags, Keys, Motion};
 use crate::level::camera::{Camera, EdgeFlags};
 use crate::level::redraw::Edges;
-use crate::objects::creature::Moving;
 use crate::objects::Collect;
+use crate::objects::creature::Moving;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

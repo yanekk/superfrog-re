@@ -15,7 +15,7 @@
 
 use std::sync::Arc;
 
-use crate::program::{Program, HUNK_BASES};
+use crate::program::{HUNK_BASES, Program};
 
 /// `collision_map`'s hunk 3 offset and size (`re/symbols.toml`).
 pub const MAP: u32 = 0xfa50;

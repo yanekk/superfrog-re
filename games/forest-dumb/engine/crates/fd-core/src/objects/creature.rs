@@ -12,8 +12,10 @@
 //! The step tables are the program's own (`h0+$30fe` and on), read through [`Ground`] as the original
 //! reads them; the probes read `collision_map` at the original's offsets with no wrap at a row's end.
 
-use crate::level::redraw::CreatureSlot;
 use crate::State;
+use crate::level::collision::CollisionPlane;
+use crate::level::redraw::CreatureSlot;
+use crate::program::Program;
 
 /// The bytes a creature can read besides its slot: `collision_map` and the program's step tables.
 pub trait Ground {
@@ -21,6 +23,23 @@ pub trait Ground {
     fn collision(&self, off: u32) -> u8;
     /// The byte at hunk 0 offset `a`: the step tables.
     fn program(&self, a: u32) -> u8;
+}
+
+/// [`Ground`] in play: the collision plane as play has it and the program's hunk 0. A plane keeps
+/// only the map and its slack, so a probe of a creature far past the level's right edge reads 0
+/// where the original reads the tiles; no creature W1-1 starts gets there.
+pub struct PlayGround<'a> {
+    pub plane: &'a CollisionPlane,
+    pub program: &'a Program,
+}
+
+impl Ground for PlayGround<'_> {
+    fn collision(&self, off: u32) -> u8 {
+        self.plane.byte(off)
+    }
+    fn program(&self, a: u32) -> u8 {
+        self.program.byte(a)
+    }
 }
 
 /// What moving the creatures writes that nothing reads back.

@@ -13,7 +13,7 @@ use fd_conform::judge::{self, Cpu};
 use fd_conform::routine::{RegsCompared, Rig, RigReport};
 use fd_core::character::Play;
 use fd_core::level::redraw::CreatureSlot;
-use fd_core::{Scratch, State, PORTED};
+use fd_core::{PORTED, Scratch, State};
 
 const CASES: usize = 10_000;
 
