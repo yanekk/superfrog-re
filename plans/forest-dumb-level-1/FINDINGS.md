@@ -7,10 +7,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-06 | 📌 | T15, measured: retimed by pass, a varied 4 000-step W1-1 recording with deaths stays on the original, a pass a frame; 2 passes (steps 1658, 1695) read the previous one's joystick. Short runs: none. |
-| 2026-11-06 | 📌 | T15: `bug compare` "same" is weak at lagged passes, at the start (transplanted, T69), on printed gaps (countdown, Esc, P: T23; creatures, collectibles: T22, T24). Zips refuse other builds (T14), so BUG-FIX.md checks fixes by a case. |
+| 2026-11-06 | 📌 | T15: `bug compare` "same" is weak at lagged passes, on printed gaps (countdown, Esc, P: T23; creatures, collectibles: T22, T24). Zips refuse other builds (T14), so BUG-FIX.md checks fixes by a case. |
 | 2026-11-06 | 🐞 | T15: a `read_joystick` cut by the frame's end counts at `h0+$8dfc` a step before `input_log_index` rises; `PassInputs` failed "missed or counted twice" (frame 7715). Allowed now (Escape T67). Review: the original's `input_log` differs from the recording only at the lagged steps. |
 | 2026-11-06 | 📌 | T15 review: `bug compare`'s level-end exit (`world_index`) is untested before T20's route. `cargo run -p fd-conform` failed (two binaries since T33); `default-run` fixes it. |
-| 2026-11-06 | 📌 | T69 added by T15 with the owner's yes: `Game::new` differs from the original at pass 1's end (`char_falling`, `char_jump_t`, `char_anim_ptr`, `char_update_t`). Blocks T20, T28. |
+| 2026-11-06 | 📌 | T69, measured: sync frame 6301 ends inside pass 1 at `char_update`'s start (`char_update_t` 3, no sub-step run); `Game::new` runs it and equals the original at pass 1's end. `bug compare` no longer transplants its start. |
 | 2026-11-06 | 📌 | T14 review: fake unverified against real. `ScriptedUi` stands in for the native Start Level, recording and save windows; no test drives them (`FD_E2E_OS=1`). T16's drill covers them. |
 | 2026-11-06 | 📌 | T13 review, worker-driven: debug `fd-app` keeps 50 Hz (500 frames 10.3 s), not with `--capture` (15.6 s); the pacer catches up, hashes unaffected. T16 judges pacing without capture or in release. |
 | 2026-11-06 | 📌 | T44 review sweep: `drawing_routines.rs` `after_a_transplant_the_picture_is_the_originals_still_and_scrolled` still bounds frame 6640 at 1 211 pixels, calling it T44's; T44 fixed the runner's pairing, not that check. |

@@ -70,10 +70,10 @@ Read the rest of the report before trusting the first line:
   the original's passes read the joystick in one frame, the second reads the first's input. The
   engine still plays what the owner pressed, so a difference at or after such a step may be the
   lag's, not the engine's. Measured: 2 of 4 000 passes in a varied recording; none on short ones.
-- **`the engine's own start differs from the original's at the first pass end`**: today it
-  does, in four character variables (T69 fixes it). The compare starts the engine from the
-  original's state at that pass end, so a bug that comes from the start itself is not seen. If
-  the owner's bug is in the first few frames, say so in the report.
+- **`the engine's own start differs from the original's at the first pass end`**: the engine
+  runs from `Game::new`, as the app starts it, and since T69 the report says the start equals the
+  original's. If it ever says it differs, a difference in the first few frames may be the start's,
+  not the recording's: say so in the report.
 - **`not judged yet: ... (T23)`, `(T24)`**: what the engine does not model yet (the countdown and
   its digits, Esc and P, `hits_taken`). A bug in one of these is a missing feature, not a quirk:
   name its task.
@@ -93,7 +93,7 @@ When: <W1-1, the spot, and the frame, e.g. "frame 1 200 of 4 000 (24 s in)">.
 The pictures at the moment you pressed Stop, the original's and ours:
   <path>/original-stop.png
   <path>/engine-stop.png
-<Any caveat from step 2: lag, the start difference, a gap not judged yet.>
+<Any caveat from step 2: lag, a gap not judged yet.>
 ```
 
 Only say "the original does this too" when the first line is `same` (not `same up to …`) and both
@@ -147,7 +147,7 @@ Escape: forest-dumb-level-1 T{nn}
 ## 7. A difference the case cannot show
 
 If the replay shows the problem but the comparison cannot (`same up to` a frame before it, a lagged
-pass just before it, the start difference, or a gap not judged yet), do not force it into a case or
+pass just before it, or a gap not judged yet), do not force it into a case or
 call it a quirk. Report to the owner what the replay shows (frame, picture path, one sentence),
 what the comparison could and could not see, and why. Commit nothing unless the owner says how to
 go on.
