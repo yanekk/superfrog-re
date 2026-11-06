@@ -201,6 +201,7 @@ workspace = "engine"
     "the_drawing_state_at_the_sync_point_is_the_originals",
     "the_creatures_on_the_play_screen_are_the_originals",
     "game_frame_restores_and_cuts_the_creatures",
+    "game_frame_restores_the_creatures_the_last_pass_drew",
     "only_a_frozen_case_skips_the_creature_drawing",
 ]
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
@@ -400,4 +401,5 @@ name = "the creatures restored and cut onto the play screen as the original draw
 covers = [
     "crates/fd-conform/tests/creature_drawing_routines.rs::the_creatures_on_the_play_screen_are_the_originals",
     "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
 ]

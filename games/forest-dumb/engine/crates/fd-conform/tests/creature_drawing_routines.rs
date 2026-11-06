@@ -607,3 +607,67 @@ fn only_a_frozen_case_skips_the_creature_drawing() {
         ]
     );
 }
+
+/// The original's memory with one creature's live flag cleared: a creature the last pass drew
+/// (`creature_active+$c` set) that is no longer active.
+struct Gone<'a>(fd_conform::Live<'a>, u32);
+
+impl fd_core::Mem for Gone<'_> {
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+        let mut v = self.0.read(hunk, offset, len);
+        let at = (ACTIVE + self.1).wrapping_sub(offset) as usize;
+        if let (0, Some(b)) = (hunk, v.get_mut(at)) {
+            *b = 0;
+        }
+        v
+    }
+}
+
+#[test]
+fn game_frame_restores_the_creatures_the_last_pass_drew() {
+    // T52 review: `h0_2c7e` runs with the flags the last cut kept (`creature_active+$c`), not the
+    // live ones. A creature drawn but no longer active is restored away and not cut; restoring by
+    // the live flags would leave it on the screen.
+    use fd_conform::sync::reach_level_1;
+    use fd_conform::{Live, game_data};
+    use fd_core::Mem;
+    use fd_core::{Game, Start, Transplant};
+    let mut am = reach_level_1(PASSES + 1).unwrap_or_else(|e| panic!("{e}"));
+    let data = game_data().unwrap_or_else(|e| panic!("{e}"));
+    let mut checked = 0;
+    for f in 0..PASSES {
+        am.step(input(f)).unwrap_or_else(|e| panic!("{e}"));
+        let Some(k) = Live(&am).read(0, ACTIVE, 5).iter().position(|&b| b != 0) else {
+            continue;
+        };
+        let mut g = Game::new(data.clone(), Start::Level1);
+        g.transplant(&Gone(Live(&am), k as u32));
+        let creatures = g.state().edges.creatures.clone();
+        let items = g.state().items_left;
+        if g.state().creature_draw.drawn[k] == 0 {
+            continue;
+        }
+        let mut want = g.clone();
+        want.foreground();
+        let undrawn = want.display().screen.clone();
+        let (want, _) = drawn(&want, &creatures, &creatures);
+        g.step(amiga_oracle::FrameInput::NONE);
+        let s = g.state();
+        if s.edges.creatures.active != creatures.active || s.items_left != items {
+            continue;
+        }
+        assert!(
+            want.bytes != undrawn.bytes,
+            "pass {f}: the restore changed nothing"
+        );
+        assert!(
+            g.display().screen.bytes == want.bytes,
+            "pass {f}: game_frame restored by other flags than the last pass drew"
+        );
+        checked += 1;
+    }
+    assert!(
+        checked > 50,
+        "{checked} passes with a creature gone checked"
+    );
+}
