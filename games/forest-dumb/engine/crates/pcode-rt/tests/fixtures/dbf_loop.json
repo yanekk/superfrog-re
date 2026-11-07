@@ -1,0 +1,32 @@
+{"hunks": [{"index": 0, "size": 64, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "moveq #3,d0", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 0, 4], "in": [["const", 3, 4]]},
+    {"op": "INT_SLESS", "out": ["register", 68, 1], "in": [["register", 0, 4], ["const", 0, 4]]},
+    {"op": "INT_EQUAL", "out": ["register", 69, 1], "in": [["register", 0, 4], ["const", 0, 4]]},
+    {"op": "COPY", "out": ["register", 70, 1], "in": [["const", 0, 1]]},
+    {"op": "COPY", "out": ["register", 71, 1], "in": [["const", 0, 1]]}]},
+  "h0+$2": {"len": 2, "mnem": "moveq #0,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["const", 0, 4]]},
+    {"op": "INT_SLESS", "out": ["register", 68, 1], "in": [["register", 4, 4], ["const", 0, 4]]},
+    {"op": "INT_EQUAL", "out": ["register", 69, 1], "in": [["register", 4, 4], ["const", 0, 4]]},
+    {"op": "COPY", "out": ["register", 70, 1], "in": [["const", 0, 1]]},
+    {"op": "COPY", "out": ["register", 71, 1], "in": [["const", 0, 1]]}]},
+  "h0+$4": {"len": 2, "mnem": "addq.l #2,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_CARRY", "out": ["register", 71, 1], "in": [["register", 4, 4], ["const", 2, 4]]},
+    {"op": "INT_SCARRY", "out": ["register", 70, 1], "in": [["register", 4, 4], ["const", 2, 4]]},
+    {"op": "COPY", "out": ["register", 67, 1], "in": [["register", 71, 1]]},
+    {"op": "INT_ADD", "out": ["register", 4, 4], "in": [["register", 4, 4], ["const", 2, 4]]},
+    {"op": "INT_SLESS", "out": ["register", 68, 1], "in": [["register", 4, 4], ["const", 0, 4]]},
+    {"op": "INT_EQUAL", "out": ["register", 69, 1], "in": [["register", 4, 4], ["const", 0, 4]]}]},
+  "h0+$6": {"len": 4, "mnem": "dbf d0w,h0+$4", "flow": {"kind": "cbranch", "targets": ["h0+$4"]}, "ops": [
+    {"op": "CBRANCH", "in": [["ram", "h0+$a", 4], ["const", 0, 1]]},
+    {"op": "INT_SUB", "out": ["register", 2, 2], "in": [["register", 2, 2], ["const", 1, 2]]},
+    {"op": "INT_NOTEQUAL", "out": ["unique", 4864, 1], "in": [["register", 2, 2], ["const", 65535, 2]]},
+    {"op": "CBRANCH", "in": [["ram", "h0+$4", 4], ["unique", 4864, 1]]}]},
+  "h0+$a": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}
