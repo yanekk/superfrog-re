@@ -14,7 +14,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const PURE: [&str; 2] = ["fd-core", "fd-assets"];
+const PURE: [&str; 3] = ["fd-core", "fd-assets", "pcode-rt"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates needs one line saying why it is pure. The toolkit crates' sources are scanned by
@@ -22,6 +22,7 @@ const PURE: [&str; 2] = ["fd-core", "fd-assets"];
 const ALLOWED: &[&str] = &[
     "fd-core",
     "fd-assets",
+    "pcode-rt",
     "amiga-clock",
     "amiga-input",
     // The renderer's chips (T10): the copper run, the bitplane fetch and the sprite composition,
