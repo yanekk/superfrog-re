@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | 📌 | T05 review: DESIGN §4's code-writes row says instructions the listing does not know are not watched; `code_writes.rs` watches every even hunk address instead, so that limit no longer holds. Left for the owner's DESIGN edit. |
+| 2026-11-07 | 📌 | **Code-writes run (T05):** `fd-conform code-writes` over 33 level 1 cases, unfrozen: `{"total":{"cases":33,"frames":80964,"changed":0}}`. No executed instruction changed, against the loaded program or frame to frame. `first-case` skipped (title). |
 | 2026-11-07 | 📌 | `pcode-rt`'s ops are `#[inline]`, so they compile at the calling crate's opt-level: the `pcode-rt` override does not speed generated code. T04 should give the crate building `tree.rs` (`fd-conform`, unoptimised today) its own override. |
 | 2026-11-07 | 📌 | **Baseline:** T00 merged `pir/forest-dumb-level-1` at `defe7d6b` cleanly (merge `9e6ee954`). `fd-judge` builds, `--test judge` passes 2/2, and Muse's port of `h0+$5462` (`char_sprite_position`) passes 2000/2000, 4 paths. |
 | 2026-11-07 | 🐞 | Plan review: Ghidra 12.0's Amiga loader records no relocations (`getRelocationTable()` empty) for `FOREST_DUMB_FOREVER`, whose hunks carry 4 254 `HUNK_RELOC32` entries. T01 reads them from the file (owner, 2026-11-07). |

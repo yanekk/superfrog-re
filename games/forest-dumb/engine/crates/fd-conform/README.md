@@ -80,6 +80,10 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - One module per subsystem (`camera`, `character`, `objects`, ...), each with `pub const ALL`. A new module is appended to `MODULES`. `candidate` comes from `FD_GEN` and is listed first.
 - `character::COVER` / `character_anim::COVER` and their `cover(name)` record what each routine reads and its branches.
 
+**Writes into code** (`src/code_writes.rs`, translator trial T05)
+- `code_writes::run_case(&Case, max_frames, between: FnMut(&mut Amiga, frame)) -> Result<Report, String>` and `run_case_in(kickstart, disk_dir, cache, ...)`: a level case on the original from the level sync point, unfrozen, watching every even address of the program's hunks.
+- `Report { case, frames, executed, executed_bytes, changed: Vec<Change { at, frame, from, to, since }> }`, `.json()`, `total_json`; `since` is `"load"` (against the relocated program at first run) or `"run"` (against the last frame).
+
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 
@@ -98,6 +102,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | `cargo run -p fd-conform -- run <case.toml>` | One case; exits 0 only when it passes |
 | `cargo run -p fd-conform -- bug replay <zip> [--out DIR]` | Replay a bug zip on the engine, check the screenshot |
 | `cargo run -p fd-conform -- bug compare <zip> [--out DIR]` | Retime the zip onto the original and compare it; writes `bug-case.toml` |
+| `cargo run --release -p fd-conform -- code-writes [--cases <glob>] [--max-frames N]` | Every level case on the original, each change to an executed instruction's bytes; JSON lines and a total |
 | `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --gen <name> [--cases N] [--survey \| --cover]` | One routine against the built-in port; prints one JSON line |
 
 Output formats: the `//!` headers of `src/main.rs` and `src/bin/fd-judge.rs`.
