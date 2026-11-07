@@ -1,0 +1,29 @@
+{"hunks": [{"index": 0, "size": 64, "kind": "CODE"}, {"index": 1, "size": 16, "kind": "DATA"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "add.w d0w,d0w", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_ADD", "out": ["register", 2, 2], "in": [["register", 2, 2], ["register", 2, 2]]}]},
+  "h0+$2": {"len": 2, "mnem": "add.w d0w,d0w", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_ADD", "out": ["register", 2, 2], "in": [["register", 2, 2], ["register", 2, 2]]}]},
+  "h0+$4": {"len": 6, "mnem": "lea (h1+$0).l,a0", "flow": {"kind": "fallthrough"},
+    "relocs": [{"in_op": 0, "slot": 0, "target": "h1+$0"}], "ops": [
+    {"op": "COPY", "out": ["register", 32, 4], "in": [["const", 2224192, 4]]}]},
+  "h0+$a": {"len": 4, "mnem": "movea.l (0,a0,d0w.w),a1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_SEXT", "out": ["unique", 4352, 4], "in": [["register", 2, 2]]},
+    {"op": "INT_ADD", "out": ["unique", 4480, 4], "in": [["register", 32, 4], ["unique", 4352, 4]]},
+    {"op": "LOAD", "out": ["register", 36, 4], "in": [["const", 433, 8], ["unique", 4480, 4]]}]},
+  "h0+$e": {"len": 2, "mnem": "jmp (a1)", "flow": {"kind": "computed", "targets": []}, "ops": [
+    {"op": "BRANCHIND", "in": [["register", 36, 4]]}]},
+  "h0+$10": {"len": 2, "mnem": "moveq #10,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["const", 10, 4]]}]},
+  "h0+$12": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]},
+  "h0+$14": {"len": 2, "mnem": "moveq #20,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["const", 20, 4]]}]},
+  "h0+$16": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

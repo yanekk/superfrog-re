@@ -1,0 +1,17 @@
+{"hunks": [{"index": 0, "size": 32, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "moveq #7,d0", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 0, 4], "in": [["const", 7, 4]]}]},
+  "h0+$2": {"len": 2, "mnem": "tst.w d1w", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_SLESS", "out": ["register", 68, 1], "in": [["register", 6, 2], ["const", 0, 2]]},
+    {"op": "INT_EQUAL", "out": ["register", 69, 1], "in": [["register", 6, 2], ["const", 0, 2]]}]},
+  "h0+$4": {"len": 2, "mnem": "beq.b h0+$8", "flow": {"kind": "cbranch", "targets": ["h0+$8"]}, "ops": [
+    {"op": "CBRANCH", "in": [["ram", "h0+$8", 4], ["register", 69, 1]]}]},
+  "h0+$6": {"len": 2, "mnem": "trap #0", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "CALLOTHER", "name": "__m68k_trap", "in": [["const", 2, 4], ["const", 0, 4]]}]},
+  "h0+$8": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}
