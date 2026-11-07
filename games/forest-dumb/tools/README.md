@@ -86,6 +86,20 @@ python3 -I games/forest-dumb/tools/find_file_names.py <file>
 ```
 Names print as spelled; case-insensitive comparison with the inventory is the caller's job.
 
+## Translator
+
+### pcode_export.py (stdlib)
+Ghidra's P-code for every instruction of `re/translate.toml`'s routines and their callees, every address
+hunk-relative (`hN+$off`), for the static translator (plan `forest-dumb-translator-trial`, DESIGN §3.4).
+```
+python3 -I games/forest-dumb/tools/pcode_export.py [--out build/translator] [--reimport]
+```
+Needs Ghidra (`toolkit/tools/setup/install-ghidra.sh`). Writes `<out>/pcode.json` and the Ghidra project
+`<out>/ghidra/` (later runs reuse it; `--reimport` starts over), prints one JSON summary line, and warns on
+stderr for a routine whose reach differs from `translate.toml` by over 5%. Exit 2, path on stderr, when
+Ghidra, its JDK, the program or a symbols file is missing. Relocations come from the file's
+`HUNK_RELOC32` entries, since Ghidra's Amiga loader records none. The script is `ghidra/ExportPcode.java`.
+
 ## Assets
 
 ### unpack.py

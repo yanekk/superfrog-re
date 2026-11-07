@@ -13,6 +13,10 @@ The generic half of a game's Ghidra tool: the game's driver finds the bytes and 
 The first run imports and analyses; later runs re-apply the symbols to the existing program and
 re-export, keeping what was named in the Ghidra GUI. `reimport` starts over.
 
+A game's own post-scripts run after ApplySymbols: `script_paths` adds folders to Ghidra's script path,
+`post_scripts` is a list of (script file, [args]). `complete=False` skips complete_hunks, for a caller
+that has checked the file declares no absent hunk and runs without amitools (`python3 -I`).
+
 An executable that declares more hunks than it carries is refused by the Amiga loader, so
 complete_hunks appends the absent ones as empty HUNK_BSS. A raw region is imported as a plain 68000
 binary at 0.
@@ -21,13 +25,14 @@ import glob, os, shutil, struct, subprocess, sys, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import hunk_listing as L
 
 HUNK_BSS, HUNK_END = 0x3EB, 0x3F2
 
 
 def complete_hunks(data):
     """Append an empty HUNK_BSS for every hunk the header declares but the file lacks."""
+    # Imported here: hunk_listing needs amitools, which a stdlib-only caller does not have.
+    import hunk_listing as L
     exe = L.parse_exe(data)
     extra = b''.join(struct.pack('>III', HUNK_BSS, h.size // 4, HUNK_END)
                      for h in exe.hunks if h.kind == 'ABSENT')
@@ -57,9 +62,10 @@ def java_home():
     raise SystemExit("no JDK for Ghidra: run toolkit/tools/setup/install-ghidra.sh or set JAVA_HOME")
 
 
-def run_import(name, data, syms, out, project, raw=False, reimport=False):
+def run_import(name, data, syms, out, project, raw=False, reimport=False,
+               script_paths=(), post_scripts=(), complete=True):
     """Import `data` as `name` into `project` under `out`; returns the path of the decompilation."""
-    if not raw:
+    if not raw and complete:
         data = complete_hunks(data)
     for d in ('bin', 'ghidra'):
         os.makedirs(os.path.join(out, d), exist_ok=True)
@@ -79,14 +85,18 @@ def run_import(name, data, syms, out, project, raw=False, reimport=False):
         cmd += ['-import', exe_path, '-overwrite']
         if raw:
             cmd += ['-loader', 'BinaryLoader', '-processor', '68000:BE:32:default']
-    cmd += ['-scriptPath', os.path.join(HERE, 'ghidra'),
+    cmd += ['-scriptPath', ';'.join([os.path.join(HERE, 'ghidra'), *script_paths]),
             '-postScript', 'ApplySymbols.java', tsv, os.path.join(out, name), name]
+    for script, args in post_scripts:
+        cmd += ['-postScript', script, *args]
     try:
         r = subprocess.run(cmd, env=dict(os.environ, JAVA_HOME=java_home()),
                            capture_output=True, text=True, timeout=1800)
     finally:
         os.unlink(tsv)
-    report = [l for l in r.stdout.splitlines() if 'ApplySymbols.java>' in l or 'ERROR' in l]
+    scripts = ['ApplySymbols.java'] + [s for s, _ in post_scripts]
+    report = [l for l in r.stdout.splitlines()
+              if any(f'{s}>' in l for s in scripts) or 'ERROR' in l]
     print('\n'.join(report))
     decompiled = os.path.join(out, f'{name}.c')
     if r.returncode != 0 or not os.path.exists(decompiled):
