@@ -7,6 +7,7 @@
 
 use std::fmt;
 
+pub mod bcd;
 pub mod ops;
 
 /// Blocks a translated call may run before it stops as `Stop::Hang` (DESIGN §5.2).

@@ -7,8 +7,10 @@
 //! Each run calls the entry as a subroutine, as the judge does: a return address outside every hunk
 //! on the stack, and after the run `PC` holds it and the stack is back where it was.
 
-use pcode_rt::{Bus, Image, PC, Regs, Stop, ZF};
+use pcode_rt::{Bus, CF, Image, PC, Regs, Stop, XF, ZF};
 
+#[path = "fixtures/bcd.rs"]
+mod bcd;
 #[path = "fixtures/code_write.rs"]
 mod code_write;
 #[path = "fixtures/dbf_loop.rs"]
@@ -86,6 +88,33 @@ fn ram() -> Ram {
 fn returned(r: &Regs) {
     assert_eq!(r.get(PC, 4) as u32, RETURN_TO, "PC after the run");
     assert_eq!(r.a(7), STACK, "SP after the run");
+}
+
+/// Ghidra's P-code for these, as exported, gives d0 = $48 (the compare's carry taken as X) and leaves
+/// the memory sum unadjusted: the translator's corrections are what make them decimal.
+#[test]
+fn decimal_add_and_subtract_after_a_compare_keep_the_entry_x() {
+    let (mut r, mut m) = (Regs::new(), ram());
+    // cmpi.b #1,d3 with d3 = 0 borrows (C = 1) but leaves X at its entry 0.
+    r.set_d(3, 0);
+    r.set_d(0, 0xaaaa_aa19);
+    r.set_d(1, 0x28);
+    // A two-byte sum by abcd -(a1),-(a0) twice: $0999 + $0001.
+    m.0[0x2000..0x2002].copy_from_slice(&[0x09, 0x99]);
+    m.0[0x2100..0x2102].copy_from_slice(&[0x00, 0x01]);
+    r.set_a(0, 0x2002);
+    r.set_a(1, 0x2102);
+    r.set_d(4, 0x10);
+    r.set_d(2, 0x01);
+    let f = bcd::entry("h0+$0").unwrap();
+    call(f, bcd::HUNK_SIZES, bcd::CODE, &mut r, &mut m).unwrap();
+    returned(&r);
+    assert_eq!(r.d(0), 0xaaaa_aa47, "abcd d1,d0: 19 + 28, X 0, upper bytes kept");
+    assert_eq!(&m.0[0x2000..0x2002], &[0x10, 0x00], "0999 + 0001, the carry through X");
+    assert_eq!((r.a(0), r.a(1)), (0x2000, 0x2100), "each byte predecremented once");
+    assert_eq!(r.d(4), 0x09, "sbcd d2,d4: 10 - 01");
+    assert_eq!((r.get(XF, 1), r.get(CF, 1)), (0, 0));
+    assert_eq!(r.get(ZF, 1), 0, "cleared by the first non-zero byte and never set again");
 }
 
 #[test]

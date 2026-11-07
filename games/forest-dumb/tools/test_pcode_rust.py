@@ -20,7 +20,7 @@ TOOL = os.path.join(HERE, 'pcode_rust.py')
 FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures')
 # (export, hints or None, committed translation)
 TRANSLATIONS = [(n + '.json', None, n + '.rs') for n in (
-    'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
+    'bcd', 'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
     'relative', 'unsupported')] + [('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs')]
 
 D0 = ['register', 0, 4]
@@ -309,6 +309,68 @@ class Cli(unittest.TestCase):
                 with open(out) as f, open(os.path.join(FIXTURES, rs)) as g:
                     self.assertEqual(f.read(), g.read(),
                                      f'{rs} is stale: run python3 tools/test_pcode_rust.py --regen')
+
+
+def fixture_insn(at):
+    """One instruction of the bcd fixture, in the translator's own form."""
+    doc = pr.load_export(os.path.join(FIXTURES, 'bcd.json'))
+    return doc['insns'][pr.parse_addr(at, 'test')]
+
+
+def emitted(ins):
+    lines, stop = pr.Emit({}, {}).instruction((0, 0x10), ins)
+    return '\n'.join(lines), stop
+
+
+class Corrections(unittest.TestCase):
+    """Ghidra's P-code wrong for an instruction, corrected by mnemonic and P-code pattern."""
+
+    def test_abcd_between_data_registers_is_decimal(self):
+        text, stop = emitted(fixture_insn('h0+$4'))
+        self.assertFalse(stop)
+        self.assertIn('bcd_add(r.get(0x7, 1), r.get(0x3, 1), r.get(0x43, 1))', text)
+        self.assertIn('r.set(0x3, 1, v);', text)
+        self.assertIn('bcd_flags(r, v, x, o)', text)
+        self.assertNotIn('Unsupported', text)
+
+    def test_sbcd_names_destination_and_source_as_the_sinc_does(self):
+        text, stop = emitted(fixture_insn('h0+$a'))
+        self.assertFalse(stop)
+        self.assertIn('bcd_sub(r.get(0xb, 1), r.get(0x13, 1), r.get(0x43, 1))', text)
+        self.assertIn('r.set(0x13, 1, v);', text)
+
+    def test_abcd_through_memory_reads_the_source_first_and_stores_the_destination(self):
+        text, _ = emitted(fixture_insn('h0+$6'))
+        lines = [l.strip() for l in text.split('\n')]
+        self.assertLess(lines.index('let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);'),
+                        lines.index('let ax = (r.get(0x20, 4) as u32).wrapping_sub(1);'))
+        self.assertIn('store(bus, img, ax, 1, v)?;', lines)
+
+    def test_a_byte_predecrement_of_a7_steps_two(self):
+        ins = fixture_insn('h0+$6')
+        ops = json.loads(json.dumps(ins['ops']).replace('["register", 36, 4]', '["register", 60, 4]'))
+        text, stop = emitted(dict(ins, ops=ops))
+        self.assertFalse(stop)
+        self.assertIn('let ay = (r.get(0x3c, 4) as u32).wrapping_sub(2);', text)
+        self.assertIn('let ax = (r.get(0x20, 4) as u32).wrapping_sub(1);', text)
+
+    def test_another_shape_under_the_mnemonic_stays_a_stop(self):
+        ins = fixture_insn('h0+$4')
+        # A second user op call, or the add gone: not the sinc's pattern, so nothing is assumed.
+        two = dict(ins, ops=ins['ops'] + [o for o in ins['ops'] if o['op'] == 'CALLOTHER'])
+        no_add = dict(ins, ops=[o for o in ins['ops'] if o['op'] != 'INT_ADD'])
+        for bad in (two, no_add):
+            self.assertTrue(emitted(bad)[1])
+        # The same P-code under another mnemonic is not corrected either.
+        self.assertTrue(emitted(dict(ins, mnem='addx.b d1b,d0b'))[1])
+
+    def test_a_compare_leaves_x_and_a_subtract_still_sets_it(self):
+        cmpi = fixture_insn('h0+$0')
+        x_copy = 'r.set(0x43, 1, v);'
+        self.assertNotIn(x_copy, emitted(cmpi)[0])
+        for m in ('cmp.w d0w,d1w', 'cmpa.l a0,a1', 'cmpm.b (a0)+,(a1)+', 'CMPI.L #1,d0'):
+            self.assertNotIn(x_copy, emitted(dict(cmpi, mnem=m))[0], m)
+        self.assertIn(x_copy, emitted(dict(cmpi, mnem='subi.b #1,d3b'))[0])
 
 
 class NoGame(unittest.TestCase):
