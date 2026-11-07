@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** T00, which every other task waits on, directly or through T02.
+**Next `pir-work` will:** review T01; T02 and T05 are open.
 
 ## Tasks
 
@@ -15,7 +15,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | bring-in-level-1 | — | ✅ | |
-| T01 | pcode-export | T00 | ⬜ | |
+| T01 | pcode-export | T00 | 🔍 | Export script, stdlib driver, `run_import` extended. 18 tests: smoke file and Ghidra file (full, includes the game). Deviations: tests split in two, labels are per file; computed call is `call` plus `computed:true`; PC-relative and return-address constants also hunk-relative; extra `check` keys; loader pointer marks cleared, Ghidra's tail-call override ignored; README entry. |
 | T02 | pcode-runtime | T00 | ⬜ | |
 | T03 | pcode-translator | T02 | ⬜ | |
 | T04 | judge-translated | T00, T02 | ⬜ | |
@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 

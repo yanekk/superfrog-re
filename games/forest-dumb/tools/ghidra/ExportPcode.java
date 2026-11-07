@@ -11,8 +11,11 @@
 // table. A relocated long is found among an instruction's P-code operands by its loaded value.
 //@category Amiga
 import ghidra.app.script.GhidraScript;
+import ghidra.app.util.PseudoDisassembler;
+import ghidra.app.util.PseudoInstruction;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
+import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.mem.Memory;
@@ -118,11 +121,12 @@ public class ExportPcode extends GhidraScript {
                 if (in == null) {
                     disassemble(a);
                     in = getInstructionAt(a);
+                    if (in == null) in = clearAndDisassemble(a);
                     grew = true;
                 }
                 if (in == null) { undecoded.add(rel(a.getOffset())); continue; }
                 seen.put(a.getOffset(), in);
-                if (in.getFallThrough() != null) work.push(in.getFallThrough());
+                if (in.getDefaultFallThrough() != null) work.push(in.getDefaultFallThrough());
                 for (Address t : in.getFlows()) work.push(t);
                 for (Address t : computedTargets(in)) work.push(t);
             }
@@ -156,7 +160,7 @@ public class ExportPcode extends GhidraScript {
             int len = in.getLength();
             Function fn = getFunctionContaining(in.getAddress());
             if (fn != null) functions.add(fn);
-            PcodeOp[] ops = in.getPcode();
+            PcodeOp[] ops = in.getPcode(false);
 
             // relocated longs inside this instruction, by the value the operands carry
             Map<Long, String> relocValue = new HashMap<>();
@@ -206,7 +210,10 @@ public class ExportPcode extends GhidraScript {
             pcrel += countPcrel;
             countPcrel = 0;
 
-            FlowType ft = in.getFlowType();
+            // The instruction's own flow, not Ghidra's override: its function analysis turns a bra.w
+            // into another function's start into a tail call (CALL_TERMINATOR), which would read as a
+            // call that falls through. The P-code (getPcode(false)) is the plain BRANCH either way.
+            FlowType ft = rawFlow(in);
             String kind;
             List<String> targets = new ArrayList<>();
             boolean computed = ft.isComputed();
@@ -240,6 +247,7 @@ public class ExportPcode extends GhidraScript {
         js.append(",\"relocs\":").append(relocsIn);
         js.append(",\"relocs_matched\":").append(relocsMatched);
         js.append(",\"pcrel\":").append(pcrel);
+        js.append(",\"cleared_data\":").append(cleared);
         js.append(",\"unmatched\":").append(list(unmatched));
         js.append(",\"mismatched\":").append(list(mismatched));
         js.append(",\"unexplained\":").append(list(unexplained));
@@ -254,6 +262,40 @@ public class ExportPcode extends GhidraScript {
 
     private int countPcrel = 0;
 
+    private static FlowType rawFlow(Instruction in) {
+        return in.getPrototype().getFlowType(in.getInstructionContext());
+    }
+    private int cleared = 0;
+
+    /**
+     * The Amiga loader marks every relocated long as a pointer. Where the loader's marks precede any
+     * disassembly, the pointer sits inside an instruction's operand and Ghidra refuses to decode it
+     * ("conflicting data"). Flow reached this address, so the bytes are code: clear the data inside
+     * the one instruction they decode to (never an instruction) and decode again.
+     */
+    private Instruction clearAndDisassemble(Address a) throws Exception {
+        PseudoInstruction p;
+        try {
+            p = new PseudoDisassembler(currentProgram).disassemble(a);
+        } catch (Exception e) {
+            return null;
+        }
+        if (p == null) return null;
+        Address end = a.add(p.getLength() - 1);
+        List<Data> in = new ArrayList<>();
+        for (Address x = a; x.compareTo(end) <= 0; x = x.next()) {
+            if (getInstructionContaining(x) != null) return null;
+            Data d = getDataContaining(x);
+            if (d != null && d.isDefined() && !in.contains(d)) in.add(d);
+        }
+        for (Data d : in) {
+            removeData(d);
+            cleared++;
+        }
+        disassemble(a);
+        return getInstructionAt(a);
+    }
+
     private static String list(List<String> l) {
         StringBuilder b = new StringBuilder("[");
         for (int i = 0; i < l.size(); i++) b.append(i > 0 ? "," : "").append(q(l.get(i)));
@@ -263,7 +305,7 @@ public class ExportPcode extends GhidraScript {
     /** Targets Ghidra found for a computed jump or call (a jump table its analysis resolved). */
     private List<Address> computedTargets(Instruction in) {
         List<Address> out = new ArrayList<>();
-        if (!in.getFlowType().isComputed()) return out;
+        if (!rawFlow(in).isComputed()) return out;
         for (Reference r : in.getReferencesFrom()) {
             if (r.getReferenceType().isFlow() && r.getToAddress().isMemoryAddress()
                     && hunkOf(r.getToAddress().getOffset()) >= 0)

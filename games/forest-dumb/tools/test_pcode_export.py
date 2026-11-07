@@ -27,10 +27,13 @@ CODE = bytes.fromhex(
     '45FA0006'      # $1c lea (6,pc),a2       = h0+$24, not relocated
     '4ED3'          # $20 jmp (a3)            nothing says where
     '4E71'          # $22 nop
-    '4E714E71')     # $24
+    '60000006'      # $24 bra.w $2c           two routines share one tail: Ghidra makes $2c a function
+    '60000002'      # $28 bra.w $2c           and calls these two branches tail calls
+    '7402'          # $2c moveq #2,d2
+    '4E75')         # $2e rts
 # hunk 1, DATA: a pointer to h0+$18 at $10, relocated to hunk 0
 DATA = bytes(16) + struct.pack('>I', 0x18) + bytes(12)
-ENTRIES = [(0, 0x0, 10), (0, 0x1c, 2)]
+ENTRIES = [(0, 0x0, 10), (0, 0x1c, 2), (0, 0x24, 3), (0, 0x28, 3)]
 
 
 def longs(*xs):
