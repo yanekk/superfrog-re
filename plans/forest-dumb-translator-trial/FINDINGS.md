@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | ✅ | **Owner: "Go"** on the trial (T08), picked after reading the gate reading: 84 of 85 judgeable pass with no hand edit (98.8%), 0 code writes on level 1's path. No note for the second plan. |
 | 2026-11-07 | 📌 | **T07 last run:** `{"judgeable":85,"pass":84,"pass_pct":98.8,"pass_with_hints":84,"unjudgeable":2,"unsupported":0,"untranslated":0,"write_into_code":1}`. Gate met with no hint; `translator-hints.toml` still holds none. |
 | 2026-11-07 | 📌 | **T07 categories** of T06's 10 failures: Ghidra's P-code, corrected in the translator, 9 (`abcd`/`sbcd`); needs stage 2, 1 (`h0_6852`); fixed otherwise 0; needs a hint 0; unexplained 0. Two sound routines stay unjudgeable. |
 | 2026-11-07 | 🐞 | For stage 1's Moira check: Ghidra 12.0's `abcd`/`sbcd` call undefined `bcdAdjust`, `abcd` drops its result, Z is set on non-zero, `-(a7)` steps 1. `pcode_rust.py` emits them via `pcode_rt::bcd` (Moira's arithmetic). `nbcd` stays unsupported. |
