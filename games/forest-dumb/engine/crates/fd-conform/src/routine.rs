@@ -357,6 +357,11 @@ impl Rig {
         }
     }
 
+    /// Each hunk's size, in hunk order, as the loader placed them; empty for a rig over raw memory.
+    pub fn hunk_sizes(&self) -> Vec<u32> {
+        self.hunks.iter().map(|&(_, n)| n).collect()
+    }
+
     /// `hN+$off` for an address inside the program, else `$xxxxxx`.
     pub fn name(&self, a: u32) -> String {
         for (i, &(b, n)) in self.hunks.iter().enumerate() {
@@ -535,7 +540,10 @@ impl Rig {
                         Some(p) => {
                             let ran = catch_unwind(AssertUnwindSafe(|| p(&s)));
                             Some(match ran {
-                                Err(e) => vec![format!("the port panicked: {}", panic_text(&e))],
+                                Err(e) => vec![match e.downcast_ref::<PortStop>() {
+                                    Some(PortStop(why)) => format!("the port stopped: {why}"),
+                                    None => format!("the port panicked: {}", panic_text(&e)),
+                                }],
                                 Ok(eff) => self.compare(r, &eff, compared),
                             })
                         }
@@ -696,6 +704,11 @@ pub fn seed(name: &str) -> u64 {
         (h ^ b as u64).wrapping_mul(0x100_0000_01b3)
     })
 }
+
+/// Unwound with (`std::panic::resume_unwind`, which runs no panic hook) by a port that stops on
+/// purpose instead of guessing, a translated tree's `Stop` (`judge::translated`): the state fails
+/// with "the port stopped: " and the reason, not as a panic.
+pub struct PortStop(pub String);
 
 fn panic_text(e: &Box<dyn std::any::Any + Send>) -> String {
     e.downcast_ref::<String>()

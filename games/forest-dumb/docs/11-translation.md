@@ -102,6 +102,26 @@ A new run of a routine clears its folder first.
 - 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
   6 paths.
 
+### A translated tree: `fd-judge --translated` (translator-trial T04)
+
+The same judge for code the static translator wrote (plans/forest-dumb-translator-trial, DESIGN
+§2.2, §2.5). `FD_TRANSLATED=<build/translator/tree.rs>` builds the whole tree into `fd-judge` once;
+`--translated` then judges any routine of it, entered at `hN+$off`, on the same bar as a port:
+
+```
+FD_TRANSLATED=build/translator/tree.rs cargo run -q -p fd-conform --bin fd-judge -- 'h0+$5462' --gen char_sprite_position --translated [--cases N]
+```
+
+- The line is the usual one plus `"untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."`.
+  A stop fails its state ("the port stopped: .." in `first_failure`); `stopped_hangs` is the
+  translated code's step cap, apart from the original's `hangs`.
+- The entry is called as the oracle calls the original: a7 four bytes below the rig's stack,
+  holding the oracle's return address, the program at `HUNK_BASES`. Registers are copied in and out of
+  `pcode-rt`'s `Regs`.
+- Without `FD_TRANSLATED` the tree has no entries: every state stops `untranslated`.
+- The library form, `judge::translated::check`, takes the entry and the code ranges as arguments
+  (`tests/judge_translated.rs`).
+
 ## The generator service: `tools/generate.py` (T61)
 
 Muse writes a routine's generator and the machine judges it on the original, so a builder reviews a

@@ -8,6 +8,12 @@
 //! `tools/translate.py` reads to answer `no-oracle` before any model call. Exit 0 when the line was
 //! printed, whatever the verdict; 2 on bad arguments or missing disks, with the reason on stderr.
 //!
+//! `--translated` judges the translated tree built in from `FD_TRANSLATED` (translator-trial T04,
+//! `judge::translated`) entered at the routine, instead of `FD_PORT`'s port; one build serves every
+//! routine of the tree. The line gains the stops, one per failed state, by kind, and the first:
+//!
+//! `..,"first_failure":"..","untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."}`
+//!
 //! `--cover` judges the generator, not a port (T61, `tools/generate.py`): the original alone,
 //! traced ([`Rig::coverage`]), then each state's pokes and hardware reads against the bytes the
 //! original read on some state, off the rig's stack:
@@ -20,10 +26,12 @@
 use std::process::ExitCode;
 
 use fd_conform::generators;
+use fd_conform::judge::translated::{self, Stops, tree};
 use fd_conform::judge::{self, port};
 use fd_conform::routine::{Coverage, Gen, Generator, Rig, RigReport, STACK_AREA, h, seed};
 
-const USAGE: &str = "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover]";
+const USAGE: &str =
+    "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover | --translated]";
 
 /// `hN+$off` as (hunk, offset).
 fn parse_routine(r: &str) -> Option<(usize, u32)> {
@@ -55,13 +63,14 @@ struct Args {
     cases: usize,
     survey: bool,
     cover: bool,
+    translated: bool,
 }
 
 fn args() -> Result<Args, String> {
     let v: Vec<String> = std::env::args().skip(1).collect();
     let mut it = v.iter();
-    let (mut routine, mut gen_name, mut cases, mut survey, mut cover) =
-        (None, None, 2000usize, false, false);
+    let (mut routine, mut gen_name, mut cases, mut survey, mut cover, mut translated) =
+        (None, None, 2000usize, false, false, false);
     while let Some(a) = it.next() {
         match a.as_str() {
             "--gen" => gen_name = it.next().cloned(),
@@ -74,13 +83,16 @@ fn args() -> Result<Args, String> {
             }
             "--survey" => survey = true,
             "--cover" => cover = true,
+            "--translated" => translated = true,
             r if routine.is_none() && !r.starts_with("--") => routine = Some(r.to_string()),
             other => return Err(format!("`{other}`: {USAGE}")),
         }
     }
     let routine = routine.ok_or(USAGE)?;
-    if survey && cover {
-        return Err(format!("--survey and --cover are two modes: {USAGE}"));
+    if [survey, cover, translated].iter().filter(|&&m| m).count() > 1 {
+        return Err(format!(
+            "--survey, --cover and --translated are three modes: {USAGE}"
+        ));
     }
     let (hunk, off) = parse_routine(&routine)
         .ok_or_else(|| format!("`{routine}` is not `hN+$off` with N a hunk 0-4"))?;
@@ -91,6 +103,7 @@ fn args() -> Result<Args, String> {
         cases,
         survey,
         cover,
+        translated,
     })
 }
 
@@ -125,9 +138,27 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     // Seeded by the generator's name, as an engine port's rig test seeds it, so both see the same states.
+    let mut stops = None::<Stops>;
     let (report, failures, first): (RigReport, usize, String) = if a.survey {
         let r = rig.survey(&a.gen_name, a.cases, a.entry, &generator);
         (r, 0, String::new())
+    } else if a.translated {
+        // The tree names entries `hN+$off` in lower-case hex, whatever the argument's case.
+        let key = rig.name(a.entry);
+        let j = translated::check(
+            &mut rig,
+            &a.gen_name,
+            a.cases,
+            a.entry,
+            &generator,
+            tree::entry(&key),
+            tree::CODE,
+        );
+        stops = Some(j.stops);
+        match j.verdict {
+            Ok(r) => (r, 0, String::new()),
+            Err(f) => (f.report, f.failures, f.first),
+        }
     } else {
         match judge::check(
             &mut rig,
@@ -142,8 +173,18 @@ fn main() -> ExitCode {
         }
     };
     let pass = !a.survey && failures == 0 && report.passed > 0;
+    let stops = stops.map_or(String::new(), |s| {
+        format!(
+            ",\"untranslated\":{},\"write_into_code\":{},\"unsupported\":{},\"stopped_hangs\":{},\"first_stop\":\"{}\"",
+            s.untranslated,
+            s.write_into_code,
+            s.unsupported,
+            s.hangs,
+            esc(&s.first)
+        )
+    });
     println!(
-        "{{\"routine\":\"{}\",\"gen\":\"{}\",\"cases\":{},\"passed\":{},\"paths\":{},\"hangs\":{},\"faults\":{},\"unmodelled_blits\":{},\"failures\":{failures},\"pass\":{pass},\"first_failure\":\"{}\"}}",
+        "{{\"routine\":\"{}\",\"gen\":\"{}\",\"cases\":{},\"passed\":{},\"paths\":{},\"hangs\":{},\"faults\":{},\"unmodelled_blits\":{},\"failures\":{failures},\"pass\":{pass},\"first_failure\":\"{}\"{stops}}}",
         esc(&a.routine),
         esc(&a.gen_name),
         a.cases,

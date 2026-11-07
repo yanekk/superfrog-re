@@ -954,6 +954,7 @@ dependencies = [
  "fd-assets",
  "fd-core",
  "fd-tools",
+ "pcode-rt",
 ]
 
 [[package]]
