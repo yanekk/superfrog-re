@@ -259,6 +259,45 @@ pub struct Rig {
     last_regs: Option<Regs>,
 }
 
+/// Each hunk's `(base, size)` on the oracle.
+pub type HunkSpans = Vec<(u32, u32)>;
+
+/// `exe`'s hunks at [`crate::HUNK_BASES`], relocated, in a `MEM_SIZE` image, and each hunk's
+/// `(base, size)`: memory as the oracle holds the program once loaded.
+pub fn load_program(exe: &[u8]) -> Result<(Vec<u8>, HunkSpans), String> {
+    let hunks = amiga_disk::hunk::parse(exe).map_err(|e| format!("{PROGRAM}: {e}"))?;
+    if hunks.len() != HUNK_BASES.len() {
+        return Err(format!(
+            "{PROGRAM}: {} hunks, not the {} the oracle measured",
+            hunks.len(),
+            HUNK_BASES.len()
+        ));
+    }
+    let mut mem = vec![0u8; MEM_SIZE];
+    for (hk, &base) in hunks.iter().zip(&HUNK_BASES) {
+        mem[base as usize..base as usize + hk.data.len()].copy_from_slice(&hk.data);
+    }
+    for (hk, &base) in hunks.iter().zip(&HUNK_BASES) {
+        for r in &hk.relocs {
+            let target = *HUNK_BASES
+                .get(r.target as usize)
+                .ok_or_else(|| format!("{PROGRAM}: a relocation to hunk {}", r.target))?;
+            for &off in &r.offsets {
+                let at = (base + off) as usize;
+                let v =
+                    u32::from_be_bytes(mem[at..at + 4].try_into().unwrap()).wrapping_add(target);
+                mem[at..at + 4].copy_from_slice(&v.to_be_bytes());
+            }
+        }
+    }
+    let spans = hunks
+        .iter()
+        .zip(&HUNK_BASES)
+        .map(|(hk, &b)| (b, hk.size))
+        .collect();
+    Ok((mem, spans))
+}
+
 impl Rig {
     /// The main program from the owner's disks, loaded at the oracle's hunk bases.
     pub fn new() -> Result<Rig, String> {
@@ -270,37 +309,9 @@ impl Rig {
     /// `exe`'s hunks at [`crate::HUNK_BASES`], relocated: the loader the game's own `LoadSeg` would
     /// be. `Cpu68k::load_exe` places hunks back to back and the oracle did not.
     pub fn from_program(exe: &[u8]) -> Result<Rig, String> {
-        let hunks = amiga_disk::hunk::parse(exe).map_err(|e| format!("{PROGRAM}: {e}"))?;
-        if hunks.len() != HUNK_BASES.len() {
-            return Err(format!(
-                "{PROGRAM}: {} hunks, not the {} the oracle measured",
-                hunks.len(),
-                HUNK_BASES.len()
-            ));
-        }
-        let mut mem = vec![0u8; MEM_SIZE];
-        for (hk, &base) in hunks.iter().zip(&HUNK_BASES) {
-            mem[base as usize..base as usize + hk.data.len()].copy_from_slice(&hk.data);
-        }
-        for (hk, &base) in hunks.iter().zip(&HUNK_BASES) {
-            for r in &hk.relocs {
-                let target = *HUNK_BASES
-                    .get(r.target as usize)
-                    .ok_or_else(|| format!("{PROGRAM}: a relocation to hunk {}", r.target))?;
-                for &off in &r.offsets {
-                    let at = (base + off) as usize;
-                    let v = u32::from_be_bytes(mem[at..at + 4].try_into().unwrap())
-                        .wrapping_add(target);
-                    mem[at..at + 4].copy_from_slice(&v.to_be_bytes());
-                }
-            }
-        }
+        let (mem, hunks) = load_program(exe)?;
         let mut rig = Rig::from_memory(mem);
-        rig.hunks = hunks
-            .iter()
-            .zip(&HUNK_BASES)
-            .map(|(hk, &b)| (b, hk.size))
-            .collect();
+        rig.hunks = hunks;
         Ok(rig)
     }
 
