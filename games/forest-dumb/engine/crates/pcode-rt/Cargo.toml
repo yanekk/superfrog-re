@@ -1,0 +1,9 @@
+[package]
+name = "pcode-rt"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Pure (translator-trial DESIGN §3.1): the runtime translated code calls. Names no game, takes every
+# game fact as input, and has no dependencies.
+[dependencies]
