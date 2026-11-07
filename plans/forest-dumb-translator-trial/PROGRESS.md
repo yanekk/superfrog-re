@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | code-writes-check | T00 | ✅ | |
 | T06 | trial-tool | T01, T03, T04 | ✅ | |
 | T07 | trial-fixes | T06 | ✅ | |
-| T08 | trial-report | T05, T07 | ⬜ | |
+| T08 | trial-report | T05, T07 | ✅ | |
 
 **Review queue:** *(empty)*
 
