@@ -182,7 +182,7 @@ once level 1 merges.
   two of the instruction kinds the tree used were wrong. The census against Moira should cover
   condition codes and X, which the trial did not compare, and start from the four defects above.
 - **Stage 2, finding the code.** The 87 routines' tree needed no hint and has no unresolved jump;
-  the export follows every direct branch once entries are seeded from `re/symbols.toml` (Ghidra alone
+  the export follows every direct branch once entries are seeded from `re/translate.toml`, names from `re/symbols.toml` (Ghidra alone
   finds 3 837 instructions). The two stops work as designed. `h0_6852` is the case to settle: a write
   into a translated instruction on a state the game does not reach.
 - **Stage 3, runtime.** Addresses are hunk-relative and resolved at run time, so the oracle's bases
