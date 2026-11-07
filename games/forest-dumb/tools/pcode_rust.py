@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Translate a P-code export into one Rust module that runs every exported routine instruction for
-instruction on `pcode-rt` (plans/forest-dumb-translator-trial T03, DESIGN §2.3, §2.5, §2.8, §3.3).
+instruction on `pcode-rt` (the translator trial's T03; its DESIGN §2.3, §2.5, §2.8, §3.3).
 
     python3 -I pcode_rust.py <pcode.json> --out <tree.rs> [--hints <toml>]
 
@@ -29,6 +29,7 @@ Python's standard library only, so it runs under `python3 -I`.
 """
 import argparse, json, os, re, sys, tomllib
 
+U32 = (1 << 32) - 1
 ADDR = re.compile(r'^h(\d+)\+\$([0-9a-fA-F]+)$')
 
 # Binary ops whose helper takes (a, b, size of the inputs).
@@ -315,7 +316,7 @@ class Emit:
         if isinstance(off, str):
             h, o = parse_addr(off, 'varnode')
             return f'img.h({h}, {hex_lit(o)})'
-        return hex_lit(off & 0xffffffff)
+        return hex_lit(off & U32)
 
     def rd(self, v):
         space, off, size = v
@@ -382,7 +383,7 @@ class Emit:
         """Control to the address `off` names (a ram varnode's offset)."""
         if isinstance(off, str):
             return f'pc = {key(parse_addr(off, "target"))}; continue \'b;'
-        return f'return Err(Stop::Untranslated({json.dumps(f"${off & 0xffffffff:06x}")}.into()));'
+        return f'return Err(Stop::Untranslated({json.dumps(f"${off & U32:06x}")}.into()));'
 
     @staticmethod
     def goto_abs(expr):
@@ -524,7 +525,7 @@ def render(export, source_name):
                 if ('BRANCHIND' in ops or 'CALLIND' in ops) and not insns[a]['targets']:
                     stats['computed_unresolved'] += 1
     out = [f'// Generated from {source_name}; never committed when made from a game.',
-           '// By pcode_rust.py (forest-dumb-translator-trial T03). Do not edit: regenerate.',
+           '// By pcode_rust.py. Do not edit: regenerate.',
            '#[allow(unused_imports)]',
            'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};',
            '',

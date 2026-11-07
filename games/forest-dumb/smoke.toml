@@ -5,6 +5,8 @@ workspace = "engine"
 "crates/fd-conform/src" = "smoke"
 # T02 (translator trial): the P-code runtime's unit tests, under a second.
 "crates/pcode-rt/src" = "smoke"
+# T03 (translator trial): the translator's made-up fixtures, translated and run, under a second.
+"crates/pcode-rt/tests/translated.rs" = "smoke"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [
@@ -267,6 +269,8 @@ workspace = "engine"
 "tools/test_task_pack.py" = "smoke"
 # A hand-made conversation log, no run: under 1 s.
 "tools/test_pack_check.py" = "smoke"
+# T03 (translator trial): the translator on made-up exports, its fixtures current, under a second.
+"tools/test_pcode_rust.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"

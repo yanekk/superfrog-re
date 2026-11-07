@@ -1,5 +1,5 @@
 // Generated from dbf_loop.json; never committed when made from a game.
-// By pcode_rust.py (forest-dumb-translator-trial T03). Do not edit: regenerate.
+// By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
 use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
 
