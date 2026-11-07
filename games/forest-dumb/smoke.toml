@@ -108,6 +108,8 @@ workspace = "engine"
 "crates/fd-conform/tests/character_routines.rs" = "smoke"
 # T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
 "crates/fd-conform/tests/collect_routines.rs" = "smoke"
+# T24: the creatures' twelve routines on the rig, the in-play move and sort, two mutants: about 9 s warm.
+"crates/fd-conform/tests/enemy_routines.rs" = "smoke"
 # T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
 # 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
 # in full.
@@ -418,6 +420,14 @@ covers = [
     "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
     "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
     "crates/fd-conform/tests/death.rs::falling_into_the_water_loses_a_life_as_the_originals",
+]
+
+[[area]]
+name = "level 1's creatures moving, sorted and stomped, against the original"
+covers = [
+    "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
+    "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
 ]
 
 [[area]]

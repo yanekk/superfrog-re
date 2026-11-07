@@ -176,6 +176,38 @@ units = [
   { fn = "char_hit_check", routines = [["char_hit_check", 0x3b2a]] },
 ]
 
+[T24]
+src = "crates/fd-core/src/objects/creature.rs"
+impl = "impl Creatures<'_>"
+test = "crates/fd-conform/tests/enemy_routines.rs"
+test_fn = "every_t24_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/objects/creature.rs", "crates/fd-core/src/level/redraw.rs",
+         "crates/fd-core/src/state.rs"]
+layout = false
+harness = ["CHAR_X", "MOVING_SLOT", "SLOT_INDEX", "STOMPED", "ACTIVE", "SLOTS", "SORTED", "COLLISION", "h0",
+           "CpuGround", "load", "bytes", "store", "on_creatures", "slot_a0"]
+adapter_fn = true
+examples = ["step_back", "wall_left"]
+compared = """The rig loads the State fields the creature ports use from memory (char_x, the five creature \
+flags and slots in `edges.creatures`, `creatures.index`, `moving.slot`, `moving.stomped`), runs your \
+function with `self.ground` over that memory (`collision_map` bytes and the program's step tables at \
+hunk 0 offsets), stores what changed and compares every byte the original writes. A helper's slot \
+arrives as `i`, from the original's a0. No register is compared."""
+units = [
+  { fn = "move_all", routines = [["h0_2fae", 0x2fae]] },
+  { fn = "move_slot", routines = [["h0_2fea", 0x2fea]] },
+  { fn = "step_back", routines = [["h0_320a", 0x320a]] },
+  { fn = "step_on", routines = [["h0_3222", 0x3222]] },
+  { fn = "hop_back", routines = [["h0_32f8", 0x32f8]] },
+  { fn = "hop_on", routines = [["h0_3322", 0x3322]] },
+  { fn = "wall_left", routines = [["h0_3530", 0x3530]] },
+  { fn = "edge_left", routines = [["h0_3566", 0x3566]] },
+  { fn = "wall_right", routines = [["h0_35a0", 0x35a0]] },
+  { fn = "edge_right", routines = [["h0_35dc", 0x35dc]] },
+  { fn = "sort", routines = [["h0_3698", 0x3698]] },
+]
+
 [T52]
 src = "crates/fd-core/src/render/objects.rs"
 impl = "impl Creatures<'_>"

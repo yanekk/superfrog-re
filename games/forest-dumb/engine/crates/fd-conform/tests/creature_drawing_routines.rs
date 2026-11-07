@@ -532,12 +532,11 @@ fn game_frame_restores_and_cuts_the_creatures() {
         if creatures.active.iter().all(|&f| f == 0) {
             continue;
         }
-        // What the step should draw: the foreground, then the restore and the cut in place, since
-        // nothing moves the creatures yet (T24).
+        // What the step should draw: the foreground, then the restore with the slots as they were
+        // and the cut with the slots the step moved and sorted (T24).
         let mut want = g.clone();
         want.foreground();
         let undrawn = want.display().screen.clone();
-        let (want, _) = drawn(&want, &creatures, &creatures);
         // A case freezing creatures in the original skips the drawing (owner, 2026-11-06): its step
         // leaves the screen as the foreground does.
         let mut frozen = g.clone();
@@ -545,6 +544,7 @@ fn game_frame_restores_and_cuts_the_creatures() {
         frozen.step(amiga_oracle::FrameInput::NONE);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
+        let (want, _) = drawn(&want, &creatures, &s.edges.creatures);
         // A creature written back (T22), an item taken, or a spring or an animated cell the pass
         // itself started (T25) redraws more than this test models.
         if s.edges.creatures.active != creatures.active
@@ -633,9 +633,10 @@ fn game_frame_restores_the_creatures_the_last_pass_drew() {
         let mut want = g.clone();
         want.foreground();
         let undrawn = want.display().screen.clone();
-        let (want, _) = drawn(&want, &creatures, &creatures);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
+        // Cut with the slots the step moved and sorted (T24).
+        let (want, _) = drawn(&want, &creatures, &s.edges.creatures);
         if s.edges.creatures.active != creatures.active
             || s.items_left != items
             || s.spring.timer != 0

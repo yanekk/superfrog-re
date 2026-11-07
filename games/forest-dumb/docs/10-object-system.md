@@ -148,6 +148,28 @@ which shifts out a 0. Nothing is a loop left and re-entered on a later pass.
 from the table at `h0+$3b988`, which holds `n * $a0`). The engine adds it to the screen's blits
 (`Blit::Cell`); nothing reads the screen back as game state.
 
+## Creatures, ported (T24)
+
+`fd-core/src/objects/creature.rs` ports `h0_2fae`, `h0_2fea`, `h0_320a`, `h0_3222`, `h0_32f8`, `h0_3322`,
+the four probes `h0_3530`, `h0_3566`, `h0_35a0`, `h0_35dc`, the sort `h0_3698` and the stomp's box test
+`h0_3dd8`; `char_hit_check`'s stomp loop is `character::Play::stomp` (rig: `fd-conform/tests/enemy_routines.rs`,
+`death_routines.rs`). A creature lives in its slot, never as a `crate::Object`: no `ObjectKind` is registered.
+
+**Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
+porting. All run inside `game_frame`, so inside the level-3 handler: nothing cuts them, and none is a
+loop left and re-entered on a later pass. The one wait is the stomp sound's (`h0_3adc`): four VHPOSR
+line changes between channel 2's DMA off and on, which change no game state. Values latched:
+`creature_slot_index` (`h0+$2faa`) is set by `h0_2fae`'s loop before each `h0_2fea`, which reads it only
+for kind 7 (it clears that slot's flag, not `d0`'s). Write-only: `h0+$2fe6` (`h0_2fea`'s `d0`), `h0+$306e`
+(set to 1 by kind 7) and `h0_3698`'s sorted copy at `h0+$366a`, which equals the slots after the sort; its
+`move.w` back writes `creature_active+5` as 0. `h0_3698` compares the middle pairs' y as bytes and the
+outer as words, each by the result's sign.
+
+**The screen is state?** Not here: these routines write slots only. The creatures are cut onto the play
+screen by `h0_2d4c` (T52), and contact with them reaches `char_hit_check` through CLXDAT from that
+picture, so the engine's creatures hurt the character only once T52 draws them. The stomp needs no
+picture: it tests the slots' boxes against the feet.
+
 ## Mechanics, ported (T25)
 
 `fd-core/src/objects/spring.rs` ports `h0_24ce` (a spring under the feet) and `h0_21c0` (its picture);

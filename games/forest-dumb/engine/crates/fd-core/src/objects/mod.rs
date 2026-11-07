@@ -14,6 +14,7 @@
 
 pub mod animated;
 pub mod collectible;
+pub mod creature;
 pub mod spring;
 
 use crate::State;

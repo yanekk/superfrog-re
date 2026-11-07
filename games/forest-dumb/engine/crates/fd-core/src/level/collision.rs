@@ -118,7 +118,9 @@ impl CollisionPlane {
         }
     }
 
-    fn byte(&self, off: u32) -> u8 {
+    /// The byte at `off` from the map's first, kept or not: past what a plane in play keeps it is 0,
+    /// over the rig's memory it is the original's (the creature probes reach `$4dd1` in, T24).
+    pub fn byte(&self, off: u32) -> u8 {
         let i = self.at.wrapping_add(off) & 0xff_ffff;
         self.mem.get(i as usize).copied().unwrap_or(0)
     }

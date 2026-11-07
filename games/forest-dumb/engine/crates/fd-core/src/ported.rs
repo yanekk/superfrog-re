@@ -159,6 +159,27 @@ pub const PORTED: &[Ported] = &[
         0x3b2a,
         "character::Play::char_hit_check",
     ),
+    // T24: the creatures' movement and sort (objects/creature.rs), and the stomp's box test.
+    port("h0_2fae", 0x2fae, "objects::creature::Creatures::move_all"),
+    port("h0_2fea", 0x2fea, "objects::creature::Creatures::move_slot"),
+    port("h0_320a", 0x320a, "objects::creature::Creatures::step_back"),
+    port("h0_3222", 0x3222, "objects::creature::Creatures::step_on"),
+    port("h0_32f8", 0x32f8, "objects::creature::Creatures::hop_back"),
+    port("h0_3322", 0x3322, "objects::creature::Creatures::hop_on"),
+    port("h0_3530", 0x3530, "objects::creature::Creatures::wall_left"),
+    port("h0_3566", 0x3566, "objects::creature::Creatures::edge_left"),
+    port(
+        "h0_35a0",
+        0x35a0,
+        "objects::creature::Creatures::wall_right",
+    ),
+    port(
+        "h0_35dc",
+        0x35dc,
+        "objects::creature::Creatures::edge_right",
+    ),
+    port("h0_3698", 0x3698, "objects::creature::Creatures::sort"),
+    port("h0_3dd8", 0x3dd8, "objects::creature::overlaps"),
     // T52: the creatures restored and cut (render/objects.rs).
     port("h0_2c7e", 0x2c7e, "render::objects::Creatures::restore_all"),
     port("h0_2d4c", 0x2d4c, "render::objects::Creatures::cut_all"),

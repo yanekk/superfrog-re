@@ -24,15 +24,18 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact and T25's springs
-/// and vanishing blocks): stalled with 149 of 282 coins still to take, 6 980 frames in, no life lost.
-const END: &str = "W1-1:189,90";
-const FRAMES: usize = 6980;
-const COINS_LEFT: u16 = 149;
-/// The passes the original and the engine are compared on, all agreeing (T70; T25's route, both sides
-/// frozen as the case says); the rest of the route's frames and the idle slack the original ended
-/// unseen, two in one step.
-const AGREED: u32 = 6821;
+/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact, T25's springs
+/// and vanishing blocks, T52's drawing and T24's creatures): stalled with 188 of 282 coins still
+/// to take, 4 380 frames in, no life lost.
+const END: &str = "W1-1:66,90";
+const FRAMES: usize = 4380;
+const COINS_LEFT: u16 = 188;
+/// The pass the original and the engine first differ at (T24): the case's engine, frozen as the case
+/// freezes the original, still starts creatures from its edge redraws (`h0_681c` is frozen only in
+/// the original); one walks under the character, which stomps it at its step 566 and bounces:
+/// `char_x` one pixel apart. With the creatures left unmoved the route agrees on every pass (T24
+/// review). T46 lifts that freeze. Every pass before agrees.
+const PARTS_AT: u32 = 567;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -225,15 +228,17 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
     let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert!(v.goal_met.is_some(), "{v}");
-    // Every pass was compared but those the original ended unseen (two in one step): the route's
-    // frames and the idle slack after it.
-    assert_eq!(v.passes, AGREED, "{v}");
-    assert_eq!(v.passes + v.unseen, FRAMES as u32 + confirm::SLACK, "{v}");
-    // The whole route is the original's, past the level's middle and no life lost.
-    let g = replay(&d, &p.route.inputs);
-    assert!(g.location().col >= 120, "{}", g.location());
+    // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
+    // T46 closes its gap this fails, and the constant above goes. This route parts before
+    // `edge_latch_right`'s gap (T73, `confirm::EDGE_LATCH_RIGHT`), measured on T24's route before its
+    // merge with T25 and T52.
+    let Outcome::Differs { pass, ref var, .. } = v.outcome else {
+        panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
+    };
+    assert_eq!((pass, var.as_str()), (PARTS_AT, "char_x"), "{v}");
+    // Up to there, at the character's cell then (`W1-1:56,28`), no life lost.
+    let g = replay(&d, &p.route.inputs[..PARTS_AT as usize]);
+    assert!(g.location().col >= 50, "{}", g.location());
     assert_eq!(g.lives(), 32);
 }
 

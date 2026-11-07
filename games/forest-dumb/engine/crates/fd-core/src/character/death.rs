@@ -20,6 +20,8 @@
 use amiga_input::KeySet;
 
 use crate::State;
+use crate::objects::collectible::bcd_add;
+use crate::objects::creature;
 use crate::program::{Scratch, h};
 use crate::render::contact::CONTACT;
 
@@ -36,6 +38,18 @@ pub const HURT_SAMPLE: u32 = 0x00c8d0;
 pub const HURT_LENGTH: u16 = 0x15a4;
 pub const HURT_PERIOD: u16 = 0x00ff;
 pub const HURT_VOLUME: u16 = 0x003f;
+/// The stomp sound `h0_3adc` starts on audio channel 2, as [`HURT_SAMPLE`]'s.
+pub const STOMP_SAMPLE: u32 = 0x010df4;
+pub const STOMP_LENGTH: u16 = 0x0e6c;
+pub const STOMP_PERIOD: u16 = 0x0165;
+pub const STOMP_VOLUME: u16 = 0x003f;
+const AUD2_OFF: u16 = 0x0004;
+const AUD2_ON: u16 = 0x8204;
+/// What a stomp scores, BCD.
+pub const STOMP_SCORE: u32 = 0x250;
+/// The point a stomp tests against a creature's box: below the character's feet.
+pub const FEET_X: u32 = 0x10;
+pub const FEET_Y: u32 = 0x24;
 /// DMACON, and the writes that stop and start audio channel 1's DMA.
 const DMACON: u16 = 0x96;
 const AUD1_OFF: u16 = 0x0002;
@@ -216,11 +230,44 @@ impl Play<'_> {
         ]);
     }
 
-    /// The creature half of `char_hit_check` (`h0+$3b5c` to `$3d34`, T24): while falling, each active
-    /// creature slot whose box `h0_3dd8` finds under the feet is stomped (kind 7, +250, a bounce) and
-    /// the pass counts no hit. `true` when one was. No creature is ported yet, so none is stomped.
-    pub fn stomp(&mut self, _scratch: &mut Scratch) -> bool {
-        false
+    /// The creature half of `char_hit_check` (`h0+$3b66` to `$3d34`, T24), while falling: the first
+    /// active slot, 0 to 4, whose box ([`creature::overlaps`], `h0_3dd8`) holds the point
+    /// (`char_x + $10`, `char_y + $24`) and is not already stomped is stomped: kind
+    /// [`creature::STOMPED`], phase 0, `hits_taken` cleared, the bounce (`char_jump_3b28` and
+    /// `char_rising` set), [`STOMP_SCORE`] added through `score_add` and the stomp sound (`h0_3adc`)
+    /// on audio channel 2, its writes pushed on `scratch.hw`. `true` when one was: the pass counts
+    /// no hit.
+    pub fn stomp(&mut self, scratch: &mut Scratch) -> bool {
+        let s = &mut *self.state;
+        let px = s.char_x.wrapping_add(FEET_X) as u16;
+        let py = s.char_y.wrapping_add(FEET_Y) as u16;
+        let c = &mut s.edges.creatures;
+        let Some(i) = (0..creature::SLOTS).find(|&i| {
+            c.active[i] != 0
+                && creature::overlaps(&c.slots[i], px, py)
+                && c.slots[i].kind != creature::STOMPED
+        }) else {
+            return false;
+        };
+        (c.slots[i].kind, c.slots[i].phase) = (creature::STOMPED, 0);
+        s.hits_taken = 0;
+        s.motion.jump_3b28 = 1;
+        s.motion.rising = 1;
+        // `score_add_routine`: added, then `score_add` cleared.
+        s.score = bcd_add(s.score, STOMP_SCORE);
+        s.collect.score_add = 0;
+        // `h0_3adc`: channel 2 off, a wait of four beam lines (reads only), its sample, on.
+        let sample = h(4, STOMP_SAMPLE);
+        scratch.hw.extend([
+            (DMACON, AUD2_OFF),
+            (0xc0, (sample >> 16) as u16),
+            (0xc2, sample as u16),
+            (0xc4, STOMP_LENGTH),
+            (0xc6, STOMP_PERIOD),
+            (0xc8, STOMP_VOLUME),
+            (DMACON, AUD2_ON),
+        ]);
+        true
     }
 
     /// `lives_minus_one` (`h0+$69d6`): one life less in BCD, unless none is left.

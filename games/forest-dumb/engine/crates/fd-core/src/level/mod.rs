@@ -34,6 +34,7 @@ use fd_assets::Level;
 
 use crate::State;
 use crate::character::{AnimTables, Character, Play};
+use crate::objects::creature::{Creatures, PlayGround};
 use crate::program::{Program, Scratch};
 
 use collision::CollisionPlane;
@@ -253,8 +254,16 @@ pub fn game_frame(
     }
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
-    // h0+$2fae: the creatures (T24); until they are ported, the dispatch's kinds run
-    // here.
+    // h0+$2fae: the creatures moved (T24).
+    Creatures {
+        state: l.state,
+        ground: &PlayGround {
+            plane: l.plane,
+            program: l.program,
+        },
+    }
+    .move_all();
+    // Until they are ported, the dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
     // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25). A frozen case's `h0_6882`
     // never fills the lists the edge redraws add to, so they are emptied before they are run.
@@ -265,7 +274,15 @@ pub fn game_frame(
     crate::objects::in_play(l, |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
-    // h0+$3698 (T24).
+    // h0+$3698: the slots sorted by y for drawing (T24).
+    Creatures {
+        state: l.state,
+        ground: &PlayGround {
+            plane: l.plane,
+            program: l.program,
+        },
+    }
+    .sort();
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
     if l.frozen.is_none() {

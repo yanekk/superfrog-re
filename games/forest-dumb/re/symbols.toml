@@ -1946,3 +1946,134 @@ offset = 0x5e44
 name = "h0_5e44"
 kind = "func"
 note = "copies the map's tiles back over the creature at h0+$5818: 3 by 2, a third row for kinds 0, 3, 7 (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fae
+name = "h0_2fae"
+kind = "func"
+note = "each active creature slot moved by its kind, creature_slot_index 0 to 4 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fe6
+name = "creature_moving_slot"
+kind = "var"
+size = 4
+note = "h0_2fea's d0, written each call, never read (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fea
+name = "h0_2fea"
+kind = "func"
+note = "creature slot d0 moved one pass by its kind: 0 flies, 1-5 walk or hop, 7 stomped (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x306e
+name = "creature_stomped_seen"
+kind = "var"
+size = 2
+note = "set to 1 by h0_2fea for a kind 7 slot, never read (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x320a
+name = "h0_320a"
+kind = "func"
+note = "kind 2 steps left by the table at h0+$323a (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3222
+name = "h0_3222"
+kind = "func"
+note = "kind 2 steps right by the table at h0+$328a (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x32f8
+name = "h0_32f8"
+kind = "func"
+note = "kind 3 hops left: x by h0+$334c, y by h0+$336c (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3322
+name = "h0_3322"
+kind = "func"
+note = "kind 3 hops right: x by h0+$334c, y by h0+$336c (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3530
+name = "h0_3530"
+kind = "func"
+note = "creature probe: solid at x, y+$18 turns it right (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3566
+name = "h0_3566"
+kind = "func"
+note = "creature probe: clear at x-1, y+$21 (a ledge) turns it right (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x35a0
+name = "h0_35a0"
+kind = "func"
+note = "creature probe: solid at x+$20, y+$18 turns it left (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x35dc
+name = "h0_35dc"
+kind = "func"
+note = "creature probe: clear at x+$21, y+$21 (a ledge) turns it left (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x366a
+name = "creature_sorted"
+kind = "var"
+size = 46
+note = "h0_3698's sorted copy: 6 flag bytes, then 5 slots at h0+$3670 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3698
+name = "h0_3698"
+kind = "func"
+note = "creature slots and flags sorted by y for drawing; middle pairs compared as bytes (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3adc
+name = "h0_3adc"
+kind = "func"
+note = "the stomp sound on audio channel 2 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3dd8
+name = "h0_3dd8"
+kind = "func"
+note = "point d0, d1 inside slot a0's $30 by $20 box: d7.b 1, else d7 0 (T24)"
