@@ -183,6 +183,8 @@ def judge(routine, gen, cases, mode):
     limit = SURVEY_SECONDS if mode == '--survey' else translate.JUDGE_SECONDS
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=limit)
+    except OSError as e:
+        raise StepFailed(f'judge: cannot run {argv[0]}: {e.strerror}')
     except subprocess.TimeoutExpired:
         return {'outcome': 'timeout', 'why': f'timeout ({limit} s)'}
     if p.returncode == 2:
@@ -321,19 +323,24 @@ def run(paths, only=None, skip_export=False, cases=translate.CASES, log=lambda m
         with open(trees['plain'], 'rb') as a, open(trees['hints'], 'rb') as b:
             same = a.read() == b.read()
 
+        # The survey runs the original alone, but through the built binary: build the plain tree first.
+        t = time.time()
+        build(trees['plain'])
+        log(f'build plain: {round(time.time() - t)} s')
         with cf.ThreadPoolExecutor(max_workers=PARALLEL) as pool:
             reasons = dict(zip([r['label'] for r in rows_in], pool.map(lambda r: unjudgeable(r, cases), rows_in)))
         judged = [r for r in rows_in if reasons[r['label']] is None]
         log(f'survey: {len(judged)} of {len(rows_in)} judgeable')
         results = {}
         for kind in ('plain', 'hints'):
-            if kind == 'hints' and same:
-                results['hints'] = results['plain']
-                log('hints: the tree is unchanged, verdicts reused')
-                continue
-            t = time.time()
-            build(trees[kind])
-            log(f'build {kind}: {round(time.time() - t)} s')
+            if kind == 'hints':
+                if same:
+                    results['hints'] = results['plain']
+                    log('hints: the tree is unchanged, verdicts reused')
+                    continue
+                t = time.time()
+                build(trees[kind])
+                log(f'build {kind}: {round(time.time() - t)} s')
             t = time.time()
             results[kind] = judge_all(judged, cases)
             log(f'judge {kind}: {round(time.time() - t)} s')
