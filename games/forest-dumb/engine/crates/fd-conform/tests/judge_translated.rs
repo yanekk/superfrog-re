@@ -8,7 +8,7 @@ use std::process::Command;
 use amiga_oracle::RETURN_SENTINEL;
 use fd_conform::generators::{self, h};
 use fd_conform::judge::translated::{self, Entry, tree};
-use fd_conform::routine::Rig;
+use fd_conform::routine::{Generator, Rig, Setup};
 use pcode_rt::{Bus, Image, Regs, Stop, load, store};
 
 const ROUTINE: &str = "h0+$5462";
@@ -178,4 +178,44 @@ fn fd_judge_translated_prints_the_stops_beside_the_verdict() {
         .output()
         .unwrap();
     assert_eq!(both.status.code(), Some(2));
+}
+
+/// `movea.l a7,a0; movea.l (a7),a1; rts` at $2000 in empty memory: the stack pointer and the word
+/// on top of it at entry, which the oracle sets to `STACK - 4` with its return address there.
+fn stack_at_entry_rig() -> Rig {
+    let mut mem = vec![0u8; 0x10_0000];
+    for (i, w) in [0x204fu16, 0x2257, 0x4e75].iter().enumerate() {
+        mem[0x2000 + i * 2..0x2002 + i * 2].copy_from_slice(&w.to_be_bytes());
+    }
+    let mut r = Rig::from_memory(mem);
+    r.set_max_instr(1_000);
+    r
+}
+
+fn stack_at_entry(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+    let sp = r.a(7);
+    r.set_a(0, sp);
+    r.set_a(1, load(bus, sp, 4) as u32);
+    r.set_a(7, sp.wrapping_add(4));
+    Ok(())
+}
+
+#[test]
+fn the_entry_sees_the_stack_the_original_sees() {
+    let mut r = stack_at_entry_rig();
+    let random = Generator {
+        base: None,
+        case: Setup::random,
+    };
+    let j = translated::check(
+        &mut r,
+        "stack",
+        20,
+        0x2000,
+        &random,
+        Some(stack_at_entry),
+        &[],
+    );
+    let rep = j.verdict.unwrap_or_else(|f| panic!("{f}"));
+    assert_eq!(rep.passed, 20);
 }

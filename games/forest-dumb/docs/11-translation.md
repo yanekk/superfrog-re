@@ -115,8 +115,8 @@ FD_TRANSLATED=build/translator/tree.rs cargo run -q -p fd-conform --bin fd-judge
 - The line is the usual one plus `"untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."`.
   A stop fails its state ("the port stopped: .." in `first_failure`); `stopped_hangs` is the
   translated code's step cap, apart from the original's `hangs`.
-- The entry is called as the oracle calls the original: a7 at the rig's stack with the oracle's
-  return address on top, the program at `HUNK_BASES`. Registers are copied in and out of
+- The entry is called as the oracle calls the original: a7 four bytes below the rig's stack,
+  holding the oracle's return address, the program at `HUNK_BASES`. Registers are copied in and out of
   `pcode-rt`'s `Regs`.
 - Without `FD_TRANSLATED` the tree has no entries: every state stops `untranslated`.
 - The library form, `judge::translated::check`, takes the entry and the code ranges as arguments

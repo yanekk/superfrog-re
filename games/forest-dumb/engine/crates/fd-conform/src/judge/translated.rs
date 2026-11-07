@@ -95,7 +95,7 @@ pub struct Judged {
 /// by `name`, as [`super::check`] runs a port.
 ///
 /// The state's registers are copied into `pcode-rt`'s, the entry is called as the oracle calls
-/// the original (a7 at the rig's stack, the oracle's return address on top of it), with the
+/// the original (a7 four bytes below the rig's stack, the oracle's return address there), with the
 /// program at [`HUNK_BASES`], and the registers are copied back.
 pub fn check(
     rig: &mut Rig,
@@ -114,16 +114,18 @@ pub fn check(
         let mut before = Mem::new(base.clone(), &s.pokes);
         before.beam.set(s.beam as u16);
         before.hw_reads = s.hw_reads.iter().copied().collect();
-        // Written before the snapshot, so the return address is no write of the routine's, as the
-        // oracle's is not. A `rts` at the top level pops it.
-        before.wl(STACK, RETURN_SENTINEL);
+        // The oracle pushes its return address below the stack it is given and enters with a7 on
+        // it (`amiga_oracle::Cpu68k::call`), so stack-relative reads see what the original's do.
+        // Written before the snapshot, so it is no write of the routine's. A top-level `rts` pops it.
+        let sp = STACK - 4;
+        before.wl(sp, RETURN_SENTINEL);
         let mut mem = before.clone();
         let mut r = pcode_rt::Regs::new();
         for n in 0..8 {
             r.set_d(n, s.d[n]);
             r.set_a(n, s.a[n]);
         }
-        r.set_a(7, STACK);
+        r.set_a(7, sp);
         let img = Image {
             bases: &HUNK_BASES,
             sizes: &sizes,
