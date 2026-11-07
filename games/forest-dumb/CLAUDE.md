@@ -85,6 +85,17 @@ A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Rep
 (`fd-conform bug replay`), compare it with the original (`fd-conform bug compare`, retimed by pass),
 keep a difference as a case that fails before the fix.
 
+## Tools: read the README before the source
+
+Each tool has a short README saying how to call it. Read it, in one step, before opening the tool's
+source; open the source only for what the README lacks.
+
+- [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, freeze, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
+- [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
+- [tools/README.md](tools/README.md): every Python script here (listing, call tree, translate, reshape, generate, task pack, renders).
+- [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
+- The toolkit crates' READMEs: `toolkit/crates/<crate>/README.md` (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`).
+
 ## Notes
 
 - [docs/05-file-formats.md](docs/05-file-formats.md): the level files, byte by byte.

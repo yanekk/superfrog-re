@@ -15,6 +15,7 @@ to start a game. A game depends on it by path, so a toolkit change and its use l
 
 ## Notes
 
+- `crates/<crate>/README.md`: how to call a crate (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`). Read it, in one step, before opening the crate's source.
 - [PLAYBOOK.md](PLAYBOOK.md): the steps the first game took, in order, each with its artifacts and lesson.
 - [docs/porting-routines.md](docs/porting-routines.md): the rules a porting task names in its Done when: readings are not evidence, the 68k traps, proving a port, the port register.
 - [template/](template/): a new game's starting kit, copied to `games/<game>/`.
