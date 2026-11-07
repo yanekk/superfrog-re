@@ -100,6 +100,16 @@ stderr for a routine whose reach differs from `translate.toml` by over 5%. Exit 
 Ghidra, its JDK, the program or a symbols file is missing. Relocations come from the file's
 `HUNK_RELOC32` entries, since Ghidra's Amiga loader records none. The script is `ghidra/ExportPcode.java`.
 
+### translator_trial.py (stdlib)
+The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a
+tree, survey and judge every routine of `re/translate.toml` (DESIGN §2.1 to §2.4, §2.7).
+```
+python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,…] [--skip-export] [--cases N]
+```
+Writes `build/translator/trial.json` and `table.md` (with Muse's `batch.json` results beside, from this
+checkout or the main one), prints the gate summary line. Holds `build/translate/judge.lock` for the run and
+refuses a second. Exit 0 when the table was written, 1 when a step failed (named), 2 on usage.
+
 ## Assets
 
 ### unpack.py
