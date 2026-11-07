@@ -1,0 +1,17 @@
+# T72: lives lost in W1-1's water (scripts/death-water.txt): frozen as freeze.rs says but with h0_6882
+# thawed on both sides, so the original adds the water to h0_62b6's animated cells and draws it, and
+# the engine does the same (T25's port). The character drops into the pool at W1-1:148,66 to 149,66 (frame
+# 7042); contact comes and goes with the water's frames, the third pass in a row costs a life (frame
+# 7062), and after the hurt frame, the hold and the blink the next one (frame 7204). Creatures and
+# springs stay frozen. Thawed, the original's pass grows with the animated cells' blits and some passes
+# end late, cutting main_loop's edge redraws short, which the engine does not model (FINDINGS, T25):
+# edge_latch_down differs on 2 passes and edge_latch_up on 1, everything else and every frame equal.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "death-water"
+frames = 920
+compare = ["vars", "picture"]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick"]
+goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 7221 }
+freeze = true
+thaw = ["h0_6882"]
+exclude = [{ what = "var edge_latch_down", task = "T47" }, { what = "var edge_latch_up", task = "T47" }]

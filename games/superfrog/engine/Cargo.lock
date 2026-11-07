@@ -75,8 +75,13 @@ dependencies = [
  "cpal",
  "gilrs",
  "libc",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
  "png",
  "pollster",
+ "serde",
+ "toml 0.9.12+spec-1.1.0",
  "wgpu",
  "winit",
 ]
@@ -102,6 +107,7 @@ name = "amiga-conform"
 version = "0.1.0"
 dependencies = [
  "amiga-chips",
+ "amiga-disk",
  "amiga-input",
  "amiga-oracle",
  "amiga-paula",
@@ -161,6 +167,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "amiga-plan"
+version = "0.1.0"
+dependencies = [
+ "amiga-input",
+ "libc",
+ "serde",
+]
+
+[[package]]
 name = "amiga-record"
 version = "0.1.0"
 dependencies = [
@@ -168,6 +183,10 @@ dependencies = [
  "amiga-disk",
  "amiga-input",
 ]
+
+[[package]]
+name = "amiga-routeview"
+version = "0.1.0"
 
 [[package]]
 name = "android-activity"
@@ -3040,6 +3059,8 @@ dependencies = [
 name = "sf-plan"
 version = "0.1.0"
 dependencies = [
+ "amiga-disk",
+ "amiga-plan",
  "bincode",
  "libc",
  "serde",
@@ -3054,6 +3075,7 @@ dependencies = [
 name = "sf-routeview"
 version = "0.1.0"
 dependencies = [
+ "amiga-routeview",
  "sf-assets",
  "sf-bench",
  "sf-conform",

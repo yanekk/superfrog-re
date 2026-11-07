@@ -12,6 +12,8 @@ use sf_core::mem::Rom;
 use sf_core::{LevelId, State};
 use sf_plan::app::{app_start_in, route_seed, route_widescreen};
 
+pub use amiga_routeview::Event;
+
 use crate::json::{Json, esc, list};
 
 pub const COLS: u32 = 300;
@@ -50,17 +52,6 @@ pub struct Object {
     /// `surface` or `other`: the page's layer.
     pub cat: &'static str,
     pub name: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Event {
-    pub k: u32,
-    /// Level pixels: the frog's record x, y for frog events, the cell's top-left for markers.
-    pub x: i32,
-    pub y: i32,
-    /// `marker`, `hurt`, `death`, `jump`, `land`, `fire`, `end`, `stall`.
-    pub kind: &'static str,
-    pub text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

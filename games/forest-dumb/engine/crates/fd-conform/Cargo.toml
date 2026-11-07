@@ -3,6 +3,8 @@ name = "fd-conform"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+# `cargo run -p fd-conform` runs the runner, not `fd-judge` (T33): BUG-FIX.md, conform/README.md.
+default-run = "fd-conform"
 
 # Shell, test tooling: Forest Dumb Forever's own conformance runner. Its cases are parsed by hand in
 # lib.rs: DESIGN §5 admits only the crates the tasks name, and `toml` is not one.
@@ -15,3 +17,12 @@ fd-tools = { path = "../fd-tools" }
 amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
 # The original, run by the reference emulator.
 amiga-oracle = { path = "../../../../../toolkit/crates/amiga-oracle" }
+# The engine's picture type, compared with the original's (level cases).
+amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
+# The level files the engine's `GameData` reads, and the readers tests/level_files.rs checks.
+fd-assets = { path = "../fd-assets" }
+# The main program's hunks, for the routine rig's loader at the oracle's hunk bases.
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
+
+# A bug zip's recording (T14), read as the app writes it.
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }

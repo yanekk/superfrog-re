@@ -1,0 +1,235 @@
+# What tools/reshape.py needs to have Muse write a porting task's engine functions (docs/11-translation.md,
+# "Reshaping by Muse"). One table per task. A porting task adds its own before calling reshape.py: write the
+# typed state and the rig test first, with at least one engine function written by hand as the example.
+#
+# src        the engine source file the task's functions live in (from games/forest-dumb/engine)
+# impl       the impl block header the answer goes in, as written in src
+# test       the rig test file; test_fn the #[test] that runs the routine table
+# loop       the routine table loop's first line in test, exactly; the judge limits it to one unit.
+#            The loop must bind the routine's rig name to `name`, and the test must print
+#            `paths: <name> N (h hangs), ...` or `<name>: N paths` for each routine it ran.
+# state      files shown to Muse as a skeleton (types and consts whole, other fns as signatures), src first
+# layout     true: also show fd-core's LAYOUT variables
+# harness    the test file's top-level items shared by every routine, shown with the example
+# adapter_fn true: the test has an adapter fn named like each engine fn, shown with the example
+# examples   engine fns written by hand, shown as the example (the first that is not the unit itself)
+# compared   one sentence: what the rig compares, and how registers reach it
+# units      one per engine function: fn, routines [[rig name, hunk 0 offset], ...], helpers (private
+#            fns only fn calls, removed with it)
+
+[T08]
+src = "crates/fd-core/src/character/physics.rs"
+impl = "impl Character<'_>"
+test = "crates/fd-conform/tests/character_routines.rs"
+test_fn = "every_t08_routine_is_registered_and_passes_the_rig"
+loop = "for &(name, entry, f) in ROUTINES {"
+state = ["crates/fd-core/src/character/physics.rs", "crates/fd-core/src/character/anim.rs",
+         "crates/fd-core/src/character/input.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/program.rs", "crates/fd-core/src/level/collision.rs"]
+layout = true
+harness = ["vars", "at", "state", "effects", "Run", "port"]
+adapter_fn = false
+examples = ["land_or_fall", "fall_step"]
+compared = """The rig compares every LAYOUT variable the character routines use, and d0-d7 and a0-a6 \
+from `self.scratch` as the original leaves them (set them as the example does), and the custom-chip \
+writes pushed on `self.scratch.hw`."""
+units = [
+  { fn = "step", routines = [["char_step", 0x3e30]], helpers = ["dying_fall", "rise"] },
+  { fn = "idle", routines = [["h0_3ea8", 0x3ea8]], helpers = ["slide", "slide_sound"] },
+  { fn = "land_or_fall", routines = [["h0_410c", 0x410c]] },
+  { fn = "fall_step", routines = [["h0_416c", 0x416c]] },
+  { fn = "rise_step", routines = [["h0_4274", 0x4274]] },
+  { fn = "move_x", routines = [["h0_4696", 0x4696]] },
+  { fn = "left_pressed", routines = [["h0_4718", 0x4718]] },
+  { fn = "run_left_step", routines = [["h0_47e2", 0x47e2]] },
+  { fn = "right_pressed", routines = [["h0_48be", 0x48be]] },
+  { fn = "run_right_step", routines = [["h0_497c", 0x497c]] },
+  { fn = "up_pressed", routines = [["h0_4b0e", 0x4b0e]] },
+  { fn = "probe_flags", routines = [["char_probe_flags", 0x4f90]] },
+]
+
+[T09]
+src = "crates/fd-core/src/level/camera.rs"
+impl = "impl Camera"
+test = "crates/fd-conform/tests/camera_routines.rs"
+test_fn = "every_camera_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/level/camera.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "CAMERA_X", "CAMERA_Y", "SCREEN_X", "SCREEN_Y", "AT", "LATCH", "FRAME_FLAG",
+           "CROSSED", "h0", "load", "store", "on_camera"]
+adapter_fn = true
+examples = ["scroll", "clamp"]
+compared = """The rig loads the Camera and frame_flag from memory, runs your function, stores them back \
+and compares every byte the original writes; registers only where the adapter sets them \
+(d0 from a returned bool: true is -1, false 0)."""
+units = [
+  { fn = "follow", routines = [["h0_4e9a", 0x4e9a], ["h0_4ea6", 0x4ea6], ["h0_4eb4", 0x4eb4], ["h0_4ec2", 0x4ec2]] },
+  { fn = "clamp", routines = [["h0_513c", 0x513c]] },
+  { fn = "scroll", routines = [["h0_51fc", 0x51fc], ["h0_526a", 0x526a], ["h0_52d8", 0x52d8], ["h0_5346", 0x5346]],
+    helpers = ["set"] },
+]
+
+[T22]
+src = "crates/fd-core/src/objects/collectible.rs"
+impl = "impl MapObjects<'_>"
+test = "crates/fd-conform/tests/collect_routines.rs"
+test_fn = "every_t22_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/objects/collectible.rs", "crates/fd-core/src/objects/mod.rs",
+         "crates/fd-core/src/state.rs", "crates/fd-core/src/level/redraw.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "CAMERA_X", "CAMERA_Y", "ROW", "EXIT_TOUCHED", "TAKEN", "SCORE", "SCORE_ADD",
+           "SLOT_INDEX", "ACTIVE", "SLOTS", "COUNTDOWN", "ITEMS_LEFT", "h0", "CpuIo", "Io", "load", "store",
+           "on_objects"]
+adapter_fn = true
+examples = ["add_score", "redraw_cell"]
+compared = """The rig loads the State fields the object ports use from memory (char_x, char_y, the camera, \
+level_exit_touched, score, countdown, items_left, `collect`, the creature slots with their flags and index), \
+runs your function with `self.io` over that memory, stores what changed and compares every byte the \
+original writes and every custom-chip write in order: a blit through `self.io.blit`, a sound through \
+`self.io.sound`. Object map cells are read and written through `self.io` at hunk 0 offsets. No register \
+is compared except where the adapter sets it."""
+units = [
+  { fn = "object_cells", routines = [["char_object_cells", 0x2698]] },
+  { fn = "take", routines = [["h0_26ec", 0x26ec]] },
+  { fn = "redraw_cell", routines = [["h0_29ca", 0x29ca]] },
+  { fn = "add_score", routines = [["score_add_routine", 0x2a6e]] },
+  { fn = "write_back", routines = [["h0_2dd6", 0x2dd6]] },
+  { fn = "write_back_slot", routines = [["h0_2e0e", 0x2e0e]] },
+  { fn = "add_time", routines = [["countdown_plus_100", 0x6a04]] },
+  { fn = "count_item", routines = [["items_left_minus_one", 0x6a4c]] },
+]
+
+[T23]
+src = "crates/fd-core/src/character/death.rs"
+impl = "impl Play<'_>"
+test = "crates/fd-conform/tests/death_routines.rs"
+test_fn = "every_death_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/character/death.rs", "crates/fd-core/src/state.rs"]
+layout = true
+harness = ["LAST_KEY", "PAUSED", "PAUSE_DOWN", "ESC_DOWN", "GIVE_UP", "TICK", "EXIT_TOUCHED", "COUNTDOWN",
+           "LIVES", "ITEMS_LEFT", "CHEAT", "h0", "load", "store", "on_play"]
+adapter_fn = true
+examples = ["esc_key", "lives_minus_one"]
+compared = """The rig loads the variables these routines touch into a State, runs your function on \
+`Play { state }`, stores them back and compares every byte the original writes; no register is \
+compared."""
+units = [
+  { fn = "countdown_step", routines = [["countdown_step", 0x20b0]] },
+  { fn = "play_keys", routines = [["play_keys", 0x2104]] },
+  { fn = "help_key", routines = [["help_key", 0x2146]] },
+  { fn = "esc_key", routines = [["esc_key", 0x2176]] },
+  { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
+]
+
+[T25]
+src = "crates/fd-core/src/objects/spring.rs"
+impl = "impl MapObjects<'_>"
+test = "crates/fd-conform/tests/mechanic_routines.rs"
+test_fn = "every_t25_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/objects/spring.rs", "crates/fd-core/src/objects/mod.rs",
+         "crates/fd-core/src/objects/collectible.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/level/redraw.rs"]
+layout = true
+harness = ["CHAR_X", "CHAR_Y", "JUMP_41B6", "DYING", "RISING", "FALLING", "SPRING_X", "SPRING_Y",
+           "SPRING_TIMER", "SPRING_KIND", "SCREEN", "TILES", "SPRING_SAMPLE", "h0", "CpuIo", "load", "store",
+           "on_mechanics"]
+adapter_fn = true
+examples = ["spring_trigger"]
+compared = """The rig loads the State fields the mechanics use from memory (char_x, char_y, the camera, the \
+character's falling, dying, rising and jump_41b6 flags, `spring`, `animation`, the animated cells), runs your \
+function with `self.io` over that memory, stores what changed and compares every byte the original writes and \
+every custom-chip write in order: a blit through `self.io.blit` (`Blit::Cell` for a tile from the tile table's \
+offset, `Blit::Picture` for a 32 x 16 picture of hunk 4; the adapter writes the blitter's modulos and masks for \
+the routine's first cell blit only, as the original does), a sound through `self.io.sound`. Map and tile map \
+cells are read through `self.io` at hunk 0 offsets. No register is compared."""
+units = [
+  { fn = "spring_trigger", routines = [["h0_24ce", 0x24ce]] },
+  { fn = "spring_redraw", routines = [["h0_21c0", 0x21c0]] },
+]
+
+[T70]
+src = "crates/fd-core/src/character/death.rs"
+impl = "impl Play<'_>"
+test = "crates/fd-conform/tests/death_routines.rs"
+test_fn = "every_death_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/character/death.rs", "crates/fd-core/src/state.rs",
+         "crates/fd-core/src/character/physics.rs", "crates/fd-core/src/program.rs"]
+layout = true
+harness = ["LAST_KEY", "PAUSED", "PAUSE_DOWN", "ESC_DOWN", "GIVE_UP", "TICK", "EXIT_TOUCHED", "COUNTDOWN",
+           "LIVES", "ITEMS_LEFT", "CHEAT", "CLXDAT_COPY", "HITS_TAKEN", "DYING", "FALLING", "UNHURT_T",
+           "RUN_LEFT", "RUN_RIGHT", "RISING", "JUMPED", "JUMP_T", "CLXDAT", "h0", "load", "store", "on_play"]
+adapter_fn = true
+examples = ["esc_key", "lives_minus_one"]
+compared = """The rig loads the variables these routines touch into a State, runs your function on \
+`Play { state }` (char_hit_check with CLXDAT as the hardware read returned it and a Scratch whose \
+`hw` takes the custom-chip writes in order), stores them back and compares every byte the original \
+writes and its custom-chip writes; no register is compared. Creature slots are inactive in every \
+state: call `self.stomp(scratch)` where the original loops over them, and leave it as it is."""
+units = [
+  { fn = "esc_key", routines = [["esc_key", 0x2176]] },
+  { fn = "lives_minus_one", routines = [["lives_minus_one", 0x69d6]] },
+  { fn = "char_hit_check", routines = [["char_hit_check", 0x3b2a]] },
+]
+
+[T24]
+src = "crates/fd-core/src/objects/creature.rs"
+impl = "impl Creatures<'_>"
+test = "crates/fd-conform/tests/enemy_routines.rs"
+test_fn = "every_t24_routine_matches_the_original"
+loop = "for (name, off, port, regs) in routines() {"
+state = ["crates/fd-core/src/objects/creature.rs", "crates/fd-core/src/level/redraw.rs",
+         "crates/fd-core/src/state.rs"]
+layout = false
+harness = ["CHAR_X", "MOVING_SLOT", "SLOT_INDEX", "STOMPED", "ACTIVE", "SLOTS", "SORTED", "COLLISION", "h0",
+           "CpuGround", "load", "bytes", "store", "on_creatures", "slot_a0"]
+adapter_fn = true
+examples = ["step_back", "wall_left"]
+compared = """The rig loads the State fields the creature ports use from memory (char_x, the five creature \
+flags and slots in `edges.creatures`, `creatures.index`, `moving.slot`, `moving.stomped`), runs your \
+function with `self.ground` over that memory (`collision_map` bytes and the program's step tables at \
+hunk 0 offsets), stores what changed and compares every byte the original writes. A helper's slot \
+arrives as `i`, from the original's a0. No register is compared."""
+units = [
+  { fn = "move_all", routines = [["h0_2fae", 0x2fae]] },
+  { fn = "move_slot", routines = [["h0_2fea", 0x2fea]] },
+  { fn = "step_back", routines = [["h0_320a", 0x320a]] },
+  { fn = "step_on", routines = [["h0_3222", 0x3222]] },
+  { fn = "hop_back", routines = [["h0_32f8", 0x32f8]] },
+  { fn = "hop_on", routines = [["h0_3322", 0x3322]] },
+  { fn = "wall_left", routines = [["h0_3530", 0x3530]] },
+  { fn = "edge_left", routines = [["h0_3566", 0x3566]] },
+  { fn = "wall_right", routines = [["h0_35a0", 0x35a0]] },
+  { fn = "edge_right", routines = [["h0_35dc", 0x35dc]] },
+  { fn = "sort", routines = [["h0_3698", 0x3698]] },
+]
+
+[T52]
+src = "crates/fd-core/src/render/objects.rs"
+impl = "impl Creatures<'_>"
+test = "crates/fd-conform/tests/creature_drawing_routines.rs"
+test_fn = "every_t52_routine_matches_the_original"
+loop = "for (name, off, port) in routines() {"
+state = ["crates/fd-core/src/render/objects.rs", "crates/fd-core/src/level/redraw.rs"]
+layout = false
+harness = ["CAMERA_Y", "RESTORE_INDEX", "CUT_INDEX", "X", "Y", "CURRENT", "RESTORING", "ACTIVE", "SAVED",
+           "DRAWN", "SLOTS", "h0", "CpuIo", "load", "store", "on_creatures"]
+adapter_fn = true
+# Only h0_2d4c and h0_5820 have passing literal ports: h0_5e44 is by_hand and h0_2c7e blocked behind it,
+# so both are written by hand and are not units here. `cut_all` is the hand-written example; Muse wrote
+# `cut` (2026-11-06), listed second only so `cut_all`'s own prompt has an example to show.
+examples = ["cut_all", "cut"]
+compared = """The rig loads the drawing's state from memory (`CreatureDraw`, the five slots, their flags and \
+`h0+$581c` as `slots.current`, `camera_y`), runs your function with `self.io` over that memory, stores what \
+changed and compares every byte the original writes and every custom-chip write in order: each blit goes \
+through `self.io.blit` as a `CreatureBlit`, which the rig turns into the original's register writes. The \
+frame tables and a slot past the fifth are read through `self.io` at hunk 0 offsets (`slot_byte`, `kind`). \
+No register is compared."""
+units = [
+  { fn = "cut_all", routines = [["h0_2d4c", 0x2d4c]] },
+  { fn = "cut", routines = [["h0_5820", 0x5820]] },
+]

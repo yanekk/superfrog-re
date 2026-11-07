@@ -20,7 +20,8 @@ use sf_core::input::{FrameInput, Joy};
 use sf_core::layout::h0;
 use sf_core::{Game, State};
 
-use super::facts::{Cell, Facts, cell_addr, cell_word, frog_cell, landed, live};
+pub use super::facts::pressed;
+use super::facts::{Cell, Facts, cell_addr, cell_word, frog_cell, landed};
 use super::graph::{Edge, MoveMap, Node};
 use super::moves::{Macro, MoveFamily, MoveSet};
 
@@ -30,17 +31,6 @@ const LEVEL_STATE: u32 = h0(0xa06);
 const HEARTS: u32 = h0(0x830);
 /// Frames a landed frog is left to stop before its state seeds a node.
 const STOP_CAP: u16 = 40;
-
-/// Switches pressed in `st`, as bits over `facts.switches`: a pressed switch's cells no longer
-/// carry its marker (`switch` rewrites the lever's cells).
-pub fn pressed(facts: &Facts, st: &State) -> u32 {
-    facts
-        .switches
-        .iter()
-        .enumerate()
-        .filter(|(_, s)| live(st, s.cells[0].0, s.cells[0].1) != s.marker as u16)
-        .fold(0, |m, (k, _)| m | 1 << k)
-}
 
 fn wings(st: &State) -> bool {
     st.w(FROG + f::FLIGHT) != 0

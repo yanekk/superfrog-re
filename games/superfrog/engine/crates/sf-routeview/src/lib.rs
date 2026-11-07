@@ -1,13 +1,15 @@
 //! The route viewer (`sf-routeview`): plays app-timed routes on the engine and writes a web page
 //! drawing each over its level map: the frog's path, every coin, collectible and enemy, the events
 //! along the way, a timeline, and a switcher over the smart planner's routes with their verdicts.
-//! `sf-bench` runs it after each set-C run of the new planner.
+//! `sf-bench` runs it after each set-C run of the new planner. The page itself is the toolkit's
+//! `amiga-routeview`; this crate replays the routes and says what Superfrog's map holds ([`site::spec`]).
 
 pub mod dump;
-pub mod guide;
-pub mod json;
 pub mod site;
 pub mod verdict;
+
+// Moved to the toolkit (forest-dumb-level-1 T18); re-exported so this crate's users keep their paths.
+pub use amiga_routeview::{guide, json};
 
 use std::path::{Path, PathBuf};
 

@@ -11,18 +11,264 @@ workspace = "engine"
     "a_missing_kickstart_names_the_path_and_does_not_panic",
     "a_missing_case_names_the_path_and_does_not_panic",
 ]
+# The key and missing-input tests take a second; the two that boot to W1-1 (about 16 s each, the
+# first on a machine with no cache) stay in full.
+"crates/fd-conform/tests/level_sync.rs" = [
+    "a_changed_script_disk_or_kickstart_changes_the_key",
+    "a_missing_kickstart_names_the_path",
+    "missing_disks_name_the_path",
+]
 "crates/fd-conform/tests/purity.rs" = "smoke"
+# T05: level 1's files against the original at the cached sync point, 3.4 s warm; a machine with no
+# sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/level_files.rs" = "smoke"
+# The routine rig and the port register: about 3 s, the rig half on the program from disk 1.
+"crates/fd-conform/tests/ported.rs" = "smoke"
+"crates/fd-conform/tests/rig.rs" = "smoke"
+# T60: branch coverage on the original, a hand-made routine and two generators: under a second.
+"crates/fd-conform/tests/rig_branches.rs" = "smoke"
+# T06: the level case runner against a stand-in copy of the original, from the cached sync point:
+# 9 s warm (runner.rs, ten short runs in parallel) and 3 s (input_timing.rs). A machine with no
+# sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/runner.rs" = "smoke"
+"crates/fd-conform/tests/input_timing.rs" = "smoke"
+# T67: the input each pass read: the slide with up changed mid-scroll on Game and on the old pairing,
+# and the keys measured standing and sliding, about 2 s warm from the cached sync point.
+"crates/fd-conform/tests/pass_input.rs" = "smoke"
+# T07: the level engine entering W1-1 against the original, and its idle case (200 frames, also
+# through the command line): 2 s warm. A machine with no sync cache boots to W1-1 once first.
+"crates/fd-conform/tests/level_entry.rs" = "smoke"
+# T15: bug recordings compared with the original by pass, and the command on a zip: about 9 s warm
+# from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
+"crates/fd-conform/tests/recording_compare.rs" = "smoke"
+# The translation judge on h0+$774, under a second.
+"crates/fd-conform/tests/judge.rs" = "smoke"
+# T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
+# each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
+"crates/fd-conform/tests/gen_drawing.rs" = [
+    "every_drawing_entry_has_its_generator_and_its_lists",
+    "each_generator_runs_2000_states_on_the_original_with_no_hang",
+    "no_generator_writes_outside_what_its_routine_reads",
+    "the_flips_see_a_branch_that_goes_one_way",
+]
+# T35: the character routines' generators, 2 000 states each and every branch both ways, about 2.5 s.
+"crates/fd-conform/tests/gen_character.rs" = "smoke"
+# T36's camera generators against the original, branches both ways: under a second.
+"crates/fd-conform/tests/gen_camera.rs" = "smoke"
+# T09: the camera's engine port against the original, 10 000 states a routine and the negative
+# checks: about 3 s on the program from disk 1.
+"crates/fd-conform/tests/camera_routines.rs" = "smoke"
+# T43: the camera cases, three scripted runs to all four level ends against the original, a
+# negative check and collision_map at the right wall: about 6 s warm, from the cached sync point.
+"crates/fd-conform/tests/camera_cases.rs" = "smoke"
+# T55: the edge redraws' engine port. Registration, the pointer tables, the d0 carry's negative check
+# and collision_map after a scroll each way from the cached sync point, about 7 s. The 10 000-state
+# check of all 14 routines (about 7 min) and the cell-table filter's count (16 s) stay in full.
+# T10: the renderer's ports, registration, the display at the sync point and the picture against the
+# oracle's, under 2 s together; the foreground's bar and play screen against the original, 2.5 s. The
+# 10 000-state check of all 16 routines (about 2 min) and the mutants (11 s) stay in full.
+"crates/fd-conform/tests/drawing_routines.rs" = [
+    "every_t10_routine_is_registered_and_checked_here",
+    "the_status_generators_poke_only_what_their_routines_read",
+    "the_adapters_store_back_what_they_load",
+    "the_palette_is_the_one_the_program_holds_and_the_original_fades_to",
+    "the_display_equals_the_original_at_the_sync_point",
+    "the_first_frame_is_drawn_with_the_status_bar",
+    "after_a_transplant_the_picture_is_the_originals_still_and_scrolled",
+    "the_foreground_draws_the_status_bar_and_play_screen_as_the_original",
+]
+"crates/fd-conform/tests/edge_redraw_routines.rs" = [
+    "every_t55_routine_is_registered_and_checked_here",
+    "the_pointer_tables_are_sixteen_rotated_bands",
+    "a_row_bob_dropping_the_high_word_of_d0_fails",
+    "a_state_with_d7_past_the_slots_is_one_the_engine_does_not_model",
+    "after_a_scroll_each_way_the_collision_map_equals_the_originals",
+    "the_edge_latches_step_with_the_original_over_the_idle_case",
+]
+# T38's objects generators against the original, branches both ways: under 2 s.
+"crates/fd-conform/tests/gen_objects.rs" = "smoke"
+# T54: the creature movement and sort generators, every branch both ways: under 3 s.
+"crates/fd-conform/tests/gen_objects_move.rs" = "smoke"
+# T39: the rest generators, game_frame over the cached sync point's RAM, every branch both ways: about 2 s warm.
+"crates/fd-conform/tests/gen_rest.rs" = "smoke"
+# T56: the edge redraws' generators, the 2 000-state survey, the write check and the beam sync, about 4 s.
+# each_branch_goes_both_ways_or_is_named (about 55 s, three runs a branch) stays in full.
+"crates/fd-conform/tests/gen_edge_redraw.rs" = [
+    "every_t56_entry_has_its_generator_and_its_lists",
+    "each_generator_runs_2000_states_on_the_original_with_no_hang",
+    "no_generator_writes_outside_what_its_routine_reads",
+    "the_beam_sync_sets_the_raster_and_runs_repeat",
+]
+# T53: the walk-animation and joystick routines' generators, branches both ways: under a second.
+"crates/fd-conform/tests/gen_character_anim.rs" = "smoke"
+# T51: the animation pickers and read_joystick against the original, 10 000 states each, under 2 s.
+"crates/fd-conform/tests/character_anim_routines.rs" = "smoke"
+# T08: the character's movement against the original, 14 routines at 10 000 states each and 5
+# mutants, about 9 s (one rig per test, run in parallel).
+"crates/fd-conform/tests/character_routines.rs" = "smoke"
+# T22: the eight taking and write-back routines on the rig and four mutants, about 10 s warm.
+"crates/fd-conform/tests/collect_routines.rs" = "smoke"
+# T24: the creatures' twelve routines on the rig, the in-play move and sort, two mutants: about 9 s warm.
+"crates/fd-conform/tests/enemy_routines.rs" = "smoke"
+# T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
+# 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
+# in full.
+"crates/fd-conform/tests/mechanic_routines.rs" = [
+    "every_t25_routine_is_registered_and_checked_here",
+    "every_t25_routine_matches_the_original",
+    "a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+    "a_spring_under_the_falling_character_fires_in_play",
+    "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
+    "the_engine_holds_the_mechanics_pictures_the_original_loaded",
+    "only_a_frozen_case_leaves_springs_and_animated_cells_out",
+    "the_engines_freeze_is_the_originals_entry_for_entry",
+    "the_engines_freeze_is_set_by_the_case_runner_alone",
+]
+# T41: the character's runs in play against the original, five cases from the cached sync point in
+# parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
+"crates/fd-conform/tests/character_run.rs" = "smoke"
+# T42: the character against walls, the spike pit, the first slope and the left and top edges, five
+# cases from the cached sync point in parallel: about 2 s warm.
+"crates/fd-conform/tests/character_edges.rs" = "smoke"
+# T44: the engine's picture against the original's, the two picture cases from the cached sync point,
+# the status bar's numbers set in both sides and the old pairing's failure: about 8 s warm. The boot
+# counting the start-up's two routines (about 10 s) is #[ignore]d, so the full set runs it.
+"crates/fd-conform/tests/picture_cases.rs" = "smoke"
+# T11: six stretches of W1-1 compared by variables and picture together, from the cached sync point in
+# parallel, about 9.5 s warm at load 18, and the mutated jump table, 1 s. Each goal moved a cell four
+# ways (24 runs, about 26 s) stays in full.
+"crates/fd-conform/tests/stretches.rs" = [
+    "every_stretch_matches_the_original_on_variables_and_picture_together",
+    "a_mutated_jump_constant_fails_the_jump_stretch",
+]
+# T45: collecting in play against the original, the ledge and the way back from the cached sync point
+# in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
+"crates/fd-conform/tests/collect_cases.rs" = "smoke"
+# T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
+# the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
+"crates/fd-conform/tests/object_claims.rs" = "smoke"
+# Three boots to W1-1, about 32 s together: the measurements of docs/09-play-measured.md.
+"crates/fd-conform/tests/play_measured.rs" = "full"
+# One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
+"crates/fd-conform/tests/play_picture.rs" = "full"
+"crates/fd-assets/src" = "smoke"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
+# T65: a new game's collision_map, play screen and creature tables against the original at the cached
+# sync point, under a second warm (a machine with no sync cache boots to W1-1 once first).
+"crates/fd-conform/tests/level_start.rs" = "smoke"
+# T65: the first view's routines on the rig. Registration, the two cell routines over 10 000 states and
+# the swapped-port negative check, about 4 s; the two whole-view loops (1 000 states, about 3 min) stay
+# in full.
+"crates/fd-conform/tests/level_start_routines.rs" = [
+    "every_t65_routine_is_registered",
+    "each_cell_routine_matches_the_original",
+    "a_tile_port_that_swaps_row_and_column_fails",
+]
 "crates/fd-tools/tests/boot_chain.rs" = "smoke"
 "crates/fd-tools/tests/exe_map_claims.rs" = "smoke"
 "crates/fd-tools/tests/locate.rs" = "smoke"
 "crates/fd-tools/tests/real_disks.rs" = "smoke"
+"crates/fd-tools/tests/unpack.rs" = "smoke"
+# T13: the app's own tests and its dependency test, under a second; the end-to-end files launch the
+# real app on the disks: smoke.rs 9 s, controls.rs 6 s, window.rs 5 s, disks.rs 1 s, alone and warm.
+"crates/fd-app/src" = "smoke"
+"crates/fd-app/tests/deps.rs" = "smoke"
+"crates/fd-e2e/tests/smoke.rs" = "smoke"
+"crates/fd-e2e/tests/controls.rs" = "smoke"
+"crates/fd-e2e/tests/disks.rs" = "smoke"
+"crates/fd-e2e/tests/window.rs" = "smoke"
+# T14: the recorder in the real app, eight scripted runs in parallel, about 12 s warm; and a zip it
+# saves replayed by the real `fd-conform bug replay`, about 14 s warm (two app runs, a build of
+# fd-conform on a cold target). Both crucial: the recorder is how a bug reaches a session.
+"crates/fd-e2e/tests/recorder_app.rs" = "smoke"
+"crates/fd-e2e/tests/recorder_replay.rs" = "smoke"
+# T16, the app drill's script layer: eight scripted runs in parallel, about 9 s warm. Its sizes need
+# seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
+"crates/fd-e2e/tests/drill.rs" = "smoke"
+"crates/fd-e2e/tests/drill_sizes.rs" = "full"
+# T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
+# game over screen to the high scores, the scene mismatches and a recording through the restart (about
+# 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
+# two scales, about 5 s warm.
+"crates/fd-conform/tests/death_routines.rs" = "smoke"
+# T70: death.rs's death-pit (a life lost on the spikes, about 2 s warm) is smoke; death-spikes (all 32
+# lives to the game over screen, about 12 s debug) is full. contact.rs, the collision model over
+# fd-plan's route and its parts, about 3 s warm. The planner's route tests above it slowed with contact
+# (about 25 us a step in release): about 58 s warm on a loaded machine.
+"crates/fd-conform/tests/death.rs" = [
+    "giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "an_engine_that_misses_the_screen_or_leaves_it_early_fails",
+    "a_recording_runs_through_game_over_and_the_restart_and_replays_alike",
+    "the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar",
+    "falling_into_the_spike_pit_loses_a_life_as_the_originals",
+    "a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
+    # T72: death-water, two lives lost in the pool at W1-1:148,66 with h0_6882 thawed, 920 frames.
+    "falling_into_the_water_loses_a_life_as_the_originals",
+]
+# T71: where pass 32k+1 cuts main_loop's status bar redraw, idle and on death-spikes, 1600 frames each
+# side by side, about 7 s warm.
+"crates/fd-conform/tests/status_race.rs" = "smoke"
+# T72 adds the pool's contact with and without the water drawn, death-water twice side by side.
+"crates/fd-conform/tests/contact.rs" = "smoke"
+# T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
+# debug, the restores' blits) and its two mutants (about 1 min each) are full; the register check, the
+# sync-point state, the picture check over 520 passes, game_frame's calls and the frozen case's skip take about
+# 5 s warm.
+"crates/fd-conform/tests/creature_drawing_routines.rs" = [
+    "every_t52_routine_is_registered_and_checked_here",
+    "the_drawing_state_at_the_sync_point_is_the_originals",
+    "the_creatures_on_the_play_screen_are_the_originals",
+    "game_frame_restores_and_cuts_the_creatures",
+    "game_frame_restores_the_creatures_the_last_pass_drew",
+]
+"crates/fd-e2e/tests/game_over.rs" = "smoke"
+# T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
+# status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
+# end in the real app at two scales, about 5 s warm.
+"crates/fd-conform/tests/level_end.rs" = "smoke"
+"crates/fd-e2e/tests/level_end.rs" = "smoke"
+# T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
+# script, read back against a replay; about 1 s warm.
+"crates/fd-routeview/src" = "smoke"
+"crates/fd-routeview/tests/page.rs" = "smoke"
+# T20, the planner: its facts, a 100-round search to the exit's cells replayed and drawn on the page,
+# the same route on 1 to 4 threads, the budget's stop through the command, and the route played on the
+# original (~2 s), two agreeing prefixes on it (~3 s): about 7 s warm. The 400-round search through
+# the command is full (~6 s).
+"crates/fd-plan/src" = "smoke"
+"crates/fd-plan/tests/route.rs" = [
+    "the_facts_match_the_levels_readings",
+    "a_planned_route_replays_to_its_end_and_the_page_shows_it",
+    "the_route_is_the_same_across_runs_and_thread_counts",
+    "the_budget_stops_the_search_and_it_reports_where",
+    "the_routes_stretch_is_confirmed_on_the_original_where_modelled",
+    "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
+]
+# T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
+# seven in about 40 s in release, as Superfrog's recorder_drill.rs.
+"crates/fd-e2e/tests/drill_os.rs" = "full"
 
 [python]
+"tools/test_call_tree.py" = "smoke"
 "tools/test_find_file_names.py" = "smoke"
+# T61: model calls stubbed, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
+"tools/test_generate.py" = "smoke"
+"tools/test_generate_judge.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
+# T62: model calls stubbed, no network. The judge one builds three canned answers into the engine's
+# scratch copy and runs T08's rig on h0_4274: about 4 s warm, 20 s on a cold scratch target.
+"tools/test_reshape.py" = "smoke"
+"tools/test_reshape_judge.py" = "smoke"
 "tools/test_render_levels.py" = "smoke"
+# Owner amendment 2026-11-06: builds every pending task's pack from the committed plan, --no-prep: about 5 s.
+"tools/test_task_pack.py" = "smoke"
+# A hand-made conversation log, no run: under 1 s.
+"tools/test_pack_check.py" = "smoke"
+# Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
+"tools/test_translate.py" = "smoke"
+"tools/test_translate_batch.py" = "smoke"
+"tools/test_translate_judge.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]
@@ -32,3 +278,162 @@ covers = ["crates/fd-tools/tests/real_disks.rs"]
 [[area]]
 name = "its first comparison with the original"
 covers = ["crates/fd-conform/tests/first_case.rs::the_idle_title_matches_the_original_on_every_pass"]
+
+[[area]]
+name = "unpacking its packed files in Rust"
+covers = ["crates/fd-tools/tests/unpack.rs::every_esl_file_unpacks_to_the_sha1_in_the_doc"]
+
+[[area]]
+name = "reading its level files"
+covers = ["crates/fd-conform/tests/level_files.rs::every_level_1_file_equals_the_bytes_at_its_target_at_the_sync_point"]
+
+[[area]]
+name = "comparing a ported routine with the original"
+covers = ["crates/fd-conform/tests/rig.rs", "crates/fd-conform/tests/ported.rs"]
+
+[[area]]
+name = "the camera following the character"
+covers = ["crates/fd-conform/tests/camera_routines.rs::every_camera_routine_matches_the_original"]
+
+[[area]]
+name = "the engine's picture: play area, character sprites and status bar as the original draws them"
+covers = ["crates/fd-conform/tests/drawing_routines.rs::after_a_transplant_the_picture_is_the_originals_still_and_scrolled"]
+
+[[area]]
+name = "the map's edges redrawn into collision_map as the view scrolls"
+covers = ["crates/fd-conform/tests/edge_redraw_routines.rs::after_a_scroll_each_way_the_collision_map_equals_the_originals"]
+
+[[area]]
+name = "judging a generator by the branches it covers on the original"
+covers = ["crates/fd-conform/tests/rig_branches.rs"]
+
+[[area]]
+name = "judging a level case against the original"
+covers = [
+    "crates/fd-conform/tests/runner.rs",
+    "crates/fd-conform/tests/input_timing.rs",
+]
+
+[[area]]
+name = "the character's movement against the original"
+covers = ["crates/fd-conform/tests/character_routines.rs::every_t08_routine_is_registered_and_passes_the_rig"]
+
+[[area]]
+name = "the character running and jumping in play, against the original"
+covers = ["crates/fd-conform/tests/character_run.rs"]
+
+[[area]]
+name = "the character against walls, pits, slopes and the level's edges, against the original"
+covers = ["crates/fd-conform/tests/character_edges.rs"]
+
+[[area]]
+name = "entering level 1 on the engine"
+covers = ["crates/fd-conform/tests/level_entry.rs"]
+
+[[area]]
+name = "translating a routine through Muse, judged on the original"
+covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py", "tools/test_translate_judge.py"]
+
+[[area]]
+name = "having Muse write a generator, judged by its coverage on the original"
+covers = ["tools/test_generate.py", "tools/test_generate_judge.py"]
+
+[[area]]
+name = "a game started on its own holding the level's first view"
+covers = ["crates/fd-conform/tests/level_start.rs::a_new_games_collision_map_is_the_originals_at_the_sync_point"]
+
+[[area]]
+name = "the camera scrolling both ways to every level end, against the original"
+covers = ["crates/fd-conform/tests/camera_cases.rs::each_camera_case_passes_on_the_level_engine_and_reaches_its_goal"]
+
+[[area]]
+name = "the app plays level 1"
+covers = ["crates/fd-e2e/tests/smoke.rs::up_and_right_by_key_play_as_the_headless_game_does_every_frame"]
+
+[[area]]
+name = "the engine's picture against the original's over whole runs, scrolling and the status bar's digits"
+covers = [
+    "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
+    "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
+    "crates/fd-conform/tests/death.rs::a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
+]
+
+[[area]]
+name = "level 1's character against the original"
+covers = ["crates/fd-conform/tests/stretches.rs::every_stretch_matches_the_original_on_variables_and_picture_together"]
+
+[[area]]
+name = "a recording made in the app replays headless to the same result"
+covers = ["crates/fd-e2e/tests/recorder_replay.rs::a_zip_saved_in_the_app_replays_headless_to_its_screenshot"]
+
+[[area]]
+name = "a bug recording compared with the original: same, differs at its step, or where judging ended"
+covers = [
+    "crates/fd-conform/tests/recording_compare.rs::a_scripted_recording_stays_in_step_on_the_original",
+    "crates/fd-conform/tests/recording_compare.rs::an_engine_mutation_is_reported_at_its_step",
+    "crates/fd-conform/tests/recording_compare.rs::the_command_compares_a_zip_and_writes_both_pictures",
+]
+
+[[area]]
+name = "planning a route through level 1 and confirming it on the original"
+covers = [
+    "crates/fd-plan/tests/route.rs::a_planned_route_replays_to_its_end_and_the_page_shows_it",
+    "crates/fd-plan/tests/route.rs::the_routes_stretch_is_confirmed_on_the_original_where_modelled",
+]
+
+[[area]]
+name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
+covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "the mechanics: springs and the animated cells (items, water, vanishing blocks)"
+covers = [
+    "crates/fd-conform/tests/mechanic_routines.rs::every_t25_routine_matches_the_original",
+    "crates/fd-conform/tests/mechanic_routines.rs::a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+]
+
+[[area]]
+name = "taking items and bonuses in play, score and status bar, against the original"
+covers = [
+    "crates/fd-conform/tests/collect_cases.rs::collecting_matches_the_original_on_variables_and_picture_together",
+    "crates/fd-conform/tests/collect_cases.rs::the_engine_alone_meets_each_collecting_goal",
+]
+
+[[area]]
+name = "the countdown, giving up, the game over screen and the level's restart"
+covers = [
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+    "crates/fd-conform/tests/death.rs::giving_up_shows_the_original_game_over_screen_until_fire_is_let_go",
+    "crates/fd-e2e/tests/game_over.rs::giving_up_in_the_app_shows_game_over_and_restarts_the_level_at_scale_1",
+]
+
+[[area]]
+name = "the level's end: next_world as the original runs it, Level 1 complete until fire, the restart"
+covers = [
+    "crates/fd-conform/tests/level_end.rs::the_level_end_matches_the_original_up_to_next_world_and_stops_there_by_name",
+    "crates/fd-e2e/tests/level_end.rs::the_level_end_in_the_app_shows_level_1_complete_and_fire_restarts_at_scale_1",
+]
+
+[[area]]
+name = "contact and a life lost: the collision model, char_hit_check, the spike pit and the water"
+covers = [
+    "crates/fd-conform/tests/contact.rs::the_collision_model_matches_the_originals_clxdat_over_the_route",
+    "crates/fd-conform/tests/death.rs::falling_into_the_spike_pit_loses_a_life_as_the_originals",
+    "crates/fd-conform/tests/death.rs::falling_into_the_water_loses_a_life_as_the_originals",
+]
+
+[[area]]
+name = "level 1's creatures moving, sorted and stomped, against the original"
+covers = [
+    "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
+    "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
+    "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+]
+
+[[area]]
+name = "the creatures restored and cut onto the play screen as the original draws them"
+covers = [
+    "crates/fd-conform/tests/creature_drawing_routines.rs::the_creatures_on_the_play_screen_are_the_originals",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
+]

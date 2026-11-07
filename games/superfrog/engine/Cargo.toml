@@ -80,8 +80,17 @@ opt-level = 2
 [profile.dev.package.sf-plan]
 opt-level = 2
 
+# The same planner's explorer, archive and compasses, moved to the toolkit (forest-dumb-level-1
+# T17).
+[profile.dev.package.amiga-plan]
+opt-level = 2
+
 # The route viewer's tests replay whole routes, scanning the 300×84 map every frame.
 [profile.dev.package.sf-routeview]
+opt-level = 2
+
+# Its page writer, moved to the toolkit (forest-dumb-level-1 T18).
+[profile.dev.package.amiga-routeview]
 opt-level = 2
 
 [profile.dev.package.png]

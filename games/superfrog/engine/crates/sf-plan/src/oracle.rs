@@ -14,7 +14,7 @@ use sf_core::layout::h0;
 use sf_core::{Game, LevelId, Start, State};
 use sf_oracle::Amiga;
 
-use crate::core::archive::HEARTS;
+use crate::core::facts::HEARTS;
 use crate::core::repair::{
     Sampler, TRACE_EVERY, TracePoint, follow_options, points_from_trace,
 };
@@ -627,7 +627,7 @@ impl Reference {
                 g.step_unseen(x);
             }
         }
-        let trace = s.points;
+        let trace = std::mem::take(&mut s.points);
         Reference {
             inputs: plan.inputs.clone(),
             points: points_from_trace(&trace),

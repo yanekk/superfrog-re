@@ -1,0 +1,11 @@
+# T42: from the sync frame 6400 (measured on the original 2026-11-06): down the slope, stop at char_x $90,
+# a running jump right (ceiling at char_y $61, wall at char_x $de), then left back up the slope.
+0: -
+10: R
+22: -
+40: R U
+48: R
+60: -
+80: L U
+84: L
+120: -

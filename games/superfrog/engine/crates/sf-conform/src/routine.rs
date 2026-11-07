@@ -50,37 +50,8 @@ impl Setup {
     }
 }
 
-/// A small deterministic generator for setups.
-#[derive(Debug, Clone)]
-pub struct Gen(u64);
-
-impl Gen {
-    pub fn new(seed: u64) -> Gen {
-        Gen(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1)
-    }
-
-    pub fn next(&mut self) -> u64 {
-        self.0 ^= self.0 << 13;
-        self.0 ^= self.0 >> 7;
-        self.0 ^= self.0 << 17;
-        self.0
-    }
-
-    /// A number in `0..n`.
-    pub fn below(&mut self, n: u64) -> u64 {
-        self.next() % n.max(1)
-    }
-
-    /// One of `choices`.
-    pub fn pick<T: Copy>(&mut self, choices: &[T]) -> T {
-        choices[self.below(choices.len() as u64) as usize]
-    }
-
-    /// True one time in `n`.
-    pub fn one_in(&mut self, n: u64) -> bool {
-        self.below(n) == 0
-    }
-}
+/// The toolkit's generator for setups (it was here until the second game needed it).
+pub use sf_oracle::Gen;
 
 /// The world's sound files where the game loads them, for the sound driver's transplant.
 pub fn sound_files(world: u32, module_addr: u32) -> Vec<(u32, File)> {

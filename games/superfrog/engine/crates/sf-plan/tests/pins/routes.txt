@@ -1,0 +1,5 @@
+# Route pins (tests/route_pin.rs). `<name> <sha1>`; re-pin only with a reason in the commit.
+W1-1/1 1e9264585e201452873e209345bc8745dfb1b051
+W1-1/2 1a7358c4f9719c8abebbbc4f8678026a5c73d342
+W2-1/1 1a70f60ec17d0f415f8a3c4cf80a37c438230675
+W1-1/1/exit c3d137e18d9b5ab685a35aff68b9b09f726994e5

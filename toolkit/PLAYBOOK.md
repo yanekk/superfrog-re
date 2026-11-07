@@ -54,7 +54,7 @@ Lesson: run the oracle spike first, as a gate: does the emulator boot the disks 
 - Generic part: `toolkit/crates/amiga-oracle/src/routine.rs`, which runs one routine of the original alone on the CPU.
 - learned on: Superfrog. One level with only the frog came before items, enemies and bosses; scripted runs from sync points came before a whole game from power-on (`plans/rust-engine/PLAN.md`).
 
-Lesson: compare one routine, then one scene, then the whole game, and keep the core pure so a full run of behaviour is checkable in milliseconds. Porting effort scales with the game's size; the machinery carries, the content does not (`toolkit/docs/reuse-for-another-game.md`).
+Lesson: compare one routine, then one scene, then the whole game, and keep the core pure so a full run of behaviour is checkable in milliseconds. The rules each porting task names are in `docs/porting-routines.md`. Porting effort scales with the game's size; the machinery carries, the content does not (`toolkit/docs/reuse-for-another-game.md`).
 
 ## 7. The app
 

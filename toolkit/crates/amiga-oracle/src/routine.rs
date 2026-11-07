@@ -117,6 +117,62 @@ impl fmt::Display for CallError {
 
 impl std::error::Error for CallError {}
 
+/// A small deterministic generator for a routine test's states: xorshift64, seeded so that seed 0
+/// still moves. One generator serves every game's routine rigs, so a sequence never changes: a
+/// routine test's states, and the paths they reach, stay what they were when it was written.
+/// - learned on: Superfrog (`sf-conform`'s routine tests), then Forest Dumb Forever's spike judge.
+#[derive(Debug, Clone)]
+pub struct Gen(u64);
+
+impl Gen {
+    pub fn new(seed: u64) -> Gen {
+        Gen(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1)
+    }
+
+    pub fn next(&mut self) -> u64 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 7;
+        self.0 ^= self.0 << 17;
+        self.0
+    }
+
+    /// A number in `0..n` (0 when `n` is 0).
+    pub fn below(&mut self, n: u64) -> u64 {
+        self.next() % n.max(1)
+    }
+
+    /// One of `choices`.
+    pub fn pick<T: Copy>(&mut self, choices: &[T]) -> T {
+        choices[self.below(choices.len() as u64) as usize]
+    }
+
+    /// True one time in `n`.
+    pub fn one_in(&mut self, n: u64) -> bool {
+        self.below(n) == 0
+    }
+}
+
+/// One conditional branch a traced call executed ([`Cpu68k::set_trace`]): `Bcc` other than `BRA`
+/// and `BSR`, or `DBcc`, at `at`, and which ways it went in that call. A `DBcc` that loops back is
+/// taken; its exit, by the count running out or the condition holding, is not taken.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct BranchWays {
+    pub at: u32,
+    pub not_taken: bool,
+    pub taken: bool,
+}
+
+/// What a traced call executed and read ([`Cpu68k::last_trace`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct CallTrace {
+    /// Each conditional branch executed, once, by address.
+    pub branches: Vec<BranchWays>,
+    /// Every byte address read in data space, ascending: operands and the stack, custom-chip
+    /// registers included. Instruction fetches and PC-relative operands are program space and are
+    /// not here.
+    pub reads: Vec<u32>,
+}
+
 /// What kind of hunk the loader filled.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HunkKind {
@@ -409,6 +465,124 @@ impl Cpu68k {
     /// modelled: a routine that waits on DMA or an interrupt still times out.
     pub fn set_hardware(&mut self, on: bool) {
         unsafe { ffi::amiga_cpu68k_set_hw(self.raw.as_ptr(), on as i32) }
+    }
+
+    /// Tracing, off by default: each call from here on records its conditional branches and data
+    /// reads, read back with [`Cpu68k::last_trace`]. It costs the call loop an opcode decode per
+    /// instruction and a bitmap test per byte read (`toolkit/docs/architecture/verification.md`
+    /// has the measured cost); off, one test per instruction. It changes nothing a call returns.
+    pub fn set_trace(&mut self, on: bool) {
+        unsafe { ffi::amiga_cpu68k_set_trace(self.raw.as_ptr(), on as i32) }
+    }
+
+    /// The last call's trace, whatever its outcome (a call that faulted stops at the fault). Empty
+    /// when tracing was off for it.
+    pub fn last_trace(&self) -> CallTrace {
+        let (mut b, mut r) = (std::ptr::null(), std::ptr::null());
+        let nb = unsafe { ffi::amiga_cpu68k_branches(self.raw.as_ptr(), &mut b) };
+        let nr = unsafe { ffi::amiga_cpu68k_reads(self.raw.as_ptr(), &mut r) };
+        let mut branches: Vec<BranchWays> = if nb == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(b, nb) }
+                .iter()
+                .map(|x| BranchWays {
+                    at: x.at,
+                    not_taken: x.not_taken != 0,
+                    taken: x.taken != 0,
+                })
+                .collect()
+        };
+        branches.sort_unstable();
+        let reads = if nr == 0 {
+            Vec::new()
+        } else {
+            unsafe { std::slice::from_raw_parts(r, nr) }.to_vec()
+        };
+        CallTrace { branches, reads }
+    }
+
+    /// The length in bytes of the instruction at `addr`, by Moira's 68000 disassembler.
+    pub fn insn_len(&self, addr: u32) -> u32 {
+        unsafe { ffi::amiga_cpu68k_insn_len(self.raw.as_ptr(), addr) as u32 }
+    }
+
+    /// Every conditional branch (`Bcc` other than `BRA`/`BSR`, `DBcc`) a static walk from `entry`
+    /// meets, ascending. The walk decodes instruction by instruction over this memory, following
+    /// both ways of each conditional branch, `BRA`, and `BSR`/`JSR` (into the callee and on after
+    /// it); `JMP`/`JSR` are followed only to an absolute or `(d16,pc)` target. It stops at `RTS`,
+    /// `RTE`, `RTR`, `ILLEGAL` and at any jump through a register: code reached only through an
+    /// indirect jump (a jump table, a pointer) is not walked, and a callee that never returns is
+    /// walked past as if it did.
+    pub fn conditional_branches(&self, entry: u32) -> Vec<u32> {
+        let mem = self.memory();
+        let word = |a: u32| {
+            u16::from_be_bytes([
+                mem[(a & 0xFF_FFFF) as usize],
+                mem[((a + 1) & 0xFF_FFFF) as usize],
+            ])
+        };
+        let mut seen = std::collections::BTreeSet::new();
+        let mut found = std::collections::BTreeSet::new();
+        let mut todo = vec![entry & 0xFF_FFFF];
+        // A walk that runs away over data stops here rather than decode all of memory.
+        const MAX_INSNS: usize = 1 << 20;
+        while let Some(pc) = todo.pop() {
+            if pc & 1 != 0
+                || pc as usize + 2 > MEM_SIZE
+                || seen.len() >= MAX_INSNS
+                || !seen.insert(pc)
+            {
+                continue;
+            }
+            let op = word(pc);
+            let len = self.insn_len(pc).max(2);
+            let next = (pc + len) & 0xFF_FFFF;
+            let mut push = |a: u32| todo.push(a & 0xFF_FFFF);
+            match op {
+                // RTS, RTE, RTR, ILLEGAL: the flow ends.
+                0x4E75 | 0x4E73 | 0x4E77 | 0x4AFC => {}
+                _ if op & 0xF000 == 0x6000 => {
+                    let d8 = op as u8;
+                    let target = if d8 == 0 {
+                        pc.wrapping_add(2).wrapping_add(word(pc + 2) as i16 as u32)
+                    } else {
+                        pc.wrapping_add(2).wrapping_add(d8 as i8 as u32)
+                    };
+                    let cond = (op >> 8) & 0xF;
+                    if cond >= 2 {
+                        found.insert(pc);
+                    }
+                    push(target);
+                    if cond != 0 {
+                        push(next);
+                    }
+                }
+                _ if op & 0xF0F8 == 0x50C8 => {
+                    found.insert(pc);
+                    push(pc.wrapping_add(2).wrapping_add(word(pc + 2) as i16 as u32));
+                    push(next);
+                }
+                // JMP <ea> (0x4EC0) and JSR <ea> (0x4E80).
+                _ if op & 0xFF80 == 0x4E80 => {
+                    let is_jsr = op & 0xFFC0 == 0x4E80;
+                    let target = match ((op >> 3) & 7, op & 7) {
+                        (7, 0) => Some(word(pc + 2) as i16 as u32),
+                        (7, 1) => Some((word(pc + 2) as u32) << 16 | word(pc + 4) as u32),
+                        (7, 2) => Some(pc.wrapping_add(2).wrapping_add(word(pc + 2) as i16 as u32)),
+                        _ => None,
+                    };
+                    if let Some(t) = target {
+                        push(t);
+                    }
+                    if is_jsr {
+                        push(next);
+                    }
+                }
+                _ => push(next),
+            }
+        }
+        found.into_iter().collect()
     }
 
     /// In hardware mode, make a read of the byte at `addr` (a custom register or a CIA's) return

@@ -4,7 +4,7 @@
 use std::path::Path;
 use std::process::Command;
 
-use fd_conform::{Case, Verdict, disks, run};
+use fd_conform::{Case, Outcome, disks, run};
 
 fn first_case() -> Case {
     Case::load(Path::new("cases/first-case.toml")).unwrap_or_else(|e| panic!("{e}"))
@@ -14,13 +14,8 @@ fn first_case() -> Case {
 fn the_idle_title_matches_the_original_on_every_pass() {
     let case = first_case();
     let verdict = run(&case).unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(
-        verdict,
-        Verdict::Same {
-            passes: case.frames + 1
-        },
-        "{verdict}"
-    );
+    assert_eq!(verdict.outcome, Outcome::Same, "{verdict}");
+    assert_eq!(verdict.passes, case.frames + 1, "{verdict}");
 }
 
 /// The comparison can fail: T06's trap, one frame early, is seen and named. Both sides read 0 at
@@ -33,8 +28,8 @@ fn a_start_one_frame_early_is_caught_and_named() {
         ..first_case()
     };
     assert_eq!(
-        run(&case).unwrap_or_else(|e| panic!("{e}")),
-        Verdict::Differs {
+        run(&case).unwrap_or_else(|e| panic!("{e}")).outcome,
+        Outcome::Differs {
             pass: 1,
             frame: 4922,
             var: "mt_counter".into(),

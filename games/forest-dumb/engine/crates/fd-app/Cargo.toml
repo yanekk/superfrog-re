@@ -1,0 +1,41 @@
+[package]
+name = "fd-app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The library is the one thing the app and its tests must agree on: the state hash a capture holds.
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "fd-app"
+path = "src/main.rs"
+
+[dependencies]
+# The game (DESIGN §3.2). Never fd-conform or amiga-oracle: the shipped game may not contain an
+# emulator (DESIGN §3.1, `tests/deps.rs`).
+fd-core = { path = "../fd-core" }
+fd-assets = { path = "../fd-assets" }
+# The disk lookup and the unpacker (DESIGN §2.9).
+fd-tools = { path = "../fd-tools" }
+# Reads the two ADFs once, so a launch inflates each zip once rather than once a file.
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
+# Joy and FrameInput, what the keys and pads feed (a toolkit crate).
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# The app's game-free parts: pacing, pads, the picture on the GPU, capture files, the lock, keys,
+# settings.toml, the Controls window and a script's game-free lines (T12).
+amiga-app = { path = "../../../../../toolkit/crates/amiga-app" }
+# The window and its events.
+winit = "0.30"
+# The --timeout seatbelt stops the app's whole process group (DESIGN §5.2).
+libc = "0.2"
+# The native menu bar (DESIGN §2.7).
+muda = "0.21"
+# The plain message when the disks cannot be read (DESIGN §2.12), as sf-app's.
+rfd = "0.15"
+# Which inputs a settings.toml names, so the ones it leaves out take this game's defaults.
+toml = "0.9"
+
+# The bug recorder and its zip (T14): the toolkit's game-free half, with fd-core's header.
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }

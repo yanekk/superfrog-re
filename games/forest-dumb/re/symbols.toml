@@ -204,8 +204,8 @@ hunk = 0
 offset = 0x1f78
 name = "last_key_byte"
 kind = "var"
-size = 2
-note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed"
+size = 1
+note = "raw CIA serial byte from the keyboard interrupt; $75 is Esc pressed; move.b only, h0+$1f79 is padding (T23)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -222,6 +222,74 @@ offset = 0x1fec
 name = "game_frame"
 kind = "func"
 note = "one frame of play, run inside the interrupt"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4be4
+name = "char_walk_t"
+kind = "var"
+size = 1
+note = "walk frame counter, 0 to $27; char_step_4be6 and h0_4c28 step it (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c28
+name = "h0_4c28"
+kind = "func"
+note = "walk right: facing 1, steps char_walk_t, frame from h0+$4edc (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4c6a
+name = "h0_4c6a"
+kind = "func"
+note = "frame from char_probe_1, char_probe_2 bits 0-1 and char_facing (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d32
+name = "h0_4d32"
+kind = "func"
+note = "frame h0+$4ef0 or, facing left, h0+$4f44 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d54
+name = "h0_4d54"
+kind = "func"
+note = "frame h0+$4ef4 or, facing left, h0+$4f48 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ece
+name = "char_facing"
+kind = "var"
+size = 1
+note = "$ff left, 1 right (read: set with char_x -1 / +1 in h0+$4696)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed1
+name = "char_probe_1"
+kind = "var"
+size = 1
+note = "written by char_probe_flags; 1, 2, 3 pick frames in h0_4c6a"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed2
+name = "char_probe_2"
+kind = "var"
+size = 1
+note = "bits 0 and 1 pick frames in h0_4c6a"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -323,6 +391,42 @@ offset = 0x7bf4
 name = "prompt_insert_disk"
 kind = "func"
 note = "the prompt behind a failed open"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df2
+name = "joy_left"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 is set, else 0 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df4
+name = "joy_right"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 is set (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df6
+name = "joy_up"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 9 xor bit 8 (read_joystick)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8df8
+name = "joy_down"
+kind = "var"
+size = 2
+note = "1 when JOY1DAT bit 1 xor bit 0 (read_joystick)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -527,3 +631,1449 @@ hunk = 4
 offset = 0x1c29c
 name = "load_list_world_1"
 kind = "func"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x534
+name = "lives_reset"
+kind = "func"
+note = "session start: lives to BCD 32 (oracle, docs/09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e5a
+name = "char_x"
+kind = "var"
+size = 4
+note = "character x, level pixels (oracle, docs/09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e5e
+name = "char_y"
+kind = "var"
+size = 4
+note = "character y, level pixels; world 1 starts at $70,$70 (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e62
+name = "camera_x"
+kind = "var"
+size = 2
+note = "left edge of the view, level pixels; clamped to $17cf (oracle follows char_x)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1e64
+name = "camera_y"
+kind = "var"
+size = 2
+note = "top edge of the view; clamped to $52f (oracle follows char_y)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x20ac
+name = "countdown_tick"
+kind = "var"
+size = 4
+note = "game_frame passes 0..62; at 63 countdown loses one (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x20b0
+name = "countdown_step"
+kind = "func"
+note = "once a game_frame: countdown_tick, then BCD countdown -1 every 63 passes"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2100
+name = "paused"
+kind = "var"
+size = 2
+note = "P toggles it; game_frame then only reads keys (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2102
+name = "pause_key_down"
+kind = "var"
+size = 2
+note = "P pressed, waiting for its release"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2104
+name = "play_keys"
+kind = "func"
+note = "HELP, Esc and P during play, from last_key_byte"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2146
+name = "help_key"
+kind = "func"
+note = "HELP with cheat_flag set: level_exit_touched and items_left 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2176
+name = "esc_key"
+kind = "func"
+note = "Esc press then release sets give_up (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b0
+name = "esc_down"
+kind = "var"
+size = 2
+note = "Esc pressed, waiting for its release"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b2
+name = "give_up"
+kind = "var"
+size = 2
+note = "main_loop goes to game over on it within 32 interrupts (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2696
+name = "level_exit_touched"
+kind = "var"
+size = 2
+note = "cleared each pass by char_object_cells, set on an $ff object cell (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2698
+name = "char_object_cells"
+kind = "func"
+note = "object map under the character: $ff the exit, $20..$27 items (oracle for $ff)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a66
+name = "score"
+kind = "var"
+size = 4
+note = "BCD (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a6a
+name = "score_add"
+kind = "var"
+size = 4
+note = "BCD amount score_add_routine adds"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2a6e
+name = "score_add_routine"
+kind = "func"
+note = "adds score_add to score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b26
+name = "hits_taken"
+kind = "var"
+size = 2
+note = "reading: three hits cost a life in char_hit_check"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b2a
+name = "char_hit_check"
+kind = "func"
+note = "reading: hits, hits_taken, lives_minus_one; not run"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e0c
+name = "char_update"
+kind = "func"
+note = "four sub-steps a game_frame: char_probe, char_probe_flags, char_step"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e30
+name = "char_step"
+kind = "func"
+note = "one sub-step: joystick flags to movement, writes char_x and char_y"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4be6
+name = "char_step_4be6"
+kind = "func"
+note = "walk left: facing $ff, steps char_walk_t, frame from h0+$4f30 (T51)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d78
+name = "char_screen_x"
+kind = "var"
+size = 2
+note = "char_x minus camera_x (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4d7e
+name = "camera_update"
+kind = "func"
+note = "screen position and the edge-redraw flags h0+$5196..$519c"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed8
+name = "char_anim_ptr"
+kind = "var"
+size = 4
+note = "the animation frame char_sprite_copy copies"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4f84
+name = "char_probe"
+kind = "func"
+note = "bra to h0+$5500: samples the collision map around the character into h0+$54f0.."
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4f90
+name = "char_probe_flags"
+kind = "func"
+note = "probe flags to h0+$4ed1; not read further"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5462
+name = "char_sprite_position"
+kind = "func"
+note = "sprite 0-3 control words from char_screen_x (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x69a6
+name = "lives_plus_one"
+kind = "func"
+note = "BCD, capped at 99"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x69d6
+name = "lives_minus_one"
+kind = "func"
+note = "BCD, stops at 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a04
+name = "countdown_plus_100"
+kind = "func"
+note = "BCD, capped at 999"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a4c
+name = "items_left_minus_one"
+kind = "func"
+note = "BCD"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a80
+name = "countdown"
+kind = "var"
+size = 4
+note = "BCD from 999, -1 every 63 passes; 0 is game over within 32 interrupts (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a84
+name = "lives"
+kind = "var"
+size = 2
+note = "BCD, 32 at the first level (oracle); 0 is game over"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a88
+name = "items_left"
+kind = "var"
+size = 2
+note = "BCD, 282 in world 1 (oracle); the exit counts only at 0"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x777e
+name = "title_code_world"
+kind = "func"
+note = "the title code picks the start world; one code sets cheat_flag"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x780c
+name = "cheat_flag"
+kind = "var"
+size = 2
+note = "lets HELP end the level and stops life loss"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7c4c
+name = "scena_screen"
+kind = "func"
+note = "SCENA N: draws the world name, waits for fire from frame 6206 (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8dfa
+name = "beam_sample_unread"
+kind = "var"
+size = 2
+note = "VHPOSR written each game_frame, read by nothing"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8dfc
+name = "read_joystick"
+kind = "func"
+note = "JOY1DAT to joy_left..joy_down; appends them to input_log while it has room"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8ec0
+name = "input_log_index"
+kind = "var"
+size = 4
+note = "entries in input_log, stops at 12000"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9b06
+name = "char_sprite_copy"
+kind = "func"
+note = "copies char_anim_ptr into sprites 0-3 each game_frame (oracle)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x34c28
+name = "input_log"
+kind = "table"
+size = 0x2ee0
+note = "one byte of joy_left..joy_down a game_frame, 12000 frames; read by nothing found"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x37b08
+name = "collision_rows"
+kind = "table"
+size = 0x400
+note = "256 row offsets, $2e apart, into the collision map at h3+$fa50"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 3
+offset = 0xfa50
+name = "collision_map"
+kind = "table"
+size = 0x2e00
+note = "1 bit a pixel, 256 rows of $2e bytes, row = y & $ff; written by the edge redraws (oracle: game state)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1fe6
+name = "clxdat_copy"
+kind = "var"
+size = 2
+note = "CLXDAT as char_hit_check read it this pass; bits 1-2 are contact (docs/10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b4
+name = "spring_x"
+kind = "var"
+size = 4
+note = "where the spring fired, x: char_x + $e or - 2 by value (h0_24ce)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21b8
+name = "spring_y"
+kind = "var"
+size = 4
+note = "where the spring fired, y: char_y + $23"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21bc
+name = "spring_timer"
+kind = "var"
+size = 2
+note = "set to 1 when a spring fires; h0_21c0 counts it to 6, redraws the spring, clears it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21be
+name = "spring_kind"
+kind = "var"
+size = 2
+note = "0 for $10, $11; 1 for $12, $13"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2faa
+name = "creature_slot_index"
+kind = "var"
+size = 4
+note = "h0_2fae's loop counter over the five slots; h0_2e0e reads it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x62b2
+name = "anim_tick"
+kind = "var"
+size = 2
+note = "byte $62b2: the animation tick, +1 every fourth pass; byte $62b3 counts the passes (h0_62b6)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x67da
+name = "creature_active"
+kind = "var"
+size = 18
+note = "five flag bytes, one a slot, $ff when used; h0+$67b4 clears all 18 bytes"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x67ec
+name = "creature_slots"
+kind = "var"
+size = 40
+note = "five slots of x.w, y.w, kind.w, direction.b, phase.b; kind = object value - 1, 7 dying (docs/10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 2
+offset = 0x1680
+name = "anim_cell_used"
+kind = "var"
+size = 48
+note = "h0_62b6's four lists of 12 animated cells: a flag byte each"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 2
+offset = 0x16b0
+name = "anim_cells"
+kind = "var"
+size = 384
+note = "the animated cells: x.w, y.w, object value.b, 3 more bytes, 48 of them"
+
+# T09, the camera: its routines and its hand-off to main_loop's edge redraws (docs/09, "The camera").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4e9a
+name = "h0_4e9a"
+kind = "func"
+note = "camera flag step right: scrolls h0_51fc while char_x - camera_x is past $94 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ea6
+name = "h0_4ea6"
+kind = "func"
+note = "camera flag step left: scrolls h0_526a while char_x - camera_x is below $78 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4eb4
+name = "h0_4eb4"
+kind = "func"
+note = "camera flag step up: scrolls h0_52d8 while char_y - camera_y is below $46 (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ec2
+name = "h0_4ec2"
+kind = "func"
+note = "camera flag step down: scrolls h0_5346 while char_y - camera_y is past $5a (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x513c
+name = "h0_513c"
+kind = "func"
+note = "clamps camera_y to $53f then 0, camera_x to $17cf then 0, by cmpi.w (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x51fc
+name = "h0_51fc"
+kind = "func"
+note = "camera_x +1; on a 16-pixel crossing only if its latch is clear, then sets flag, latch, frame_flag (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x526a
+name = "h0_526a"
+kind = "func"
+note = "camera_x -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x52d8
+name = "h0_52d8"
+kind = "func"
+note = "camera_y -1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5346
+name = "h0_5346"
+kind = "func"
+note = "camera_y +1, as h0_51fc (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5186
+name = "edge_at_right_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the right edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5188
+name = "edge_at_right_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_right_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518a
+name = "edge_at_left_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the left edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518c
+name = "edge_at_left_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_left_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x518e
+name = "edge_at_up_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the up edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5190
+name = "edge_at_up_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_up_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5192
+name = "edge_at_down_x"
+kind = "var"
+size = 2
+note = "camera_x when camera_update last saw the down edge crossed; read by main_loop (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5194
+name = "edge_at_down_y"
+kind = "var"
+size = 2
+note = "camera_y with edge_at_down_x (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5196
+name = "edge_latch_right"
+kind = "var"
+size = 2
+note = "set $ffff by a right scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5198
+name = "edge_latch_left"
+kind = "var"
+size = 2
+note = "set $ffff by a left scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519a
+name = "edge_latch_up"
+kind = "var"
+size = 2
+note = "set $ffff by a up scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x519c
+name = "edge_latch_down"
+kind = "var"
+size = 2
+note = "set $ffff by a down scroll crossing a cell; blocks the next until main_loop clears it (T09)"
+
+# T08, the character's movement (docs/09, "The character's movement").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3b28
+name = "char_jump_3b28"
+kind = "var"
+size = 2
+note = "word; set, the rise reads h0+$42ec (h0_4274); cleared on landing (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x41b4
+name = "char_jump_41b4"
+kind = "var"
+size = 2
+note = "word; set, the rise reads h0+$43ba (h0_4274) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x41b6
+name = "char_jump_41b6"
+kind = "var"
+size = 2
+note = "word; a take-off with it set sets char_jump_41b4 (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b60
+name = "char_dying_t"
+kind = "var"
+size = 2
+note = "the dying fall's counter; its high nibble picks the frame (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b62
+name = "char_dying"
+kind = "var"
+size = 2
+note = "set, char_step runs the dying fall and nothing else (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ecf
+name = "char_rising"
+kind = "var"
+size = 1
+note = "the jump's rise runs (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed0
+name = "char_falling"
+kind = "var"
+size = 1
+note = "the fall runs (h0_410c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed3
+name = "char_probe_3"
+kind = "var"
+size = 1
+note = "wall left: samples $54f5 or $54f6 (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed4
+name = "char_probe_4"
+kind = "var"
+size = 1
+note = "wall right: samples $54f7 or $54f8 (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed5
+name = "char_probe_5"
+kind = "var"
+size = 1
+note = "above: samples $54f9..$54fb (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4ed6
+name = "char_probe_6"
+kind = "var"
+size = 1
+note = "above: samples $54fc..$54fe (char_probe_flags) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4108
+name = "char_slide_t"
+kind = "var"
+size = 1
+note = "the slide's step into h0+$40ac/$40cb (h0_3ea8) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4109
+name = "char_jumped"
+kind = "var"
+size = 1
+note = "the rise has left the ground (char_step) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x410a
+name = "char_jump_t"
+kind = "var"
+size = 1
+note = "the rise's or fall's step into its table (h0_4274, h0_416c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4710
+name = "char_run_left"
+kind = "var"
+size = 4
+note = "run counter left, index into h0+$49d0 (h0_47e2) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4714
+name = "char_run_right"
+kind = "var"
+size = 4
+note = "run counter right, index into h0+$49d0 (h0_497c) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f0
+name = "char_samples_0"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f0..$54f3, $ff solid or 0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f4
+name = "char_samples_4"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f4..$54f7 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54f8
+name = "char_samples_8"
+kind = "var"
+size = 4
+note = "char_probe's samples $54f8..$54fb (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x54fc
+name = "char_samples_c"
+kind = "var"
+size = 4
+note = "char_probe's samples $54fc..$54ff; $54ff the low ground point (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3e2c
+name = "char_update_t"
+kind = "var"
+size = 4
+note = "char_update's sub-step count, 3 to 0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9b04
+name = "char_unhurt_t"
+kind = "var"
+size = 1
+note = "set to $9b when the dying fall lands (char_step); contact hurts once it wraps to 0 (T59) (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ea8
+name = "h0_3ea8"
+kind = "func"
+note = "nothing pressed: land or fall, then the slide or a stop (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x410c
+name = "h0_410c"
+kind = "func"
+note = "land, or a fall step with a pixel of air steering (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x416c
+name = "h0_416c"
+kind = "func"
+note = "one fall step down by h0+$44d4 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4274
+name = "h0_4274"
+kind = "func"
+note = "one rise step up by h0+$431e, $42ec or $43ba (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4696
+name = "h0_4696"
+kind = "func"
+note = "a pixel left or right in the air unless a wall; ends run and slide (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4718
+name = "h0_4718"
+kind = "func"
+note = "left pressed: walk and run step, following the slope (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x47e2
+name = "h0_47e2"
+kind = "func"
+note = "the left run's step from h0+$49d0, moved and left in d0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x48be
+name = "h0_48be"
+kind = "func"
+note = "right pressed: walk and run step, following the slope (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x497c
+name = "h0_497c"
+kind = "func"
+note = "the right run's step from h0+$49d0, moved and left in d0 (T08)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x4b0e
+name = "h0_4b0e"
+kind = "func"
+note = "up pressed: the jump starts, or the fall (T08)"
+
+# T65, level_init's first view (docs/12).
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x62e
+name = "view_tiles"
+kind = "func"
+note = "level_init's first view: 23 columns by 16 rows of tiles from the map's top-left, by view_tile (T65: level::start::draw_tiles)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x672
+name = "view_tile"
+kind = "func"
+note = "copies the tile of cell d6 (row), d7 (column) onto the play screen by CPU, 5 words a line over 16 lines (T65: level::start::tile_cell)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c4
+name = "view_shapes"
+kind = "func"
+note = "level_init's first view: the same 23 by 16 cells' shapes into collision_map, by view_shape (T65: level::start::draw_shapes)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x708
+name = "view_shape"
+kind = "func"
+note = "copies the shape of cell d6 (row), d7 (column) into collision_map, 16 words $2e apart (T65: level::start::shape_cell)"
+
+# T55, the edge redraws' helpers (docs/09, "The edge redraws").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x774
+name = "h0_774"
+kind = "func"
+note = "blits one map tile to the play screen at a3 (T55: level::redraw::tile_blit)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7cc
+name = "h0_7cc"
+kind = "func"
+note = "copies collision shape d5 as 16 words down a collision_map column at a3 (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xa06
+name = "h0_a06"
+kind = "func"
+note = "redraw_edge_a's bob: cuts an _ELEMENTY bob over the row below the view (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0xce4
+name = "h0_ce4"
+kind = "func"
+note = "redraw_edge_b's bob: cuts an _ELEMENTY bob over the row above the view (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x104c
+name = "h0_104c"
+kind = "func"
+note = "redraw_edge_c's bob: cuts an _ELEMENTY bob over the column at x (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1390
+name = "h0_1390"
+kind = "func"
+note = "redraw_edge_d's bob: cuts an _ELEMENTY bob over the column at x + $130 (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ac2
+name = "h0_3ac2"
+kind = "func"
+note = "waits for the raster to leave lines $e7-$66, then for the blitter (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x681c
+name = "h0_681c"
+kind = "func"
+note = "starts a creature (d0-d3) in the first free of five slots; d0 = -1 if none (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6852
+name = "h0_6852"
+kind = "func"
+note = "fills creature slot d7 and marks it used; only h0_681c calls it (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6882
+name = "h0_6882"
+kind = "func"
+note = "adds an animated cell (d0, d1, value at a2) to the emptiest of h0_62b6's four lists (T55)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3ab4
+name = "h0_3ab4"
+kind = "func"
+note = "waits while the blitter is busy (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x94ba
+name = "h0_94ba"
+kind = "func"
+note = "one pass of the level palette's fade-in, 32 passes from h0+$94b4 set (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x94fe
+name = "h0_94fe"
+kind = "func"
+note = "every copper colour (h1+$13e) one step toward h1+$306 at fade column d6 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9550
+name = "h0_9550"
+kind = "func"
+note = "one colour d1 one step toward d0, by the fade table h0+$9624; result in d3 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9754
+name = "h0_9754"
+kind = "func"
+note = "the copper list's bitplane pointers, scroll and wrap from the camera (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6a96
+name = "h0_6a96"
+kind = "func"
+note = "main_loop's status bar: redraws countdown, lives, score, items where changed (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6ae8
+name = "h0_6ae8"
+kind = "func"
+note = "draws the score's six digits into the status bar (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6b70
+name = "h0_6b70"
+kind = "func"
+note = "a score digit d0 at place d1 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6b78
+name = "h0_6b78"
+kind = "func"
+note = "an 8x8 digit d0 from the font at h4+$8fc0 to a1 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6bc0
+name = "h0_6bc0"
+kind = "func"
+note = "draws the countdown's three digits (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c20
+name = "h0_6c20"
+kind = "func"
+note = "draws the items left's three digits (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6c80
+name = "h0_6c80"
+kind = "func"
+note = "draws the lives: their count of threes and the remainder's icons (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x988a
+name = "h0_988a"
+kind = "func"
+note = "start-up: the status bar's bitplane pointers at h1+$248 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x9a34
+name = "h0_9a34"
+kind = "func"
+note = "start-up: the level copper list's sprite pointers at h1+$d8 (T10)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2648
+name = "item_sound"
+kind = "func"
+note = "starts the item sample h4+$12acc on audio channel 2 after four raster lines (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2692
+name = "object_row"
+kind = "var"
+size = 4
+note = "the row offset char_object_cells reads at, $19 then 9; h0_26ec adds it to char_y (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x26ec
+name = "h0_26ec"
+kind = "func"
+note = "takes what the object map holds at d0, d1: the exit, an item or a bonus (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x29c6
+name = "object_taken"
+kind = "var"
+size = 4
+note = "h0_26ec's d0 when it takes a cell, the value in its low byte; h0_29ca returns it (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x29ca
+name = "h0_29ca"
+kind = "func"
+note = "redraws a taken cell's 16x16 tile from the tile map onto the play screen (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2dd6
+name = "h0_2dd6"
+kind = "func"
+note = "each active creature slot out of view is written back into the object map (T22)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2e0e
+name = "h0_2e0e"
+kind = "func"
+note = "slot d0 out of view: kind + 1 written into a free cell near it, its flag cleared (T22)"
+
+# T25, the mechanics: springs and the animated cells (docs/10, "Mechanics, ported").
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x21c0
+name = "h0_21c0"
+kind = "func"
+note = "the spring's picture: pressed with a sound at spring_timer 1, its four tiles back at 6 (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x24ce
+name = "h0_24ce"
+kind = "func"
+note = "a spring ($10-$13) under the falling character's feet throws it up and starts spring_timer (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x62b6
+name = "h0_62b6"
+kind = "func"
+note = "one of the four animated-cell lists a pass: items, water, vanishing blocks, flames drawn (T25)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6342
+name = "water_cycle"
+kind = "var"
+size = 2
+note = "set, $28 water cycles four _ELEMENTY frames, else two; load_list_world_1 and _2 set it, 3 to 6 clear it (T25)"
+
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2c7e
+name = "h0_2c7e"
+kind = "func"
+note = "for each flagged slot (game_frame swaps in the flags last drawn), h0_5e44 restores the tiles behind it (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2d4c
+name = "h0_2d4c"
+kind = "func"
+note = "sets the cut blits' modulos and masks, then h0_5820 cuts each active creature onto the screen (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5820
+name = "h0_5820"
+kind = "func"
+note = "cuts the creature at h0+$5818 from StworkiNew (kind 7: h4+$3200) onto the screen, split at its 256th line (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x5e44
+name = "h0_5e44"
+kind = "func"
+note = "copies the map's tiles back over the creature at h0+$5818: 3 by 2, a third row for kinds 0, 3, 7 (T52)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fae
+name = "h0_2fae"
+kind = "func"
+note = "each active creature slot moved by its kind, creature_slot_index 0 to 4 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fe6
+name = "creature_moving_slot"
+kind = "var"
+size = 4
+note = "h0_2fea's d0, written each call, never read (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x2fea
+name = "h0_2fea"
+kind = "func"
+note = "creature slot d0 moved one pass by its kind: 0 flies, 1-5 walk or hop, 7 stomped (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x306e
+name = "creature_stomped_seen"
+kind = "var"
+size = 2
+note = "set to 1 by h0_2fea for a kind 7 slot, never read (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x320a
+name = "h0_320a"
+kind = "func"
+note = "kind 2 steps left by the table at h0+$323a (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3222
+name = "h0_3222"
+kind = "func"
+note = "kind 2 steps right by the table at h0+$328a (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x32f8
+name = "h0_32f8"
+kind = "func"
+note = "kind 3 hops left: x by h0+$334c, y by h0+$336c (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3322
+name = "h0_3322"
+kind = "func"
+note = "kind 3 hops right: x by h0+$334c, y by h0+$336c (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3530
+name = "h0_3530"
+kind = "func"
+note = "creature probe: solid at x, y+$18 turns it right (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3566
+name = "h0_3566"
+kind = "func"
+note = "creature probe: clear at x-1, y+$21 (a ledge) turns it right (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x35a0
+name = "h0_35a0"
+kind = "func"
+note = "creature probe: solid at x+$20, y+$18 turns it left (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x35dc
+name = "h0_35dc"
+kind = "func"
+note = "creature probe: clear at x+$21, y+$21 (a ledge) turns it left (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x366a
+name = "creature_sorted"
+kind = "var"
+size = 46
+note = "h0_3698's sorted copy: 6 flag bytes, then 5 slots at h0+$3670 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3698
+name = "h0_3698"
+kind = "func"
+note = "creature slots and flags sorted by y for drawing; middle pairs compared as bytes (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3adc
+name = "h0_3adc"
+kind = "func"
+note = "the stomp sound on audio channel 2 (T24)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x3dd8
+name = "h0_3dd8"
+kind = "func"
+note = "point d0, d1 inside slot a0's $30 by $20 box: d7.b 1, else d7 0 (T24)"

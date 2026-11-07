@@ -11,6 +11,7 @@
 #include <cstring>
 #include <map>
 #include <new>
+#include <unordered_map>
 #include <vector>
 
 namespace vamiga::moira {
@@ -50,6 +51,35 @@ public:
     // The blitter's registers ($DFF040-$DFF074, by word): a write to BLTSIZE runs the blit at
     // once, in area mode, into this memory (journalled like the CPU's writes).
     u16 blt[0x1c] = {};
+
+    // Tracing (amiga_cpu68k_set_trace): the call's conditional branches, by address, with a bit
+    // per way (1 not taken, 2 taken); and its data reads, one bit per address with a list to
+    // clear them by. The bitmap is allocated the first time tracing is turned on.
+    bool trace = false;
+    // Whether the last call left a trace to clear: an untraced call skips the clearing.
+    bool traced = false;
+    std::unordered_map<u32, u8> branchWays;
+    std::vector<amiga_branch> branchOut;
+    std::vector<u64> readBits;
+    std::vector<u32> reads;
+
+    void note_read(u32 a) {
+        if ((readFC() & 3) != 1) return;
+        a &= kMemMask;
+        u64 bit = u64(1) << (a & 63);
+        if (!(readBits[a >> 6] & bit)) {
+            readBits[a >> 6] |= bit;
+            reads.push_back(a);
+        }
+    }
+
+    // The length of the conditional branch at `pc` with opcode `op`, or 0 if it is not one.
+    static u32 cond_branch_len(u16 op) {
+        if ((op & 0xF0F8) == 0x50C8) return 4;                   // DBcc
+        if ((op & 0xF000) == 0x6000 && (op & 0x0E00) != 0)      // Bcc, not BRA (0) or BSR (1)
+            return (op & 0xFF) == 0 ? 4 : 2;
+        return 0;
+    }
 
     u16 mem16(u32 a) { a &= kMemMask & ~1u; return u16(mem[a] << 8 | mem[a + 1]); }
     void put16(u32 a, u16 v) { a &= kMemMask & ~1u; wr8(a, u8(v >> 8)); wr8(a + 1, u8(v)); }
@@ -198,6 +228,13 @@ public:
         hwWrites.clear();
         std::fill(std::begin(blt), std::end(blt), u16(0));
         bus = 0;
+        if (traced) {
+            branchWays.clear();
+            branchOut.clear();
+            for (u32 a : reads) readBits[a >> 6] = 0;
+            reads.clear();
+            traced = false;
+        }
         resetSsp = r->a[7];
         resetPc = entry;
         overrideVectors = true;
@@ -210,6 +247,7 @@ public:
         setPC0(getPC());
 
         u64 n = 0;
+        traced = trace;
         while (status.status == AMIGA_CALL_RETURNED) {
             if (getPC() == sentinel) break;
             if (n == max_instr) {
@@ -217,7 +255,15 @@ public:
                 status.pc = getPC();
                 break;
             }
-            execute();
+            if (trace) {
+                u32 pc = getPC();
+                u32 len = cond_branch_len(mem16(pc));
+                execute();
+                if (len && status.status == AMIGA_CALL_RETURNED)
+                    branchWays[pc & kMemMask] |= getPC() == pc + len ? 1 : 2;
+            } else {
+                execute();
+            }
             n++;
             if (isHalted() && status.status == AMIGA_CALL_RETURNED) {
                 status.status = AMIGA_CALL_HALTED;
@@ -231,14 +277,28 @@ public:
         for (int i = 0; i < 8; i++) r->a[i] = getA(i);
         r->sr = getSR();
         *out = status;
+        if (traced) {
+            for (auto &[at, ways] : branchWays) branchOut.push_back({ at, u8(ways & 1), u8(ways >> 1) });
+            std::sort(reads.begin(), reads.end());
+        }
     }
 };
 
 namespace { inline FlatCpu &self(const Moira *m) { return *const_cast<FlatCpu *>(static_cast<const FlatCpu *>(m)); } }
 
 void Moira::sync(int cycles) { clock += cycles; }
-u8 Moira::read8(u32 addr) const { return self(this).rd8(addr); }
-u16 Moira::read16(u32 addr) const { return self(this).rd16(addr); }
+u8 Moira::read8(u32 addr) const
+{
+    FlatCpu &c = self(this);
+    if (c.trace) [[unlikely]] c.note_read(addr);
+    return c.rd8(addr);
+}
+u16 Moira::read16(u32 addr) const
+{
+    FlatCpu &c = self(this);
+    if (c.trace) [[unlikely]] { c.note_read(addr); c.note_read(addr + 1); }
+    return c.rd16(addr);
+}
 u32 Moira::read32(u32 addr) const { return u32(read16(addr)) << 16 | read16(addr + 2); }
 u16 Moira::read16Dasm(u32 addr) const { return self(this).mem[addr & kMemMask] << 8 | self(this).mem[(addr + 1) & kMemMask]; }
 
@@ -322,6 +382,30 @@ void amiga_cpu68k_set_hw(amiga_cpu68k *c, int on) { c->cpu.hw = on != 0; }
 void amiga_cpu68k_set_hw_read(amiga_cpu68k *c, uint32_t addr, uint8_t value)
 {
     c->cpu.hwReads[addr & 0xFFFFFF] = value;
+}
+
+void amiga_cpu68k_set_trace(amiga_cpu68k *c, int on)
+{
+    c->cpu.trace = on != 0;
+    if (c->cpu.trace && c->cpu.readBits.empty()) c->cpu.readBits.assign(AMIGA_CPU68K_MEM_SIZE / 64, 0);
+}
+
+size_t amiga_cpu68k_branches(const amiga_cpu68k *c, const amiga_branch **out)
+{
+    *out = c->cpu.branchOut.data();
+    return c->cpu.branchOut.size();
+}
+
+size_t amiga_cpu68k_reads(const amiga_cpu68k *c, const uint32_t **out)
+{
+    *out = c->cpu.reads.data();
+    return c->cpu.reads.size();
+}
+
+int amiga_cpu68k_insn_len(const amiga_cpu68k *c, uint32_t addr)
+{
+    char text[128];
+    return c->cpu.disassemble(text, addr & 0xFFFFFE);
 }
 
 size_t amiga_cpu68k_hw_writes(const amiga_cpu68k *c, const amiga_hw_write **out)

@@ -1,0 +1,11 @@
+# T44: the engine's picture against the original's while the view scrolls right, up, down and left
+# (scripts/picture-scroll.txt), the character walking and jumping both ways. Goal: back at the left
+# wall, char_x $1b, the view at the left end. Every object frozen, as T43's camera cases. The
+# countdown's digits are compared since T23 ported its tick.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "picture-scroll"
+frames = 220
+compare = ["vars", "picture"]
+vars = ["camera_x", "camera_y", "char_x", "char_y", "char_anim_ptr", "lives", "items_left", "score"]
+goal = { all = [{ var = "char_x", value = 0x1b }, { var = "camera_x", value = 0 }], by_frame = 6521 }
+freeze = true

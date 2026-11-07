@@ -1,0 +1,12 @@
+# T11, from T42: from the sync frame 6400 (measured 2026-11-06): down the slope and stop (char_x $da), up it to
+# the left wall, right and let go (a slide to char_x $5d), a running jump left into the stone above.
+0: -
+10: R
+40: -
+60: L
+110: -
+120: R
+135: -
+150: L U
+156: L
+200: -

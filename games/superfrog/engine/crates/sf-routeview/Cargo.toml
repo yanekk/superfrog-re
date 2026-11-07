@@ -5,11 +5,15 @@ edition.workspace = true
 publish.workspace = true
 
 # The route viewer: plays app-timed routes on the engine and writes a web page drawing each over
-# its level map, with a switcher over the smart planner's routes and their verdicts. Shell: it
+# its level map, with a switcher over the smart planner's routes and their verdicts. The page, the
+# verdicts and the JSON are the toolkit's amiga-routeview (forest-dumb-level-1 T18); this crate keeps
+# the replay (`dump`), the levels and Superfrog's page spec. Shell: it
 # reads files and the disks. `sf-bench` runs its binary after a set-C run of the new planner
 # (a child process, so sf-bench does not link this crate and the two never form a cycle).
 
 [dependencies]
+# The page writer, the verdict and the stall marks.
+amiga-routeview = { path = "../../../../../toolkit/crates/amiga-routeview" }
 sf-core = { path = "../sf-core" }
 sf-assets = { path = "../sf-assets" }
 # The disks (`game_data`, `display_data`) and the input-script format.
