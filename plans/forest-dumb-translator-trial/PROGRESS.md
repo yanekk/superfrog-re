@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** review T07, then T08.
+**Next `pir-work` will:** T08.
 
 ## Tasks
 
@@ -21,10 +21,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | judge-translated | T00, T02 | ✅ | |
 | T05 | code-writes-check | T00 | ✅ | |
 | T06 | trial-tool | T01, T03, T04 | ✅ | |
-| T07 | trial-fixes | T06 | 🔍 | Two Ghidra P-code corrections in `pcode_rust.py`, by mnemonic and pattern: `abcd`/`sbcd` via new `pcode_rt::bcd` (Moira's arithmetic), compares no longer set X. 84 of 85 (98.8%), no hints. 6 Python, 1 fixture, 4 unit tests. Deviation: compare fix not in T06's failure list; surfaced once `abcd` ran. Recursion row left open. |
+| T07 | trial-fixes | T06 | ✅ | Review clean, no fix commit. Probed: exhaustive C copy of Moira::bcd agrees on all 262 144 inputs; all 13 real abcd/sbcd and 185 real compares match the corrected patterns; committed translator regenerates the judged tree.rs byte for byte; mutations of sbcd's second digit and of the compare fix go red. Recursion row still open, no routine hits it. |
 | T08 | trial-report | T05, T07 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** empty
 
 ## Blocked on the user
 
