@@ -43,6 +43,9 @@ workspace = "engine"
 # T15: bug recordings compared with the original by pass, and the command on a zip: about 9 s warm
 # from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
+# Translator trial T05: changes to executed instructions on w1-idle from the cached level sync point,
+# a poke caught, missing inputs named: under 2 s warm. The full run over every case is a tool run.
+"crates/fd-conform/tests/code_writes.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the

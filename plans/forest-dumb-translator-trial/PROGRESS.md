@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** build T01, T03 and T05; T06 waits on T01 and T03.
+**Next `pir-work` will:** build T01 and T03; T06 waits on both.
 
 ## Tasks
 
@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | pcode-runtime | T00 | ✅ | |
 | T03 | pcode-translator | T02 | ⬜ | |
 | T04 | judge-translated | T00, T02 | ✅ | Review: one defect, entry a7 was STACK not the oracle's STACK - 4; reproduced on a hand-assembled raw-memory rig, fixed, test locks it. Probed fd-judge --translated with a hand tree through FD_TRANSLATED (write-into-code counted, exit 0); mutation dropping translated writes went red. Deviations held; opt-level deferred to T06. |
-| T05 | code-writes-check | T00 | ⬜ | |
+| T05 | code-writes-check | T00 | ✅ | |
 | T06 | trial-tool | T01, T03, T04 | ⬜ | |
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |
