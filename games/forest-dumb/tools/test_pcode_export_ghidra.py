@@ -35,10 +35,11 @@ class GhidraExport(unittest.TestCase):
         return self.insns[at]['flow']
 
     def test_every_instruction_by_direct_flow_hunk_relative(self):
-        self.assertEqual(self.doc['entries'], ['h0+$0', 'h0+$1c', 'h0+$24', 'h0+$28'])
+        self.assertEqual(self.doc['entries'], ['h0+$0', 'h0+$1c', 'h0+$24', 'h0+$28', 'h0+$30'])
         self.assertEqual(sorted(self.insns, key=lambda a: int(a.split('$')[1], 16)),
                          ['h0+$0', 'h0+$6', 'h0+$a', 'h0+$c', 'h0+$e', 'h0+$12', 'h0+$14', 'h0+$16',
-                          'h0+$18', 'h0+$1a', 'h0+$1c', 'h0+$20', 'h0+$24', 'h0+$28', 'h0+$2c', 'h0+$2e'])
+                          'h0+$18', 'h0+$1a', 'h0+$1c', 'h0+$20', 'h0+$24', 'h0+$28', 'h0+$2c', 'h0+$2e',
+                          'h0+$30', 'h0+$36'])
         self.assertEqual([h['kind'] for h in self.doc['hunks']], ['CODE', 'DATA'])
         self.assertEqual(self.insns['h0+$0']['len'], 6)
         self.assertEqual(self.insns['h0+$6']['mnem'], 'bsr.w')
@@ -76,8 +77,15 @@ class GhidraExport(unittest.TestCase):
         self.assertEqual(self.insns['h0+$1c']['relocs'], [])
         c = self.doc['check']
         self.assertEqual(c['pcrel'], 1)
-        self.assertEqual((c['unexplained'], c['unmatched'], c['mismatched'], c['undecoded']), ([], [], [], []))
+        self.assertEqual((c['unmatched'], c['mismatched'], c['undecoded']), ([], [], []))
         self.assertEqual((c['relocs'], c['relocs_matched'], c['relocs_in_file']), (1, 1, 2))
+
+    def test_an_unrelocated_number_in_hunk_range_stays_a_number_and_is_reported(self):
+        # Ghidra loads hunk 0 at $21f000; reading this as an address would be the guess DESIGN §7 rejects
+        self.assertEqual(self.doc['ghidra_bases'][0], 0x21f000)
+        self.assertEqual(self.insns['h0+$30']['ops'][0]['in'], [['const', 0x21f004, 4]])
+        self.assertEqual(self.insns['h0+$30']['relocs'], [])
+        self.assertEqual(self.doc['check']['unexplained'], ['h0+$30 const h0+$4'])
 
 
 class GameExport(unittest.TestCase):

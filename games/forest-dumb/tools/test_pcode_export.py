@@ -30,10 +30,12 @@ CODE = bytes.fromhex(
     '60000006'      # $24 bra.w $2c           two routines share one tail: Ghidra makes $2c a function
     '60000002'      # $28 bra.w $2c           and calls these two branches tail calls
     '7402'          # $2c moveq #2,d2
-    '4E75')         # $2e rts
+    '4E75'          # $2e rts
+    '203C0021F004'  # $30 move.l #$21f004,d0  a number that happens to fall in Ghidra's hunk 0: no reloc,
+    '4E75')         # $36 rts                 no PC operand, so it must stay a number (DESIGN §7)
 # hunk 1, DATA: a pointer to h0+$18 at $10, relocated to hunk 0
 DATA = bytes(16) + struct.pack('>I', 0x18) + bytes(12)
-ENTRIES = [(0, 0x0, 10), (0, 0x1c, 2), (0, 0x24, 3), (0, 0x28, 3)]
+ENTRIES = [(0, 0x0, 10), (0, 0x1c, 2), (0, 0x24, 3), (0, 0x28, 3), (0, 0x30, 2)]
 
 
 def longs(*xs):

@@ -344,6 +344,9 @@ public class ExportPcode extends GhidraScript {
                 countPcrel++;
             } else {
                 unexplained.add(rel(insn) + " " + space + " " + rel(off));
+                // A constant nothing relocates is a number that happens to fall in a hunk: writing it
+                // as an address would be a guess. A ram varnode is an address by its space.
+                if (isConst) value = Long.toString(off);
             }
         }
         return "[" + q(space) + "," + value + "," + v.getSize() + "]";
