@@ -46,6 +46,10 @@ SHIFT = {'INT_LEFT': 'int_left', 'INT_RIGHT': 'int_right', 'INT_SRIGHT': 'int_sr
 # Unary ops taking (a, size of the input).
 UNARY = {'INT_2COMP': 'int_2comp', 'INT_NEGATE': 'int_negate', 'POPCOUNT': 'popcount'}
 BOOL = {'BOOL_AND': 'bool_and', 'BOOL_OR': 'bool_or', 'BOOL_XOR': 'bool_xor'}
+# Inputs each op the translator reads must have; fewer is a malformed export, not an unknown op.
+MIN_INPUTS = dict({o: 2 for o in (*BINARY, *SHIFT, *BOOL, 'SUBPIECE', 'PIECE', 'LOAD', 'CBRANCH')},
+                  **{o: 1 for o in (*UNARY, 'COPY', 'BOOL_NEGATE', 'INT_ZEXT', 'INT_SEXT', 'BRANCH',
+                                    'BRANCHIND', 'CALL', 'CALLIND', 'RETURN')}, STORE=3)
 JUMPS = {'BRANCH', 'CBRANCH', 'BRANCHIND', 'RETURN'}
 # Ops after which control never reaches the next op of the instruction.
 NO_FALLTHROUGH = {'BRANCH', 'BRANCHIND', 'RETURN'}
@@ -91,7 +95,8 @@ def check_varnode(v, where):
         raise BadInput(f'{where}: {v!r} is not a varnode [space, offset, size]')
     if isinstance(v[1], str):
         parse_addr(v[1], where)
-    elif not isinstance(v[1], int) or v[1] < 0:
+    elif not isinstance(v[1], int) or (v[1] < 0 and v[0] != 'const'):
+        # A const offset may be negative: Ghidra's offsets are Java longs. `rd` masks it to its size.
         raise BadInput(f'{where}: {v!r} has a bad offset')
 
 
@@ -115,6 +120,8 @@ def load_export(path):
     for i, h in enumerate(hunks):
         if h.get('index', i) != i:
             raise BadInput(f'{path}: hunk {i} has index {h.get("index")}')
+    if not isinstance(doc['entries'], list):
+        raise BadInput(f'{path}: "entries" must be a list')
     entries = [parse_addr(e, f'{path}: entries') for e in doc['entries']]
     insns = {}
     if not isinstance(doc['insns'], dict):
@@ -139,6 +146,8 @@ def load_export(path):
             for v in op.get('in', []):
                 check_varnode(v, f'{where} op {j}')
         ops = [dict(op, **{'in': [list(v) for v in op.get('in', [])]}) for op in ops]
+        if not isinstance(ins.get('relocs', []), list):
+            raise BadInput(f'{where}: "relocs" must be a list')
         for rel in ins.get('relocs', []):
             try:
                 i, s, t = rel['in_op'], rel['slot'], rel['target']
@@ -146,7 +155,14 @@ def load_export(path):
             except (KeyError, IndexError, TypeError):
                 raise BadInput(f'{where}: reloc {rel!r} names no operand')
             parse_addr(t, f'{where} reloc')
+        for j, op in enumerate(ops):
+            if len(op['in']) < MIN_INPUTS.get(op['op'], 0):
+                raise BadInput(f'{where}: op {j} {op["op"]} has too few inputs')
         flow = ins.get('flow') or {}
+        if not isinstance(flow, dict):
+            raise BadInput(f'{where}: "flow" must be an object')
+        if not isinstance(flow.get('targets', []), list):
+            raise BadInput(f'{where}: "targets" must be a list')
         targets = [parse_addr(t, f'{where} flow') for t in flow.get('targets', [])]
         insns[a] = {'len': ins['len'], 'mnem': str(ins.get('mnem', '')), 'ops': ops,
                     'targets': targets}
@@ -200,7 +216,8 @@ def op_names(ins):
 
 
 def is_relative(op):
-    return op['op'] in ('BRANCH', 'CBRANCH') and op['in'] and op['in'][0][0] == 'const'
+    return (op['op'] in ('BRANCH', 'CBRANCH') and op['in'] and op['in'][0][0] == 'const'
+            and isinstance(op['in'][0][1], int))
 
 
 def ram_target(op):
@@ -406,8 +423,12 @@ class Emit:
                     f'store(bus, img, {self.rd(v[1])} as u32, {v[2][2]}, v)?;']
         if o in ('BRANCH', 'CBRANCH'):
             t = op['in'][0]
+            if t[0] == 'const' and not isinstance(t[1], int):
+                raise Unsupported(f'{o} to a relocated constant')
             if t[0] == 'const':
                 rel = t[1] if t[1] < (1 << (8 * t[2] - 1)) else t[1] - (1 << (8 * t[2]))
+                if j + rel < 0:
+                    raise Unsupported(f'{o} before the instruction\'s first op')
                 jump = f'i = {j + rel}; continue \'i;'
             elif t[0] == 'ram':
                 jump = self.goto(t[1])

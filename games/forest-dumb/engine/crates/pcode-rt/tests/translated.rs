@@ -23,6 +23,8 @@ mod jump_table;
 mod jump_table_hinted;
 #[path = "fixtures/nested_call.rs"]
 mod nested_call;
+#[path = "fixtures/pushed_return.rs"]
+mod pushed_return;
 #[path = "fixtures/relative.rs"]
 mod relative;
 #[path = "fixtures/unsupported.rs"]
@@ -204,6 +206,28 @@ fn an_unsupported_op_stops_only_when_its_instruction_runs() {
             at: "h0+$6".into()
         })
     );
+}
+
+/// The callee overwrites its return address with d4 and returns there (68000 code may).
+#[test]
+fn a_return_to_another_pushed_address_continues_there() {
+    let f = pushed_return::entry("h0+$0").unwrap();
+    // The address after the call: the normal path, moveq #1 then addq #4.
+    // h0+$8, a block of the caller past the moveq: only the addq runs.
+    for (d4, d2) in [(BASES[0] + 0x6, 1), (BASES[0] + 0x8, 0)] {
+        let (mut r, mut m) = (Regs::new(), ram());
+        r.set_d(4, d4);
+        call(f, pushed_return::HUNK_SIZES, pushed_return::CODE, &mut r, &mut m).unwrap();
+        returned(&r);
+        assert_eq!((r.d(2), r.d(3)), (d2, 4), "returned to {d4:x}");
+    }
+    // An address with no translation stops there.
+    for (d4, at) in [(BASES[0] + 0x30, "h0+$30"), (0x00fc_0000, "$fc0000")] {
+        let (mut r, mut m) = (Regs::new(), ram());
+        r.set_d(4, d4);
+        let got = call(f, pushed_return::HUNK_SIZES, pushed_return::CODE, &mut r, &mut m);
+        assert_eq!(got, Err(Stop::Untranslated(at.into())));
+    }
 }
 
 #[test]

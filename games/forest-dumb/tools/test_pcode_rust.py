@@ -20,8 +20,8 @@ TOOL = os.path.join(HERE, 'pcode_rust.py')
 FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures')
 # (export, hints or None, committed translation)
 TRANSLATIONS = [(n + '.json', None, n + '.rs') for n in (
-    'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'relative',
-    'unsupported')] + [('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs')]
+    'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
+    'relative', 'unsupported')] + [('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs')]
 
 D0 = ['register', 0, 4]
 D1 = ['register', 4, 4]
@@ -133,6 +133,22 @@ class OpMapping(unittest.TestCase):
                 self.assertTrue(stop)
                 self.assertIn(f'Stop::Unsupported {{ op: "{name}".into(), at: "h0+$10".into() }}', text)
 
+    def test_a_negative_constant_from_the_export_is_its_bytes(self):
+        # Ghidra's varnode offsets are Java longs, so a 64-bit constant may arrive negative.
+        text, stats = translate_doc(export({'h0+$0': {'len': 2, 'mnem': 'x', 'ops': [
+            {'op': 'COPY', 'out': ['register', 0, 8], 'in': [['const', -1, 8]]}]}, 'h0+$2': RTS}))
+        self.assertEqual(stats['unsupported'], 0)
+        self.assertIn('0xffffffffffffffffu64', text)
+
+    def test_a_branch_to_a_relocated_constant_is_one_stop(self):
+        # A relocation landing on a P-code-relative branch makes no sense; that instruction stops.
+        text, stop = one_op({'op': 'BRANCH', 'in': [['const', 'h0+$2', 4]]})
+        self.assertTrue(stop)
+        self.assertIn('BRANCH to a relocated constant', text)
+        text, stop = one_op({'op': 'BRANCH', 'in': [['const', 0xffff, 2]]})
+        self.assertTrue(stop)
+        self.assertIn("first op", text)
+
     def test_translation_continues_past_an_unsupported_instruction(self):
         doc = export({
             'h0+$0': {'len': 2, 'mnem': 'made-up', 'ops': [{'op': 'FLOAT_SQRT', 'out': D0, 'in': [D0]}]},
@@ -223,7 +239,18 @@ class Cli(unittest.TestCase):
                    ('badaddr.json', json.dumps(export({'0x1000': RTS})), "'0x1000' is not an address"),
                    ('badvn.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
                        {'op': 'COPY', 'out': ['register', 0], 'in': []}]}})), 'is not a varnode'),
-                   ('badhunk.json', json.dumps(export({'h3+$0': RTS})), 'hunk 3 is not in "hunks"')]
+                   ('badhunk.json', json.dumps(export({'h3+$0': RTS})), 'hunk 3 is not in "hunks"'),
+                   ('entries.json', json.dumps(dict(export({}), entries=5)), '"entries" must be a list'),
+                   ('relocs.json', json.dumps(export({'h0+$0': dict(RTS, relocs=5)})), '"relocs" must be a list'),
+                   ('flow.json', json.dumps(export({'h0+$0': dict(RTS, flow='x')})), '"flow" must be an object'),
+                   ('targets.json', json.dumps(export({'h0+$0': dict(RTS, flow={'targets': 'h0+$2'})})),
+                    '"targets" must be a list'),
+                   ('arity.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
+                       {'op': 'INT_ADD', 'out': D0, 'in': [D0]}]}})), 'op 0 INT_ADD has too few inputs'),
+                   ('noinput.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [{'op': 'BRANCH', 'in': []}]}})),
+                    'op 0 BRANCH has too few inputs'),
+                   ('negram.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
+                       {'op': 'COPY', 'out': D0, 'in': [['ram', -4, 4]]}]}})), 'has a bad offset')]
             for name, body, says in bad:
                 p = os.path.join(d, name)
                 with open(p, 'w') as f:
