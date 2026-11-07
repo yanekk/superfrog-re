@@ -141,6 +141,8 @@ unsafe extern "C" {
     pub fn amiga_cpu(a: *const RawAmiga, out: *mut RawCpuRegs);
     pub fn amiga_blit_starts(a: *const RawAmiga, out: *mut *const RawCustomWrite) -> usize;
     pub fn amiga_set_profile(a: *mut RawAmiga, on: c_int);
+    pub fn amiga_watch_pcs(a: *mut RawAmiga, pcs: *const u32, n: usize);
+    pub fn amiga_pc_hits(a: *const RawAmiga, pcs: *mut *const u32, counts: *mut *const u32) -> usize;
     pub fn amiga_line_samples(a: *const RawAmiga, out: *mut *const RawLineSample) -> usize;
     pub fn amiga_poke(a: *mut RawAmiga, addr: u32, bytes: *const u8, len: usize);
     pub fn amiga_snapshot(
@@ -237,6 +239,18 @@ unsafe extern "C" {
     pub fn amiga_cpu68k_set_hw(c: *mut RawCpu, on: c_int);
     pub fn amiga_cpu68k_set_hw_read(c: *mut RawCpu, addr: u32, value: u8);
     pub fn amiga_cpu68k_hw_writes(c: *const RawCpu, out: *mut *const RawHwWrite) -> usize;
+    pub fn amiga_cpu68k_set_trace(c: *mut RawCpu, on: c_int);
+    pub fn amiga_cpu68k_branches(c: *const RawCpu, out: *mut *const RawBranch) -> usize;
+    pub fn amiga_cpu68k_reads(c: *const RawCpu, out: *mut *const u32) -> usize;
+    pub fn amiga_cpu68k_insn_len(c: *const RawCpu, addr: u32) -> c_int;
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct RawBranch {
+    pub at: u32,
+    pub not_taken: u8,
+    pub taken: u8,
 }
 
 #[repr(C)]

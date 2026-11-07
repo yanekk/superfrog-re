@@ -1,0 +1,4 @@
+# T11: from the sync frame 6400 (measured 2026-11-06): right held, the slide down the first slope and off
+# its end into the spike pit, landing at frame 6522.
+0: -
+10: R

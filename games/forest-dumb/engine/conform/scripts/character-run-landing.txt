@@ -1,0 +1,17 @@
+# T41: input on the frame of a landing, standing at the start (frames from the sync frame 6400;
+# measured on the original 2026-11-05). A 3-frame tap of up lands in step 38.
+0: -
+10: U        # tapped jump
+13: -
+38: U        # up on the landing frame only: the original jumps again at once
+39: -
+60: U        # up in the air, falling: nothing (lands in step 67)
+63: -
+89: U        # a one-frame tap standing: a jump, landing in step 117
+90: -
+150: U       # up held through a landing (step 202): it jumps again without a new press
+250: -
+260: U       # a tapped jump landing in step 288
+263: -
+288: L       # left on the landing frame: taken, run to the wall at char_x $1b
+308: -

@@ -7,8 +7,8 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 ## What the game is
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
-the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Only the
-first conformance case is built so far, no playable engine. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is being
+built (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Its disks and where they live
 
@@ -54,9 +54,47 @@ A spot is `<level-id>:<col>,<row>`, 0-indexed, top-left origin, 16-pixel cells, 
 ids and their files: [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md). `tools/render_levels.py --spot W1-1:10,20`
 prints what is there; the pictures are in `build/renders/`.
 
+## Playing it
+
+`cd games/forest-dumb/engine && cargo run --release -p fd-app` opens the app straight in `W1-1`, silent.
+Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
+Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
+`~/Library/Application Support/Forest-Dumb-RE/settings.toml` (`--home DIR` or `FOREST_DUMB_HOME`
+elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `--timeout`) are in
+`fd-app/src/args.rs`; `fd-e2e` drives it end to end (`cargo test -p fd-e2e`).
+
+## Seeing a run on the map
+
+`cargo run --release -p fd-routeview -- --script FILE` in `engine/` plays an input script
+(`engine/conform/scripts/*.txt`) from W1-1's start and writes level 1's map with the character's path
+to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
+holds disk graphics: keep it under `build/`.
+
+## Planning a route
+
+`cargo run --release -p fd-plan -- level W1-1` in `engine/` plans W1-1 on the engine (`--rounds N`,
+`--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
+`build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
+it on the original with creatures, animated cells and springs frozen, saying for how many passes the
+two agree. The engine takes coins (T22), so the search chases them; until contact and the level's end
+are ported (T70, T24, T26) the level never ends, so a route stalls with coins left and exits 1.
+
 ## Bug-fix procedure
 
-Not written yet: there is no engine to fix. It comes with the recorder, step 8 of the playbook.
+A bug zip the owner recorded in the app: [docs/BUG-FIX.md](docs/BUG-FIX.md). Replay it
+(`fd-conform bug replay`), compare it with the original (`fd-conform bug compare`, retimed by pass),
+keep a difference as a case that fails before the fix.
+
+## Tools: read the README before the source
+
+Each tool has a short README saying how to call it. Read it, in one step, before opening the tool's
+source; open the source only for what the README lacks.
+
+- [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, freeze, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
+- [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
+- [tools/README.md](tools/README.md): every Python script here (listing, call tree, translate, reshape, generate, task pack, renders).
+- [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
+- The toolkit crates' READMEs: `toolkit/crates/<crate>/README.md` (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`).
 
 ## Notes
 
@@ -65,6 +103,11 @@ Not written yet: there is no engine to fix. It comes with the recorder, step 8 o
 - [docs/LEVEL-INDEX.md](docs/LEVEL-INDEX.md): every level id, its files and its render.
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
+- [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
+- [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; the freeze list; contact (creatures, water, tiles) measured.
+- [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves), `tools/generate.py` (Muse writes a generator, judged by branch coverage) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
+- [docs/12-level-start-draw.md](docs/12-level-start-draw.md): `level_init`'s first view (tiles, shapes) and what the plane's slack holds at the sync point (the title's music, `_BALLA`), measured.
+- [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.

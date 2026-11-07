@@ -1,0 +1,11 @@
+# T42: from the sync frame 6400 (measured 2026-11-06): slide into the spike pit (lands at frame 6522, a
+# life lost at 6526, held still to about 6556), then left and right to its walls, up, and out left.
+0: -
+10: R
+170: L
+210: R
+250: U
+290: -
+300: L U
+340: R U
+380: -

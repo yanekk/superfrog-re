@@ -1,0 +1,6 @@
+# T67: from the sync frame 6400: right held, then up pressed and released while the character slides
+# and the camera scrolls, so passes read the joystick a step after they start.
+0: -
+10: R
+80: R U
+90: R

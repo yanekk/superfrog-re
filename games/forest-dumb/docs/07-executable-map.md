@@ -42,7 +42,7 @@ Play runs inside the interrupt, not in the foreground. There are two layers:
 
 - `level3_handler` (`h0+$1eda`): on the copper interrupt (INTENA `$c018`, it clears `$4010`), which a
   level's copper list raises, it adds one to `irq_count`, runs `game_frame` (`h0+$1fec`) when
-  `game_running` is set, and sets `frame_flag`. Once a frame is the reading; not measured in play.
+  `game_running` is set, and sets `frame_flag`. Once a frame, measured in play: [09-play-measured.md](09-play-measured.md).
 - `main_loop` (`h0+$252`): the foreground. Every 32 interrupts it checks for level end and game over,
   and on `frame_flag` it runs whichever of `redraw_edge_a..d` the flags at `h0+$5196..$519c` ask for.
 

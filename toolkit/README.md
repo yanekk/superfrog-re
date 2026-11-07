@@ -26,8 +26,23 @@ Shell crates touch devices, files or the emulator:
 |---|---|
 | `amiga-oracle` | vAmiga, the reference emulator, run headless one frame at a time with the same `FrameInput` an engine takes; any list of disks, or none; cached traces; one routine of the original alone on the Moira CPU |
 | `amiga-conform` | The game-free half of a conformance harness: picture and Paula comparisons against the oracle, the faithful bar's `Tolerance`, sound events, diff pictures, the script token lexer |
-| `amiga-app` | A desktop app's game-free parts: audio out and the sample clock that paces the game, gamepads, the Amiga key table, the picture on the GPU with CRT filters, run capture, whole-file writes, the single-copy lock |
+| `amiga-app` | A desktop app's game-free parts: audio out and the sample clock that paces the game, gamepads, the Amiga key table, the picture on the GPU with CRT filters, run capture, whole-file writes, the single-copy lock; and the panels a game's app shares (see below) |
 | `amiga-e2e` | End-to-end tests of a game's built app, driven by script or through the real window system; the game describes its app in an `AppSpec` |
+| `amiga-plan` | The route planner: a whole-level explorer over a game's engine (archive of cells, guides, walk and map compasses, shortening, repair), and its run shell on threads under a time budget. A game implements `PlanGame` on its engine and hands it the level's `Facts`. Its core is pure (`tests/purity.rs`) but keeps hash maps and floats, so it is not on the pure list above |
+| `amiga-routeview` | The route viewer's page: `index.html` and a data file per route, drawing a game's routes over its level maps with a switcher, verdicts (failed, faults, clean) and where a route stops making progress. A game replays its routes, hands each over as a `LevelDump`, and describes its map in a `PageSpec` (cell size, layers, where its character is drawn). Shell: it writes files |
+
+### What moved into `amiga-app` from the first game's app
+
+Moved when the second game needed them (each an AppKit-free model with unit tests, and its native view):
+
+- `settings`: `settings.toml` (scale, fullscreen, filter, widescreen, key and pad bindings); `load` writes the defaults over a damaged file, `read` leaves it alone.
+- `controls_window`: the Controls window; the bindings come through `ControlsHost`, which `Settings` is.
+- `start_level_window`: the Start Level window, built from the fields a game names in a `StartLevelSpec` (dropdowns, whole-number fields, checkboxes); `FieldAction::named` reads a script's `form` lines.
+- `recording_bar`: the bug recorder's strip under the picture, its layout and clock (`BAR_HEIGHT`, `elapsed`, `place`).
+- `save_window`: the save window after STOP; where play is arrives as text.
+- `script_core`: a `--script`'s game-free lines (comments, `N:` frames, `seed`, `fast-until`, keys, mouse, blur, pads, `HostInput`); a game adds its own through `ScriptGame`.
+
+The game window, its menus, the run loop and the glue that opens these panels stay the game's.
 
 And two that are not for a game to depend on:
 

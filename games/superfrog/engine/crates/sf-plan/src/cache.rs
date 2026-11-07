@@ -31,6 +31,15 @@ pub const CORE_FILES: [(&str, &[u8]); 4] = [
     ("moves.rs", include_bytes!("core/moves.rs")),
 ];
 
+/// The toolkit sources a map is built from: `core/graph.rs` re-exports `amiga_plan::graph`, the
+/// map's type, since it moved to the toolkit (forest-dumb-level-1 T17). Hashed beside
+/// `CORE_FILES`, so a change there makes the maps stale too; `tests/cache.rs` checks every core
+/// file that re-exports a toolkit module has it listed here.
+pub const TOOLKIT_FILES: [(&str, &[u8]); 1] = [(
+    "amiga-plan/graph.rs",
+    include_bytes!("../../../../../../toolkit/crates/amiga-plan/src/core/graph.rs"),
+)];
+
 /// The start a map is built from (DESIGN §2.1). The map is measured from the start state, so two
 /// starts of one level are two maps.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -93,7 +102,7 @@ fn build_hash() -> u64 {
     let mut h = FNV_START;
     fnv(&mut h, env!("SF_ENGINE_BUILD").as_bytes());
     fnv(&mut h, &[0]);
-    for (name, src) in CORE_FILES {
+    for (name, src) in CORE_FILES.iter().chain(&TOOLKIT_FILES) {
         fnv(&mut h, name.as_bytes());
         fnv(&mut h, &[0]);
         fnv(&mut h, src);

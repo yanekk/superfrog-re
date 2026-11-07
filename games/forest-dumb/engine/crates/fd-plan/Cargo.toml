@@ -1,0 +1,26 @@
+[package]
+name = "fd-plan"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The route planner on level 1 (DESIGN §2.11): the toolkit's explorer (`amiga-plan`) stepping
+# fd-core's `Game`. `game.rs` and `facts.rs` are pure: they read a state and the level's files.
+# `confirm.rs` and `main.rs` are shell: the oracle, files and the clock.
+
+[dependencies]
+# The explorer and its run shell (T17).
+amiga-plan = { path = "../../../../../toolkit/crates/amiga-plan" }
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# The input-script format a route is written in, the one cases and the map page read.
+amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
+fd-core = { path = "../fd-core" }
+fd-assets = { path = "../fd-assets" }
+# The game's data from the owner's disks, and the case runner that confirms a route on the original.
+fd-conform = { path = "../fd-conform" }
+# The map page the route is drawn on (T19).
+fd-routeview = { path = "../fd-routeview" }
+
+[[bin]]
+name = "fd-plan"
+path = "src/main.rs"

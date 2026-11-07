@@ -1,0 +1,11 @@
+# T70: the collision model frame by frame over W1-1 (scripts/contact-route.txt, fd-plan's route to the
+# exit's cells), frozen as freeze.rs says: CLXDAT as char_hit_check copies it (clxdat_copy) and what contact
+# counts, with the character, on all of the route's passes. The water (W1-1:136,66) is not on it, and
+# frozen it is never drawn (h0_62b6 is T25's), so water contact waits for T72.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "contact-route"
+frames = 1300
+compare = ["vars"]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_anim_ptr", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown"]
+goal = { all = [{ var = "char_x", value = 0xce2 }, { var = "char_y", value = 0x597 }], by_frame = 7601 }
+freeze = true

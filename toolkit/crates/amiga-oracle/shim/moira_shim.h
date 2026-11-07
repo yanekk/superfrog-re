@@ -84,6 +84,27 @@ void amiga_cpu68k_set_hw_read(amiga_cpu68k *c, uint32_t addr, uint8_t value);
 /* The custom-chip writes of the last call, in order. Valid until the next call. */
 size_t amiga_cpu68k_hw_writes(const amiga_cpu68k *c, const amiga_hw_write **out);
 
+/* One conditional branch a traced call executed: its address, and whether it went each way. */
+typedef struct {
+    uint32_t at;
+    uint8_t not_taken;  /* executed at least once falling through to the next instruction */
+    uint8_t taken;      /* executed at least once going elsewhere */
+} amiga_branch;
+
+/* Tracing, off by default (T60): while on, each call records every conditional branch it executes
+ * (Bcc other than BRA and BSR, DBcc; a DBcc's loop exit counts as not taken) and every byte address
+ * it reads in data space (function code data: PC-relative operands and instruction fetches are
+ * program space and are not recorded). Off, the call loop pays one test per instruction. */
+void amiga_cpu68k_set_trace(amiga_cpu68k *c, int on);
+
+/* The last call's branches, in no order, each address once; and its data reads, ascending, each
+ * once. Valid until the next call. Empty when tracing was off. */
+size_t amiga_cpu68k_branches(const amiga_cpu68k *c, const amiga_branch **out);
+size_t amiga_cpu68k_reads(const amiga_cpu68k *c, const uint32_t **out);
+
+/* The length in bytes of the instruction at `addr`, by Moira's 68000 disassembler. */
+int amiga_cpu68k_insn_len(const amiga_cpu68k *c, uint32_t addr);
+
 #ifdef __cplusplus
 }
 #endif

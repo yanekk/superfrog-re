@@ -4,6 +4,7 @@
 //   0004 installs `vamiga_audio_sample_hook`, called whenever a channel's DAC takes a new value;
 //   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception, and
 //        `vamiga_blit_hook`, called as a blit begins, frees the busy flag and ends;
+//   0006 installs `vamiga_exec_hook`, called once per instruction the CPU executes, with its address;
 //   0002 makes `AmigaShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -12,6 +13,7 @@
 #include "VAmiga.h"
 #include "Emulator.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 #include <exception>
@@ -26,6 +28,7 @@ extern void (*vamiga_custom_write_hook)(u32 addr, u16 value, int accessor, isize
 extern void (*vamiga_audio_sample_hook)(int channel, i8 sample, u16 volume, isize vpos, isize hpos);
 extern void (*vamiga_irq_hook)(int level, isize vpos, isize hpos);
 extern void (*vamiga_blit_hook)(int event, isize vpos, isize hpos);
+extern void (*vamiga_exec_hook)(uint32_t pc);
 
 // Reaches Emulator's private stepping functions (patch 0002). vAmiga normally runs these on its own
 // thread, paced by the wall clock; the oracle calls them directly, one frame per call.
@@ -170,6 +173,22 @@ void blitHook(int event, isize vpos, isize hpos)
     }
 }
 
+// The watched instruction addresses (amiga_watch_pcs) of the machine being stepped on this thread,
+// sorted, and their counts in the same order; null while it watches none.
+thread_local const std::vector<uint32_t> *watchedPcs = nullptr;
+thread_local uint32_t *pcCounts = nullptr;
+
+// Called before every instruction the CPU executes, so it stays small: a binary search of the
+// watched set. Installed only once some machine watches, so a process that never does pays nothing
+// but the core's null check.
+void execHook(uint32_t pc)
+{
+    if (!watchedPcs) return;
+    auto &w = *watchedPcs;
+    auto it = std::lower_bound(w.begin(), w.end(), pc);
+    if (it != w.end() && *it == pc) pcCounts[it - w.begin()]++;
+}
+
 void fail(char *err, size_t len, const char *what)
 {
     if (err && len) { std::snprintf(err, len, "%s", what); }
@@ -210,6 +229,10 @@ struct amiga_machine {
     std::vector<amiga_custom_write> blits;
     std::vector<amiga_custom_write> cpuWrites;
     std::vector<amiga_blit_event> blitEvents;
+    // amiga_watch_pcs: the watched instruction addresses, sorted and distinct, and how often each
+    // ran in the last step.
+    std::vector<uint32_t> watchPcs;
+    std::vector<uint32_t> pcCounts;
     int framesRun = 0;
     // amiga_watch_write: the write watched for (none while reg is 0xFFFF), and RAM at its first
     // hit in the last step.
@@ -246,6 +269,14 @@ struct amiga_machine {
         for (auto opt : { Opt::AUD_VOL0, Opt::AUD_VOL1, Opt::AUD_VOL2, Opt::AUD_VOL3 }) emu().set(opt, 100);
         emu().set(Opt::AUD_VOLL, 50);
         emu().set(Opt::AUD_VOLR, 50);
+        // Denise detects every collision CLXCON asks for; vAmiga skips all three checks by default,
+        // so CLXDAT read $8000 whatever was drawn. A snapshot carries these switches (Denise's
+        // serialize), so they are set again after every restore. All three, because a game reading
+        // CLXDAT gets every bit the hardware sets; the checks stop at the first hit of a line, so
+        // they cost little. Changing any of them changes `BUILD`'s settings tag (src/lib.rs).
+        emu().set(Opt::DENISE_CLX_SPR_SPR, true);
+        emu().set(Opt::DENISE_CLX_SPR_PLF, true);
+        emu().set(Opt::DENISE_CLX_PLF_PLF, true);
     }
 
     void configure()
@@ -444,6 +475,9 @@ int amiga_step(amiga_machine *a, uint32_t joy, const uint8_t keys[16], char *err
     tapping = &a->taps;
     interrupting = &a->irqs;
     interrupted = &a->amiga();
+    std::fill(a->pcCounts.begin(), a->pcCounts.end(), 0);
+    watchedPcs = a->watchPcs.empty() ? nullptr : &a->watchPcs;
+    pcCounts = a->pcCounts.data();
     stepFrame = a->amiga().agnus.pos.frame;
     // A step runs from just after one frame's start to just after the next one's (the CPU finishes
     // its instruction), so the frame it runs is the one starting now.
@@ -474,6 +508,8 @@ int amiga_step(amiga_machine *a, uint32_t joy, const uint8_t keys[16], char *err
     tapping = nullptr;
     interrupting = nullptr;
     interrupted = nullptr;
+    watchedPcs = nullptr;
+    pcCounts = nullptr;
     return rc;
 }
 
@@ -493,6 +529,25 @@ int amiga_watched_memory(const amiga_machine *a, const uint8_t **chip, size_t *c
     *slow = a->watchedSlow.data();
     *slow_len = a->watchedSlow.size();
     return 1;
+}
+
+void amiga_watch_pcs(amiga_machine *a, const uint32_t *pcs, size_t n)
+{
+    // The hook is set once, for every machine, the first time any machine watches: a pointer the
+    // core reads per instruction is not changed while another thread may be stepping.
+    static std::once_flag installed;
+    if (n) std::call_once(installed, [] { vamiga_exec_hook = execHook; });
+    a->watchPcs.assign(pcs, pcs + n);
+    std::sort(a->watchPcs.begin(), a->watchPcs.end());
+    a->watchPcs.erase(std::unique(a->watchPcs.begin(), a->watchPcs.end()), a->watchPcs.end());
+    a->pcCounts.assign(a->watchPcs.size(), 0);
+}
+
+size_t amiga_pc_hits(const amiga_machine *a, const uint32_t **pcs, const uint32_t **counts)
+{
+    *pcs = a->watchPcs.data();
+    *counts = a->pcCounts.data();
+    return a->watchPcs.size();
 }
 
 void amiga_set_profile(amiga_machine *a, int on)

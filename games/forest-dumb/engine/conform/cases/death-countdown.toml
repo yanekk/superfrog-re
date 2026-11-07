@@ -1,0 +1,10 @@
+# T23: the countdown running out (scripts/death-countdown.txt), from frame 6400 standing: 999 counts of
+# 63 passes, then main_loop's next 32-pass check shows the game over screen; fire ends it where the
+# original enters its high scores and the engine restarts. Variables and picture on every pass, the
+# status bar's countdown digits down to 000 included. About 63 000 frames: in the full set only.
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "death-countdown"
+frames = 62900
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "lives", "countdown", "countdown_tick", "items_left", "score", "irq_count", "paused", "give_up", "last_key_byte", "char_anim_ptr", "char_unhurt_t", "char_update_t"]
+goal = { game_over = true, by_frame = 69300 }

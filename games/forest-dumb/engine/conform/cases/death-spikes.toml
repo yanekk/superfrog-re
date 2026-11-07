@@ -1,0 +1,14 @@
+# T70: the last life lost on the spikes (scripts/death-spikes.txt), frozen as freeze.rs says: from frame 6400
+# right held into the spike pit, where contact (the engine's CLXDAT, clxdat_copy) takes all 32 lives,
+# the character never moved between them (no respawn); main_loop's check then shows the game over
+# screen, compared frame by frame, and fire ends it where the original enters its high scores and the
+# engine restarts the level (DESIGN §2.4). Pass 1441 cuts main_loop's redraw short before it reads
+# lives, so the original's bar shows the life it takes from frame 7742: the runner accepts the engine's
+# cut redraw there, the bar only (T71, README "A redraw cut short").
+sync = { script = "boot-to-level1", frame = 6400 }
+input = "death-spikes"
+frames = 4400
+compare = ["vars", "picture"]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown", "items_left", "score"]
+goal = { game_over = true, by_frame = 10800 }
+freeze = true

@@ -1,0 +1,381 @@
+//! Play in a level: one pass of the original's `game_frame`, and the object dispatch.
+//!
+//! # The object dispatch (for T22 collectibles, T24 enemies, T25 mechanics)
+//!
+//! Every object in play is an [`Object`] carrying its **value**: the byte the original's object map
+//! (`_MapaBobowN`, `fd_assets::ObjectMap`) holds at its cell, unchanged. Values are the original's,
+//! so a list transplanted from the original's memory maps one to one, and `re/objects-W1-1.toml`
+//! (T21) names each value with the task that ports it.
+//!
+//! A porting task gives each value it ports an [`ObjectKind`]: a `static` unit struct whose
+//! `update` is the port of the original's per-pass routine for that object, and whose `draw` adds
+//! what it shows to a [`DrawList`]. It registers the kind in [`Dispatch::level_1`], one line a
+//! value, through [`register`]; two kinds for one value panic there, so two tasks cannot port one
+//! object twice. A kind keeps its own state in the object's fields; a field a kind needs that
+//! [`Object`] lacks is added to [`Object`], never kept in the kind (kinds are shared statics, and
+//! `Game: Clone` is the planner's snapshot).
+//!
+//! An object whose value has no kind is not skipped: the pass it is met records
+//! [`Event::Unported`] with its value and drops the object, so it is reported once. Every
+//! conformance case fails on one (`fd-conform`, DESIGN §4.1), and the app writes it to stderr and
+//! plays on without the object. So an object nobody ported is never a silent gap.
+//!
+//! Objects are spawned with [`crate::Game::spawn`]; the scan that spawns them from the object map as
+//! the view passes is T22's. Where in the pass the original updates its objects is T21's to measure:
+//! [`game_frame`] runs them after the character and camera until then.
+
+pub mod camera;
+pub mod collision;
+pub mod redraw;
+pub mod start;
+
+use amiga_input::FrameInput;
+use fd_assets::Level;
+
+use crate::State;
+use crate::character::{AnimTables, Character, Play};
+use crate::objects::creature::{Creatures, PlayGround};
+use crate::program::{Program, Scratch};
+
+use collision::CollisionPlane;
+
+/// What happened in a step that its caller must see. Later tasks add events (a life lost, the
+/// level ended), so callers match it with a fallback.
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Event {
+    /// An object of this value was met with no [`ObjectKind`] registered: it was left out.
+    Unported(u8),
+    /// `main_loop` found the game over: the game over screen shows from this step (T23).
+    GameOver,
+    /// The game over screen ended where the original enters its high scores; the level restarted
+    /// as at its start (T23, DESIGN §2.4); or fire ended "Level 1 complete" (T26, DESIGN §2.5).
+    Restart,
+    /// `main_loop` found the level's end and ran `next_world` in this step (T26); "Level 1
+    /// complete" shows from the next.
+    LevelEnd,
+}
+
+/// One object in play.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Object {
+    /// The original's object value, as its object map holds it.
+    pub value: u8,
+    /// The object map cell it came from.
+    pub col: u16,
+    pub row: u16,
+    /// Its place in level pixels.
+    pub x: i32,
+    pub y: i32,
+    /// Set by a kind's `update` to take the object out of play after this pass.
+    pub removed: bool,
+}
+
+impl Object {
+    /// An object of `value` spawned at a cell, placed at the cell's top-left.
+    pub fn at_cell(value: u8, col: u16, row: u16) -> Object {
+        Object {
+            value,
+            col,
+            row,
+            x: i32::from(col) * 16,
+            y: i32::from(row) * 16,
+            removed: false,
+        }
+    }
+}
+
+/// What a pass may read and change, handed to each object's `update`.
+pub struct LevelCtx<'a> {
+    pub state: &'a mut State,
+    pub level: &'a Level,
+    /// The main program's hunk 0 as loaded: the tables the original's routines read (T08).
+    pub program: &'a Program,
+    pub anim: &'a AnimTables,
+    /// The collision plane, play state (T08; T55 draws it, T25's vanishing blocks change it).
+    pub plane: &'a mut CollisionPlane,
+    /// The level's buffers as the original lays them out in hunk 0 (T55): the tile map a taken
+    /// cell is redrawn from (T22).
+    pub image: &'a redraw::LevelImage,
+    /// What the display shows (T10): picture state, which play logic never reads.
+    pub display: &'a mut crate::render::Display,
+    /// What the display reads from the disks: the level palette the fade reaches.
+    pub display_data: &'a crate::render::DisplayData,
+    /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
+    /// showed since the last pass (`render::contact`, T70).
+    pub clxdat: u16,
+    /// `Some` when a conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0
+    /// offsets of the routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the
+    /// case thaws (`Game::thaw_in_a_case`, T72). `None` in play.
+    pub frozen: Option<&'a [u32]>,
+}
+
+/// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
+/// DESIGN §2.2), as `fd-conform`'s `freeze.rs` patches the same routines to return at once, each
+/// with the task whose freeze it mirrors. An exclusion: it goes when that task's `freeze.rs` entry
+/// goes (T47 for T25's), which `fd-conform/tests/mechanic_routines.rs` holds.
+pub struct FrozenInACase {
+    pub name: &'static str,
+    pub offset: u32,
+    pub task: &'static str,
+}
+
+pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
+    // `h0_6882` saves and restores every register, so returning at once only leaves the animated
+    // cells' lists empty: `h0_62b6` still steps `anim_tick` and draws nothing.
+    FrozenInACase {
+        name: "h0_6882",
+        offset: 0x6882,
+        task: "T25",
+    },
+    FrozenInACase {
+        name: "h0_24ce",
+        offset: 0x24ce,
+        task: "T25",
+    },
+];
+
+/// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
+fn frozen(l: &LevelCtx, offset: u32) -> bool {
+    l.frozen.is_some_and(|f| f.contains(&offset))
+}
+
+/// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
+/// (T22, T24, T25, T52) say what `image` numbers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Bob {
+    pub x: i32,
+    pub y: i32,
+    pub image: u16,
+}
+
+/// What the objects show this pass, in drawing order.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct DrawList {
+    pub bobs: Vec<Bob>,
+}
+
+/// The behaviour of one object value. See the module comment.
+pub trait ObjectKind: Sync {
+    /// One pass of the object, as the original's routine for it.
+    fn update(&self, o: &mut Object, l: &mut LevelCtx);
+    /// What the object shows, added to `out`.
+    fn draw(&self, o: &Object, out: &mut DrawList);
+}
+
+/// The kind of each object value, by value.
+#[derive(Clone, Copy)]
+pub struct Dispatch {
+    kinds: [Option<&'static dyn ObjectKind>; 256],
+}
+
+impl Dispatch {
+    /// No value has a kind.
+    pub fn empty() -> Dispatch {
+        Dispatch { kinds: [None; 256] }
+    }
+
+    /// Every kind ported for world 1. The porting tasks add their `register` lines here.
+    pub fn level_1() -> Dispatch {
+        // T22 collectibles, T24 enemies, T25 mechanics: `register(&mut d, value, &Kind);`
+        Dispatch::empty()
+    }
+
+    /// The kind registered for `value`.
+    pub fn kind(&self, value: u8) -> Option<&'static dyn ObjectKind> {
+        self.kinds[value as usize]
+    }
+
+    /// Every value that has a kind, ascending.
+    pub fn values(&self) -> Vec<u8> {
+        (0..=255u8)
+            .filter(|&v| self.kinds[v as usize].is_some())
+            .collect()
+    }
+}
+
+impl std::fmt::Debug for Dispatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Dispatch")
+            .field("values", &self.values())
+            .finish()
+    }
+}
+
+/// Give object value `value` the kind `k`. Panics if `value` already has one: two ports of one
+/// object are a mistake to fix, not a choice to make at run time.
+pub fn register(d: &mut Dispatch, value: u8, k: &'static dyn ObjectKind) {
+    assert!(
+        d.kinds[value as usize].is_none(),
+        "object value {value:#04x} is registered twice"
+    );
+    d.kinds[value as usize] = Some(k);
+}
+
+/// One pass of play after the level-3 handler's count: the original's `game_frame` (`h0+$1fec`).
+///
+/// Its calls, in the original's order, for the tasks that port them (docs/09-play-measured.md,
+/// docs/11-translation.md): `char_sprite_copy`, `h0+$94ba`, `camera_update`, `h0+$513c`,
+/// `char_sprite_position`, `h0+$9754`; if `paused`, only `play_keys`; else `h0+$2c7e`,
+/// `h0+$2fae`, `h0+$21c0`, `h0+$62b6`, `h0+$2dd6`, `h0+$3698`, `h0+$2d4c`, `read_joystick`,
+/// `char_hit_check`, `countdown_step`, `h0+$24ce`, `char_update`, `char_object_cells`, `play_keys`.
+/// T08 filled in the character's (T51's `read_joystick`, T08's `char_update`); each later porting
+/// task adds its calls in that order. Its rig proof is T63's, once every call is ported.
+pub fn game_frame(
+    l: &mut LevelCtx,
+    objects: &mut Vec<Object>,
+    dispatch: &Dispatch,
+    events: &mut Vec<Event>,
+    input: FrameInput,
+) {
+    // char_sprite_copy, h0+$94ba (T10).
+    let s = &mut *l.state;
+    l.display.sprite.copy(&mut s.motion.unhurt_t, s.anim.ptr);
+    l.display.fade.step(&l.display_data.palette(), l.program);
+    // `camera_update`, then `h0+$513c` (T09).
+    s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
+    // char_sprite_position (T10). `h0+$9754` points the copper list at the play screen from the
+    // camera, which nothing changes again before the picture: `render::picture` computes it then.
+    l.display
+        .sprite
+        .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
+    if l.state.paused != 0 {
+        Play { state: l.state }.play_keys();
+        return;
+    }
+    // h0+$2c7e: the tiles behind the creatures the last pass drew restored, run with their flags
+    // (`creature_active+$c`) in place of the live ones, which wait at `creature_active+6` (T52).
+    let s = &mut *l.state;
+    s.creature_draw.saved = s.edges.creatures.active;
+    s.edges.creatures.active = s.creature_draw.drawn;
+    // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
+    if l.frozen.is_none() {
+        crate::render::objects::in_play(l, |c| c.restore_all());
+    }
+    let s = &mut *l.state;
+    s.edges.creatures.active = s.creature_draw.saved;
+    // h0+$2fae: the creatures moved (T24).
+    Creatures {
+        state: l.state,
+        ground: &PlayGround {
+            plane: l.plane,
+            program: l.program,
+        },
+    }
+    .move_all();
+    // Until they are ported, the dispatch's kinds run here.
+    update_objects(l, objects, dispatch, events);
+    // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25). A frozen case's `h0_6882`
+    // never fills the lists the edge redraws add to, so they are emptied before they are run.
+    crate::objects::in_play(l, |o| o.spring_redraw());
+    if frozen(l, 0x6882) {
+        l.state.edges.cells = redraw::AnimatedCells::default();
+    }
+    crate::objects::in_play(l, |o| o.animate());
+    // h0+$2dd6: creatures out of view written back into the object map (T22).
+    crate::objects::in_play(l, |o| o.write_back());
+    // h0+$3698: the slots sorted by y for drawing (T24).
+    Creatures {
+        state: l.state,
+        ground: &PlayGround {
+            plane: l.plane,
+            program: l.program,
+        },
+    }
+    .sort();
+    // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
+    // restore (T52).
+    if l.frozen.is_none() {
+        crate::render::objects::in_play(l, |c| c.cut_all());
+    }
+    let s = &mut *l.state;
+    s.creature_draw.drawn = s.edges.creatures.active;
+    s.joy.read_joystick(&mut s.input_log, &input);
+    // The registers and custom-chip writes the original leaves are the rig's; play drops them.
+    let mut play = Play { state: l.state };
+    play.char_hit_check(l.clxdat, &mut Scratch::default());
+    play.countdown_step();
+    // h0+$24ce: a spring under the feet (T25).
+    if !frozen(l, 0x24ce) {
+        crate::objects::in_play(l, |o| o.spring_trigger());
+    }
+    Character {
+        state: l.state,
+        program: l.program,
+        anim: l.anim,
+        plane: &*l.plane,
+        scratch: &mut Scratch::default(),
+    }
+    .update();
+    // char_object_cells (T22).
+    crate::objects::in_play(l, |o| o.object_cells());
+    // play_keys (T23).
+    Play { state: l.state }.play_keys();
+}
+
+/// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
+/// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
+/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
+/// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
+/// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
+pub fn main_loop_redraws(
+    s: &mut State,
+    plane: &mut CollisionPlane,
+    image: &redraw::LevelImage,
+    blits: &mut Vec<redraw::Blit>,
+) {
+    use camera::Dir;
+    if s.frame_flag == 0 {
+        return;
+    }
+    let mut io = redraw::PlayIo {
+        image,
+        objects: &mut s.object_map,
+        collision: plane,
+        blits,
+    };
+    for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
+        let i = dir as usize;
+        if s.camera.edges.latch[i] == 0 {
+            continue;
+        }
+        s.edges.pos = s.camera.edges.at[i];
+        s.camera.edges.latch[i] = 0;
+        match dir {
+            Dir::Down => s.edges.redraw_below(&mut io),
+            Dir::Up => s.edges.redraw_above(&mut io),
+            Dir::Left => s.edges.redraw_left(&mut io),
+            Dir::Right => s.edges.redraw_right(&mut io),
+        }
+    }
+    s.frame_flag = 0;
+}
+
+/// Each object's pass through its kind; an object with none is reported and dropped, and one its
+/// kind removed is dropped.
+pub fn update_objects(
+    l: &mut LevelCtx,
+    objects: &mut Vec<Object>,
+    dispatch: &Dispatch,
+    events: &mut Vec<Event>,
+) {
+    objects.retain_mut(|o| match dispatch.kind(o.value) {
+        Some(k) => {
+            k.update(o, l);
+            !o.removed
+        }
+        None => {
+            events.push(Event::Unported(o.value));
+            false
+        }
+    });
+}
+
+/// What every object shows, in the order they are held.
+pub fn draw_objects(objects: &[Object], dispatch: &Dispatch, out: &mut DrawList) {
+    for o in objects {
+        if let Some(k) = dispatch.kind(o.value) {
+            k.draw(o, out);
+        }
+    }
+}

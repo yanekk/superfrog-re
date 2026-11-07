@@ -1,0 +1,36 @@
+# T45: collect-ledge's run, then away and back. Once the block at W1-1:29..33,8..10 is emptied, leap
+# left off the ledge back up the slope to the left wall (W1-1:2,10, camera_x 0: the block is out of
+# view), stand, leap right onto the ledge again and jump in place under columns 30 and 29: nothing is
+# taken twice and the bonuses' cells come back into view empty. Measured 2026-11-06.
+0: R
+44: R U      # the leap, up held 28 frames
+72: R
+120: -       # on the ledge, under column 33
+140: U
+146: -
+180: L
+187: -       # under column 32
+200: U
+206: -
+240: L
+247: -       # column 31
+260: U
+266: -
+300: L
+307: -       # column 30
+320: U
+326: -
+360: -
+370: L U      # the leap back left
+398: L
+520: R        # at the left wall since about frame 6811
+566: R U      # the leap back onto the ledge
+592: R
+632: -
+680: U        # under column 30
+686: -
+720: L
+727: -        # column 29
+740: U
+746: -
+790: -

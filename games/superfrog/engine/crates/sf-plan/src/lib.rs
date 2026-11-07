@@ -8,7 +8,8 @@
 pub mod app;
 pub mod cache;
 pub mod core;
-pub mod guide_file;
+/// Waypoint guide files, now the toolkit's.
+pub use amiga_plan::guide_file;
 pub mod oracle;
 pub mod run;
 pub mod threads;

@@ -1,0 +1,25 @@
+[package]
+name = "fd-routeview"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The map page (DESIGN §2.10): plays an input script on the engine from W1-1's start and writes the
+# toolkit's route page over level 1's map, the character's path drawn on it. Shell: it reads the
+# script and the owner's disks and writes files under build/ (the page holds disk graphics).
+
+[dependencies]
+# The page writer.
+amiga-routeview = { path = "../../../../../toolkit/crates/amiga-routeview" }
+# The input-script format the cases and the planner write.
+amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# The engine the script is played on, and the level files' layout.
+fd-core = { path = "../fd-core" }
+fd-assets = { path = "../fd-assets" }
+# The game's data from the owner's disks (`game_data`).
+fd-conform = { path = "../fd-conform" }
+
+[[bin]]
+name = "fd-routeview"
+path = "src/main.rs"

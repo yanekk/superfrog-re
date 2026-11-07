@@ -1,0 +1,9 @@
+# T43: the camera scrolling right along W1-1's upper route and back (scripts/camera-right-left.txt),
+# state only, every object frozen (they are T22 to T25's). Goal: camera_x at its furthest, $8db.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "camera-right-left"
+frames = 780
+compare = ["vars"]
+vars = ["camera_x", "camera_y", "char_screen_x", "char_x", "char_y", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "irq_count", "hits_taken"]
+goal = { all = [{ var = "camera_x", value = 0x8db }], by_frame = 7081 }
+freeze = true

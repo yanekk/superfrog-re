@@ -1,0 +1,433 @@
+//! T22's engine ports (`fd_core::objects::collectible`, plans/forest-dumb-level-1 T22) against the
+//! original on the routine rig, over 10 000 states of each T38 and T37 generator, on the main program
+//! from the owner's disks.
+//!
+//! Each check loads the [`State`] fields the object ports use from the state's memory, runs the
+//! engine function with an [`Io`] over that memory (the object map and tile map read and written in
+//! place, a blit or a sound turned into the original's custom-chip writes, in order), and stores what
+//! the engine changed back, so the rig compares every byte and every custom-chip write. Registers are
+//! compared where a caller reads them: `d0` after `h0_29ca`, which `h0_26ec` compares with the bonus
+//! values. Every other caller reloads what it reads (`char_object_cells` reloads `char_x`, `char_y`;
+//! `h0_2dd6` the slot index; `game_frame`'s next call, `play_keys`, loads its own).
+
+use fd_conform::generators::{self, h};
+use fd_conform::judge::{self, Cpu};
+use fd_conform::routine::{RegsCompared, Rig, RigReport};
+use fd_core::level::redraw::{Blit, CreatureSlot};
+use fd_core::objects::{Collect, Io, MapObjects, Sound};
+use fd_core::{PORTED, State};
+
+const CASES: usize = 10_000;
+
+const CHAR_X: u32 = 0x1e5a;
+const CHAR_Y: u32 = 0x1e5e;
+const CAMERA_X: u32 = 0x1e62;
+const CAMERA_Y: u32 = 0x1e64;
+const ROW: u32 = 0x2692;
+const EXIT_TOUCHED: u32 = 0x2696;
+const TAKEN: u32 = 0x29c6;
+const SCORE: u32 = 0x2a66;
+const SCORE_ADD: u32 = 0x2a6a;
+const SLOT_INDEX: u32 = 0x2faa;
+const ACTIVE: u32 = 0x67da;
+const SLOTS: u32 = 0x67ec;
+const COUNTDOWN: u32 = 0x6a80;
+const ITEMS_LEFT: u32 = 0x6a88;
+/// The play screen and the tiles, in hunk 3.
+const SCREEN: u32 = h(3, 0x398);
+const TILES: u32 = h(3, 0x1_3540);
+/// The samples `item_sound` and the `$4c` bonus start, in hunk 4.
+const ITEM_SAMPLE: u32 = h(4, 0x1_2acc);
+const TIME_SAMPLE: u32 = h(4, 0x1_3a62);
+
+/// `h0+o`, wrapping: a wild coordinate's offset can be any long.
+fn h0(o: u32) -> u32 {
+    h(0, 0).wrapping_add(o)
+}
+
+/// The object ports' memory, seen through [`Io`].
+struct CpuIo<'a>(&'a mut Cpu);
+
+impl Io for CpuIo<'_> {
+    fn rb(&self, a: u32) -> u8 {
+        self.0.mem.rb(h0(a))
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        self.0.mem.wb(h0(a), v);
+    }
+    fn blit(&mut self, b: Blit) {
+        let Blit::Cell { src, dst } = b else {
+            unreachable!("the object ports start only cell blits")
+        };
+        // `h0_29ca`'s register writes, in its order; BLTSIZE starts the blit.
+        let m = &mut self.0.mem;
+        m.wl(0xdf_f054, SCREEN.wrapping_add(dst));
+        m.wl(0xdf_f050, TILES.wrapping_add(src));
+        m.ww(0xdf_f066, 0x2c);
+        m.ww(0xdf_f064, 0);
+        m.wl(0xdf_f044, 0xffff_ffff);
+        m.ww(0xdf_f040, 0x09f0);
+        m.ww(0xdf_f042, 0);
+        m.ww(0xdf_f058, 0x1401);
+    }
+    fn sound(&mut self, s: Sound) {
+        // DMACON off for the channel, its location, length, period and volume, DMACON on.
+        let (ch, sample, len, period) = match s {
+            Sound::Item => (2u32, ITEM_SAMPLE, 0x7cb, 0x165),
+            Sound::Time => (3, TIME_SAMPLE, 0x1c4f, 0x1ff),
+            Sound::Spring => unreachable!("only h0_21c0 starts the spring's sound (T25)"),
+        };
+        let m = &mut self.0.mem;
+        let aud = 0xdf_f0a0 + 0x10 * ch;
+        m.ww(0xdf_f096, 1 << ch);
+        m.wl(aud, sample);
+        m.ww(aud + 4, len);
+        m.ww(aud + 6, period);
+        m.ww(aud + 8, 0x3f);
+        m.ww(0xdf_f096, 0x8200 | 1 << ch);
+    }
+    fn collision(&mut self, at: u32, v: u32) {
+        self.0.mem.wl(h(3, 0xfa50).wrapping_add(at), v);
+    }
+}
+
+/// The state the object ports use, as the original's memory holds it.
+fn load(cpu: &Cpu) -> State {
+    let m = &cpu.mem;
+    let mut s = State::level_1();
+    s.char_x = m.rl(h0(CHAR_X));
+    s.char_y = m.rl(h0(CHAR_Y));
+    s.camera.x = m.rw(h0(CAMERA_X));
+    s.camera.y = m.rw(h0(CAMERA_Y));
+    s.level_exit_touched = m.rw(h0(EXIT_TOUCHED));
+    s.score = m.rl(h0(SCORE));
+    s.countdown = m.rl(h0(COUNTDOWN));
+    s.items_left = m.rw(h0(ITEMS_LEFT));
+    s.collect = Collect {
+        score_add: m.rl(h0(SCORE_ADD)),
+        row: m.rl(h0(ROW)),
+        taken: m.rl(h0(TAKEN)),
+    };
+    let c = &mut s.edges.creatures;
+    c.index = m.rl(h0(SLOT_INDEX));
+    for i in 0..5u32 {
+        c.active[i as usize] = m.rb(h0(ACTIVE + i));
+        let a = h0(SLOTS + 8 * i);
+        c.slots[i as usize] = CreatureSlot {
+            x: m.rw(a),
+            y: m.rw(a + 2),
+            kind: m.rw(a + 4),
+            facing: m.rb(a + 6),
+            phase: m.rb(a + 7),
+        };
+    }
+    s
+}
+
+/// Every byte [`load`] reads, with its address, from `s`.
+fn bytes(s: &State) -> Vec<(u32, u8)> {
+    let mut out = Vec::new();
+    let mut w = |a: u32, v: &[u8]| {
+        for (k, b) in v.iter().enumerate() {
+            out.push((h0(a + k as u32), *b));
+        }
+    };
+    w(CHAR_X, &s.char_x.to_be_bytes());
+    w(CHAR_Y, &s.char_y.to_be_bytes());
+    w(CAMERA_X, &s.camera.x.to_be_bytes());
+    w(CAMERA_Y, &s.camera.y.to_be_bytes());
+    w(EXIT_TOUCHED, &s.level_exit_touched.to_be_bytes());
+    w(SCORE, &s.score.to_be_bytes());
+    w(COUNTDOWN, &s.countdown.to_be_bytes());
+    w(ITEMS_LEFT, &s.items_left.to_be_bytes());
+    w(SCORE_ADD, &s.collect.score_add.to_be_bytes());
+    w(ROW, &s.collect.row.to_be_bytes());
+    w(TAKEN, &s.collect.taken.to_be_bytes());
+    let c = &s.edges.creatures;
+    w(SLOT_INDEX, &c.index.to_be_bytes());
+    for i in 0..5u32 {
+        w(ACTIVE + i, &[c.active[i as usize]]);
+        let v = c.slots[i as usize];
+        let a = SLOTS + 8 * i;
+        w(a, &v.x.to_be_bytes());
+        w(a + 2, &v.y.to_be_bytes());
+        w(a + 4, &v.kind.to_be_bytes());
+        w(a + 6, &[v.facing, v.phase]);
+    }
+    out
+}
+
+/// Store what the engine changed. Only that: a blit the original sends to a wild address can land on
+/// these variables, and writing back what was loaded would undo it.
+fn store(cpu: &mut Cpu, before: &State, s: &State) {
+    for ((a, b), (_, was)) in bytes(s).into_iter().zip(bytes(before)) {
+        if b != was {
+            cpu.mem.wb(a, b);
+        }
+    }
+}
+
+/// Run `f` on the object ports over the state loaded from `cpu`, then store it.
+fn on_objects(cpu: &mut Cpu, f: impl FnOnce(&mut MapObjects)) {
+    let before = load(cpu);
+    let mut s = before.clone();
+    f(&mut MapObjects {
+        state: &mut s,
+        io: &mut CpuIo(cpu),
+    });
+    store(cpu, &before, &s);
+}
+
+fn object_cells(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.object_cells());
+}
+
+fn add_score(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.add_score());
+}
+
+fn write_back(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.write_back());
+}
+
+fn add_time(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.add_time());
+}
+
+fn count_item(cpu: &mut Cpu) {
+    on_objects(cpu, |o| o.count_item());
+}
+
+/// `h0_26ec` takes the pixel in `d0`, `d1`.
+fn take(cpu: &mut Cpu) {
+    let (x, y) = (cpu.d[0], cpu.d[1]);
+    on_objects(cpu, |o| o.take(x, y));
+}
+
+/// `h0_29ca` takes the pixel in `d0`, `d1` and returns `object_taken` in `d0`.
+fn redraw_cell(cpu: &mut Cpu) {
+    let (x, y) = (cpu.d[0], cpu.d[1]);
+    on_objects(cpu, |o| o.redraw_cell(x, y));
+    cpu.d[0] = cpu.mem.rl(h0(TAKEN));
+}
+
+/// `h0_2e0e` takes the slot in `d0` (T38's states hold 0 to 4).
+fn write_back_slot(cpu: &mut Cpu) {
+    let i = cpu.d[0] as usize;
+    on_objects(cpu, |o| o.write_back_slot(i));
+}
+
+/// Each routine: its generator's name (T38's and T37's, as in `re/translate.toml`), entry in hunk 0,
+/// the engine port's adapter and the registers its callers read.
+fn routines() -> Vec<(&'static str, u32, fn(&mut Cpu), RegsCompared)> {
+    let none = RegsCompared::NONE;
+    vec![
+        ("char_object_cells", 0x2698, object_cells, none),
+        ("h0_26ec", 0x26ec, take, none),
+        ("h0_29ca", 0x29ca, redraw_cell, RegsCompared::d(&[0])),
+        ("score_add_routine", 0x2a6e, add_score, none),
+        ("h0_2dd6", 0x2dd6, write_back, none),
+        ("h0_2e0e", 0x2e0e, write_back_slot, none),
+        ("countdown_plus_100", 0x6a04, add_time, none),
+        ("items_left_minus_one", 0x6a4c, count_item, none),
+    ]
+}
+
+#[test]
+fn every_t22_routine_is_registered_and_checked_here() {
+    // The routines `re/translate.toml` gives T22.
+    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../re/translate.toml");
+    let text = std::fs::read_to_string(path).unwrap();
+    let field = |block: &str, key: &str| {
+        block.lines().find_map(|l| {
+            let (k, v) = l.split_once('=')?;
+            (k.trim() == key).then(|| v.trim().trim_matches('"').to_string())
+        })
+    };
+    let mut t22: Vec<(String, u32)> = text
+        .split("[[routine]]")
+        .skip(1)
+        .filter(|b| field(b, "port_task").as_deref() == Some("T22"))
+        .map(|b| {
+            let off = field(b, "offset").unwrap();
+            let off = u32::from_str_radix(off.trim_start_matches("0x"), 16).unwrap();
+            (field(b, "name").unwrap(), off)
+        })
+        .collect();
+    t22.sort();
+    let mut here: Vec<(String, u32)> = routines().iter().map(|r| (r.0.to_string(), r.1)).collect();
+    here.sort();
+    assert_eq!(here, t22);
+    for (name, off) in &t22 {
+        assert!(
+            PORTED
+                .iter()
+                .any(|p| p.name == name && p.hunk == 0 && p.offset == *off),
+            "{name} is not in PORTED"
+        );
+    }
+}
+
+#[test]
+fn every_t22_routine_matches_the_original() {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let mut lines = Vec::new();
+    for (name, off, port, regs) in routines() {
+        let generator = generators::generator(name).unwrap();
+        let rep: RigReport =
+            judge::check_regs(&mut r, name, CASES, h0(off), &generator, regs, port)
+                .unwrap_or_else(|f| panic!("{f}"));
+        assert_eq!(
+            (rep.passed, rep.hangs, rep.faults, rep.unmodelled_blits),
+            (CASES, 0, 0, 0),
+            "{name}"
+        );
+        lines.push(format!("{name}: {} paths", rep.paths));
+    }
+    println!("{}", lines.join("\n"));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Mutants: each a plausible misreading of the listing, each must fail on the rig.
+// ---------------------------------------------------------------------------------------------
+
+fn fails(name: &str, entry: u32, port: fn(&mut Cpu)) -> String {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let generator = generators::generator(name).unwrap();
+    judge::check_regs(
+        &mut r,
+        name,
+        CASES,
+        h0(entry),
+        &generator,
+        RegsCompared::NONE,
+        port,
+    )
+    .map(|rep| panic!("{name}: a mutant passed {rep:?}"))
+    .unwrap_err()
+    .to_string()
+}
+
+#[test]
+fn the_rig_catches_the_write_back_clearing_its_own_slot() {
+    // `h0_2e0e` clears the flag `creature_slot_index` names, not slot `d0`'s.
+    let f = fails("h0_2e0e", 0x2e0e, |cpu| {
+        let i = cpu.d[0] as usize;
+        on_objects(cpu, |o| {
+            o.state.edges.creatures.index = i as u32;
+            o.write_back_slot(i);
+        });
+        cpu.mem.wl(h0(SLOT_INDEX), cpu.d[0]);
+    });
+    assert!(!f.is_empty());
+}
+
+#[test]
+fn the_rig_catches_an_unsigned_countdown_compare() {
+    // `cmpi.w #$899; bmi` read as unsigned: a countdown of `$8899` would stop at `$999`.
+    let f = fails("countdown_plus_100", 0x6a04, |cpu| {
+        on_objects(cpu, |o| {
+            if (o.state.countdown >> 16) as u16 >= 0x899 {
+                o.state.countdown = 0x0999 << 16 | (o.state.countdown & 0xffff);
+            } else {
+                o.add_time();
+            }
+        });
+    });
+    assert!(f.contains("h0+$6a8") || f.contains("countdown"), "{f}");
+}
+
+#[test]
+fn the_rig_catches_water_taken_as_an_item() {
+    // `cmpi.b #$28; bpl` misread as `$30`: water would be taken.
+    let f = fails("h0_26ec", 0x26ec, |cpu| {
+        let (x, y) = (cpu.d[0], cpu.d[1]);
+        let cell = fd_core::objects::collectible::map_cell(x, y);
+        let water = (0x28..0x30).contains(&cpu.mem.rb(h0(cell)));
+        on_objects(cpu, |o| {
+            if water {
+                o.io.wb(cell, 0x20);
+            }
+            o.take(x, y);
+        });
+    });
+    assert!(!f.is_empty());
+}
+
+#[test]
+fn the_rig_catches_a_missing_item_sound() {
+    let f = fails("char_object_cells", 0x2698, |cpu| {
+        on_objects(cpu, |o| o.object_cells());
+        cpu.mem
+            .hw_writes
+            .retain(|&(r, _)| !(0x96..=0xc8).contains(&r) || (0x40..0x78).contains(&r));
+    });
+    assert!(!f.is_empty());
+}
+
+/// The engine's own state as the original's memory, but with creature slot 0 active and well right of
+/// the view: `game_frame` must run `h0_2dd6` in play (the rig above proves the routine, not the call).
+struct OneCreature<'a> {
+    game: &'a fd_core::Game,
+    slot: CreatureSlot,
+}
+
+impl fd_core::Mem for OneCreature<'_> {
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+        use fd_core::Transplant;
+        let s = self.game.state();
+        match (hunk, offset, len) {
+            (0, fd_core::level::redraw::OBJECT_MAP, _) => return s.object_map[..len].to_vec(),
+            (0, ACTIVE, 5) => return vec![1, 0, 0, 0, 0],
+            (0, SLOTS, 40) => {
+                let mut b = vec![0; 40];
+                b[0..2].copy_from_slice(&self.slot.x.to_be_bytes());
+                b[2..4].copy_from_slice(&self.slot.y.to_be_bytes());
+                b[4..6].copy_from_slice(&self.slot.kind.to_be_bytes());
+                return b;
+            }
+            _ => {}
+        }
+        match fd_core::LAYOUT
+            .iter()
+            .find(|v| (v.hunk, v.offset, v.width.bytes()) == (hunk, offset, len))
+        {
+            Some(v) => self.game.probe(v).to_be_bytes()[4 - len..].to_vec(),
+            None => vec![0; len],
+        }
+    }
+}
+
+#[test]
+fn a_creature_out_of_view_is_written_back_in_play() {
+    use fd_core::objects::collectible::{MAP_COLUMN, map_cell};
+    use fd_core::{Game, Start, Transplant};
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let game = Game::new(data, Start::Level1);
+    let camera_x = game.state().camera.x;
+    // Past the right edge (`camera_x + $130`): written one column right of its cell, if empty.
+    let slot = CreatureSlot {
+        x: camera_x + 0x200,
+        y: 0x40,
+        kind: 0x10,
+        facing: 0,
+        phase: 0,
+    };
+    let cell = (map_cell(slot.x as u32, slot.y as u32) + MAP_COLUMN
+        - fd_core::level::redraw::OBJECT_MAP) as usize;
+    assert_eq!(
+        game.state().object_map[cell],
+        0,
+        "the test's cell is not empty"
+    );
+    let mut g = game.clone();
+    g.transplant(&OneCreature { game: &game, slot });
+    assert_eq!(g.state().edges.creatures.active[0], 1);
+    g.step(amiga_oracle::FrameInput::NONE);
+    let s = g.state();
+    assert_eq!(
+        (s.object_map[cell], s.edges.creatures.active[0]),
+        (0x11, 0),
+        "h0_2dd6 did not run in game_frame"
+    );
+}

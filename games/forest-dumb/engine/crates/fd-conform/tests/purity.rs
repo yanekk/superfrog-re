@@ -1,7 +1,7 @@
 //! The workspace's purity test: the guard on the pure/shell boundary and on embedded tables
 //! (plans/forest-dumb-start DESIGN §3.1), written from the first game's and the toolkit's with this
 //! workspace's lists. Each workspace runs its own, from that workspace alone; the toolkit's checks
-//! the toolkit crates' sources, so this one scans `fd-core`'s.
+//! the toolkit crates' sources, so this one scans the pure crates' (`PURE`).
 //!
 //! The pure crates must not read a clock, touch a file, socket, thread, environment or process, use
 //! floating point or a randomly-seeded hash map, or carry an integer table of more than 16 elements
@@ -14,15 +14,37 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-const PURE: [&str; 1] = ["fd-core"];
+const PURE: [&str; 2] = ["fd-core", "fd-assets"];
 
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
-/// pure crates needs one line saying why it is pure. The two toolkit crates' sources are scanned by
+/// pure crates needs one line saying why it is pure. The toolkit crates' sources are scanned by
 /// the toolkit's own purity test.
 const ALLOWED: &[&str] = &[
     "fd-core",
+    "fd-assets",
     "amiga-clock",
     "amiga-input",
+    // The renderer's chips (T10): the copper run, the bitplane fetch and the sprite composition,
+    // functions of the memory and registers handed to them. Pure by the toolkit's own purity test
+    // (`toolkit-checks/tests/purity.rs`), which scans its sources.
+    "amiga-chips",
+    // amiga-chips' sound-side dependency: the mixer's chip-memory trait AmigaMemory implements; pure
+    // by the same toolkit test (its resampler's floats are that test's one named exemption).
+    "amiga-paula",
+    // The recording format (T14): the toolkit's game-free recorder, its text and its zip, pure by the
+    // toolkit's own purity test. Its zip is amiga-disk's, bytes in and bytes out.
+    "amiga-record",
+    "amiga-disk",
+    // amiga-disk's DEFLATE decoder: bytes in, bytes out; no I/O, clock, thread or float.
+    "miniz_oxide",
+    // miniz_oxide's Adler-32 checksum: integer arithmetic over a byte slice.
+    "adler2",
+    // miniz_oxide's SIMD Adler-32, switched on by png in a whole-workspace build. Integer arithmetic
+    // over a byte slice, no I/O.
+    "simd-adler32",
+    // The OFS reader behind amiga-disk's `ofs` module, built without its `std` feature: blocks in,
+    // parsed volume out; no I/O, clock, thread or float, and no dependencies of its own.
+    "amiga-ffs",
     // amiga-input's save-state derive: serde's traits and derive. The derive runs at compile time
     // and emits plain field-by-field code; the traits read and write values handed to them.
     "serde",
@@ -406,7 +428,7 @@ fn the_real_pure_crates_pass() {
     }
     assert!(
         files.len() >= 3,
-        "found only {} source files in fd-core",
+        "found only {} source files in the pure crates",
         files.len()
     );
     let mut violations = Vec::new();

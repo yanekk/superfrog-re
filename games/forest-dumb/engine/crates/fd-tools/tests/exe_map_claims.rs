@@ -168,11 +168,25 @@ fn the_listing_regenerates_and_decodes_hunk_4() {
     for wanted in ["\nmain_loop:", "\nentry:", "addq.b   #$1, mt_counter"] {
         assert!(text.contains(wanted), "{wanted}");
     }
+    // T40: the sweep resyncs at every instruction call_tree.py's flow reaches, so these call
+    // targets, once inside instructions decoded out of step after data, start lines of their own.
+    // An instruction line at the address, not its label: a target named in symbols.toml is labelled
+    // by its name (T52's `h0_2c7e`, `h0_5820`; T25's `h0_62b6`).
+    for start in [0x2c7e, 0x3698, 0x5820, 0x62b6, 0x94ba] {
+        assert!(
+            text.contains(&format!("\n{start:08x}  ")),
+            "h0+${start:x} starts no instruction"
+        );
+    }
     // A 68000 instruction never starts at an odd address. An odd-sized data symbol leaves the sweep
-    // on one until the next symbol, so everything up to there decodes as noise and still lists.
+    // on one; if it decoded from there, everything up to the next symbol would be noise and still
+    // list. A byte var may sit at an odd address, and the byte after one that is not a symbol
+    // lists as dc.b to bring the sweep back to a word (T64), so dc.b lines are exempt; nothing
+    // else is.
     let odd: Vec<&str> = text
         .lines()
         .filter(|l| l.get(8..10) == Some("  "))
+        .filter(|l| l.split_whitespace().nth(2) != Some("dc.b"))
         .filter(|l| {
             let at = u32::from_str_radix(&l[..8], 16);
             at.is_ok_and(|a| a < 0x5be68 && a & 1 == 1)
