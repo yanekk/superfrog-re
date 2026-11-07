@@ -67,15 +67,18 @@ shutil.copy(sys.argv[1], sys.argv[sys.argv.index('--out') + 1] + '/pcode.json')
 '''
 
 # Records which tree is "built in", as cargo would; fails like rustc when FAKE_BUILD_ERROR names a
-# generated function to put the error in.
+# generated function to put the error in (in the tree FAKE_BUILD_ERROR_IN names, any without it).
+# rustc names fd-conform's build.rs copy, OUT_DIR/tree.rs, whatever FD_TRANSLATED is called; the lines
+# are the same (measured at T06 review on the real build).
 BUILD = '''
 import os, re, sys
 tree = os.environ['FD_TRANSLATED']
 bad = os.environ.get('FAKE_BUILD_ERROR')
-if bad:
+if bad and os.environ.get('FAKE_BUILD_ERROR_IN', os.path.basename(tree)) == os.path.basename(tree):
     lines = open(tree).read().splitlines()
     at = next(i for i, l in enumerate(lines, 1) if l.startswith(f'pub fn {bad}('))
-    print(f'{tree}:{at + 3}:9: error[E0308]: mismatched types', file=sys.stderr)
+    print(f'/x/target/debug/build/fd-conform-0123/out/tree.rs:{at + 3}:9: error[E0308]: mismatched types',
+          file=sys.stderr)
     sys.exit(101)
 open(os.environ['FAKE_STATE'], 'w').write(os.path.basename(tree))
 '''
@@ -222,6 +225,12 @@ class Trial(unittest.TestCase):
         self.assertIn('does not compile, in h0+$0', err)
         self.assertIn('error[E0308]: mismatched types', err)
         self.assertFalse(os.path.exists(os.path.join(self.paths.out, 'table.md')))
+
+    def test_a_compile_failure_of_the_hinted_tree_names_its_routine(self):
+        os.environ.update(FAKE_BUILD_ERROR='h0_0', FAKE_BUILD_ERROR_IN='tree-hints.rs')
+        code, _, err = self.run_trial()
+        self.assertEqual(code, 1)
+        self.assertIn('tree-hints.rs does not compile, in h0+$0', err)
 
     def test_a_failing_export_is_named(self):
         os.environ['FD_TRIAL_EXPORT'] = f'{shlex.quote(sys.executable)} -c "import sys; sys.exit(2)"'

@@ -170,7 +170,8 @@ def build(tree):
     errs = [l for l in p.stderr.splitlines() if re.search(r'\berror\b', l)]
     first = errs[0] if errs else (p.stderr.strip().splitlines() or ['(no output)'])[-1]
     name = os.path.basename(tree)
-    m = re.search(re.escape(name) + r':(\d+):\d+', first)
+    # rustc names fd-conform's build.rs copy (OUT_DIR/tree.rs, line for line the same), not `tree`.
+    m = re.search(r'(?:^|[/\\])(?:tree\.rs|' + re.escape(name) + r'):(\d+):\d+', first)
     where = routine_at_line(tree, int(m.group(1))) if m else None
     raise StepFailed(f"build: the generated {name} does not compile, in "
                      f"{where or 'no generated routine'}: {first}")
