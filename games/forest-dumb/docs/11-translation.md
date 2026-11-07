@@ -819,6 +819,14 @@ What each porting task did with its share of the table above, and which routines
   written by hand in `fd_core::level_end`, so no `[T26]` table in `re/reshape.toml`; $0 spent. They
   are proven by the `level-end` case (`tests/level_end.rs`), not the rig: `main_loop` is foreground
   code no rig unit holds.
+- **T25** (2026-11-06): `h0_24ce`, `h0_21c0` (`fd_core::objects::spring`) and `h0_62b6`
+  (`fd_core::objects::animated`), `MapObjects` methods (`tests/mechanic_routines.rs`, 10 000 states;
+  paths 7, 6, 791). Muse wrote `spring_redraw` (`h0_21c0`; `reshape.py --task T25 --all`, pass on try 2,
+  no quality issue, $0.0089); fitted by hand: the timer's count written plainly, the second band's 16
+  named. By hand: `spring_trigger` (`h0_24ce`), the one example Muse is shown, since T25 has only two
+  routines with a literal port; and `animate` (`h0_62b6`), too-big for the service. Its value compares
+  test the N flag only (`cmpi.b #8; bpl`), so `$a0` to `$a7` end the list rather than draw as items; a
+  mutant in the test holds it.
 - **T70** (2026-11-06): `char_hit_check`'s contact half, as `fd_core::character::Play::char_hit_check`
   (`tests/death_routines.rs`, 10 000 states of T38's generator with every creature slot inactive; 12
   paths). The creature half, `h0_3dd8`'s stomp loop while falling, is left to **T24**: the port calls
@@ -837,6 +845,16 @@ What each porting task did with its share of the table above, and which routines
   calls; `move_all` and `move_slot` failed their first rounds only because they ran before the units they
   call. Fitted by hand: `move_slot`'s seven per-kind helpers folded into one `match` with shared
   `turn`, `walk` and `fly`, and `move_all` written as a `for` over the slots.
+- **T52** (2026-11-06): `h0_2c7e`, `h0_5e44`, `h0_2d4c`, `h0_5820`, as `fd_core::render::objects::Creatures`
+  methods over `CreatureDraw` and the slots (`tests/creature_drawing_routines.rs`, 10 000 states; paths 456,
+  21, 254, 9). By hand: `restore` (`h0_5e44`), because it is `by_hand` (200 instructions of its own flow, over
+  180) and the batch answered `too-big`; `restore_all` (`h0_2c7e`), blocked behind it, so no literal port
+  exists; and `cut_all` (`h0_2d4c`), the example Muse is shown, the only other routine with a literal port.
+  Each matched on its first check. From Muse (`reshape.py --task T52 --all`): `cut` (`h0_5820`), passing on
+  its second try after two tidy rounds, $0.019, one quality note left (the frame table's relocated pointer
+  turned into a hunk 0 offset with `h(0, 0)`, kept). `examples` lists `cut` second only so `cut_all`'s own
+  prompt has one. Blits are `CreatureBlit`s, turned into the register writes by the rig's `DrawIo` and drawn
+  into the play screen by `PlayDraw`; registers are not compared.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

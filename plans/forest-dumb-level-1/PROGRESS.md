@@ -63,7 +63,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | enemies | T20, T21, T22, T23 | ✅ | Clean bar a doc fix: kind 0's path tables are all 0 in the original (measured), so it never moves. Probed: creatures in real play, the original's memory. Mutated the probe column and stomp score, both caught. Planner-danger test carried by T27/T48 (owner). T73 premise read-only. |
 | T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
-| T25 | mechanics | T11, T20, T21, T22 | ⬜ | |
+| T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ⬜ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
-| T52 | creature-drawing | T10, T22; blocks T46 | ⬜ | |
+| T52 | creature-drawing | T10, T22; blocks T46 | ✅ | |
 | T53 | gen-character-2 | T33, T34; blocks T40 | ✅ | |
 | T54 | gen-objects-2 | T33, T34; blocks T40 | ✅ | |
 | T55 | edge-redraw | T09; blocks T10, T41, T42, T43 | ✅ | |
@@ -91,7 +91,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T69 | level-start-state | T07, T65; blocks T20, T28 | ✅ | |
 | T68 | app-drill-os-half | T16; blocks T28 | ✅ | |
 | T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
-| T71 | status-redraw-race | T70; blocks T27 | ⬜ | |
+| T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ⬜ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ⬜ | |
 

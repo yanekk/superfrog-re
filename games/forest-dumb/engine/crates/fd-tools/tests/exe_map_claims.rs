@@ -170,12 +170,12 @@ fn the_listing_regenerates_and_decodes_hunk_4() {
     }
     // T40: the sweep resyncs at every instruction call_tree.py's flow reaches, so these call
     // targets, once inside instructions decoded out of step after data, start lines of their own.
-    // A start named in symbols.toml since (`h0_3698`, T24) lists under its name.
-    for start in ["h0+$2c7e", "h0+$3698", "h0+$5820", "h0+$62b6", "h0+$94ba"] {
-        let named = start.replace("+$", "_");
+    // An instruction line at the address, not its label: a target named in symbols.toml is labelled
+    // by its name (T52's `h0_2c7e`, `h0_5820`; T25's `h0_62b6`).
+    for start in [0x2c7e, 0x3698, 0x5820, 0x62b6, 0x94ba] {
         assert!(
-            text.contains(&format!("\n{start}:\n")) || text.contains(&format!("\n{named}:\n")),
-            "{start} has no label"
+            text.contains(&format!("\n{start:08x}  ")),
+            "h0+${start:x} starts no instruction"
         );
     }
     // A 68000 instruction never starts at an odd address. An odd-sized data symbol leaves the sweep

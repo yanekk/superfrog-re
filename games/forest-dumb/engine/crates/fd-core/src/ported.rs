@@ -148,6 +148,10 @@ pub const PORTED: &[Ported] = &[
         0x69d6,
         "character::Play::lives_minus_one",
     ),
+    // T25: springs (objects/spring.rs) and the animated cells (objects/animated.rs).
+    port("h0_21c0", 0x21c0, "objects::MapObjects::spring_redraw"),
+    port("h0_24ce", 0x24ce, "objects::MapObjects::spring_trigger"),
+    port("h0_62b6", 0x62b6, "objects::MapObjects::animate"),
     // T70: contact and the life it costs. The creature stomp inside it (`h0_3dd8`'s loop,
     // `character::Play::stomp`) is T24's to port.
     port(
@@ -176,6 +180,11 @@ pub const PORTED: &[Ported] = &[
     ),
     port("h0_3698", 0x3698, "objects::creature::Creatures::sort"),
     port("h0_3dd8", 0x3dd8, "objects::creature::overlaps"),
+    // T52: the creatures restored and cut (render/objects.rs).
+    port("h0_2c7e", 0x2c7e, "render::objects::Creatures::restore_all"),
+    port("h0_2d4c", 0x2d4c, "render::objects::Creatures::cut_all"),
+    port("h0_5820", 0x5820, "render::objects::Creatures::cut"),
+    port("h0_5e44", 0x5e44, "render::objects::Creatures::restore"),
 ];
 
 /// A hunk 0 routine's entry.

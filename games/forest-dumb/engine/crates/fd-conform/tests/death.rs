@@ -92,6 +92,9 @@ impl Transplant for Changed {
 }
 
 impl Engine for Changed {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -263,6 +266,9 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -320,8 +326,8 @@ fn falling_into_the_spike_pit_loses_a_life_as_the_originals() {
 
 /// Right held in the spike pit until all 32 lives are gone: each lost as the original loses it, then
 /// `main_loop`'s check shows the game over screen, compared frame by frame, and fire ends it where the
-/// original enters its high scores and the engine restarts (T23's runner end). The lives digits and
-/// icons are left out where `main_loop`'s redraw races a pass (T71).
+/// original enters its high scores and the engine restarts (T23's runner end). Where pass `32k + 1`
+/// cut `main_loop`'s redraw short on the original, the bar shows the engine's cut redraw (T71).
 #[test]
 fn the_last_life_lost_on_the_spikes_ends_the_game_as_the_originals() {
     let case = load("death-spikes");
@@ -332,4 +338,122 @@ fn the_last_life_lost_on_the_spikes_ends_the_game_as_the_originals() {
     assert_eq!(events, [Event::GameOver, Event::Restart], "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 32, "{v}");
     assert!(v.passes > 4300, "{v}");
+    assert!(v.cut_redraws > 0, "{v}");
+}
+
+/// fd-core's game with its cut redraw (T71) changed one way.
+struct Cut {
+    game: Game,
+    how: CutHow,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CutHow {
+    /// As fd-core draws it.
+    Same,
+    /// None: only the engine's own redraw.
+    Without,
+    /// One pixel of the bar's lives digits changed: neither the old nor the new bar.
+    WrongBar,
+    /// One pixel of the play area changed: a cut redraw may change the bar only.
+    PlayArea,
+    /// The engine's own picture wrong by one play-area pixel while pass 1441's cut is accepted, the
+    /// cut redraw right: a cut redraw must not excuse a play area the engine drew wrong (T71 review).
+    HidesPlayArea,
+}
+
+impl Transplant for Cut {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.game.transplant(mem)
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl Engine for Cut {
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
+    fn pass(&mut self, input: FrameInput) {
+        self.game.step(input)
+    }
+    fn picture(&self) -> Option<Picture> {
+        let mut p = self.game.picture();
+        let irq = fd_core::layout_var("irq_count").unwrap();
+        if self.how == CutHow::HidesPlayArea && (1442..1472).contains(&self.game.probe(irq)) {
+            let w = p.width as usize;
+            p.pixels[10 * w + 10] ^= 1;
+        }
+        Some(p)
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.game.take_events()
+    }
+    fn off_play(&mut self, input: FrameInput) {
+        self.game.step(input)
+    }
+    fn game_over(&self) -> bool {
+        matches!(self.game.scene(), Scene::GameOver(_))
+    }
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        let mut p = self.game.cut_redraw(cut)?;
+        let w = p.width as usize;
+        let at = match self.how {
+            CutHow::Same | CutHow::HidesPlayArea => return Some(p),
+            CutHow::Without => return None,
+            CutHow::WrongBar => 228 * w + 90,
+            CutHow::PlayArea => 10 * w + 10,
+        };
+        p.pixels[at] ^= 1;
+        Some(p)
+    }
+}
+
+/// `death-spikes` up to frame 7800: pass 1441 takes a life and cuts `main_loop`'s redraw short
+/// before its lives read (measured, T71), so the original's bar shows the life gone 31 frames before
+/// the engine's own redraw. The runner accepts the engine's cut redraw there, and nothing else: no
+/// cut redraw, a bar matching neither the old nor the new numbers, or a play area changed fails, and
+/// a cut redraw never excuses the engine's own play area.
+#[test]
+fn a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it() {
+    let mut case = load("death-spikes");
+    case.frames = 1400;
+    case.goal = None;
+    // Five runs of about 4 s, side by side.
+    let runs: Vec<(CutHow, Verdict)> = std::thread::scope(|s| {
+        let case = &case;
+        let all = [
+            CutHow::Same,
+            CutHow::Without,
+            CutHow::WrongBar,
+            CutHow::PlayArea,
+            CutHow::HidesPlayArea,
+        ]
+        .map(|how| s.spawn(move || (how, run(case, &mut Cut { game: game(), how }))));
+        all.map(|h| h.join().unwrap()).into()
+    });
+    for (how, v) in runs {
+        if how == CutHow::Same {
+            assert_eq!(v.outcome, Outcome::Same, "{v}");
+            assert!(v.cut_redraws >= 31, "{v}");
+            continue;
+        }
+        let Outcome::PictureDiffers { frame, why, .. } = &v.outcome else {
+            panic!("{how:?}: {v}");
+        };
+        assert!((7742..7775).contains(frame), "{how:?}: {v}");
+        // "first at (x, y)": the bar's rows, or the play area's changed pixel.
+        let y: u16 = why
+            .split("first at (")
+            .nth(1)
+            .and_then(|r| r.split([',', ')']).nth(1))
+            .and_then(|y| y.trim().parse().ok())
+            .unwrap_or_else(|| panic!("{how:?}: {why}"));
+        if how == CutHow::HidesPlayArea {
+            assert_eq!(y, 10, "{how:?}: {why}");
+            continue;
+        }
+        assert!(fd_conform::STATUS_ROWS.contains(&y), "{how:?}: {why}");
+    }
 }

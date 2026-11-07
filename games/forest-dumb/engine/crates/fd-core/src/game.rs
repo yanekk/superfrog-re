@@ -13,6 +13,7 @@ use crate::level::redraw::{Blit, LevelImage, PlayIo};
 use crate::level::{self, Dispatch, DrawList, Event, LevelCtx, Object};
 use crate::level_end::{self, Complete, LevelEnd};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program, Scratch};
+use crate::render::status::Shown;
 use crate::render::{self, Display, DisplayData};
 use crate::{Mem, Scene, State, Transplant, Var};
 use amiga_chips::Picture;
@@ -103,6 +104,14 @@ pub struct Game {
     blits: Vec<Blit>,
     /// What the display shows (T10): picture state, left out of equality.
     display: Display,
+    /// The numbers pass `32k + 1` left, from that pass until the next redraw: what `main_loop`'s
+    /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
+    /// Picture state, left out of equality.
+    late: Option<Shown>,
+    /// A conformance case froze the original: the engine leaves out what `level::FROZEN_IN_A_CASE`
+    /// names. Set only by [`Game::freeze_as_a_case`]; the app and the planner never do
+    /// (`fd-conform/tests/mechanic_routines.rs`).
+    frozen: bool,
 }
 
 impl Game {
@@ -152,6 +161,8 @@ impl Game {
                     dispatch: Dispatch::level_1(),
                     events: Vec::new(),
                     blits,
+                    late: None,
+                    frozen: false,
                 }
             }
         }
@@ -203,11 +214,12 @@ impl Game {
                     level: &self.data.level,
                     program: &self.data.program,
                     anim: &self.data.anim,
-                    plane: &self.plane,
+                    plane: &mut self.plane,
                     image: &self.image,
                     display: &mut self.display,
                     display_data: &self.data.display,
                     clxdat,
+                    frozen: self.frozen,
                 };
                 level::game_frame(
                     &mut ctx,
@@ -218,6 +230,11 @@ impl Game {
                 );
                 // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
                 self.state.frame_flag = 0xffff;
+                match self.state.irq_count & 0x1f {
+                    1 => self.late = Some(self.numbers()),
+                    0 => self.late = None,
+                    _ => {}
+                }
             }
             Scene::GameOver(mut screen) => {
                 if screen.step(i.joy.contains(Joy::FIRE)) {
@@ -256,10 +273,18 @@ impl Game {
 
     /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
     /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
+    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
+    /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
+    /// frozen original does. A restart keeps it.
+    pub fn freeze_as_a_case(&mut self) {
+        self.frozen = true;
+    }
+
     fn restart(&mut self) {
-        let events = std::mem::take(&mut self.events);
+        let (events, frozen) = (std::mem::take(&mut self.events), self.frozen);
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
+        self.frozen = frozen;
         self.events.push(Event::Restart);
     }
 
@@ -320,6 +345,67 @@ impl Game {
             let countdown = (s.countdown >> 16) as u16;
             status.update(countdown, s.lives, s.score, s.items_left, &src);
         }
+    }
+
+    /// The four numbers `h0_6a96` reads, as they are now.
+    fn numbers(&self) -> Shown {
+        let s = &self.state;
+        Shown {
+            countdown: (s.countdown >> 16) as u16,
+            lives: s.lives,
+            items: s.items_left,
+            score: s.score,
+        }
+    }
+
+    /// [`Game::picture`] as the original shows it when pass `32k + 1` cut `main_loop`'s redraw after
+    /// pass `32k` short, `cut` of `h0_6a96`'s four reads (countdown, lives, score, items, in that
+    /// order) made before it: the rest read what pass `32k + 1` left, and the bar keeps that drawing
+    /// until the next redraw. `None` outside passes `32k + 1` to `32k + 31`, before a pass `32k + 1`
+    /// has run, or when it draws what [`Game::picture`] draws.
+    ///
+    /// The engine cannot know `cut`: `main_loop` calls `h0_6a96` over and over while `irq_count & 31`
+    /// is 0, and where in that loop the interrupt lands depends on the cycles every pass took, which
+    /// nothing here counts (measured, T71: docs/09, "The status bar's redraw and the next pass"). A
+    /// case reads it off the original and accepts this picture for the bar (`fd-conform`).
+    pub fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        let late = self.late?;
+        if self.scene != Scene::Level || self.state.irq_count & 0x1f == 0 {
+            return None;
+        }
+        let old = self.display.status.shown;
+        let pick = |i: u8| i >= cut;
+        let mut status = self.display.status.clone();
+        let data = &self.data.display;
+        let h4 = |o: u32| data.h4(o);
+        let src = render::status::Sources {
+            h4: &h4,
+            program: &self.data.program,
+        };
+        status.update(
+            if pick(0) {
+                late.countdown
+            } else {
+                old.countdown
+            },
+            if pick(1) { late.lives } else { old.lives },
+            if pick(2) { late.score } else { old.score },
+            if pick(3) { late.items } else { old.items },
+            &src,
+        );
+        if status.bytes == self.display.status.bytes {
+            return None;
+        }
+        let c = &self.state.camera;
+        Some(render::picture(
+            data,
+            &Display {
+                status,
+                ..self.display.clone()
+            },
+            (c.x, c.y),
+            &self.data.program,
+        ))
     }
 
     /// The frame the original shows after this step, in the play area and status bar's window
@@ -483,6 +569,14 @@ impl Game {
             };
         }
         c.current = word(&mem.read(0, 0x581c, 2), 0);
+        // The creature drawing's (T52): `h0+$2c7a`, `$2c7c`, `$5818`..`$581f`, the flag sets.
+        let d = &mut s.creature_draw;
+        d.restore_index = word(&mem.read(0, 0x2c7a, 2), 0);
+        d.cut_index = word(&mem.read(0, 0x2c7c, 2), 0);
+        let at = mem.read(0, 0x5818, 8);
+        (d.x, d.y, d.restoring) = (word(&at, 0), word(&at, 2), word(&at, 6));
+        d.saved.copy_from_slice(&mem.read(0, 0x67e0, 5));
+        d.drawn.copy_from_slice(&mem.read(0, 0x67e6, 5));
         let last = mem.read(0, 0x687e, 4);
         c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
         let used = mem.read(2, 0x1680, 48);
@@ -542,6 +636,7 @@ impl Transplant for Game {
         }
         self.transplant_play(mem);
         self.transplant_display(mem);
+        self.late = None;
     }
 
     fn probe(&self, v: &Var) -> u32 {

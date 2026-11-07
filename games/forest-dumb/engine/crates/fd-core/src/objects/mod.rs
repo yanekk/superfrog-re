@@ -12,11 +12,14 @@
 //! The ports read and write through [`Io`] at the original's hunk 0 offsets, so a cell a coordinate
 //! off the level reaches is the byte the original's would be (`level::redraw` does the same).
 
+pub mod animated;
 pub mod collectible;
 pub mod creature;
+pub mod spring;
 
 use crate::State;
 use crate::level::LevelCtx;
+use crate::level::collision::CollisionPlane;
 use crate::level::redraw::{Blit, IMAGE_END, LevelImage, OBJECT_MAP, SHAPES};
 use crate::program::Program;
 
@@ -28,6 +31,8 @@ pub enum Sound {
     Item,
     /// `h0_26ec`'s own copy for the `$4c` bonus: the clock sample on channel 3.
     Time,
+    /// `h0_21c0`'s, as a spring fires (T25): the spring sample on channel 1.
+    Spring,
 }
 
 /// What the object ports read and write outside their typed state.
@@ -41,6 +46,9 @@ pub trait Io {
     fn blit(&mut self, b: Blit);
     /// A sound started.
     fn sound(&mut self, s: Sound);
+    /// A long written to `collision_map` at `at` bytes from `h3+$fa50`, wrapping: a vanishing block
+    /// (T25, `animated`).
+    fn collision(&mut self, at: u32, v: u32);
 
     fn rw(&self, a: u32) -> u16 {
         u16::from_be_bytes([self.rb(a), self.rb(a.wrapping_add(1))])
@@ -72,12 +80,14 @@ pub struct MapObjects<'a> {
 }
 
 /// The object ports' [`Io`] in play: the object map as play has it, the level's buffers from their
-/// image, the program's tables (the tile table) from hunk 0, and the blits kept for the picture. A
-/// write off the object map, which only a coordinate off the level makes, is dropped.
+/// image, the program's tables (the tile table) from hunk 0, the collision plane, and the blits kept
+/// for the picture. A write off the object map, which only a coordinate off the level makes, is
+/// dropped.
 pub struct PlayIo<'a> {
     pub map: &'a mut [u8],
     pub image: &'a LevelImage,
     pub program: &'a Program,
+    pub plane: &'a mut CollisionPlane,
     pub blits: Vec<Blit>,
 }
 
@@ -106,6 +116,11 @@ impl Io for PlayIo<'_> {
     }
     /// The plan is silent (DESIGN §2.1).
     fn sound(&mut self, _: Sound) {}
+    /// What the plane keeps of it ([`CollisionPlane::set_word`]).
+    fn collision(&mut self, at: u32, v: u32) {
+        self.plane.set_word(at, (v >> 16) as u16);
+        self.plane.set_word(at.wrapping_add(2), v as u16);
+    }
 }
 
 /// Run `f` on the object ports in play, then draw the blits it started into the play screen.
@@ -115,6 +130,7 @@ pub fn in_play(l: &mut LevelCtx, f: impl FnOnce(&mut MapObjects)) {
         map: &mut map,
         image: l.image,
         program: l.program,
+        plane: &mut *l.plane,
         blits: Vec::new(),
     };
     f(&mut MapObjects {

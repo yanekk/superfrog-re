@@ -1,13 +1,14 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
 //! the level sync point with what the engine does not model frozen (T21's `freeze.rs`: creatures,
 //! animated cells, springs), as T11's stretches do; items, bonuses and the exit are taken on both
-//! sides (T22). The case compares the character's, the camera's and the status variables on every
-//! pass, and its goal is where the engine ends.
+//! sides (T22); the case's engine leaves out what it freezes (`fd_conform::engine_for`, T25). The
+//! case compares the character's, the camera's and the status variables on every pass, and its goal
+//! is where that engine ends.
 //!
 //! Where the two first differ is where the modelled part of the route ends: contact with the
 //! playfield and the lives it costs are modelled since T70. Creatures move and are stomped on the
 //! engine since T24, but a frozen original spawns none after the sync point, so a route that stomps
-//! one the engine spawned parts there until T46 lifts that freeze (T52 draws them first).
+//! one the engine spawned parts there until T46 lifts that freeze.
 
 use std::sync::Arc;
 
@@ -40,12 +41,6 @@ pub fn case_excluding(
     inputs: &[FrameInput],
     exclude: &[(&str, &str)],
 ) -> Result<Case, String> {
-    let mut g = Game::new(data.clone(), Start::Level1);
-    for &i in inputs {
-        g.step(i);
-        g.take_events();
-    }
-    let (x, y) = (g.state().char_x, g.state().char_y);
     // The original ends its passes about one behind the frames run (measured, T20 review: 599 of a
     // 600-step route by its 600th frame), so a case of exactly the route's frames can miss the goal
     // on the last pass. The slack plays idle past the route ([`crate::script`] lets go).
@@ -55,25 +50,44 @@ pub fn case_excluding(
         .filter(|v| !exclude.iter().any(|(e, _)| v.trim_matches('"') == *e))
         .collect::<Vec<_>>()
         .join(", ");
-    let mut text = format!(
-        "sync = {{ script = \"{script}\", frame = {sync} }}\n\
-         frames = {frames}\n\
-         compare = [\"vars\"]\n\
-         vars = [{vars}]\n\
-         goal = {{ all = [{{ var = \"char_x\", value = {x} }}, {{ var = \"char_y\", value = {y} }}], by_frame = {by} }}\n\
-         freeze = true\n",
-        script = sync::LEVEL_1_SCRIPT,
-        sync = sync::LEVEL_1_SYNC,
-        by = sync::LEVEL_1_SYNC + frames,
-    );
-    if !exclude.is_empty() {
+    let excluded = if exclude.is_empty() {
+        String::new()
+    } else {
         let list: Vec<String> = exclude
             .iter()
             .map(|(v, task)| format!("{{ what = \"var {v}\", task = \"{task}\" }}"))
             .collect();
-        text += &format!("exclude = [{}]\n", list.join(", "));
+        format!("exclude = [{}]\n", list.join(", "))
+    };
+    let text = |goal: &str| {
+        format!(
+            "sync = {{ script = \"{script}\", frame = {sync} }}\n\
+             frames = {frames}\n\
+             compare = [\"vars\"]\n\
+             vars = [{vars}]\n\
+             goal = {goal}\n\
+             freeze = true\n\
+             {excluded}",
+            script = sync::LEVEL_1_SCRIPT,
+            sync = sync::LEVEL_1_SYNC,
+        )
+    };
+    // The goal is where the case's own engine ends, frozen as the case freezes the original (T25:
+    // springs and animated cells), so it is played on `engine_for` the case without its goal first.
+    let ahead = Case::parse("planned-route", &text("{ idle = true }"))?;
+    let mut g = fd_conform::engine_for(&ahead, data.clone());
+    for &i in inputs {
+        g.step(i);
+        g.take_events();
     }
-    Case::parse("planned-route", &text)
+    let (x, y) = (g.state().char_x, g.state().char_y);
+    let by = sync::LEVEL_1_SYNC + frames;
+    Case::parse(
+        "planned-route",
+        &text(&format!(
+            "{{ all = [{{ var = \"char_x\", value = {x} }}, {{ var = \"char_y\", value = {y} }}], by_frame = {by} }}"
+        )),
+    )
 }
 
 /// `inputs` played on the original and on the engine, compared pass by pass.

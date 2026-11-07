@@ -110,6 +110,20 @@ workspace = "engine"
 "crates/fd-conform/tests/collect_routines.rs" = "smoke"
 # T24: the creatures' twelve routines on the rig, the in-play move and sort, two mutants: about 9 s warm.
 "crates/fd-conform/tests/enemy_routines.rs" = "smoke"
+# T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
+# 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
+# in full.
+"crates/fd-conform/tests/mechanic_routines.rs" = [
+    "every_t25_routine_is_registered_and_checked_here",
+    "every_t25_routine_matches_the_original",
+    "a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+    "a_spring_under_the_falling_character_fires_in_play",
+    "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
+    "the_engine_holds_the_mechanics_pictures_the_original_loaded",
+    "only_a_frozen_case_leaves_springs_and_animated_cells_out",
+    "the_engines_freeze_is_the_originals_entry_for_entry",
+    "the_engines_freeze_is_set_by_the_case_runner_alone",
+]
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
 "crates/fd-conform/tests/character_run.rs" = "smoke"
@@ -188,8 +202,23 @@ workspace = "engine"
     "a_recording_runs_through_game_over_and_the_restart_and_replays_alike",
     "the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar",
     "falling_into_the_spike_pit_loses_a_life_as_the_originals",
+    "a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
 ]
+# T71: where pass 32k+1 cuts main_loop's status bar redraw, idle and on death-spikes, 1600 frames each
+# side by side, about 7 s warm.
+"crates/fd-conform/tests/status_race.rs" = "smoke"
 "crates/fd-conform/tests/contact.rs" = "smoke"
+# T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
+# debug, the restores' blits) and its two mutants (about 1 min each) are full; the register check, the
+# sync-point state, the picture check over 520 passes, game_frame's calls and the frozen case's skip take about
+# 5 s warm.
+"crates/fd-conform/tests/creature_drawing_routines.rs" = [
+    "every_t52_routine_is_registered_and_checked_here",
+    "the_drawing_state_at_the_sync_point_is_the_originals",
+    "the_creatures_on_the_play_screen_are_the_originals",
+    "game_frame_restores_and_cuts_the_creatures",
+    "game_frame_restores_the_creatures_the_last_pass_drew",
+]
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
 # status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
@@ -323,6 +352,7 @@ name = "the engine's picture against the original's over whole runs, scrolling a
 covers = [
     "crates/fd-conform/tests/picture_cases.rs::each_picture_case_matches_with_nothing_differing_but_its_exclusions",
     "crates/fd-conform/tests/picture_cases.rs::the_status_bar_draws_every_digit_and_the_lives_icons_as_the_original",
+    "crates/fd-conform/tests/death.rs::a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
 ]
 
 [[area]]
@@ -351,6 +381,13 @@ covers = [
 [[area]]
 name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"
 covers = ["crates/fd-conform/tests/collect_routines.rs::every_t22_routine_matches_the_original"]
+
+[[area]]
+name = "the mechanics: springs and the animated cells (items, water, vanishing blocks)"
+covers = [
+    "crates/fd-conform/tests/mechanic_routines.rs::every_t25_routine_matches_the_original",
+    "crates/fd-conform/tests/mechanic_routines.rs::a_vanishing_block_in_view_makes_its_cell_solid_in_play",
+]
 
 [[area]]
 name = "taking items and bonuses in play, score and status bar, against the original"
@@ -387,4 +424,12 @@ covers = [
     "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
     "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+]
+
+[[area]]
+name = "the creatures restored and cut onto the play screen as the original draws them"
+covers = [
+    "crates/fd-conform/tests/creature_drawing_routines.rs::the_creatures_on_the_play_screen_are_the_originals",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
+    "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
 ]

@@ -47,16 +47,22 @@ const TILES: u32 = 0x1_3540;
 /// Where world 1's load list puts `_ELEMENTY.RAWM` and `.MASK`, hunk 4.
 const ELEMENTS: u32 = 0;
 const ELEMENT_MASKS: u32 = 0x1900;
+/// Where it puts `_WYBIJACZKA`, `_ZNIKAJKA1` and `_Plomien1`, hunk 4 (docs/07).
+const KNOCKER: u32 = crate::objects::spring::PICTURES[0];
+const VANISHING: u32 = crate::objects::animated::VANISH_PICTURE;
+const FLAME: u32 = crate::objects::animated::FLAME_PICTURE;
 
 /// What the display reads that the disks decide, at the original's addresses: hunk 1 (the copper
 /// list, the level palette, the sprites' blocks), hunk 4 (the status bar's picture, the font, the
-/// icons) with world 1's `_ELEMENTY` loaded over it, and the tiles. A test's data without the
-/// program reads as 0.
+/// icons) with world 1's `_ELEMENTY` and the mechanics' pictures loaded over it, the tiles and
+/// `StworkiNew`. A test's data without the program reads as 0.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DisplayData {
     h1: Vec<u8>,
     h4: Vec<u8>,
     tiles: Vec<u8>,
+    /// `StworkiNew.rawm` then `.mask`, loaded to `h3+$20c18` (T52).
+    creatures: Vec<u8>,
 }
 
 impl DisplayData {
@@ -82,16 +88,23 @@ impl DisplayData {
         if let Some(m) = &sprites.elements.mask {
             put(ELEMENT_MASKS, m);
         }
+        // The mechanics' pictures (T25), where world 1's load list puts them: the spring's first copy
+        // only (its second slot keeps the program's bytes, docs/06), the vanishing block, the flame.
+        put(KNOCKER, &sprites.knocker.picture);
+        put(VANISHING, &sprites.vanishing.picture);
+        put(FLAME, &sprites.flame.picture);
         // `level_init` for worlds 1 and 2: the level palette from `h1+$384` over `h1+$304`
         // (docs/06, "The palette"; measured at the sync point, `drawing_routines.rs`).
         h1.copy_within(0x384..0x404, 0x304);
         for (off, b) in sprite_pointers().into_iter().chain(status_pointers()) {
             h1[off as usize..off as usize + b.len()].copy_from_slice(&b);
         }
+        let c = &sprites.creatures;
         DisplayData {
             h1,
             h4,
             tiles: level.gens.iter().flatten().copied().collect(),
+            creatures: [&c.picture[..], c.mask.as_deref().unwrap_or_default()].concat(),
         }
     }
 
@@ -101,6 +114,7 @@ impl DisplayData {
         let at = |base: u32, b: &[u8]| b.get(a.wrapping_sub(base) as usize).copied();
         at(h(1, 0), &self.h1)
             .or_else(|| at(h(4, 0), &self.h4))
+            .or_else(|| at(objects::CREATURE_PICTURES, &self.creatures))
             .or_else(|| at(h(3, TILES), &self.tiles))
             .unwrap_or(0)
     }

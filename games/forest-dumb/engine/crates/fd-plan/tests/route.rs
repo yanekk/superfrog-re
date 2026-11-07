@@ -24,18 +24,18 @@ const BIN: &str = env!("CARGO_BIN_EXE_fd-plan");
 
 /// The short search: seed 1, 100 rounds, ~0.8 s on 10 threads.
 const ROUNDS: u64 = 100;
-/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact and T24's
-/// creatures): stalled with 136 of 282 coins still to take, 7 600 frames in, no life lost.
-const END: &str = "W1-1:173,58";
-const FRAMES: usize = 7600;
-const COINS_LEFT: u16 = 136;
-/// The pass the original and the engine first differ at (T24): the engine stomps, at its step 2655,
-/// a creature its edge redraw started at `W1-1:83,3`, which the frozen original (`h0_681c`) never
-/// spawned, and bounces: `char_x` one pixel apart. T46 lifts that freeze. Every pass before agrees,
-/// `edge_latch_right` aside ([`confirm::EDGE_LATCH_RIGHT`], T73).
-const PARTS_AT: u32 = 2656;
-/// The passes `edge_latch_right` differs on, from pass 1211 (T73).
-const LATCH_PASSES: u32 = 2;
+/// Where it ends on the engine (measured 2026-11-06 with T22's items, T70's contact, T25's springs
+/// and vanishing blocks, T52's drawing and T24's creatures): stalled with 188 of 282 coins still
+/// to take, 4 380 frames in, no life lost.
+const END: &str = "W1-1:66,90";
+const FRAMES: usize = 4380;
+const COINS_LEFT: u16 = 188;
+/// The pass the original and the engine first differ at (T24): the case's engine, frozen as the case
+/// freezes the original, still starts creatures from its edge redraws (`h0_681c` is frozen only in
+/// the original); one walks under the character, which stomps it at its step 566 and bounces:
+/// `char_x` one pixel apart. With the creatures left unmoved the route agrees on every pass (T24
+/// review). T46 lifts that freeze. Every pass before agrees.
+const PARTS_AT: u32 = 567;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -113,6 +113,27 @@ fn the_facts_match_the_levels_readings() {
     // Shape 0 is solid in every level, shape 2 empty in W1 (docs/05).
     assert!(!s.open((0, 95)) || d.level.shape(0, 95) != 0);
     assert!(s.open((7, 7)));
+}
+
+/// The mechanics (T25) are not switches, so they add no gates; every cell of theirs is open, read from
+/// the level's file. A vanishing block's cell is solid in play only while it shows: its 28-pixel top is
+/// written into `collision_map` by the animated cells, and cleared at its empty frame.
+#[test]
+fn the_mechanics_open_no_gate_and_their_cells_are_open() {
+    use fd_plan::facts::is_mechanic;
+    let d = data();
+    let f = facts(&d.level);
+    assert!(f.gates.is_empty());
+    let cells: Vec<_> = (0..f.cols)
+        .flat_map(|c| (0..f.rows).map(move |r| (c, r)))
+        .filter(|&(c, r)| is_mechanic(d.level.object(c, r)))
+        .collect();
+    // docs/10: three spring cells, 26 vanishing blocks, 11 water cells.
+    assert_eq!(cells.len(), 3 + 26 + 11);
+    let s = start(&d);
+    for c in &cells {
+        assert!(s.open(*c), "{c:?} is a wall");
+    }
 }
 
 #[test]
@@ -206,23 +227,18 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
-    let v = confirm::confirm_excluding(&d, &p.route.inputs, &[confirm::EDGE_LATCH_RIGHT])
-        .unwrap_or_else(|e| panic!("{e}"));
+    let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
     // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
-    // T46 or T73 closes its gap this fails, and the constants above go.
+    // T46 closes its gap this fails, and the constant above goes. This route parts before
+    // `edge_latch_right`'s gap (T73, `confirm::EDGE_LATCH_RIGHT`), measured on T24's route before its
+    // merge with T25 and T52.
     let Outcome::Differs { pass, ref var, .. } = v.outcome else {
         panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
     };
     assert_eq!((pass, var.as_str()), (PARTS_AT, "char_x"), "{v}");
-    let latch: Vec<_> = v
-        .excluded
-        .iter()
-        .map(|(e, n)| (e.task.as_str(), *n))
-        .collect();
-    assert_eq!(latch, vec![("T73", LATCH_PASSES)], "{v}");
-    // Up to there, past the level's first third, no life lost.
+    // Up to there, at the character's cell then (`W1-1:56,28`), no life lost.
     let g = replay(&d, &p.route.inputs[..PARTS_AT as usize]);
-    assert!(g.location().col >= 80, "{}", g.location());
+    assert!(g.location().col >= 50, "{}", g.location());
     assert_eq!(g.lives(), 32);
 }
 
