@@ -83,7 +83,12 @@ hurts. Measured: a creature (kinds 0, 1, 5) over the standing character, hits 1,
 the third; one 200 pixels away, no contact. A creature under the falling character, kind 7 and +250.
 `$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
 tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
-133, a life lost at 135). Which tiles carry the colours there is not measured. Those colours are in
+133, a life lost at 135). Which tiles carry the colours there is not measured. In W1-1's own water (T72, 2026-11-06,
+`death-water`, `contact.rs`): with `h0_6882` thawed (the case's `thaw`) the character drops into the
+pool at `W1-1:148,66` to `149,66` (frame 7042), and three contact passes cost a life at frame 7062 and
+the next at 7204, engine and original equal on every pass and frame. The pool's tiles carry colour 29
+themselves: the same run with the water undrawn loses the same two lives, and the water's frames change
+CLXDAT only on a few passes (pass 773 sets a bit the tiles do not; 758 and 786 to 793 cover theirs). Those colours are in
 134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1` (counted for 21, 23, 29, 31). The oracle reports
 collision only since T59 (`DENISE_CLX_SPR_PLF`, off in vAmiga by default; before it CLXDAT read `$8000`).
 

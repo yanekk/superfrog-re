@@ -1,0 +1,24 @@
+# T72: from the level sync point, contact-route's start down the first slope, then a path found on the
+# engine (a beam search toward W1-1:166,71, then 152,61) over the water's pillars from the right; left
+# let go at frame 741 drops the character into the pool at W1-1:148,66 to 149,66, where it stays.
+0: L
+4: R
+76: U R
+116: U L
+136: R
+220: -
+228: U R
+260: R
+276: U
+280: U R
+296: R
+356: U R
+396: R
+636: U R
+652: R
+660: U
+668: U L
+692: L
+708: U L
+724: L
+741: -

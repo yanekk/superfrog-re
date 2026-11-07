@@ -54,6 +54,22 @@ pub const FROZEN: &[Frozen] = &[
     },
 ];
 
+/// The entry `name` (`"h0_6882"`), as its `what` starts.
+pub fn named(name: &str) -> Option<&'static Frozen> {
+    FROZEN
+        .iter()
+        .find(|f| f.what.split_once(':').is_some_and(|(n, _)| n == name))
+}
+
+/// What a case with `freeze = true` and `thaw` patches: [`FROZEN`] less the entries `thaw` names.
+pub fn for_case(thaw: &[String]) -> Vec<Frozen> {
+    FROZEN
+        .iter()
+        .filter(|f| !thaw.iter().any(|t| named(t) == Some(*f)))
+        .copied()
+        .collect()
+}
+
 /// What a `freeze = true` case skips in the engine to mirror [`FROZEN`]: an exclusion, each naming
 /// the task whose port removes it together with the frozen entry at `mirrors` (owner, 2026-11-06, T52).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

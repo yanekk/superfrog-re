@@ -108,10 +108,12 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
-    /// A conformance case froze the original: the engine leaves out what `level::FROZEN_IN_A_CASE`
-    /// names. Set only by [`Game::freeze_as_a_case`]; the app and the planner never do
+    /// `Some` when a conformance case froze the original: the hunk 0 offsets of the routines the
+    /// engine leaves out, from `level::FROZEN_IN_A_CASE` less those the case thaws (T72). `Some` even
+    /// when every one is thawed, since a frozen case also skips the creature drawing (T52). Set only
+    /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
     /// (`fd-conform/tests/mechanic_routines.rs`).
-    frozen: bool,
+    frozen: Option<Vec<u32>>,
 }
 
 impl Game {
@@ -162,7 +164,7 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
-                    frozen: false,
+                    frozen: None,
                 }
             }
         }
@@ -219,7 +221,7 @@ impl Game {
                     display: &mut self.display,
                     display_data: &self.data.display,
                     clxdat,
-                    frozen: self.frozen,
+                    frozen: self.frozen.as_deref(),
                 };
                 level::game_frame(
                     &mut ctx,
@@ -277,11 +279,25 @@ impl Game {
     /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
     /// frozen original does. A restart keeps it.
     pub fn freeze_as_a_case(&mut self) {
-        self.frozen = true;
+        self.frozen = Some(level::FROZEN_IN_A_CASE.iter().map(|f| f.offset).collect());
+    }
+
+    /// For a frozen case that thaws the routine at hunk 0 `offset` (a case's `thaw`, T72): the
+    /// engine runs it again, as the original does. False when it was not left out.
+    pub fn thaw_in_a_case(&mut self, offset: u32) -> bool {
+        let Some(frozen) = &mut self.frozen else {
+            return false;
+        };
+        let before = frozen.len();
+        frozen.retain(|&f| f != offset);
+        frozen.len() < before
     }
 
     fn restart(&mut self) {
-        let (events, frozen) = (std::mem::take(&mut self.events), self.frozen);
+        let (events, frozen) = (
+            std::mem::take(&mut self.events),
+            std::mem::take(&mut self.frozen),
+        );
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
         self.frozen = frozen;

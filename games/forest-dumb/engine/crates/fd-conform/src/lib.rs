@@ -186,6 +186,10 @@ pub trait Engine: Transplant {
     /// routines (`fd_core::level::FROZEN_IN_A_CASE`, T25). Called once, before the transplant; the
     /// only way the engine's freeze is ever set. A wrapper of [`Game`] forwards it.
     fn freeze(&mut self) {}
+    /// After [`Engine::freeze`], once for each entry the case's `thaw` names, by its hunk 0 offset:
+    /// the engine runs that routine again, as the original does (T72). A wrapper of [`Game`]
+    /// forwards it.
+    fn thaw(&mut self, _offset: u32) {}
     /// A step the original spends on the game over screen, where no pass runs: the engine steps on
     /// the step's input (T23). An engine without the screen does nothing.
     fn off_play(&mut self, _input: FrameInput) {}
@@ -211,6 +215,9 @@ pub fn engine_for(case: &Case, data: Arc<GameData>) -> Game {
     let mut g = Game::new(data, Start::Level1);
     if case.freeze {
         Engine::freeze(&mut g);
+        for f in case.thaw.iter().filter_map(|t| freeze::named(t)) {
+            Engine::thaw(&mut g, f.offset);
+        }
     }
     g
 }
@@ -224,6 +231,10 @@ impl Engine for Game {
 
     fn freeze(&mut self) {
         self.freeze_as_a_case();
+    }
+
+    fn thaw(&mut self, offset: u32) {
+        self.thaw_in_a_case(offset);
     }
 
     fn picture(&self) -> Option<Picture> {
@@ -630,7 +641,7 @@ fn reach_case_with(
         each(&mut am, Some(input))?;
     }
     if case.freeze {
-        freeze::apply(&mut am, freeze::FROZEN)?;
+        freeze::apply(&mut am, &freeze::for_case(&case.thaw))?;
     }
     for (name, value) in &case.set {
         let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
@@ -954,6 +965,9 @@ pub fn run_inputs(
                 None => {
                     if case.freeze {
                         engine.freeze();
+                        for f in case.thaw.iter().filter_map(|t| freeze::named(t)) {
+                            engine.thaw(f.offset);
+                        }
                     }
                     engine.transplant(&theirs);
                     at = Some((ended, ended));
