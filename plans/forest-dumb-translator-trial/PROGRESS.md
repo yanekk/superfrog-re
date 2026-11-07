@@ -15,7 +15,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | bring-in-level-1 | — | ✅ | |
-| T01 | pcode-export | T00 | ⬜ | |
+| T01 | pcode-export | T00 | ✅ | |
 | T02 | pcode-runtime | T00 | ✅ | |
 | T03 | pcode-translator | T02 | ⬜ | |
 | T04 | judge-translated | T00, T02 | ✅ | |
