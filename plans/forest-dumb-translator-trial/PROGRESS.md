@@ -19,12 +19,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | pcode-runtime | T00 | ⬜ | |
 | T03 | pcode-translator | T02 | ⬜ | |
 | T04 | judge-translated | T00, T02 | ⬜ | |
-| T05 | code-writes-check | T00 | ⬜ | |
+| T05 | code-writes-check | T00 | 🔍 | `fd-conform code-writes`, `src/code_writes.rs`, 7 tests (smoke). Full run: 33 cases, 0 changes (FINDINGS). Deviations: watches every even hunk address, not listing starts (no listing needed, sees mid-instruction jumps); also compares with the relocated program at first run (§2.6 "loaded values"); cases run unfrozen; `executed`, `since`, `misses` fields added; loader moved to `routine::load_program`. |
 | T06 | trial-tool | T01, T03, T04 | ⬜ | |
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
