@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** T00, which every other task waits on, directly or through T02.
+**Next `pir-work` will:** review T06, then T07 works through the first table's ten failures.
 
 ## Tasks
 
@@ -20,11 +20,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | pcode-translator | T02 | ✅ | |
 | T04 | judge-translated | T00, T02 | ✅ | |
 | T05 | code-writes-check | T00 | ✅ | |
-| T06 | trial-tool | T01, T03, T04 | ⬜ | |
+| T06 | trial-tool | T01, T03, T04 | 🔍 | `translator_trial.py`, empty hints file, 9 tests; real run 75/85 (88.2%). Deviations: `pcode_rust.py` slot -1 fix and its test (owner's yes, run needed it); hints run reuses verdicts when the tree is unchanged; judging four at a time. |
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 

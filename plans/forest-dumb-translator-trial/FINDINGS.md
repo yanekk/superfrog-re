@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | 📌 | **T06 first real run:** `{"judgeable":85,"pass":75,"pass_pct":88.2,"pass_with_hints":75,"unjudgeable":2,"unsupported":9,"untranslated":0,"write_into_code":1}`. Nine fail on `abcd`/`sbcd` (CALLOTHER unsupported), one `write-into-code: h0+$68f4` (`h0_6852`). Two minutes; no timeout, 120 s kept. |
+| 2026-11-07 | 🐞 | T01 marks a relocated op output `"slot": -1` (272 of 1 148 relocs); T03 read it as the last input and crashed on the game. Fixed in T06 with the owner's yes (`pcode_rust.py`, test in `test_pcode_rust.py`). |
 | 2026-11-07 | 🐞 | Open, for T06/T07: endless recursion (`bsr` to itself) overflows the Rust stack and aborts (SIGABRT), not `Stop::Hang`: the step counter is per call. Needs a depth cap and a large-stack judge thread. |
 | 2026-11-07 | 📌 | Fake unverified against real: T03's fixtures are hand-written P-code. Register offsets and the `bsr`/`rts`/`dbcc` forms match Ghidra 12.0's `68000.sinc`; the export format itself waits for T01. |
 | 2026-11-07 | 📌 | For T04: after an entry returns, `PC` holds the address its `rts` popped, for the judge to check. The tree exports `HUNK_SIZES` for `Image::sizes`. A 9 000-instruction tree builds in 51 s optimised, 4 s not. |
