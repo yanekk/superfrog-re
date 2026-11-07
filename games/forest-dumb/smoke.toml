@@ -45,6 +45,9 @@ workspace = "engine"
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
+# Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
+# binary's line, under a second warm.
+"crates/fd-conform/tests/judge_translated.rs" = "smoke"
 # T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
 # each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
 "crates/fd-conform/tests/gen_drawing.rs" = [

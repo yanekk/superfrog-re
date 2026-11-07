@@ -26,3 +26,6 @@ amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 
 # A bug zip's recording (T14), read as the app writes it.
 amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }
+
+# The runtime a translated tree (`FD_TRANSLATED`, translator-trial T04) is written against.
+pcode-rt = { path = "../pcode-rt" }
