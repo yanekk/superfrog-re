@@ -58,3 +58,8 @@ opt-level = 2
 # steps ~8 000 frames a second a thread, too slow for a smoke-sized plan.
 [profile.dev.package.fd-core]
 opt-level = 2
+
+# The runtime translated code calls (translator-trial T02): a judge run executes millions of
+# translated blocks. Its #[inline] ops are compiled at the calling crate's level, not this one.
+[profile.dev.package.pcode-rt]
+opt-level = 2

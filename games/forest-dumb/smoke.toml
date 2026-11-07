@@ -3,6 +3,8 @@ workspace = "engine"
 
 [tests]
 "crates/fd-conform/src" = "smoke"
+# T02 (translator trial): the P-code runtime's unit tests, under a second.
+"crates/pcode-rt/src" = "smoke"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [

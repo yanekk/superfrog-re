@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** T01 and T02, both waiting only on T00 (✅); T05 is ✅.
+**Next `pir-work` will:** T01, T03 and T04, whose dependencies are ✅.
 
 ## Tasks
 
@@ -16,7 +16,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | bring-in-level-1 | — | ✅ | |
 | T01 | pcode-export | T00 | ⬜ | |
-| T02 | pcode-runtime | T00 | ⬜ | |
+| T02 | pcode-runtime | T00 | ✅ | |
 | T03 | pcode-translator | T02 | ⬜ | |
 | T04 | judge-translated | T00, T02 | ⬜ | |
 | T05 | code-writes-check | T00 | ✅ | `fd-conform code-writes`. Review clean, no fix commit. Full run reproduced: 33 cases, 80 964 frames, 0 changes. Mutations caught: no frame-to-frame compare, no compare with the loaded program, 2-byte lengths. Probed CLI exits 0/1/2, rig and judge tests after the loader move. Four deviations held. |
