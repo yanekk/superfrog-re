@@ -214,6 +214,17 @@ class Flow(unittest.TestCase):
         self.assertIn('let v = (img.h(1, 0x8) as u64);', text)
         self.assertNotIn('21f408', text)
 
+    def test_a_reloc_on_slot_minus_1_is_the_ops_output(self):
+        # ExportPcode.java writes slot -1 for a relocated output (a store to an absolute long), which
+        # it has already written hunk-relative; the unique input beside it must stay a local.
+        doc = export({'h0+$0': {'len': 6, 'mnem': 'move.l', 'relocs': [{'in_op': 1, 'slot': -1, 'target': 'h1+$4'}],
+                                'ops': [{'op': 'COPY', 'out': ['unique', 0x100, 4], 'in': [['register', 0, 4]]},
+                                        {'op': 'COPY', 'out': ['ram', 'h1+$4', 4], 'in': [['unique', 0x100, 4]]}]},
+                      'h0+$6': RTS}, sizes=(0x10, 0x10))
+        text, _ = translate_doc(doc)
+        self.assertIn('let v = u_100;', text)
+        self.assertIn('store(bus, img, img.h(1, 0x4), 4, v)?;', text)
+
     def test_a_branch_into_the_middle_of_a_run_splits_its_block(self):
         doc = export({'h0+$0': {'len': 2, 'mnem': 'a', 'ops': []},
                       'h0+$2': {'len': 2, 'mnem': 'b', 'ops': []},

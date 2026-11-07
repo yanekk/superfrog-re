@@ -13,7 +13,7 @@ hunk bases it is given at run time (`Image::h`), so it runs wherever the program
 
 Export varnodes are `[space, offset, size]`. An offset written `"hN+$off"` (a `ram` address inside
 a hunk, or a relocated `const`) is hunk-relative; an instruction's `relocs` entry
-`{"in_op":i,"slot":s,"target":"hN+$off"}` makes input `s` of op `i` the same. A `const` offset
+`{"in_op":i,"slot":s,"target":"hN+$off"}` makes input `s` of op `i` the same (slot -1: its output). A `const` offset
 inside a `BRANCH`/`CBRANCH` is P-code's relative branch within the instruction.
 
 The generated code, per call target, one function: its basic blocks are the arms of a `match` on
@@ -151,7 +151,10 @@ def load_export(path):
         for rel in ins.get('relocs', []):
             try:
                 i, s, t = rel['in_op'], rel['slot'], rel['target']
-                ops[i]['in'][s][1] = t
+                if s == -1:   # the export's mark for the op's output
+                    ops[i]['out'][1] = t
+                else:
+                    ops[i]['in'][s][1] = t
             except (KeyError, IndexError, TypeError):
                 raise BadInput(f'{where}: reloc {rel!r} names no operand')
             parse_addr(t, f'{where} reloc')

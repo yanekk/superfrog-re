@@ -285,6 +285,8 @@ workspace = "engine"
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"
 "tools/test_translate_judge.py" = "smoke"
+# Translator trial T06: the trial tool with stub export, build and judge, the real translator: about 1 s.
+"tools/test_translator_trial.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]
