@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | 📌 | T01 must write a hunk-relative varnode offset as the string `hN+$off` (or via `relocs`), including the `inst_next` constant `bsr`/`jsr` push: a raw Ghidra address there fails every call's return check. `pcode_rust.py` names a `CALLOTHER` by its optional `name`. |
+| 2026-11-07 | 📌 | For T04: after an entry returns, `PC` holds the address its `rts` popped, for the judge to check. The tree exports `HUNK_SIZES` for `Image::sizes`. A 9 000-instruction tree builds in 51 s optimised, 4 s not. |
+| 2026-11-07 | 📌 | A return to an address that is neither a block of the caller nor a translated entry stops `untranslated`, including code that drops its return address to return to its caller's caller. T07 may meet it. |
 | 2026-11-07 | 📌 | `pcode-rt`'s ops are `#[inline]`, so they compile at the calling crate's opt-level: the `pcode-rt` override does not speed generated code. T04 should give the crate building `tree.rs` (`fd-conform`, unoptimised today) its own override. |
 | 2026-11-07 | 📌 | **Baseline:** T00 merged `pir/forest-dumb-level-1` at `defe7d6b` cleanly (merge `9e6ee954`). `fd-judge` builds, `--test judge` passes 2/2, and Muse's port of `h0+$5462` (`char_sprite_position`) passes 2000/2000, 4 paths. |
 | 2026-11-07 | 🐞 | Plan review: Ghidra 12.0's Amiga loader records no relocations (`getRelocationTable()` empty) for `FOREST_DUMB_FOREVER`, whose hunks carry 4 254 `HUNK_RELOC32` entries. T01 reads them from the file (owner, 2026-11-07). |
