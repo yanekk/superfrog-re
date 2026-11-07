@@ -29,4 +29,4 @@ None new. Each fix keeps the interfaces of T01 to T04, or changes them with the 
 - [ ] The last full run's summary line is in `FINDINGS.md`, and no category marked fixable in general is left open.
 - [ ] Any hint added is in `translator-hints.toml` with its `why`; none is used by the run that counts for the gate.
 
-If the work clearly needs more than one session (past about 200k context), the worker stops at a clean point and asks the owner to add a follow-up task, rather than pressing on (level 1 DESIGN §4.4).
+If the work clearly needs more than one session (past about 200k context), the worker stops at a clean point and asks the owner to add a follow-up task, rather than pressing on (level 1 DESIGN §4.4). The ask states the last run's pass rate against 90% and the open categories with counts. Each follow-up needs the owner's own yes, never the coordinator agent's (DESIGN §7), so the owner sees the cost grow and can stop it.

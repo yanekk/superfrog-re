@@ -12,7 +12,7 @@ DESIGN §1 (success criteria), §2.6, §2.7.
 
 ## Files
 
-- `games/forest-dumb/docs/12-translator-trial.md` (new): what was run and how to rerun it, the final table (routine names, addresses, verdicts and counts only, no listing text), the failure categories from T07, the code-writes total from T05 and what it cannot see, Muse's column and its totals, the gate reading, and what the trial says for stages 1 to 6.
+- `games/forest-dumb/docs/13-translator-trial.md` (new): what was run and how to rerun it, the final table (routine names, addresses, verdicts and counts only, no listing text), the failure categories from T07, the code-writes total from T05 and what it cannot see, Muse's column and its totals, the gate reading, and what the trial says for stages 1 to 6.
 - `games/forest-dumb/CLAUDE.md` (one line in Notes pointing at the report), `games/forest-dumb/docs/ROADMAP.md` (the translator section: the trial's outcome).
 
 ## Tests
@@ -29,7 +29,7 @@ DESIGN §1 (success criteria), §2.6, §2.7.
 The worker prepares the report and the gate reading, then asks in the session and waits.
 
 ```
-Read games/forest-dumb/docs/12-translator-trial.md: the table, the gate line, and what failed and why.
+Read games/forest-dumb/docs/13-translator-trial.md: the table, the gate line, and what failed and why.
 ```
 
 Expect: the gate line states judgeable routines, passes with no hand edit, the percentage against 90%, and whether level 1's path writes into code.

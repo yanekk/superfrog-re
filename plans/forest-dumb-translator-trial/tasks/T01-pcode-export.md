@@ -13,7 +13,7 @@ DESIGN §2.1, §3.2, §3.4, §5 (the measured Ghidra facts).
 ## Files
 
 - `games/forest-dumb/tools/ghidra/ExportPcode.java` (new; names no game)
-- `games/forest-dumb/tools/pcode_export.py` (new; the game's driver)
+- `games/forest-dumb/tools/pcode_export.py` (new; the game's driver; reads the file's `HUNK_RELOC32` entries with the standard library, since `hunk_listing.py`'s amitools is not on `python3 -I`'s path)
 - `toolkit/tools/ghidra_headless.py` (extend `run_import` to take extra script paths and post-scripts; Superfrog's callers unchanged)
 - `games/forest-dumb/tools/test_pcode_export.py` (new)
 - `games/forest-dumb/smoke.toml` (label)
@@ -38,15 +38,15 @@ python3 -I games/forest-dumb/tools/pcode_export.py [--out games/forest-dumb/buil
       "relocs": [ {"in_op":1,"slot":0,"target":"h2+$1a4"} ] } } }  // a const or ram operand that is a relocated address
 ```
 
-- Varnodes are `[space, offset, size]` with Ghidra's space names (`register`, `unique`, `const`, `ram`). A `ram` address or `const` operand that Ghidra's relocation table marks as relocated is rewritten as a hunk-relative reference; any other `ram` address inside a hunk is also written hunk-relative. An address outside every hunk (custom chips at `$dff000`, CIA, exec base at 4) stays absolute.
+- Varnodes are `[space, offset, size]` with Ghidra's space names (`register`, `unique`, `const`, `ram`). A `ram` address or `const` operand whose bytes lie at an offset a `HUNK_RELOC32` entry of the program file relocates is rewritten as a hunk-relative reference to that entry's target hunk (DESIGN §3.4; Ghidra's own relocation table is empty for this loader); any other `ram` address inside a hunk is also written hunk-relative. An address outside every hunk (custom chips at `$dff000`, CIA, exec base at 4) stays absolute.
 - Entries come from `re/translate.toml`; names and further functions from `re/symbols.toml` through `ApplySymbols.java`. The export follows direct flow from every entry. A computed target Ghidra resolved (a jump table it found) is listed in `targets`; one it did not is `"targets":[]` and counted in `unresolved`.
 - Hints (`re/translator-hints.toml`, T06) are not read here.
 
-If Ghidra's relocation table does not cover every relocated operand (check: every 32-bit operand whose value falls in Ghidra's loaded hunk range is either marked or explained), stop and ask the owner before choosing a fallback such as importing the oracle's loaded memory image raw at the oracle's bases.
+Check on the game: every relocation entry inside an exported instruction lands on one operand, and every 32-bit operand whose value falls in Ghidra's loaded hunk range is either relocated or explained. If either fails in a way the export cannot resolve from the file, stop and ask the owner; do not fall back to guessing or to loading at the oracle's bases.
 
 ## Tests
 
-- [ ] A hand-written 68000 program of a few dozen bytes as a two-hunk executable (bytes in the test, relocations included: an `lea` to the other hunk, a `jsr` through a table, a `bsr`, a `dbf` loop) exports with the expected hunk-relative addresses, flow kinds, targets and relocs. Needs Ghidra: full set.
+- [ ] A hand-written 68000 program of a few dozen bytes as a two-hunk executable (bytes in the test, `HUNK_RELOC32` included, read by the driver's own walk: an `lea` to the other hunk, a `jsr` through a table, a `bsr`, a `dbf` loop) exports with the expected hunk-relative addresses, flow kinds, targets and relocs. Needs Ghidra: full set.
 - [ ] A computed jump Ghidra cannot resolve is `"targets":[]` and counted.
 - [ ] Missing Ghidra (`GHIDRA_HOME` pointing nowhere) exits 2 naming the path, without starting Java (smoke).
 - [ ] `ghidra_headless.py`'s existing tests still pass, and its old call form is unchanged.

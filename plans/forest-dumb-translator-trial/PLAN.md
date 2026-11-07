@@ -70,7 +70,7 @@ T01, T04 and T05 are off it. T02 waits on T00 although it uses none of level 1's
 | **Medium** | T01, T02, T04, T06 |
 | **Light** | T00, T05, T08 |
 
-T07 is the unknown: its size is however many kinds of failure the real routines show. Its worker asks the owner to add a task rather than run one session past 250k context (level 1 DESIGN §4.4). T01 carries the address-mapping risk (DESIGN §3.4): if Ghidra's relocation table does not mark every relocated constant, T01 says so and asks before taking a fallback.
+T07 is the unknown: its size is however many kinds of failure the real routines show. Its worker asks the owner to add a task rather than run one session past about 200k context (level 1 DESIGN §4.4); each such follow-up needs the owner's own yes, not the coordinator agent's (DESIGN §7). T01 carries the address-mapping risk (DESIGN §3.4): relocations come from the program file, since Ghidra records none; if they do not map cleanly onto operands, T01 asks the owner.
 
 ## Decisions still open
 

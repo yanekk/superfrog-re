@@ -25,8 +25,8 @@ cargo run -p fd-conform -- code-writes [--cases <glob>] [--max-frames N]
   {"total":{"cases":n,"frames":n,"changed":n}}
 ```
 
-- Every case script under `conform/cases/` that starts at level 1 (the sync point or power-on) runs on the oracle within its own frame cap. Each frame, the T31 counter's newly executed instruction addresses join a set; their bytes (the instruction's full length, from the listing or from T01's export when present) are snapshotted when first executed and compared every frame after.
-- A change is reported, never fixed or ignored. A write restored within one frame is not seen; the report says so.
+- Every case under `games/forest-dumb/engine/conform/cases/` that starts at level 1 (the sync point or power-on) runs on the oracle within its own frame cap. The T31 counter (`Amiga::watch_pcs`, `pc_hits`) watches every instruction start in the listing (`tools/re_listing.py`); each frame, the watched addresses with a non-zero count join a set; their bytes (the instruction's full length, from the listing or from T01's export when present) are snapshotted when first executed and compared every frame after.
+- A change is reported, never fixed or ignored. A write restored within one frame is not seen, nor an instruction the listing does not know; the report says so.
 
 ## Tests
 
