@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | 🐞 | T04 review sweep: `judge::check_regs` (`judge/mod.rs:60`) gives a Muse port a7 = STACK while the oracle enters the original at STACK - 4 holding its return address; a port reading the stack literally would differ by 4. Not fixed. |
+| 2026-11-07 | 📌 | T05 review: DESIGN §4's code-writes row says instructions the listing does not know are not watched; `code_writes.rs` watches every even hunk address instead, so that limit no longer holds. Left for the owner's DESIGN edit. |
+| 2026-11-07 | 📌 | **Code-writes run (T05):** `fd-conform code-writes` over 33 level 1 cases, unfrozen: `{"total":{"cases":33,"frames":80964,"changed":0}}`. No executed instruction changed, against the loaded program or frame to frame. `first-case` skipped (title). |
+| 2026-11-07 | 📌 | T04 left `fd-conform` without an opt-level override: it would slow every build of the crate, and a translated tree's judge speed is unmeasured. T06's first real run shows whether `[profile.dev.package.fd-conform]` is needed under the 120 s limit. |
+| 2026-11-07 | 📌 | `pcode-rt`'s ops are `#[inline]`, so they compile at the calling crate's opt-level: the `pcode-rt` override does not speed generated code. T04 should give the crate building `tree.rs` (`fd-conform`, unoptimised today) its own override. |
 | 2026-11-07 | 📌 | **T01 on the game:** 87 entries, 3 962 instructions, every entry's reach equal to `translate.toml`. Of 4 254 `HUNK_RELOC32` entries, 1 002 fall inside exported instructions, each on an operand; 0 unexplained in-range operands, 0 unresolved computed jumps. |
 | 2026-11-07 | 🐞 | Ghidra 12.0 overrides a `bra.w` into another function as `CALL_RETURN` (`h0+$4ea2`), and the Amiga loader's pointer marks block decoding ("conflicting data", 32 on the game). `ExportPcode.java` reads the unoverridden flow and clears marks inside reached instructions. |
 | 2026-11-07 | 📌 | **Baseline:** T00 merged `pir/forest-dumb-level-1` at `defe7d6b` cleanly (merge `9e6ee954`). `fd-judge` builds, `--test judge` passes 2/2, and Muse's port of `h0+$5462` (`char_sprite_position`) passes 2000/2000, 4 paths. |

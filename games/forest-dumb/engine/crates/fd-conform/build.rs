@@ -6,6 +6,11 @@
 // The generator service's candidate (src/gen/mod.rs, `candidate`) comes from FD_GEN the same way
 // (tools/generate.py, T61): a generator module as the committed ones in src/gen/ are written, kept
 // under build/ until the builder has read it and commits it. Without it the module lists nothing.
+//
+// The translated tree (src/judge/translated.rs, `tree`) comes from FD_TRANSLATED the same way
+// (translator-trial T04): `build/translator/tree.rs`, which `tools/pcode_rust.py` writes from the
+// game's code, so never committed. Without it the stub has no entries, so every routine judged
+// `--translated` stops as untranslated: that mode's negative check.
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -19,6 +24,13 @@ fn main() {
         "FD_GEN",
         &out.join("candidate.rs"),
         "use super::Generator;\npub const ALL: &[(&str, Generator)] = &[];\n",
+    );
+    built_in(
+        "FD_TRANSLATED",
+        &out.join("tree.rs"),
+        "use pcode_rt::{Bus, Image, Regs, Stop};\n\
+         pub const CODE: &[(u32, u32, u32)] = &[];\n\
+         pub fn entry(_addr: &str) -> Option<fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>> {\n    None\n}\n",
     );
 }
 

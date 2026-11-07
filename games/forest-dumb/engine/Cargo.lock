@@ -954,6 +954,7 @@ dependencies = [
  "fd-assets",
  "fd-core",
  "fd-tools",
+ "pcode-rt",
 ]
 
 [[package]]
@@ -2520,6 +2521,10 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "pcode-rt"
+version = "0.1.0"
 
 [[package]]
 name = "percent-encoding"
