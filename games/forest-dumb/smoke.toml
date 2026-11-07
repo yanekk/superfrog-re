@@ -45,8 +45,14 @@ workspace = "engine"
 # T15: bug recordings compared with the original by pass, and the command on a zip: about 9 s warm
 # from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
+# Translator trial T05: changes to executed instructions on w1-idle from the cached level sync point,
+# a poke caught, missing inputs named: under 2 s warm. The full run over every case is a tool run.
+"crates/fd-conform/tests/code_writes.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
+# Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
+# binary's line, under a second warm.
+"crates/fd-conform/tests/judge_translated.rs" = "smoke"
 # T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
 # each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
 "crates/fd-conform/tests/gen_drawing.rs" = [
@@ -271,6 +277,10 @@ workspace = "engine"
 "tools/test_pack_check.py" = "smoke"
 # T03 (translator trial): the translator on made-up exports, its fixtures current, under a second.
 "tools/test_pcode_rust.py" = "smoke"
+# Translator T01: the hunk walk, the missing-input exits and ghidra_headless's command, no Ghidra: under 1 s.
+"tools/test_pcode_export.py" = "smoke"
+# Ghidra headless on a hand-written program and on the game's program, two imports: about 18 s.
+"tools/test_pcode_export_ghidra.py" = "full"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"

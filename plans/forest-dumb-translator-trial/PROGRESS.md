@@ -6,7 +6,7 @@
 
 **Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** T01 or T04, both ready.
+**Next `pir-work` will:** T06, now unblocked.
 
 ## Tasks
 
@@ -15,11 +15,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | bring-in-level-1 | — | ✅ | |
-| T01 | pcode-export | T00 | ⬜ | |
+| T01 | pcode-export | T00 | ✅ | |
 | T02 | pcode-runtime | T00 | ✅ | |
-| T03 | pcode-translator | T02 | ✅ | Reviewed. Fixed: malformed exports and hints crashed with a traceback, not exit 2; a return-address mutation survived, so fixture `pushed_return` and its test. Probed hash-seed determinism, Ghidra's `68000.sinc` forms, endless recursion (aborts, open for T04). Bus choice `&mut dyn`, build times read-only. Open for T01: PC-relative constants (FINDINGS). |
-| T04 | judge-translated | T00, T02 | ⬜ | |
-| T05 | code-writes-check | T00 | ⬜ | |
+| T03 | pcode-translator | T02 | ✅ | Reviewed. Fixed: malformed exports and hints crashed with a traceback, not exit 2; a return-address mutation survived, so fixture `pushed_return` and its test. Probed hash-seed determinism, Ghidra's `68000.sinc` forms, endless recursion (aborts the judge, open for T06/T07 in FINDINGS). Bus choice `&mut dyn`, build times read-only. |
+| T04 | judge-translated | T00, T02 | ✅ | |
+| T05 | code-writes-check | T00 | ✅ | |
 | T06 | trial-tool | T01, T03, T04 | ⬜ | |
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |

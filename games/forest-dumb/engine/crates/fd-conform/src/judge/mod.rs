@@ -8,6 +8,7 @@
 //! changes anything: its negative check.
 
 mod mem;
+pub mod translated;
 
 pub use mem::{Cpu, Mem};
 
