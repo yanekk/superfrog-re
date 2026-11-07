@@ -4,9 +4,9 @@
 
 **Plan reviewed:** 2026-11-07 — 8 fixed, 3 decided with the user
 
-**Status:** Planned, not started. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
+**Status:** All tasks built; T08 in review. This branch merges into `main` only after `forest-dumb-level-1` has (DESIGN §7).
 **Last updated:** 2026-11-07
-**Next `pir-work` will:** T00, which every other task waits on, directly or through T02.
+**Next `pir-work` will:** review T08.
 
 ## Tasks
 
@@ -22,10 +22,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | code-writes-check | T00 | ✅ | |
 | T06 | trial-tool | T01, T03, T04 | ✅ | |
 | T07 | trial-fixes | T06 | ✅ | |
-| T08 | trial-report | T05, T07 | ⬜ | |
+| T08 | trial-report | T05, T07 | 🔍 | Report `docs/13-translator-trial.md`; its table equals a fresh run's `table.md` (84/85, 98.8%). Owner said go, ✅ row in FINDINGS; ROADMAP names `forest-dumb-translator` next after level 1. No tests (a document). No deviation. |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 
-Nothing yet. T08 ends with the owner's go or no-go.
+Nothing. The owner said go on 2026-11-07.

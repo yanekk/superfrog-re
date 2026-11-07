@@ -173,6 +173,9 @@ executed code (DESIGN §2.7). The reading: **85 judgeable routines (2 unjudgeabl
 `h0_2648`, `h0_3adc`, no generator), 84 pass with no hand edit, 98.8% against 90%, met; level 1's
 path writes into no executed code (0 changes in 80 964 frames), met.**
 
+**Owner's answer, 2026-11-07: go.** The second plan, `forest-dumb-translator` (stages 1 to 6), is next
+once level 1 merges.
+
 ## What the trial says for stages 1 to 6
 
 - **Stage 1, instructions.** Ghidra's P-code is not to be trusted for rare instructions and flags:

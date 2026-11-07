@@ -26,6 +26,11 @@ after level 1, with hand-written Rust where the owner chooses (option B). Plan `
 brief [translator-brief.md](translator-brief.md). Proposed order, settled at planning: after level 1
 merges, before level 2.
 
+The trial (stage 0, plan `forest-dumb-translator-trial`, [13-translator-trial.md](13-translator-trial.md)):
+84 of 85 judgeable routines pass with no hand edit (98.8% against 90%) and level 1's path writes into
+no executed code. Owner's go, 2026-11-07: the second plan, `forest-dumb-translator` (stages 1 to 6), is
+next once level 1 merges.
+
 ## After level 1
 
 One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
