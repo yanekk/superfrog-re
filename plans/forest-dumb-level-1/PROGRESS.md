@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T49 | translate-objects | T21, T38, T40 | ✅ | |
 | T22 | collectibles | T11, T20, T21, T40, T49 | ✅ | |
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
-| T24 | enemies | T20, T21, T22, T23 | ⬜ | |
+| T24 | enemies | T20, T21, T22, T23 | ✅ | |
 | T45 | case-collect | T22 | ✅ | |
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
