@@ -178,7 +178,10 @@ def load_hints(path):
     except tomllib.TOMLDecodeError as e:
         raise BadInput(f'{path}: not TOML: {e}')
     targets, data = {}, []
-    for i, h in enumerate(doc.get('hint', [])):
+    hints = doc.get('hint', [])
+    if not isinstance(hints, list) or not all(isinstance(h, dict) for h in hints):
+        raise BadInput(f'{path}: hints must be [[hint]] tables')
+    for i, h in enumerate(hints):
         where = f'{path}: hint {i + 1}'
         at = parse_addr(h.get('at'), where)
         kind = h.get('kind')

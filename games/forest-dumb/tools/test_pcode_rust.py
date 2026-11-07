@@ -264,7 +264,8 @@ class Cli(unittest.TestCase):
                 json.dump(export({'h0+$0': RTS}), f)
             for hints, says in [('kind = 1\n[[', 'not TOML'),
                                 ('[[hint]]\nat = "h0+$0"\nkind = "guess"\n', 'kind must be'),
-                                ('[[hint]]\nat = "h0+$0"\nkind = "data"\n', 'positive "len"')]:
+                                ('[[hint]]\nat = "h0+$0"\nkind = "data"\n', 'positive "len"'),
+                                ('hint = 5\n', '[[hint]] tables'), ('hint = [1]\n', '[[hint]] tables')]:
                 h = os.path.join(d, 'h.toml')
                 with open(h, 'w') as f:
                     f.write(hints)
