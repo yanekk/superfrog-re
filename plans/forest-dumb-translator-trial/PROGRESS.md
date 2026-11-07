@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | pcode-translator | T02 | ✅ | |
 | T04 | judge-translated | T00, T02 | ✅ | |
 | T05 | code-writes-check | T00 | ✅ | |
-| T06 | trial-tool | T01, T03, T04 | ⬜ | |
+| T06 | trial-tool | T01, T03, T04 | ✅ | |
 | T07 | trial-fixes | T06 | ⬜ | |
 | T08 | trial-report | T05, T07 | ⬜ | |
 
