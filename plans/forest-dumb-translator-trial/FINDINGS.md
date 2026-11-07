@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-07 | 📌 | **T07 last run:** `{"judgeable":85,"pass":84,"pass_pct":98.8,"pass_with_hints":84,"unjudgeable":2,"unsupported":0,"untranslated":0,"write_into_code":1}`. Gate met with no hint; `translator-hints.toml` still holds none. |
+| 2026-11-07 | 📌 | **T07 categories** of T06's 10 failures: Ghidra's P-code, corrected in the translator, 9 (`abcd`/`sbcd`); needs stage 2, 1 (`h0_6852`); fixed otherwise 0; needs a hint 0; unexplained 0. Two sound routines stay unjudgeable. |
+| 2026-11-07 | 🐞 | For stage 1's Moira check: Ghidra 12.0's `abcd`/`sbcd` call undefined `bcdAdjust`, `abcd` drops its result, Z is set on non-zero, `-(a7)` steps 1. `pcode_rust.py` emits them via `pcode_rt::bcd` (Moira's arithmetic). `nbcd` stays unsupported. |
+| 2026-11-07 | 🐞 | For stage 1's Moira check: Ghidra 12.0's `subflags` sets X on `cmp`, `cmpa`, `cmpi`, `cmpm`; the 68000 leaves X. Broke three routines through `abcd` after `cmpi`. `pcode_rust.py` drops that copy (`without_compare_x`). |
+| 2026-11-07 | 📌 | `h0_6852` fails 34 of 2 000 states on `write-into-code: h0+$68f4`: its generator gives slot `d7` up to 33, the game 0 to 4 (`h0_681c`), so the slot write reaches code. Needs stage 2; T05 saw no such write. |
 | 2026-11-07 | 📌 | **T06 first real run:** `{"judgeable":85,"pass":75,"pass_pct":88.2,"pass_with_hints":75,"unjudgeable":2,"unsupported":9,"untranslated":0,"write_into_code":1}`. Nine fail on `abcd`/`sbcd` (CALLOTHER unsupported), one `write-into-code: h0+$68f4` (`h0_6852`). Two minutes; no timeout, 120 s kept. |
 | 2026-11-07 | 🐞 | T01 marks a relocated op output `"slot": -1` (272 of 1 148 relocs); T03 read it as the last input and crashed on the game. Fixed in T06 with the owner's yes (`pcode_rust.py`, test in `test_pcode_rust.py`). |
 | 2026-11-07 | 🐞 | Open, for T06/T07: endless recursion (`bsr` to itself) overflows the Rust stack and aborts (SIGABRT), not `Stop::Hang`: the step counter is per call. Needs a depth cap and a large-stack judge thread. |

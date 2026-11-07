@@ -135,8 +135,6 @@ pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x47, 1, v);
                     let v = int_sborrow(r.get(0x4, 4), r.get(0x0, 4), 4);
                     r.set(0x46, 1, v);
-                    let v = r.get(0x47, 1);
-                    r.set(0x43, 1, v);
                     let v = int_sub(r.get(0x4, 4), r.get(0x0, 4), 4);
                     u_2500 = v & 0xffffffff;
                     let v = int_sless(u_2500, 0x0u64, 4);
