@@ -94,7 +94,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
-| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
+| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
