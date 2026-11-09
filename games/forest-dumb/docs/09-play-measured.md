@@ -349,6 +349,36 @@ before porting; the cut was then measured.
   the second redraw and equalled the engine's one pass later. The engine runs the foreground whole, so a
   pass in such a frame sees a whole edge where the original's `char_probe` could see half of one. Not
   modelled: it needs the foreground's timing against the raster (T41 to T43 show whether a case meets it).
+  Where it changes a latch, it is modelled since T73 (next section).
+
+### The edge redraws and the next pass (T73)
+
+Measured 2026-11-09 on T24's planner route (`fd-plan level W1-1`, seed 1, 100 rounds, at `0c06449a`),
+frozen as `fd_plan::confirm` plays it; its first 1 300 steps are `cases/edge-latch-route.toml`, held by
+`fd-conform/tests/edge_latch.rs`.
+
+- **The window.** `h0_3ac2` starts no blit outside lines 103 to 230, and the next pass comes at line
+  233. A frozen pass ends near line 311 or within the next frame's first lines, so the foreground's
+  blits always start at line 103: a row's 23 tiles (`BLTSIZE $1401`, A to D) end near line 161, its
+  shapes and scan follow, and its first bob (A to D through a mask) starts near line 197, a bob every
+  5 lines. A column's 16 tiles take about 3 lines each.
+- **When the latch after a row is cleared.** `main_loop` clears a latch just before its redraw, so the
+  pass after a two-edge pass (always a row and then a column) still holds the column's latch only when
+  the row's redraw has not returned by line 233. Rows of 9 bobs or more never return in time (all 17 of
+  the 1 300 steps; pass 1211's up row had 9, so its right latch stayed `$ffff` through pass 1212); rows
+  of 7 or fewer always do (the 7th bob at line 227); of two rows of 8, pass 893's was cut (still in its
+  scan at `h0+$ca6`) and pass 899's was not. A row finished, the column is cut instead, its latch already
+  clear: 103 frames of 36 tiles, no latch differing.
+- **What follows a cut row.** After the next pass `main_loop` finishes the row, tests the latches after
+  it as they then stand, and clears `frame_flag`; a latch that pass set earlier in the order (a row
+  again) waits for the pass after, when the level-3 handler has set `frame_flag` again.
+- **The engine** (`level::main_loop_redraws`, `ROW_BOBS_CUT` = 8) stops its redraw half after a row of
+  8 bobs or more and resumes it from `State::edges_resume` before the following pass. It draws the cut
+  row whole, so the row's last bobs land in the edge row outside the view one pass early.
+- **Unfrozen, not modelled.** With creatures drawn and `h0_6882` running, a pass can end as late as line
+  132 of the next frame, which shrinks the window, and the scan's animated cells cost time: on the same
+  route unfrozen, the pass after pass 343 found a row with no bobs still running (in `h0_6882`), and
+  6 cuts in all left a column latch set, some after a status bar redraw. Frozen cases never meet this.
 - Each redraw draws a row of 23 tiles or a column of 16 into its 16-line band of the play screen (the program's
   pointer tables at `h0+$1496` and `h0+$18d6` are 16 rotations of the bands; tile row `r` lands in band
   `r & 15`), the same cells' shapes into `collision_map`, then scans 20 (rows) or 13 (columns) object-map
