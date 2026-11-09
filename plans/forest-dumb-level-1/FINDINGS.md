@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-09 | 📌 | T46 review: `fd-conform/tests/mechanic_cases.rs:6` still says the original freezes creatures (T24); since T46 only T75's eight cases freeze creature starts. Left. |
 | 2026-11-09 | 🔄 | Owner, T46: T75 `enemy-redraw-race` (T74, T46; blocks T27, T48) and T77 `enemy-kind-4` (T46, T75; blocks T27, T48) added; eight cases freeze `h0_681c` on both sides under T75: camera-bottom-right, camera-right-left, character-edge-pit, collect-ledge, collect-return, contact-route, death-water, edge-latch-route. |
 | 2026-11-09 | 📌 | T46, measured: drawn creatures lengthen passes, so the next pass can cut `main_loop`'s edge redraw (in `h0_3ac2`) before its scan starts a creature; the original starts it a pass late for good (`collect-ledge`, irq_count 59). |
 | 2026-11-09 | 📌 | T47 review, measured: `mechanic-spring` first reaches the springs after oracle frame 6845, so its `rows 0..194` exclusion leaves the springs' picture (`h0_21c0`) compared in no case until T74; their variables are compared. |
@@ -25,7 +26,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-06 | 📌 | T70, measured: vAmiga compares the odd planes only where the even match (single playfield), so contact is colour 29 alone. The status bar sets CLXDAT bit 0 every frame; pass 1 reads `$f1ff`. Level-3 comes at line 233. |
 | 2026-11-06 | 📌 | T70: contact costs about 25 µs a step in release (was about 3 µs a whole step; `fd-core` dev opt-level 2); `fd-plan` `route.rs` went from about 7 s to 60 s warm under load. |
 | 2026-11-06 | 📌 | T45 (coordinator): `countdown_plus_100` (time bonus `$4c`) is proven on the rig only, W1-1 holding no `$4c`; T48's coverage lists it as a named exception. |
-| 2026-11-06 | 📌 | T22 review: `stretch-scroll.toml:4` still calls the bonus blits frozen ("T22's freeze entry"); the case passes. Left. |
 | 2026-11-06 | 📌 | T26, measured: `level-end` sets `cheat_flag` at sync (case key `set`, script line `cheat`, `Game::set_cheat`); HELP by pass 224 runs `next_world` at frame 6525, where comparison stops (`AFTER_NEXT_WORLD`). A bug zip cannot cheat. No "press fire" hint (§2.5). |
 | 2026-11-06 | 📌 | T23, measured: the step after pass `32k` shows `game_over_screen`, no pass after; fire counts from step 21; letting go enters the high scores (`h0+$89d0`), where the engine restarts. `death-countdown` (full) matches to 000, game over frame 69245. |
 | 2026-11-06 | 📌 | T23: fd-app strips the Amiga's P from game input (DESIGN §2.7, no pause): the default map binds the Mac's P and the engine now pauses on it. The Amiga's Esc reaches play only when rebound. |
