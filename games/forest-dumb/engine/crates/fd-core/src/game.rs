@@ -110,7 +110,7 @@ pub struct Game {
     late: Option<Shown>,
     /// `Some` when a conformance case froze the original: the hunk 0 offsets of the routines the
     /// engine leaves out, from `level::FROZEN_IN_A_CASE` less those the case thaws (T72). `Some` even
-    /// when every one is thawed, since a frozen case also skips the creature drawing (T52). Set only
+    /// when every one is thawed. Set only
     /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
     /// (`fd-conform/tests/mechanic_routines.rs`).
     frozen: Option<Vec<u32>>,

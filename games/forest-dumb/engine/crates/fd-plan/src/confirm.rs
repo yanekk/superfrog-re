@@ -1,5 +1,5 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with the creatures frozen (`freeze.rs`, T24), as T11's stretches do; items,
+//! the level sync point with creature starts frozen (`freeze.rs`, T75), as T11's stretches do; items,
 //! bonuses and the exit are taken (T22) and springs and animated cells run (T47) on both sides; the
 //! case's engine leaves out what it freezes (`fd_conform::engine_for`). The
 //! case compares the character's, the camera's and the status variables on every pass, and its goal
