@@ -7,6 +7,8 @@
 # frame_flag clear swallow its latch, so that row is redrawn a pass late, which the engine does not
 # model (T74):
 # edge_latch_down differs on 2 passes and edge_latch_up on 1, everything else and every frame equal.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 571 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
 frames = 920

@@ -1,6 +1,8 @@
 # T43: the camera scrolling right along W1-1's upper route and back (scripts/camera-right-left.txt),
-# state only, creatures frozen (T24; springs and animated cells run since T47). Goal: camera_x at
+# state only, creatures frozen (springs and animated cells run since T47). Goal: camera_x at
 # its furthest, $8db.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at irq_count 93 a
+# pass later in the original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "camera-right-left"
 frames = 780

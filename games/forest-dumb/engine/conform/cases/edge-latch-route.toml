@@ -6,6 +6,8 @@
 # Since T47 springs and the animated cells run on both sides: the original's longer passes cut other
 # rows (a row of no bobs at pass 328), and edge_latch_right differs on 2 passes, every other variable
 # equal (T74, owner 2026-11-09).
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 1250 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "edge-latch-route"
 frames = 1308

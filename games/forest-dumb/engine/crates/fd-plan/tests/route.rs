@@ -30,12 +30,6 @@ const ROUNDS: u64 = 100;
 const END: &str = "W1-1:66,90";
 const FRAMES: usize = 4380;
 const COINS_LEFT: u16 = 188;
-/// The pass the original and the engine first differ at (T24): the case's engine, frozen as the case
-/// freezes the original, still starts creatures from its edge redraws (`h0_681c` is frozen only in
-/// the original); one walks under the character, which stomps it at its step 566 and bounces:
-/// `char_x` one pixel apart. With the creatures left unmoved the route agrees on every pass (T24
-/// review). T46 lifts that freeze. Every pass before agrees.
-const PARTS_AT: u32 = 567;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -227,17 +221,16 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
-    let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
-    // T46 closes its gap this fails, and the constant above goes. No exclusion: T24's route's
-    // `edge_latch_right` gap was a row redraw the next pass cut (T73, `cases/edge-latch-route.toml`).
-    let Outcome::Differs { pass, ref var, .. } = v.outcome else {
-        panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
-    };
-    assert_eq!((pass, var.as_str()), (PARTS_AT, "char_x"), "{v}");
-    // Up to there, at the character's cell then (`W1-1:56,28`), no life lost.
-    let g = replay(&d, &p.route.inputs[..PARTS_AT as usize]);
-    assert!(g.location().col >= 50, "{}", g.location());
+    // The whole route agrees, its goal met. Confirmation freezes creature starts on both sides
+    // since T46 (`freeze.rs`'s T75 entry); before, the engine started creatures the frozen original
+    // lacked and stomped one at step 566. With springs and animated cells on both sides (T47), a
+    // longer pass cuts a row redraw before the right column's latch clears (pass 2156): T74's gap,
+    // set aside as `edge_latch_right` is in `cases/enemy-route.toml`.
+    let v = confirm::confirm_excluding(&d, &p.route.inputs, &[("edge_latch_right", "T74")])
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(v.goal_met.is_some(), "{v}");
+    let g = replay(&d, &p.route.inputs);
     assert_eq!(g.lives(), 32);
 }
 

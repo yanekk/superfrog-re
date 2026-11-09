@@ -74,11 +74,12 @@ Read the rest of the report before trusting the first line:
   runs from `Game::new`, as the app starts it, and since T69 the report says the start equals the
   original's. If it ever says it differs, a difference in the first few frames may be the start's,
   not the recording's: say so in the report.
-- **`not judged yet: ... (T70)`**: what the engine does not model yet (`hits_taken`, contact). A
+- **`not judged yet: ... (T75)`**: what the engine does not model yet (the creature slots, `hits_taken`, contact). A
   bug in one of these is a missing feature, not a quirk: name its task. The countdown, its digits,
   Esc and P are judged since T23.
-- **The original is not frozen.** Its creatures and collectibles are there; the engine has none
-  until T22 and T24. A difference where one comes into view is the missing feature.
+- **The original is not frozen.** Neither is the engine: both run creatures and collectibles. A
+  creature starting a pass late in the original, after an edge redraw the next pass cut short, is
+  T75's race (T46, measured), not a bug.
 
 ## 3. Same on both: a quirk of the original, kept
 

@@ -96,6 +96,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
+| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
+| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
 
 **Review queue:** *(empty)*
 

@@ -81,7 +81,9 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   `freeze = true` is an error until then.
 - **`thaw`.** Names `freeze.rs` entries (`h0_681c`) a frozen case leaves running on both sides: the
   original is not patched there and the engine runs the routine (`Engine::thaw`, `Game::thaw_in_a_case`).
-  T72's `death-water` thawed `h0_6882` to draw the water until T47 removed that entry. An unknown
+  T72's `death-water` thawed `h0_6882` to draw the water until T47 removed that entry. Since T46 only
+  the eight cases where a cut edge redraw starts a creature a pass late in the original freeze (T75,
+  `h0_681c`); frozen, the engine starts none either. An unknown
   name, a name given twice or `thaw` without `freeze = true` is an error.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
@@ -135,7 +137,8 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
   it off clears the frame just drawn, so the runner turns it off before the next step.
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
-  the engine's `Transplant::probe` arm for it.
+  the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
+  (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.
 
 ## The coverage report
 

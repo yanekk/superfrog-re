@@ -76,6 +76,9 @@ impl Engine for Watched {
     fn freeze(&mut self) {
         Engine::freeze(&mut self.game);
     }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.pass(input);
         self.frames.push(self.game.display().sprite.frame);

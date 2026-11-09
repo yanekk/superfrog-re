@@ -27,13 +27,16 @@ pub struct Frozen {
 /// `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, which T55 ported, and `h0_26ec`, taking): the engine takes
 /// items, bonuses and the exit as the original does, so a frozen case lets both. T47 removed T25's two
 /// (`h0_6882`, the animated cells, and `h0_24ce`, springs): every case runs them on both sides, and
-/// `tests/mechanic_cases.rs` holds them to the original.
+/// `tests/mechanic_cases.rs` holds them to the original. T24 ported the creatures and T46 runs them
+/// live (owner, 2026-11-09): only the eight cases T46 listed (plans/forest-dumb-level-1 FINDINGS) set
+/// `freeze = true`, where a redraw cut short by a late pass starts a creature a pass later in the
+/// original than in the engine; the engine starts none either there (`fd_core::level::FROZEN_IN_A_CASE`).
 pub const FROZEN: &[Frozen] = &[Frozen {
     hunk: 0,
     offset: 0x681c,
     what: "h0_681c: a creature value (1 to 6) in view takes a slot; returning leaves d0 non-zero, \
-               so the cell stays and no creature ever exists",
-    task: "T24",
+           so the cell stays and no creature ever exists",
+    task: "T75",
 }];
 
 /// The entry `name` (`"h0_681c"`), as its `what` starts.
@@ -52,25 +55,6 @@ pub fn for_case(thaw: &[String]) -> Vec<Frozen> {
         .collect()
 }
 
-/// What a `freeze = true` case skips in the engine to mirror [`FROZEN`]: an exclusion, each naming
-/// the task whose port removes it together with the frozen entry at `mirrors` (owner, 2026-11-06, T52).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Skipped {
-    pub what: &'static str,
-    pub task: &'static str,
-    /// The hunk 0 offset of the [`FROZEN`] entry it mirrors.
-    pub mirrors: u32,
-}
-
-/// Every engine skip of a frozen case beyond `fd_core::level::FROZEN_IN_A_CASE`'s: a frozen case's
-/// engine (`Game::freeze_as_a_case`, set by the case runner) leaves these out of `game_frame`.
-pub const ENGINE_SKIPS: &[Skipped] = &[Skipped {
-    what: "T52's creature drawing (h0_2c7e, h0_2d4c): the frozen h0_681c starts no creature in the \
-           original, the engine's redraws still start them, so the engine draws none",
-    task: "T24",
-    mirrors: 0x681c,
-}];
-
 /// `rts`.
 const RTS: [u8; 2] = [0x4e, 0x75];
 
@@ -83,17 +67,4 @@ pub fn apply(am: &mut Amiga, list: &[Frozen]) -> Result<(), String> {
         am.poke(HUNK_BASES[f.hunk as usize] + f.offset, &RTS);
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn each_engine_skip_goes_with_the_frozen_entry_it_mirrors() {
-        for s in ENGINE_SKIPS {
-            let f = FROZEN.iter().find(|f| f.hunk == 0 && f.offset == s.mirrors);
-            assert_eq!(f.map(|f| f.task), Some(s.task), "{}", s.what);
-        }
-    }
 }

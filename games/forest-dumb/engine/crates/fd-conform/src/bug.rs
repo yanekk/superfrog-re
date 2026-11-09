@@ -88,9 +88,10 @@ const STALL: u32 = 64;
 const SLACK: u32 = 2_000;
 
 /// What a bug compare does not judge yet, and the task that makes it judged (DESIGN §2.2: no gap
-/// is silent): CLXDAT as `char_hit_check` copies it and the `hits_taken` it counts. T70 models contact
-/// from the engine's own frame, but in play that frame lacks the creatures and animated items the
-/// original draws (T22, T52, T24), so the two differ there until then. Read and counted, printed in
+/// is silent): the creature slots (`creature_active+$N`, `creature_slots+...`), CLXDAT as
+/// `char_hit_check` copies it and the `hits_taken` it counts. In play an edge redraw the next pass
+/// cuts short can start a creature a pass later in the original (T46, measured), which T75 models;
+/// that creature's place, and so contact with it, differ from then on. Read and counted, printed in
 /// the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
 fn known_gaps() -> Vec<Exclusion> {
     let var = |name: &str, task: &str| Exclusion {
@@ -100,7 +101,12 @@ fn known_gaps() -> Vec<Exclusion> {
         what: format!("var {name}"),
         task: task.to_string(),
     };
-    vec![var("hits_taken", "T24"), var("clxdat_copy", "T24")]
+    fd_core::LAYOUT
+        .iter()
+        .map(|v| v.name)
+        .filter(|n| n.starts_with("creature_") || ["hits_taken", "clxdat_copy"].contains(n))
+        .map(|n| var(n, "T75"))
+        .collect()
 }
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
@@ -664,7 +670,12 @@ mod tests {
         ] {
             assert!(vars.iter().any(|n| n == v), "{v}");
         }
-        for v in ["hits_taken", "clxdat_copy", "mt_counter"] {
+        for v in [
+            "hits_taken",
+            "clxdat_copy",
+            "mt_counter",
+            "creature_slots+$0",
+        ] {
             assert!(!vars.iter().any(|n| n == v), "{v}");
         }
         // Every gap names its task.
