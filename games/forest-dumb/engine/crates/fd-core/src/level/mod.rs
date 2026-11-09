@@ -402,11 +402,26 @@ pub fn game_frame_with(
     Play { state: l.state }.play_keys();
 }
 
+/// A row redraw that cuts this many bobs is still running when the next pass starts (T73,
+/// measured on T24's planner route; docs/09, "The edge redraws and the next pass"). The redraws'
+/// blits wait for the raster to be on lines 103 to 230 (`h0_3ac2`), and the next pass comes at line
+/// 233: a row's 23 tile blits end near line 161, its first bob starts near 197, and each bob takes
+/// about 5 lines. Rows with 7 bobs finished, the 7th starting at 227; rows with 9 were cut, the 8th
+/// starting at 230 at the earliest, so 8 is taken as cut.
+pub const ROW_BOBS_CUT: usize = 8;
+
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
 /// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
-/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
-/// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
-/// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
+/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared.
+///
+/// The engine runs it before the next pass, except where the original's is cut by that pass in a way
+/// the state shows: a row redraw (down or up) cutting [`ROW_BOBS_CUT`] bobs or more. Then the latches
+/// after it in the order are still set during the next pass, which can neither cross them nor have
+/// them drawn, and the rest of the order runs after it, from [`State::edges_resume`], testing each
+/// latch as it then stands, `frame_flag` set or not. A latch that pass sets earlier in the order
+/// waits for the pass after. The cut row is drawn whole here: its last bobs land in the edge row
+/// outside the view a pass early. A cut anywhere else changes no state a pass reads, the latches
+/// having been cleared before their redraws (T55's two-edge frames, docs/09).
 pub fn main_loop_redraws(
     s: &mut State,
     plane: &mut CollisionPlane,
@@ -414,27 +429,39 @@ pub fn main_loop_redraws(
     blits: &mut Vec<redraw::Blit>,
 ) {
     use camera::Dir;
-    if s.frame_flag == 0 {
-        return;
-    }
+    let from = match s.edges_resume.take() {
+        Some(i) => i as usize,
+        None if s.frame_flag == 0 => return,
+        None => 0,
+    };
     let mut io = redraw::PlayIo {
         image,
         objects: &mut s.object_map,
         collision: plane,
         blits,
     };
-    for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
+    let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
+    for (k, &dir) in order.iter().enumerate().skip(from) {
         let i = dir as usize;
         if s.camera.edges.latch[i] == 0 {
             continue;
         }
         s.edges.pos = s.camera.edges.at[i];
         s.camera.edges.latch[i] = 0;
+        let before = io.blits.len();
         match dir {
             Dir::Down => s.edges.redraw_below(&mut io),
             Dir::Up => s.edges.redraw_above(&mut io),
             Dir::Left => s.edges.redraw_left(&mut io),
             Dir::Right => s.edges.redraw_right(&mut io),
+        }
+        let bobs = io.blits[before..]
+            .iter()
+            .filter(|b| matches!(b, redraw::Blit::Bob { .. }))
+            .count();
+        if matches!(dir, Dir::Down | Dir::Up) && bobs >= ROW_BOBS_CUT {
+            s.edges_resume = Some(k as u8 + 1);
+            return;
         }
     }
     s.frame_flag = 0;

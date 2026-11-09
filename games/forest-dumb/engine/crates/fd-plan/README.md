@@ -68,7 +68,6 @@ On the original (`confirm.rs`):
 - `confirm(data, inputs) -> Result<Verdict, String>` and `confirm_excluding(data, inputs, exclude: &[(&str, &str)])`.
 - `case(data, inputs) -> Result<Case, String>` and `case_excluding(...)`: the case, synced at `sync::LEVEL_1_SYNC`, `freeze = true`, goal the frozen engine's `char_x`/`char_y`.
 - `VARS`: the compared variables. `SLACK` (8): idle frames past the route, because the original ends its passes about one behind.
-- `EDGE_LATCH_RIGHT = ("edge_latch_right", "T73")`: pass it to `confirm_excluding` only for a route that reaches that gap; an exclusion that hid nothing fails the case.
 
 Gotcha: the case runs the original frozen (creatures, animated cells, springs), so where a route meets
 a creature the two sides can differ; `tests/route.rs` shows how a test handles that today.

@@ -574,6 +574,7 @@ impl Game {
         let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
         let s = &mut self.state;
         s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
+        s.edges_resume = None;
         // `h3+$fa50` less BEFORE: the map, the tail the probes reach and the slack the redraws write.
         let kept = self.plane.kept_mut();
         kept.copy_from_slice(&mem.read(3, collision::MAP - BEFORE, kept.len()));
