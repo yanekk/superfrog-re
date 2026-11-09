@@ -144,6 +144,9 @@ workspace = "engine"
 # T45: collecting in play against the original, the ledge and the way back from the cached sync point
 # in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
 "crates/fd-conform/tests/collect_cases.rs" = "smoke"
+# T47: springs and vanishing blocks against the original, two cases from the cached sync point and
+# their inputs on the engine alone, 8 s warm.
+"crates/fd-conform/tests/mechanic_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -437,3 +440,7 @@ covers = [
     "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
     "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
 ]
+
+[[area]]
+name = "springs and vanishing blocks in play, as the original runs them"
+covers = ["crates/fd-conform/tests/mechanic_cases.rs::the_mechanics_match_the_original_on_every_pass"]

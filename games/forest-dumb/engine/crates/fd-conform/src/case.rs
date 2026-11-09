@@ -86,7 +86,7 @@ pub struct Case {
     /// Freeze what `freeze.rs` lists in the original at the sync point.
     pub freeze: bool,
     /// Entries of `freeze.rs` this frozen case leaves running on both sides, by name
-    /// (`thaw = ["h0_6882"]`, T72): the water a case needs drawn while creatures stay frozen.
+    /// (`thaw = ["h0_681c"]`, T72). T72 thawed `h0_6882` to draw the water; T47 removed that entry.
     pub thaw: Vec<String>,
     /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
     /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
@@ -828,12 +828,12 @@ mod tests {
     /// A frozen case thaws an entry by name: the original's patch list leaves it out (T72).
     #[test]
     fn a_frozen_case_thaws_an_entry_by_name() {
-        let text = LEVEL.replace("freeze = false", "freeze = true\nthaw = [\"h0_6882\"]");
+        let text = LEVEL.replace("freeze = false", "freeze = true\nthaw = [\"h0_681c\"]");
         let case = Case::parse("l", &text).unwrap();
-        assert_eq!(case.thaw, ["h0_6882"]);
+        assert_eq!(case.thaw, ["h0_681c"]);
         let patched = crate::freeze::for_case(&case.thaw);
         assert_eq!(patched.len(), crate::freeze::FROZEN.len() - 1);
-        assert!(patched.iter().all(|f| f.offset != 0x6882));
+        assert!(patched.iter().all(|f| f.offset != 0x681c));
         assert_eq!(crate::freeze::for_case(&[]), crate::freeze::FROZEN);
     }
 
@@ -888,7 +888,7 @@ mod tests {
             ("freeze = false", "freeze = 1", "true or false"),
             (
                 "freeze = false",
-                "freeze = false\nthaw = [\"h0_6882\"]",
+                "freeze = false\nthaw = [\"h0_681c\"]",
                 "no `freeze = true`",
             ),
             (
@@ -898,7 +898,7 @@ mod tests {
             ),
             (
                 "freeze = false",
-                "freeze = true\nthaw = [\"h0_6882\", \"h0_6882\"]",
+                "freeze = true\nthaw = [\"h0_681c\", \"h0_681c\"]",
                 "given twice",
             ),
             (

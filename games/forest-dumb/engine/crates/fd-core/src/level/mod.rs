@@ -113,32 +113,16 @@ pub struct LevelCtx<'a> {
 /// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
 /// DESIGN §2.2), as `fd-conform`'s `freeze.rs` patches the same routines to return at once, each
 /// with the task whose freeze it mirrors. An exclusion: it goes when that task's `freeze.rs` entry
-/// goes (T47 for T25's), which `fd-conform/tests/mechanic_routines.rs` holds.
+/// goes, which `fd-conform/tests/mechanic_routines.rs` holds.
 pub struct FrozenInACase {
     pub name: &'static str,
     pub offset: u32,
     pub task: &'static str,
 }
 
-pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
-    // `h0_6882` saves and restores every register, so returning at once only leaves the animated
-    // cells' lists empty: `h0_62b6` still steps `anim_tick` and draws nothing.
-    FrozenInACase {
-        name: "h0_6882",
-        offset: 0x6882,
-        task: "T25",
-    },
-    FrozenInACase {
-        name: "h0_24ce",
-        offset: 0x24ce,
-        task: "T25",
-    },
-];
-
-/// Whether this pass leaves out the routine at hunk 0 `offset` ([`FROZEN_IN_A_CASE`]).
-fn frozen(l: &LevelCtx, offset: u32) -> bool {
-    l.frozen.is_some_and(|f| f.contains(&offset))
-}
+/// Empty since T47 removed T25's two (`h0_6882`, `h0_24ce`) with their `freeze.rs` entries: a
+/// frozen case's engine runs springs and the animated cells as the original does.
+pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[];
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
 /// (T22, T24, T25, T52) say what `image` numbers.
@@ -265,12 +249,8 @@ pub fn game_frame(
     .move_all();
     // Until they are ported, the dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
-    // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25). A frozen case's `h0_6882`
-    // never fills the lists the edge redraws add to, so they are emptied before they are run.
+    // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25).
     crate::objects::in_play(l, |o| o.spring_redraw());
-    if frozen(l, 0x6882) {
-        l.state.edges.cells = redraw::AnimatedCells::default();
-    }
     crate::objects::in_play(l, |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
     crate::objects::in_play(l, |o| o.write_back());
@@ -296,9 +276,7 @@ pub fn game_frame(
     play.char_hit_check(l.clxdat, &mut Scratch::default());
     play.countdown_step();
     // h0+$24ce: a spring under the feet (T25).
-    if !frozen(l, 0x24ce) {
-        crate::objects::in_play(l, |o| o.spring_trigger());
-    }
+    crate::objects::in_play(l, |o| o.spring_trigger());
     Character {
         state: l.state,
         program: l.program,
