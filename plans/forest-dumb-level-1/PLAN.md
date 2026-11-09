@@ -154,6 +154,8 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T71](tasks/T71-status-redraw-race.md) | status-redraw-race | T70; blocks T27 |
 | [T72](tasks/T72-water-contact.md) | water-contact | T25, T70; blocks T47, T27 |
 | [T73](tasks/T73-edge-latch-gap.md) | edge-latch-gap | T24; blocks T46, T27 |
+| [T74](tasks/T74-switched-on-redraw-race.md) | switched-on-redraw-race | T47, T73; blocks T27, T48 |
+| [T76](tasks/T76-stale-hits-taken-exclusion.md) | stale-hits-taken-exclusion | —; blocks T27 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

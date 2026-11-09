@@ -474,12 +474,12 @@ fn value_ff_is_the_exit() {
     assert_eq!(s.cells, [0xff], "{s:x?}");
 }
 
-/// With `freeze.rs`'s list patched in, every value placed above that the engine does not model yet
-/// does nothing: no creature, no animated cell, no spring. The character slides as with an empty
-/// map. Taking (T22) is no longer frozen, so the item and the bonus are taken and scored, as the
-/// engine takes them.
+/// With `freeze.rs`'s list patched in (creatures only since T47), the creature value placed above
+/// takes no slot. Taking (T22), the animated cells and the spring (T25) are no longer frozen, so the
+/// item and the bonus are taken and scored, the cells in view are added and drawn, and the spring
+/// under the feet fires and throws the character up, as the engine does.
 #[test]
-fn freezing_stops_every_object() {
+fn freezing_stops_the_creatures_alone() {
     let placed = [
         (AHEAD.0, AHEAD.1, 0x02),
         (BODY.0, BODY.1, 0x20),
@@ -489,23 +489,24 @@ fn freezing_stops_every_object() {
     ];
     let s = slide(&placed, true, PASSES);
     assert!(s.kinds.is_empty(), "a creature took a slot: {s:x?}");
-    for e in [
-        at::ANIM_ADD + 4, // past the frozen `movem`: never reached
-        at::DRAW_ITEM,
-        at::DRAW_VANISH,
-    ]
-    .into_iter()
-    .chain(at::SPRING)
-    .chain(at::KIND)
-    {
+    for e in at::KIND {
         assert_eq!(s.hits(e), 0, "h0+${e:x} ran frozen: {s:x?}");
     }
     assert!(
         s.hits(at::ITEM_TAKEN) > 0 && s.hits(at::BONUS_TAKEN) > 0,
         "taking is not frozen since T22: {s:x?}"
     );
-    assert_eq!(s.after.items_left, s.before.items_left - 1, "{s:x?}");
-    assert_eq!((s.after.x, s.after.y), (669, 553), "{s:x?}");
+    assert!(s.after.items_left < s.before.items_left, "{s:x?}");
+    for e in [
+        at::ANIM_ADD,
+        at::DRAW_ITEM,
+        at::DRAW_VANISH,
+        at::SPRING_REDRAW,
+    ] {
+        assert!(s.hits(e) > 0, "h0+${e:x} not run since T47: {s:x?}");
+    }
+    assert_eq!(s.hits(at::SPRING[0]), 1, "{s:x?}");
+    assert!(s.after.y < 400, "not thrown up: {s:x?}");
     // Each frozen entry was still reached (its `rts` ran), so the freeze is not vacuous.
     for f in FROZEN {
         assert!(

@@ -120,7 +120,7 @@ workspace = "engine"
     "a_spring_under_the_falling_character_fires_in_play",
     "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
     "the_engine_holds_the_mechanics_pictures_the_original_loaded",
-    "only_a_frozen_case_leaves_springs_and_animated_cells_out",
+    "a_frozen_case_runs_springs_and_animated_cells_too",
     "the_engines_freeze_is_the_originals_entry_for_entry",
     "the_engines_freeze_is_set_by_the_case_runner_alone",
 ]
@@ -215,7 +215,7 @@ workspace = "engine"
 # T73: when the next pass cuts a row's redraw, on the original over 1 300 steps of T24's route, and
 # the route's case on every latch: 7 s warm from the cached sync point.
 "crates/fd-conform/tests/edge_latch.rs" = "smoke"
-# T72 adds the pool's contact with and without the water drawn, death-water twice side by side.
+# T72 adds the pool's contact with the water drawn (T47: no longer also without it).
 "crates/fd-conform/tests/contact.rs" = "smoke"
 # T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
 # debug, the restores' blits) and its two mutants (about 1 min each) are full; the register check, the
