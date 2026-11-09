@@ -5,6 +5,8 @@
 # compared since) with the grace count after it (char_unhurt_t); input waits it out. Then the pit's walls (char_x $28b,
 # $29c), a jump straight up, and a jump out left that falls into the pit below, meets its wall at char_x
 # $200 and lands at $25d,$2e4, the goal.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 354 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "character-edge-pit"
 frames = 440

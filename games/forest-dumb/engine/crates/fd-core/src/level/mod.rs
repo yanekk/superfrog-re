@@ -121,6 +121,15 @@ pub struct FrozenInACase {
 }
 
 pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
+    // `h0_681c`: no creature starts from an edge redraw's scan and its cell stays
+    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Frozen
+    // only in the cases T46 lists, where a redraw cut short by a late pass starts a creature a pass
+    // later in the original (T75).
+    FrozenInACase {
+        name: "h0_681c",
+        offset: 0x681c,
+        task: "T75",
+    },
     // `h0_6882` saves and restores every register, so returning at once only leaves the animated
     // cells' lists empty: `h0_62b6` still steps `anim_tick` and draws nothing.
     FrozenInACase {
@@ -248,10 +257,7 @@ pub fn game_frame(
     let s = &mut *l.state;
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
-    // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
-    if l.frozen.is_none() {
-        crate::render::objects::in_play(l, |c| c.restore_all());
-    }
+    crate::render::objects::in_play(l, |c| c.restore_all());
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
     // h0+$2fae: the creatures moved (T24).
@@ -285,9 +291,7 @@ pub fn game_frame(
     .sort();
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
-    if l.frozen.is_none() {
-        crate::render::objects::in_play(l, |c| c.cut_all());
-    }
+    crate::render::objects::in_play(l, |c| c.cut_all());
     let s = &mut *l.state;
     s.creature_draw.drawn = s.edges.creatures.active;
     s.joy.read_joystick(&mut s.input_log, &input);
@@ -338,6 +342,7 @@ pub fn main_loop_redraws(
     plane: &mut CollisionPlane,
     image: &redraw::LevelImage,
     blits: &mut Vec<redraw::Blit>,
+    creature_starts_frozen: bool,
 ) {
     use camera::Dir;
     let from = match s.edges_resume.take() {
@@ -350,6 +355,7 @@ pub fn main_loop_redraws(
         objects: &mut s.object_map,
         collision: plane,
         blits,
+        creature_starts_frozen,
     };
     let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
     for (k, &dir) in order.iter().enumerate().skip(from) {

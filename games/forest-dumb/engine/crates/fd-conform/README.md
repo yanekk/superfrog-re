@@ -84,7 +84,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 
 **Freeze** (`src/freeze.rs`)
-- `FROZEN`, `ENGINE_SKIPS`, `named(name)`, `for_case(thaw)`, `apply(&mut Amiga, &[Frozen])`.
+- `FROZEN`, `named(name)`, `for_case(thaw)`, `apply(&mut Amiga, &[Frozen])`.
 
 **Bug zips** (`src/bug.rs`)
 - `open_zip(bytes, build)`, `replay(data, &rec, each) -> Replayed`, `retime(&rec) -> Retimed`.

@@ -132,6 +132,7 @@ impl Game {
                     objects: &mut state.object_map,
                     collision: &mut plane,
                     blits: &mut blits,
+                    creature_starts_frozen: false,
                 });
                 // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
                 // takes the first view's tiles as it takes an edge redraw's.
@@ -332,11 +333,13 @@ impl Game {
                 self.status_redraw(&mut status);
                 self.display.status = status;
                 let from = self.blits.len();
+                let frozen = self.frozen.as_ref().is_some_and(|f| f.contains(&0x681c));
                 level::main_loop_redraws(
                     &mut self.state,
                     &mut self.plane,
                     &self.image,
                     &mut self.blits,
+                    frozen,
                 );
                 let data = &self.data.display;
                 for b in &self.blits[from..] {
@@ -1036,6 +1039,15 @@ mod tests {
                 Width::Byte => 0x01,
                 Width::Word => 0x0102,
                 Width::Long => 0x0102_0304,
+            };
+            // A creature slot's field (T46) comes from the slots' own read, the whole symbol at
+            // once, so its bytes are those at its offset into it.
+            let want = match v.name.split_once("+$") {
+                Some((_, off)) => {
+                    let off = u32::from_str_radix(off, 16).unwrap();
+                    (1..=v.width.bytes() as u32).fold(0, |a, k| a << 8 | (off + k))
+                }
+                None => want,
             };
             assert_eq!(g.probe(v), want, "{}", v.name);
         }

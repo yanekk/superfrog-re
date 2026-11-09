@@ -3,6 +3,8 @@
 # edge_latch_right included. Passes 1211 and 1228 latch an up row of 9 bobs and a right column: the
 # next pass cuts the row's redraw, so the right latch stays set through it (docs/09, "The edge
 # redraws and the next pass"). Goal: where the engine stands after the route, as confirm sets it.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 1250 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "edge-latch-route"
 frames = 1308

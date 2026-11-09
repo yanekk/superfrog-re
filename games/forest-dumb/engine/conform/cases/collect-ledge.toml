@@ -2,8 +2,10 @@
 # the ledge at W1-1:29..34,12 and jumps along it take every orange ($40, +20), apple ($41, +30) and
 # coin ($20, $21, $23: +100, items_left -1) of the block above it. Score, items left and the
 # status bar's digits on every pass and frame. Goal: score 560, items_left 278.
-# Frozen in the original (freeze.rs), each with its task: creatures (T24), animated cells, so coins are
+# Frozen in the original (freeze.rs), each with its task: animated cells, so coins are
 # drawn on neither side (T25), springs (T25). Nothing else excluded.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 58 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "collect-ledge"
 frames = 400

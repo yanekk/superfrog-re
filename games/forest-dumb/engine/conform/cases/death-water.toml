@@ -6,6 +6,8 @@
 # springs stay frozen. Thawed, the original's pass grows with the animated cells' blits and some passes
 # end late, cutting main_loop's edge redraws short, which the engine does not model (FINDINGS, T25):
 # edge_latch_down differs on 2 passes and edge_latch_up on 1, everything else and every frame equal.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 571 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
 frames = 920

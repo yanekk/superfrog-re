@@ -6,9 +6,9 @@
 //! is where that engine ends.
 //!
 //! Where the two first differ is where the modelled part of the route ends: contact with the
-//! playfield and the lives it costs are modelled since T70. Creatures move and are stomped on the
-//! engine since T24, but a frozen original spawns none after the sync point, so a route that stomps
-//! one the engine spawned parts there until T46 lifts that freeze.
+//! playfield and the lives it costs are modelled since T70. Creatures stay frozen here on both sides
+//! (`freeze.rs`'s T75 entry, the engine starting none either since T46): live, a redraw the next pass
+//! cuts short can start one a pass later in the original, which T75 models.
 
 use std::sync::Arc;
 
