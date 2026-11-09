@@ -1,7 +1,7 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with what the engine does not model frozen (T21's `freeze.rs`: creatures,
-//! animated cells, springs), as T11's stretches do; items, bonuses and the exit are taken on both
-//! sides (T22); the case's engine leaves out what it freezes (`fd_conform::engine_for`, T25). The
+//! the level sync point with the creatures frozen (`freeze.rs`, T24), as T11's stretches do; items,
+//! bonuses and the exit are taken (T22) and springs and animated cells run (T47) on both sides; the
+//! case's engine leaves out what it freezes (`fd_conform::engine_for`). The
 //! case compares the character's, the camera's and the status variables on every pass, and its goal
 //! is where that engine ends.
 //!
@@ -66,8 +66,8 @@ pub fn case_excluding(
             sync = sync::LEVEL_1_SYNC,
         )
     };
-    // The goal is where the case's own engine ends, frozen as the case freezes the original (T25:
-    // springs and animated cells), so it is played on `engine_for` the case without its goal first.
+    // The goal is where the case's own engine ends, frozen as the case freezes the original, so it
+    // is played on `engine_for` the case without its goal first.
     let ahead = Case::parse("planned-route", &text("{ idle = true }"))?;
     let mut g = fd_conform::engine_for(&ahead, data.clone());
     for &i in inputs {

@@ -140,9 +140,11 @@ fn every_stretch_matches_the_original_on_variables_and_picture_together() {
         assert!(v.goal_met.is_some(), "{name}: {v}");
         assert!(v.events.is_empty(), "{name}: {v}");
         // Nearly every pass and every frame compared; nothing tolerated, so every picture not
-        // excluded is the original's to the pixel.
+        // excluded is the original's to the pixel. A frame showing a pass whose end the original
+        // hid is not compared; since T47 the animated cells lengthen its passes (stretch-slope: 11
+        // unseen, 196 pictures of 200 frames).
         assert!(v.passes + v.unseen + 1 >= case.frames - 5, "{name}: {v}");
-        assert!(v.pictures + 3 >= case.frames, "{name}: {v}");
+        assert!(v.pictures + v.unseen + 3 >= case.frames, "{name}: {v}");
         assert_eq!(v.tolerated, [0, 0, 0], "{name}: {v}");
         // Nor a bar accepted as a cut redraw draws it (T71).
         assert_eq!(v.cut_redraws, 0, "{name}: {v}");

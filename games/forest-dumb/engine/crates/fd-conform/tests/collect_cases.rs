@@ -108,9 +108,11 @@ fn collecting_matches_the_original_on_variables_and_picture_together() {
         }
         assert!(v.goal_met.is_some(), "{name}: {v}");
         assert!(v.events.is_empty(), "{name}: {v}");
-        // Nearly every pass and every frame compared, nothing tolerated.
+        // Nearly every pass and every frame compared, nothing tolerated. Since T47 the coins are drawn
+        // on both sides and the original's longer passes hide more ends, each costing up to two
+        // frames' comparison (collect-return: 51 unseen, 802 pictures of 890 frames).
         assert!(v.passes + v.unseen + 1 >= case.frames - 5, "{name}: {v}");
-        assert!(v.pictures + 10 >= case.frames, "{name}: {v}");
+        assert!(v.pictures + 2 * v.unseen + 10 >= case.frames, "{name}: {v}");
         assert_eq!(v.tolerated, [0, 0, 0], "{name}: {v}");
         // No exclusion is left to T22, and every one hid something.
         for (e, n) in &v.excluded {

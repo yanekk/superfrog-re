@@ -488,14 +488,14 @@ impl Engine for Thawed {
     }
 }
 
-/// The character drops into the pool at `W1-1:148,66` to `149,66` with `h0_6882` thawed, so both sides draw the
-/// water (T25's `h0_62b6`): three contact passes in a row cost a life at frame 7062 and the next one
+/// The character drops into the pool at `W1-1:148,66` to `149,66`; since T47 no case freezes `h0_6882`,
+/// so both sides draw the water (T25's `h0_62b6`): three contact passes in a row cost a life at frame 7062 and the next one
 /// after the hold at 7204, every pass's variables and every frame's picture equal to the original's.
 /// The character stays where the water hurt it.
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
-    assert_eq!(case.thaw, ["h0_6882"]);
+    assert!(case.freeze && case.thaw.is_empty());
     let mut w = Thawed(Watched {
         game: game(),
         seen: Vec::new(),
@@ -506,7 +506,7 @@ fn falling_into_the_water_loses_a_life_as_the_originals() {
     assert_eq!(v.goal_met, Some(7204), "the second life lost");
     assert!(v.passes > 860 && v.pictures > 900, "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
-    // Thawed: the original adds the cells in view, the water among them, to the animated cells.
+    // The original adds the cells in view, the water among them, to the animated cells.
     assert!(hits(&v, "h0_6882") > 0, "{v}");
     let seen = &w.0.seen;
     let lost: Vec<usize> = (1..seen.len())

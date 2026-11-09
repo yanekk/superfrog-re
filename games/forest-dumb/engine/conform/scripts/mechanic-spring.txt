@@ -1,0 +1,139 @@
+# T47: the springs ($10, $11, h0_24ce and h0_21c0) at W1-1:222..224,56, from the level sync point.
+# camera-bottom-right's input to frame 1500 (the character standing at 230,93 in the bottom right),
+# then paths found on the engine (fd-plan's explorer from a frame, target 221..225,54..56) up the
+# shaft at columns 226..230 into the springs' room. A step left and a jump land the character on the
+# right half ($11, 224,56): it fires, throws the character to row 42, and fires again at each landing,
+# every 85 frames or so, once while its timer still ran. Right held through a bounce drifts it into the
+# shaft, where it drops to 230,82, the springs out of view; a second found path climbs back, and a
+# step left and a jump land it on the spring again 9 pixels further right (spring_x $dfa, was $df1).
+# Measured on the engine 2026-11-09.
+0: -
+40: U R
+52: R
+80: U R
+92: R
+120: U R
+132: R
+160: U R
+172: R
+200: U R
+212: R
+240: U R
+252: R
+280: U R
+292: R
+320: U R
+330: L
+430: R
+620: U R
+632: R
+645: U R
+657: R
+670: U R
+682: R
+695: U R
+707: R
+720: U R
+732: R
+745: U R
+757: R
+770: U R
+782: R
+795: U R
+807: R
+820: U R
+832: R
+845: U R
+857: R
+870: U R
+882: R
+895: U R
+907: R
+920: U R
+932: R
+945: U R
+957: R
+970: U R
+982: R
+995: U R
+1007: R
+1020: U R
+1032: R
+1045: U R
+1057: R
+1070: U R
+1082: R
+1095: U R
+1107: R
+1120: U R
+1132: R
+1145: U R
+1157: R
+1170: U R
+1182: R
+1195: U R
+1207: R
+1220: U R
+1232: R
+1245: U R
+1257: R
+1270: U R
+1282: R
+1295: U R
+1307: R
+1320: U R
+1332: R
+1345: U R
+1357: R
+1370: U R
+1382: R
+1395: U R
+1407: R
+1420: U R
+1430: -
+1500: D
+1516: U L
+1548: U
+1584: U L
+1600: U R
+1616: -
+1628: U R
+1632: U L
+1648: L
+1652: R
+1660: U L
+1668: R
+1676: -
+1680: U
+1712: U L
+1720: R
+1724: U R
+1732: U
+1744: U L
+1752: -
+1756: U
+1768: U L
+1772: -
+1790: L
+1800: -
+1810: U
+1830: -
+2130: R
+2300: -
+2330: U L
+2338: D
+2342: U L
+2350: U
+2382: L
+2390: U R
+2406: U
+2414: U L
+2422: L
+2430: U L
+2442: L
+2446: -
+2460: L
+2466: -
+2484: U
+2504: -
+2700: -

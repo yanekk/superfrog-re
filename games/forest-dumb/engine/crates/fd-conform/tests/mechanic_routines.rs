@@ -559,19 +559,23 @@ fn a_spring_under_the_falling_character_fires_in_play() {
 // A case that freezes the original: the engine leaves out the same routines, and nothing else does.
 // ---------------------------------------------------------------------------------------------
 
-/// A frozen case's engine leaves the spring and the vanishing block out (`h0_24ce`, `h0_6882`), as
-/// the frozen original does; the game as the app and the planner play it runs both (above).
+/// Since T47 a frozen case's engine runs the spring and the vanishing block (`h0_24ce`, `h0_6882`) as
+/// the game the app and the planner play does, since the original no longer freezes them.
 #[test]
-fn only_a_frozen_case_leaves_springs_and_animated_cells_out() {
-    assert_eq!(vanishing_block_after_a_pass(true), [0, 0, 0, 0]);
-    assert_eq!(spring_after_a_pass(true), (0, 0, 0));
-    assert_ne!(vanishing_block_after_a_pass(false), [0, 0, 0, 0]);
-    assert_ne!(spring_after_a_pass(false).0, 0);
+fn a_frozen_case_runs_springs_and_animated_cells_too() {
+    assert_eq!(
+        vanishing_block_after_a_pass(true),
+        vanishing_block_after_a_pass(false)
+    );
+    assert_eq!(spring_after_a_pass(true), spring_after_a_pass(false));
+    assert_ne!(vanishing_block_after_a_pass(true), [0, 0, 0, 0]);
+    assert_ne!(spring_after_a_pass(true).0, 0);
 }
 
 /// The engine's exclusion is the original's freeze, entry for entry: each routine
-/// `FROZEN_IN_A_CASE` leaves out is frozen in `freeze.rs` for the same task, and each T25 entry there
-/// is left out here. T47 removes T25's `freeze.rs` entries, and this makes it remove these with them.
+/// `FROZEN_IN_A_CASE` leaves out is frozen in `freeze.rs` for the same task. No entry of either names
+/// T25 since T47 removed them (`tests/mechanic_cases.rs` holds springs and animated cells to the
+/// original with nothing frozen but the creatures).
 #[test]
 fn the_engines_freeze_is_the_originals_entry_for_entry() {
     use fd_conform::freeze::FROZEN;
@@ -586,13 +590,8 @@ fn the_engines_freeze_is_the_originals_entry_for_entry() {
             e.task
         );
     }
-    for f in FROZEN.iter().filter(|f| f.task == "T25") {
-        assert!(
-            FROZEN_IN_A_CASE.iter().any(|e| e.offset == f.offset),
-            "{:#x} is frozen in the original for T25 but run by the engine",
-            f.offset
-        );
-    }
+    assert!(FROZEN.iter().all(|f| f.task != "T25"), "{FROZEN:?}");
+    assert!(FROZEN_IN_A_CASE.iter().all(|e| e.task != "T25"));
 }
 
 /// Nothing but the case runner sets the engine's freeze: no file of the app, the planner, the map

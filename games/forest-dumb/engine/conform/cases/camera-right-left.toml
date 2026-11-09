@@ -1,5 +1,6 @@
 # T43: the camera scrolling right along W1-1's upper route and back (scripts/camera-right-left.txt),
-# state only, every object frozen (they are T22 to T25's). Goal: camera_x at its furthest, $8db.
+# state only, creatures frozen (T24; springs and animated cells run since T47). Goal: camera_x at
+# its furthest, $8db.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "camera-right-left"
 frames = 780

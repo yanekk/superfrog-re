@@ -84,7 +84,7 @@ the third; one 200 pixels away, no contact. A creature under the falling charact
 `$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
 tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
 133, a life lost at 135). Which tiles carry the colours there is not measured. In W1-1's own water (T72, 2026-11-06,
-`death-water`, `contact.rs`): with `h0_6882` thawed (the case's `thaw`) the character drops into the
+`death-water`, `contact.rs`): with the water drawn (`h0_6882` thawed; since T47 no case freezes it) the character drops into the
 pool at `W1-1:148,66` to `149,66` (frame 7042), and three contact passes cost a life at frame 7062 and
 the next at 7204, engine and original equal on every pass and frame. The pool's tiles carry colour 29
 themselves: the same run with the water undrawn loses the same two lives, and the water's frames change
@@ -177,13 +177,14 @@ picture: it tests the slots' boxes against the feet.
 flames). Rig: `fd-conform/tests/mechanic_routines.rs`. Like collectibles they stay map cells: no
 `ObjectKind` is registered for `$10`, `$11`, `$28`, `$30` to `$33`.
 
-Frozen cases still freeze `h0_6882` and `h0_24ce` (owner, 2026-11-06), and their engine leaves the same
-two out (`level::FROZEN_IN_A_CASE`, set only through `fd-conform`'s `Engine::freeze`; owner, at T25's
-merge with T70, whose contact reads the engine's picture). Measured unfrozen: the original's
-pass grows with the animated cells' blits and some passes end late, so `main_loop`'s edge redraws are cut
-short (`camera-bottom-right` differs at pass 495 on `edge_latch_down`) and more pass ends go unseen
-(`stretch-slope` 11, `camera-right-left` 24); every compared value and picture otherwise matched. T47's
-unfrozen cases remove the two entries.
+Since T47 (2026-11-09) no case freezes `h0_6882` or `h0_24ce`, on either side; `mechanic-vanish` and
+`mechanic-spring` hold them to the original (`fd-conform/tests/mechanic_cases.rs`). Measured: the
+original's pass grows with the animated cells' blits and more pass ends go unseen (`camera-right-left`
+24, `collect-return` 51). A pass long enough to end after the next frame starts, while `main_loop` is in
+an edge redraw, has its `frame_flag` cleared by `main_loop` when that redraw ends, so its latch waits a
+pass: `edge_latch_down` differs for one pass (`camera-bottom-right` pass 495, `mechanic-vanish` 293),
+and on `mechanic-spring` the row is scanned a pass late, so its coins join other animated-cell lists
+and spin out of step. Not modelled; excluded naming T74.
 
 **Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
 porting. All three run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot cut
@@ -224,10 +225,11 @@ are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` an
 
 ## Freezing objects (DESIGN §2.2)
 
-`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns), `h0_6882` (no
-animated cell, so no coin, water or block drawn and no block writes `collision_map`), the four bonus
-blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no spring). Measured: with all of them
-frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
+`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns), the one
+entry left since T22 removed taking and the bonus blits and T47 `h0_6882` and `h0_24ce`. T21 also
+froze `h0_6882` (no animated cell, so no coin, water or block drawn and no block writes
+`collision_map`), the four bonus blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no
+spring), and measured: with all of them frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
 ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
 `char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
 
