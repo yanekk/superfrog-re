@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-09
-**Next `pir-work` will:** review T75, then T77 and T79, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T77 and T79, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -96,12 +96,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
-| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | 🔍 | A cut scan's creature starts wait for the pass (`Edges::deferred`, `edges_cut_at`); enemy cases whole, 1 new test, 5 unit asserts. Deviations: `death-water` stays frozen, the entry names T79 (owner); two scripts repaired, five goals reset to live values; `enemy-hop` runs 780; `edge_latch.rs` rows measured on a frozen copy; search tools in `prototype/`. |
+| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ✅ | Two defects fixed: the bug compare never got the measured cuts (reproduced on the original, fixed, test locks it); the seven unfrozen cases did not compare creature slots. One missing test added (held creature's cell). Mutations: no hold, no cell clear. Probed `death-water` live, listing addresses. `death-water` and five other freeze users are T79's. Slot-search window `read-only`. |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
 
-**Review queue:** T75
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
