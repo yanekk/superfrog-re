@@ -6,9 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-09 | 📌 | T47 review, measured: `mechanic-spring` first reaches the springs after oracle frame 6845, so its `rows 0..194` exclusion leaves the springs' picture (`h0_21c0`) compared in no case until T74; their variables are compared. |
+| 2026-11-09 | 📌 | T74, measured: any pass coming before `main_loop`'s `clr.w frame_flag` (`h0+$352`), in any redraw, has its earlier-order latches swallowed (docs/09). The runner hands the cut over (`edges_cut`, `Engine::foreground_cut`); a `Game` wrapper must forward it. |
+| 2026-11-09 | 📌 | T74, measured (debug, loaded machine): line sampling costs about half a step; sampled only where a cut can come, `death-spikes` 14 s to 17 s, `camera-right-left` 1.9 s to 2.9 s. Smoke time not re-measured. |
 | 2026-11-09 | 🔄 | Owner, T47: T74 `switched-on-redraw-race` added (T47, T73; blocks T27, T48). The long-pass latch race's exclusions and `mechanic-spring`'s play area (`rows 0..194`) name T74; T73's nine-bob check is `#[ignore]`d for T74. |
-| 2026-11-09 | 📌 | T47, measured: a pass ending after the next frame starts, during an edge redraw, has `main_loop` clear its `frame_flag`; its latch waits a pass (`mechanic-vanish` frames 6593-6595). `edge-latch-route`'s `edge_latch_right` differs on 2 passes. |
 | 2026-11-09 | 🔄 | Owner, T47: T76 `stale-hits-taken-exclusion` added (blocks T27): `pass_input.rs` fails on `dbc0b2c0` and after, `character-run-slide-buttons`' `var hits_taken` (T24) exclusion hiding nothing. Its fix carries `Escape: forest-dumb-level-1 T24`. |
 | 2026-11-09 | 📌 | T47: no `h0_6882` freeze, so `contact.rs` lost T72's undrawn-water run; `contact-route` now drops into the pool at W1-1:195..197,94 and loses a life (its goal). Mechanic routes came from fd-plan's explorer started mid-script. |
 | 2026-11-09 | 🐞 | T63 review: T39's `game_frame` generator keeps the character near the start, so `char_object_cells` moved before `char_update` passed 10 000 states; `over_a_coin` now catches it. Stomp and creature order unprobed. Left. |

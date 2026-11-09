@@ -92,7 +92,7 @@ fn cuts_on_the_engine(case: &Case) -> Vec<u32> {
 /// Measured 2026-11-09 with the animated cells frozen (T73): rows of 9 bobs or more were cut, rows of
 /// 7 or fewer were not, and of the two rows of 8 one was cut (pass 893, still in its scan at
 /// `h0+$ca6`) and one was not (pass 899): where the 8th bob's blit ends against line 233 decides.
-/// Re-measured the same day with them running (T74): the same, but for one row of no bobs of the 141
+/// Re-measured the same day with them running (T74): the same, but for one row of no bobs of the 142
 /// with 7 or fewer, cut in `h0_6882` (pass 328), which the scan's animated cells and a longer pass
 /// decide. The engine alone keeps cutting at 8, which changes no state unless a later latch is
 /// waiting; a case hands it the measured cut instead.

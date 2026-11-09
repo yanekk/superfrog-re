@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-09
+**Next `pir-work` will:** review T74; T76 and T46, then T27 and T48 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -94,10 +94,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
-| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
+| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | 🔍 | Runner measures where each pass cut main_loop's edge redraws (latch, scan cell) and hands it over; engine alone keeps ROW_BOBS_CUT. No T74 exclusion, every latch compared, row rule restated, 2 tests added. Deviations: camera_cases.rs, contact.rs wrappers forward the cut, edge_redraw_routines.rs takes Edges' new field (outside Files); moving cases run up to 1.5x slower. |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T74
 
 ## Blocked on the user
 

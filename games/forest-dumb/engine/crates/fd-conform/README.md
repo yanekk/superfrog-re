@@ -43,9 +43,9 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `run_inputs(&Case, &Inputs, &mut dyn Engine, &Options)`: the same on inputs held in memory (bug zips).
 - `engine_for(&Case, Arc<GameData>) -> Game`.
 - `Options { mode, register, diff_dir }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
-- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
+- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, edge_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
 - `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers}`. An unused exclusion fails the case.
-- `trait Engine: Transplant` (`pass`, `picture`, `events`, `freeze`, `thaw`, `off_play`, `game_over`, `level_end`, `cut_redraw`); `Game` implements it.
+- `trait Engine: Transplant` (`pass`, `picture`, `events`, `freeze`, `thaw`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`); `Game` implements it.
 
 **Reaching the original** (`src/lib.rs`, `src/sync.rs`)
 - `reach_case(&Case, slack) -> Result<Amiga, String>`: at the case's sync frame, frozen and `set` applied.
@@ -54,7 +54,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `PassInputs::{anchor, pcs, step, drop_through, next_read, next_start, take}`: a pass's input is not its step's (T67).
 - `sync::reach_level_1(frames)`, `sync::reach_level_1_in(kickstart, disk_dir, cache, frames)`, `sync::LEVEL_1_SYNC` (6301), `LEVEL_1_SCRIPT`, `cache_dir()`, `level_1_key`, `level_1_script()`.
 - `OracleMem(&AmigaMemory)` and `Live(&Amiga)` implement `fd_core::Mem`, so `.value(var)` reads a `LAYOUT` variable.
-- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`.
+- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws).
 - Constants: `HUNK_BASES`, `PLAY_WINDOW`, `STATUS_ROWS`, `PASS_END` (for `am.watch_write`), `GAME_OVER_SCREEN`, `HIGH_SCORES`, `NEXT_WORLD`, `READ_JOYSTICK`, `PAUSED_BRANCH`, `AFTER_NEXT_WORLD`.
 
 **Data** (`src/lib.rs`, `src/disks.rs`)

@@ -133,7 +133,19 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   draws it passes if the bar equals `Engine::cut_redraw` at that count: the bar redrawn from the old
   and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
   a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
-  it off clears the frame just drawn, so the runner turns it off before the next step.
+  it off clears the frame just drawn, so the runner turns it on or off before a step, never after.
+- **Edge redraws cut by the next pass** (T74, 2026-11-09). A pass can come while `main_loop` is still
+  in its edge redraws, as the cycles each pass took decide; the latches it had not yet tested stay set
+  through that pass, and its `frame_flag` clear afterwards swallows that pass's latches (docs/09,
+  "The edge redraws and the next pass"). The runner samples the lines of each step whose pass may find
+  it there (`frame_flag` or a latch set at the step's start, or the last pass still running short of
+  `camera_update`), reads where the pass took the foreground (`edges_cut`: the next latch to test and
+  where the interrupted redraw's object scan stood) and hands it to the engine before the engine runs
+  that pass (`Engine::foreground_cut`, `Game::cut_foreground`), as it hands over the input each pass
+  read. The engine then stops its redraws there and finishes them, the scan's later animated cells
+  included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not
+  forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
+  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs.
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it.
 
