@@ -6,15 +6,15 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-09 | 🐞 | T74 review: an `Engine` wrapper not forwarding `foreground_cut` silently keeps `ROW_BOBS_CUT`; `death.rs` `Watched`, `Thawed` failed `death-water`, fixed. Not forwarding, green, left: `death.rs` `Changed`, `Cut`; `level_end.rs` `Changed`; `picture_cases.rs` `Watched`; `common/mod.rs` `StandIn`; `bug.rs` `Owners`. |
 | 2026-11-09 | 📌 | T74, measured: any pass coming before `main_loop`'s `clr.w frame_flag` (`h0+$352`), in any redraw, has its earlier-order latches swallowed (docs/09). The runner hands the cut over (`edges_cut`, `Engine::foreground_cut`); a `Game` wrapper must forward it. |
 | 2026-11-09 | 📌 | T74, measured (debug, loaded machine): line sampling costs about half a step; sampled only where a cut can come, `death-spikes` 14 s to 17 s, `camera-right-left` 1.9 s to 2.9 s. Smoke time not re-measured. |
-| 2026-11-09 | 🔄 | Owner, T47: T74 `switched-on-redraw-race` added (T47, T73; blocks T27, T48). The long-pass latch race's exclusions and `mechanic-spring`'s play area (`rows 0..194`) name T74; T73's nine-bob check is `#[ignore]`d for T74. |
+| 2026-11-09 | 🔄 | Owner, T47: T74 `switched-on-redraw-race` added (blocks T27, T48) for the long-pass latch race, `mechanic-spring`'s `rows 0..194` and T73's `#[ignore]`d nine-bob check; T74 removed all three. |
 | 2026-11-09 | 🔄 | Owner, T47: T76 `stale-hits-taken-exclusion` added (blocks T27): `pass_input.rs` fails on `dbc0b2c0` and after, `character-run-slide-buttons`' `var hits_taken` (T24) exclusion hiding nothing. Its fix carries `Escape: forest-dumb-level-1 T24`. |
 | 2026-11-09 | 📌 | T47: no `h0_6882` freeze, so `contact.rs` lost T72's undrawn-water run; `contact-route` now drops into the pool at W1-1:195..197,94 and loses a life (its goal). Mechanic routes came from fd-plan's explorer started mid-script. |
 | 2026-11-09 | 🐞 | T63 review: T39's `game_frame` generator keeps the character near the start, so `char_object_cells` moved before `char_update` passed 10 000 states; `over_a_coin` now catches it. Stomp and creature order unprobed. Left. |
 | 2026-11-09 | 📌 | T73 review: `edge-latch-route` with the picture compared differs at pass 1208 (oracle frame 7510, 133 pixels from (200, 0)) the same with T73's cut switched off, so not T73's. Left; the case compares variables only. |
 | 2026-11-09 | 🔄 | Owner, T73: T46, like T47, may accept a flag such as `edge_latch_right` at a measured cut, opt-in, only on frames where the measured interrupt proves the original was cut before clearing it. |
-| 2026-11-09 | 📌 | T73, measured: unfrozen, T24's planner route cuts six row redraws with fewer than 8 bobs, first at pass 343, leaving a column latch set (longer passes, `h0_6882`'s work). Frozen cases never; T46, T47 meet it. |
 | 2026-11-06 | 🔄 | Owner, T24 review: T24's "planner's danger avoids them" test is carried by T27's and T48's requirement, a full route with no life lost, creatures live, on both sides (DESIGN §2.11). No such test in T24. |
 | 2026-11-06 | 📌 | T24 review, measured: kind 0's path tables (`h0+$30fe`, `$313e`, 32 entries) are all 0, so it never moves; `docs/10-object-system.md:28` and `re/objects-W1-1.toml:23` still say it flies at the character. Left. |
 | 2026-11-06 | 📌 | T24: T54's `h0_2fea` generator lays no creature flags, so kind 7 clearing slot `creature_slot_index`'s flag rather than `d0`'s is invisible on the rig (a mutant passed); in play `h0_2fae` keeps them equal. Left. |
