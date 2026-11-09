@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 68 of 76 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 69 of 76 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-09
-**Next `pir-work` will:** review T47, then T46, T74 and T76 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T46, T74 and T76 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -65,7 +65,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T46 | case-enemies | T24, T45 | ⬜ | |
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
-| T47 | case-mechanics | T25, T45 | 🔍 | Built mechanic-vanish, mechanic-spring (both pass, every T25 routine run), mechanic_cases.rs (3 tests, smoke, [[area]]); T25's freeze.rs and FROZEN_IN_A_CASE entries removed. Deviations: exclusions name T74, not T24 (owner); T73's checks handed to T74 (owner); five other tasks' tests restated for unfrozen mechanics, contact-route's goal re-measured (commit). T74, T76 added. |
+| T47 | case-mechanics | T25, T45 | ✅ | Review: one fix, four stale freeze descriptions (planner confirm docs, game CLAUDE.md). Probed: mechanic-spring with its play area compared first differs at frame 6845, before the springs are reached, so their picture waits for T74. Mutations caught: spring trigger skipped, animated cells dropped in frozen cases. fd-plan route.rs rerun green. |
 | T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
@@ -97,7 +97,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ⬜ | |
 
-**Review queue:** T47
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

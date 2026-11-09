@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-09 | 📌 | T47 review, measured: `mechanic-spring` first reaches the springs after oracle frame 6845, so its `rows 0..194` exclusion leaves the springs' picture (`h0_21c0`) compared in no case until T74; their variables are compared. |
 | 2026-11-09 | 🔄 | Owner, T47: T74 `switched-on-redraw-race` added (T47, T73; blocks T27, T48). The long-pass latch race's exclusions and `mechanic-spring`'s play area (`rows 0..194`) name T74; T73's nine-bob check is `#[ignore]`d for T74. |
 | 2026-11-09 | 📌 | T47, measured: a pass ending after the next frame starts, during an edge redraw, has `main_loop` clear its `frame_flag`; its latch waits a pass (`mechanic-vanish` frames 6593-6595). `edge-latch-route`'s `edge_latch_right` differs on 2 passes. |
 | 2026-11-09 | 🔄 | Owner, T47: T76 `stale-hits-taken-exclusion` added (blocks T27): `pass_input.rs` fails on `dbc0b2c0` and after, `character-run-slide-buttons`' `var hits_taken` (T24) exclusion hiding nothing. Its fix carries `Escape: forest-dumb-level-1 T24`. |
@@ -50,7 +51,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-05 | 📌 | T56: the oracle's VHPOSR runs on across calls, so raster waits (`h0_3ac2`) differ between runs; `gen_edge_redraw.rs` sets it per state. `generators::generator` returns the first of duplicate names, unchecked; `judge.rs` uses the spike's duplicate `h0+$774`. |
 | 2026-11-05 | 📌 | T53: a `Bcc.b`, or a `Bcc.w` beyond a `bra.w` of free memory (past about `h0+$6800`), is detoured by moving the instruction before it into the stub behind a `jmp`; `tests/gen_character_anim.rs` has the helper and its check. |
 | 2026-11-05 | 📌 | T38: the rig's VHPOSR steps every read, so raster-wait `beq`s (`h0+$265e`, `$3af2`) never go taken; BLTBUSY set hangs `h0+$2a1c`. Write-only cells (`h0+$4710`, slot flags in `h0_2e0e`) are not poked, so an omitted clear passes where the byte is already 0. |
-| 2026-11-05 | 📌 | T06: a step ending two passes hides the second (`watch_write` copies the first): 7 in the stub case's first 130 frames, 2 in 3 000 later moving frames. An `idle` case spanning one fails. |
 | 2026-11-05 | 📌 | T36: the rig has no instruction trace, so `gen_camera.rs` shows branch coverage with literal witness models that must match the original on every state. `h0_513c` clamps `camera_y` `$8000..$853e` to `$53f`, not 0 (`cmpi.w` overflow). |
 | 2026-11-05 | 📌 | T33: `char_hit_check` (183 instructions) answers `too-big` though the spike passed it. The routine oracle skips line-mode blits and has no fill mode; `RigReport::unmodelled_blits` counts them and `translate.py` answers `no-oracle`. |
 | 2026-11-05 | 📌 | T12, T18, worker-driven: `recorder_bar` OS test failed once at load 15 ("second recording's bar: not within 30 s"), then passed. page.html keys on `tile coin`, `level exit`, `wN `. |
