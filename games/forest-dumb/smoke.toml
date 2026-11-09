@@ -144,6 +144,9 @@ workspace = "engine"
 # T45: collecting in play against the original, the ledge and the way back from the cached sync point
 # in parallel, the engine alone on both inputs and the mutated orange score: about 2.5 s warm.
 "crates/fd-conform/tests/collect_cases.rs" = "smoke"
+# T46: creatures live in play against the original, three cases from the cached sync point in
+# parallel, a stomp and contact watched, a mutated walk table: about 3 s warm.
+"crates/fd-conform/tests/enemy_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -431,6 +434,13 @@ covers = [
     "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
     "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+]
+
+[[area]]
+name = "level 1's creatures live in play, paths, starts, contact and stomps, against the original"
+covers = [
+    "crates/fd-conform/tests/enemy_cases.rs::creatures_match_the_original_on_every_pass",
+    "crates/fd-conform/tests/enemy_cases.rs::a_stomp_scores_and_three_contacts_cost_a_life",
 ]
 
 [[area]]

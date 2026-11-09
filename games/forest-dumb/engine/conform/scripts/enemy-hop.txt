@@ -1,0 +1,7 @@
+# T46: the first 92 steps of T43's camera-right-left run (scripts/camera-right-left.txt), from the
+# level sync point: right and up along W1-1's upper route.
+0: -
+40: R U
+52: R
+80: R U
+92: R
