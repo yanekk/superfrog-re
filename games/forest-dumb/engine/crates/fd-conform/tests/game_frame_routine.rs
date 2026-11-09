@@ -571,6 +571,40 @@ fn game_frame_matches_the_original_on_500_states() {
     check(500);
 }
 
+/// T39's states with the pass running and the character's feet (`char_y + $19`) falling from up to
+/// 12 pixels above to 4 into W1-1:2,73's coin, in its column (`char_x + $e`): one pass's
+/// `char_update` can carry them into the coin's cell, so the coin is taken only if
+/// `char_object_cells` runs after it, as the original's does. T39's states keep the character within
+/// 24 pixels of the level's start, where no pass reaches an item, so the 10 000 states pass with the
+/// two swapped (T63 review).
+fn over_a_coin(g: &mut generators::Gen) -> generators::Setup {
+    let mut s = (generator().case)(g);
+    let (col, row) = (2u32, 73u32);
+    s.w(h0(0x2100), 0);
+    s.l(h0(0x1e5a), col * 16 + 2 + g.below(12) as u32 - 0xe);
+    s.l(h0(0x1e5e), row * 16 + 4 - g.below(17) as u32 - 0x19);
+    s
+}
+
+#[test]
+fn game_frame_takes_objects_where_the_character_ends_the_pass() {
+    let g = generators::Generator {
+        base: generator().base,
+        case: over_a_coin,
+    };
+    let rep = judge::check_regs(
+        &mut rig(),
+        "game_frame",
+        300,
+        h(0, ENTRY),
+        &g,
+        RegsCompared::NONE,
+        game_frame,
+    )
+    .unwrap_or_else(|f| panic!("{f}"));
+    assert_eq!(rep.passed, 300, "{rep:?}");
+}
+
 #[test]
 fn the_original_takes_the_paused_branch_both_ways() {
     let c = rig().coverage("game_frame", 400, h(0, ENTRY), &generator());

@@ -230,6 +230,7 @@ workspace = "engine"
     "the_engine_makes_every_listed_call_in_the_listings_order",
     "the_original_takes_the_paused_branch_both_ways",
     "game_frame_matches_the_original_on_500_states",
+    "game_frame_takes_objects_where_the_character_ends_the_pass",
     "a_case_shows_game_frames_hits_on_the_original",
 ]
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
@@ -453,4 +454,5 @@ name = "a whole pass of play (game_frame) against the original"
 covers = [
     "crates/fd-conform/tests/game_frame_routine.rs::game_frame_matches_the_original_on_500_states",
     "crates/fd-conform/tests/game_frame_routine.rs::the_engine_makes_every_listed_call_in_the_listings_order",
+    "crates/fd-conform/tests/game_frame_routine.rs::game_frame_takes_objects_where_the_character_ends_the_pass",
 ]
