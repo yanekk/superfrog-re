@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T77; T79, then T27 once both are ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T79, then T27 once it is ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -97,11 +97,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ✅ | |
-| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | 🔍 | `enemy-kind4` case and script: `W1-1:45,92`'s kind 4 starts, walks, turns at x 784, is written back; equal on 1 390 passes. `enemy_cases.rs` gains three tests (7): its walk off the slots, its table mutated, kind 2 turning right. Deviations: state only, the picture differs at pass 477 before the corridor; kind 2's test reuses `enemy-contact`, no new case. |
+| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ✅ | Review: clean, no fix commit. Ran the file five times; three engine mutations (kind 4 probing before stepping, its left table changed, kind 2's right step) went red; the picture difference at pass 477 reproduced on `camera-bottom-right` too. Kind 4 is compared in state only, never drawn in play. Docs/10's 180-pixel figure read-only. |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
 
-**Review queue:** T77
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
