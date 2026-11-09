@@ -1,6 +1,6 @@
 # T11: the pit's edge (scripts/stretch-pit.txt): right held from the start, the slide down the first slope
 # flies off its end over the spike pit's edge and drops in, char_x $29d, char_y $21a (the goal), frame
-# 6521. Frozen, as T42's pit case. Since T70 it runs on to 6600: the spikes cost a life at 6524
+# 6521. Since T70 it runs on to 6600: the spikes cost a life at 6524
 # (char_hit_check on the engine's CLXDAT, clxdat_copy compared), the hurt frame, the hold and the lives
 # digit main_loop redraws. The pit's walls and the jumps out of it stay T42's character-edge-pit.
 # Creatures live on both sides since T46, nothing frozen.

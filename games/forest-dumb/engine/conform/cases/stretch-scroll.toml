@@ -1,7 +1,7 @@
 # T11: scrolling, as T44's picture-scroll (scripts/stretch-scroll.txt), from the level sync point: the
 # view scrolls right, up, down and left with the character walking and jumping both ways, and turns
-# before the first bonus enters the view (frame 6397), which the frozen original does not draw and the
-# engine does (T22's freeze entry). Every object frozen. Goal: back at the left wall, char_x $1b,
+# before the first bonus enters the view (frame 6397).
+# Goal: back at the left wall, char_x $1b,
 # char_y $88. Variables and picture together, the countdown since T23.
 # Creatures live on both sides since T46, nothing frozen.
 sync = { script = "boot-to-level1", frame = 6301 }
