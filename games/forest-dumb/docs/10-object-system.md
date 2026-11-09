@@ -29,7 +29,7 @@ compares, never through a table.
 | `$02` | 16 | `W1-1:9,92` | creature | `h0_681c` | creature kind 1; reading: walks a pixel a pass, turning on `collision_map` probes | placed |
 | `$03` | 15 | `W1-1:5,92` | creature | `h0_681c` | creature kind 2; reading: walks on a speed table | placed |
 | `$04` | 21 | `W1-1:6,40` | creature | `h0_681c` | creature kind 3; reading: hops on x and y tables | placed |
-| `$05` | 4 | `W1-1:45,92` | creature | `h0_681c` | creature kind 4; reading: walks on a speed table | placed |
+| `$05` | 4 | `W1-1:45,92` | creature | `h0_681c` | creature kind 4: walks on a speed table, a pixel every other pass, turning at walls (T77) | placed; walk, `W1-1:45,92` (`enemy-kind4`) |
 | `$06` | 30 | `W1-1:30,11` | creature | `h0_681c` | creature kind 5; reading: walks on a speed table | walk, `W1-1:30,11` |
 | `$10` | 2 | `W1-1:222,56` | spring | `h0_24ce` | spring, left half: throws the character up | placed |
 | `$11` | 1 | `W1-1:224,56` | spring | `h0_24ce` | spring, right half | placed |
@@ -269,6 +269,26 @@ keep their inputs with the goal both sides now reach. `death-water` stays frozen
 creature before the pool. T79 moves it and the other users of `h0_681c`'s entry off the freeze
 (`mechanic-spring`, `mechanic-vanish`, `fd_plan::confirm`, `edge_latch.rs`'s frozen route,
 `object_claims.rs`).
+
+### Kind 4 in play (T77, measured 2026-11-10)
+
+W1-1 holds four `$05` cells: `W1-1:45,92`, `145,52`, `156,50` and `187,17`. None of T46's routes
+brought one into view (the nearest, `enemy-contact`, came within 180 pixels of `45,92`). The bottom
+corridor (rows 88 to 93, columns 2 to 110) is open from where `camera-bottom-right` drops into it at
+`W1-1:93,91` (step 700), so `enemy-kind4` walks left from there, over the mound at columns 52 to 59,
+and stands at `W1-1:45,92`. On the original and the engine, every slot equal on all 1 390 passes
+compared: the creature starts facing right as the left column's redraw brings `45,92` in, walks from
+x 723 to the mound's wall at x 784 a pixel every other pass, turns there in the pass that makes its
+last step right, walks left past the standing character to x 586, leaves the view and is written
+back (`h0_2e0e`), the map holding `$05` there again. Kind 4 has no routine of its own: its walk is
+inline in `h0_2fea` on the tables at `h0+$33f6` and `$3416`, so no coverage count shows it and
+`enemy_cases.rs` reads the engine's slots instead; the case fails on a slot within 16 passes of the
+start when the right table is changed. The other three cells are not visited. Kind 2 turning right
+(`h0_3222`) is held on `enemy-contact`: one walking left turns at x 1720 (pass 665) and steps on.
+
+The case compares state only. Its picture differs at pass 477 (oracle frame 6779, 445 pixels from
+(172, 11)), on `camera-bottom-right`'s stretch before the corridor, which never compared the
+picture; so no case compares kind 4 drawn in play (the rig does, `creature_drawing_routines.rs`).
 
 ## No dispatch tables
 

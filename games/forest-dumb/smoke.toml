@@ -150,7 +150,9 @@ workspace = "engine"
 "crates/fd-conform/tests/mechanic_cases.rs" = "smoke"
 # T46: creatures live in play against the original, three cases from the cached sync point in
 # parallel, a stomp and contact watched, a mutated walk table. T75: the cases at their scripts' whole
-# length and three runs of 200 steps with the measured cuts changed: about 13 s warm.
+# length and three runs of 200 steps with the measured cuts changed: about 13 s warm. T77: a fourth
+# case (kind 4 in the bottom corridor, 1 400 steps), its walk read off the slots, its table mutated
+# and kind 2's turn right: 8 s the whole file, warm, 2026-11-10.
 "crates/fd-conform/tests/enemy_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
@@ -467,6 +469,8 @@ name = "level 1's creatures live in play, paths, starts, contact and stomps, aga
 covers = [
     "crates/fd-conform/tests/enemy_cases.rs::creatures_match_the_original_on_every_pass",
     "crates/fd-conform/tests/enemy_cases.rs::a_stomp_scores_and_three_contacts_cost_a_life",
+    "crates/fd-conform/tests/enemy_cases.rs::kind_4_walks_right_turns_at_a_wall_and_is_written_back",
+    "crates/fd-conform/tests/enemy_cases.rs::kind_2_turns_right_and_steps_on",
 ]
 
 [[area]]

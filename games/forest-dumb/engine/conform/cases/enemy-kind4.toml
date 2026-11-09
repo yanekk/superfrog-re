@@ -1,0 +1,18 @@
+# T77: creature kind 4 (object value $05), creatures live on both sides and nothing frozen
+# (scripts/enemy-kind4.txt): camera-bottom-right's input to step 700, then left along the bottom
+# corridor and still from step 862. W1-1:45,92's kind 4 starts from the left column's redraw facing
+# right (the engine's pass 854 after the sync point), walks a pixel every other pass from x 723 to the
+# mound's wall at x 784 (column 52), turns there (pass 971) and walks left until it leaves the view
+# at x 586 and is written back into the object map (pass 1369). On the way W1-1:76,92's kind 2 steps
+# right (h0_3222, 95 runs) and seven lives are lost to contact. Every creature slot and flag compared
+# on every pass with the character, camera and status. The picture is not: it differs at pass 477
+# (oracle frame 6779, 445 pixels from (172, 11)), inside camera-bottom-right's stretch, which
+# compares state only; enemy-contact compares it with creatures drawn.
+# Goal: kind 4 in slot 3 at x 722, y 1472, facing left, phase $7c, where it is only after the turn
+# (reached at frame 7398).
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "enemy-kind4"
+frames = 1400
+compare = ["vars"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "clxdat_copy", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "creature_slots+$18", value = 0x02d205c0 }, { var = "creature_slots+$1c", value = 0x0004ff7c }], by_frame = 7701 }
