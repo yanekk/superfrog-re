@@ -1,0 +1,18 @@
+# T47: the springs (scripts/mechanic-spring.txt): h0_24ce fires the spring under the falling character's
+# feet and throws it, h0_21c0 redraws the spring one and six passes later. Bouncing on the right half
+# (the timing cycle, a fire while the timer ran included), away down the shaft with the springs out of
+# view and back, bouncing again. Every character, camera, edge, status, spring and animation variable
+# on every pass, the picture on every frame.
+# Goal: the spring fired after the return, spring_x $dfa (it was $df1 before), spring_timer 6.
+# Frozen in the original (freeze.rs): creatures (T24). Excluded (T74, owner 2026-11-09): at pass 495 a
+# long pass has main_loop's frame_flag clear swallow its down latch, so the original redraws that row a
+# pass late and edge_latch_down differs; the coins it brings into view join other animated-cell lists,
+# so from frame 6845 they spin out of step and the play area's picture differs. The status bar stays.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "mechanic-spring"
+frames = 2720
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "clxdat_copy", "hits_taken", "lives", "items_left", "score", "irq_count", "countdown", "anim_tick", "water_cycle", "spring_x", "spring_y", "spring_timer", "spring_kind"]
+goal = { all = [{ var = "spring_x", value = 0xdfa }, { var = "spring_timer", value = 6 }], by_frame = 9021 }
+freeze = true
+exclude = [{ what = "rows 0..194", task = "T74" }, { what = "var edge_latch_down", task = "T74" }]

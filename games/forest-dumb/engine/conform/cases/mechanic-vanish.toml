@@ -1,0 +1,18 @@
+# T47: the vanishing blocks (scripts/mechanic-vanish.txt): h0_6882 adds the column at W1-1:82,77..83 to
+# h0_62b6's animated cells as it scrolls into view, h0_62b6 draws each block's frames and writes its
+# collision_map cell. Jumps meet a block shown and gone; after the column has left the view and come
+# back, the character stands on its top block and drops block by block as each vanishes. Every
+# character, camera, edge, status and animation variable on every pass, the picture on every frame.
+# Goal: standing on the middle block once the top one has gone, char_x $531, char_y $4d8 (engine
+# frames 1466 to 1510 of the script, nowhere else).
+# Frozen in the original (freeze.rs): creatures (T24). Excluded: edge_latch_down, on the 2 passes a long
+# pass has main_loop's frame_flag clear swallow its latch, so the original redraws a row a pass late
+# (T74, owner 2026-11-09).
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "mechanic-vanish"
+frames = 1680
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "clxdat_copy", "hits_taken", "lives", "items_left", "score", "irq_count", "countdown", "anim_tick", "water_cycle", "spring_x", "spring_y", "spring_timer", "spring_kind"]
+goal = { all = [{ var = "char_x", value = 0x531 }, { var = "char_y", value = 0x4d8 }], by_frame = 7821 }
+freeze = true
+exclude = [{ what = "var edge_latch_down", task = "T74" }]

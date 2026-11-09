@@ -221,11 +221,13 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
-    let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
     // The whole route agrees, its goal met. Confirmation freezes creature starts on both sides
     // since T46 (`freeze.rs`'s T75 entry); before, the engine started creatures the frozen original
-    // lacked and stomped one at step 566. No exclusion: T24's route's `edge_latch_right` gap was a
-    // row redraw the next pass cut (T73, `cases/edge-latch-route.toml`).
+    // lacked and stomped one at step 566. With springs and animated cells on both sides (T47), a
+    // longer pass cuts a row redraw before the right column's latch clears (pass 2156): T74's gap,
+    // set aside as `edge_latch_right` is in `cases/enemy-route.toml`.
+    let v = confirm::confirm_excluding(&d, &p.route.inputs, &[("edge_latch_right", "T74")])
+        .unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.goal_met.is_some(), "{v}");
     let g = replay(&d, &p.route.inputs);

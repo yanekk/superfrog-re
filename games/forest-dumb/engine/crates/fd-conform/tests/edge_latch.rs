@@ -87,8 +87,11 @@ fn cuts_on_the_engine(case: &Case) -> Vec<u32> {
 /// Measured 2026-11-09: rows of 9 bobs or more were cut, rows of 7 or fewer were not, and of the
 /// two rows of 8 one was cut (pass 893, still in its scan at `h0+$ca6`) and one was not (pass 899):
 /// where the 8th bob's blit ends against line 233 decides. The engine cuts at 8, which changes no
-/// state unless a later latch is waiting; neither of those had one.
+/// state unless a later latch is waiting; neither of those had one. Measured with the animated cells
+/// frozen; since T47 they run, the original's passes are longer and it cuts other rows (one of no
+/// bobs at pass 328), so the rule waits for T74 to restate it (owner, 2026-11-09).
 #[test]
+#[ignore = "T74: T73's nine-bob rule was measured with the animated cells frozen; restate it with them running"]
 fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows() {
     let case = Case::load(Path::new(CASE)).unwrap();
     let (rows, engine) = std::thread::scope(|s| {
@@ -124,16 +127,23 @@ fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows(
 }
 
 /// The route's first 1 300 steps on every compared variable, `edge_latch_right` included: it
-/// differed at pass 1211 before the engine modelled the cut.
+/// differed at pass 1211 before the engine modelled the cut. Since T47 runs the animated cells it is
+/// excluded, naming T74, on the 2 passes the original's longer passes leave it set (owner, 2026-11-09).
 #[test]
 fn the_routes_first_1300_steps_agree_on_the_right_edge_latch() {
     let case = Case::load(Path::new(CASE)).unwrap();
-    assert!(case.vars.iter().any(|v| v == "edge_latch_right"));
-    assert!(case.exclude.is_empty());
+    let only_t74 =
+        |e: &fd_conform::Exclusion| e.var.as_deref() == Some("edge_latch_right") && e.task == "T74";
+    assert!(
+        case.exclude.len() == 1 && only_t74(&case.exclude[0]),
+        "{:?}",
+        case.exclude
+    );
     let v = run(&case).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.goal_met.is_some(), "{v}");
     assert!(v.passes >= 1200, "{v}");
+    assert!(v.excluded.iter().all(|(_, n)| *n > 0), "{v}");
 }
 
 /// Resuming after a cut row runs every latch after it in the order and none before it, `frame_flag`

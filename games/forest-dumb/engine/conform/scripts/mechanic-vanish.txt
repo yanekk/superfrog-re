@@ -1,0 +1,52 @@
+# T47: the vanishing blocks ($30 to $33, h0_62b6) of the column at W1-1:82,77, 82,80 and 82,83, from the
+# level sync point. contact-route's start to frame 300, then a path found on the engine (fd-plan's
+# explorer from that frame, target 82,76) over the column to the floor under it at 82,86. Eight jumps
+# 50 frames apart meet the block at 82,83 in each phase of its cycle: shown, the head stops on it
+# (char_y $50a); gone, the jump rises through (char_y $4d9). Then right along the corridor to column 108,
+# the column out of view, and back (a path found the same way from frame 1010), four more jumps, the
+# last landing on the top block (char_y $4a8), which then vanishes under the character, then the next
+# two, one by one, to the floor (char_y $552). Measured on the engine 2026-11-09.
+0: L
+4: R
+76: U R
+116: U L
+136: R
+220: -
+228: U R
+260: R
+276: U
+280: U R
+296: R
+360: U
+392: -
+450: U
+474: -
+500: U
+524: -
+550: U
+574: -
+600: U
+624: -
+650: U
+674: -
+700: U
+724: -
+750: U
+774: -
+800: U
+824: -
+860: R
+1000: -
+1010: L
+1078: U
+1086: U L
+1094: -
+1120: U
+1144: -
+1170: U
+1194: -
+1220: U
+1244: -
+1270: U
+1294: -
+1600: -

@@ -3,10 +3,10 @@
 # where the items were. The edge redraws bring the block's cells back into view without its bonuses and
 # nothing is taken twice. Goal: back on the ledge at char_x $1cb, char_y $aa, with score 560 and
 # items_left 278 as collect-ledge left them.
-# Frozen in the original (freeze.rs), each with its task: animated cells, so coins are
-# drawn on neither side (T25), springs (T25). Nothing else excluded.
-# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 58 a pass later in the
-# original, its redraw cut short by a late pass (T46, FINDINGS).
+# Frozen in the original (freeze.rs): creatures, below. Since T47 the coins are drawn and springs run
+# on both sides. Nothing else excluded.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at irq_count 58 a
+# pass later in the original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "collect-return"
 frames = 820
