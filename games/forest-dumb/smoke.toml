@@ -209,6 +209,9 @@ workspace = "engine"
 # T71: where pass 32k+1 cuts main_loop's status bar redraw, idle and on death-spikes, 1600 frames each
 # side by side, about 7 s warm.
 "crates/fd-conform/tests/status_race.rs" = "smoke"
+# T73: when the next pass cuts a row's redraw, on the original over 1 300 steps of T24's route, and
+# the route's case on every latch: 7 s warm from the cached sync point.
+"crates/fd-conform/tests/edge_latch.rs" = "smoke"
 # T72 adds the pool's contact with and without the water drawn, death-water twice side by side.
 "crates/fd-conform/tests/contact.rs" = "smoke"
 # T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
