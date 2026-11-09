@@ -225,6 +225,17 @@ workspace = "engine"
     "game_frame_restores_and_cuts_the_creatures",
     "game_frame_restores_the_creatures_the_last_pass_drew",
 ]
+# T63, game_frame whole on the rig: the register, its calls' order, both ways of paused, the first 500
+# states and w1-idle's coverage take about 6 s warm; the 10 000-state check (about 2 min) and the four
+# mutants (13 s) are full.
+"crates/fd-conform/tests/game_frame_routine.rs" = [
+    "game_frame_is_registered",
+    "the_engine_makes_every_listed_call_in_the_listings_order",
+    "the_original_takes_the_paused_branch_both_ways",
+    "game_frame_matches_the_original_on_500_states",
+    "game_frame_takes_objects_where_the_character_ends_the_pass",
+    "a_case_shows_game_frames_hits_on_the_original",
+]
 "crates/fd-e2e/tests/game_over.rs" = "smoke"
 # T26, the level's end: level-end against the original up to next_world, the scene mismatches, the
 # status bar the check skips and a recording through "Level 1 complete" (about 2 s warm); the level's
@@ -439,4 +450,12 @@ covers = [
     "crates/fd-conform/tests/creature_drawing_routines.rs::the_creatures_on_the_play_screen_are_the_originals",
     "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_and_cuts_the_creatures",
     "crates/fd-conform/tests/creature_drawing_routines.rs::game_frame_restores_the_creatures_the_last_pass_drew",
+]
+
+[[area]]
+name = "a whole pass of play (game_frame) against the original"
+covers = [
+    "crates/fd-conform/tests/game_frame_routine.rs::game_frame_matches_the_original_on_500_states",
+    "crates/fd-conform/tests/game_frame_routine.rs::the_engine_makes_every_listed_call_in_the_listings_order",
+    "crates/fd-conform/tests/game_frame_routine.rs::game_frame_takes_objects_where_the_character_ends_the_pass",
 ]
