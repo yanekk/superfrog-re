@@ -135,3 +135,48 @@ fn the_routes_first_1300_steps_agree_on_the_right_edge_latch() {
     assert!(v.goal_met.is_some(), "{v}");
     assert!(v.passes >= 1200, "{v}");
 }
+
+/// Resuming after a cut row runs every latch after it in the order and none before it, `frame_flag`
+/// clear or not: the route's cuts are all an up row before a right column, so they never show a
+/// left latch waiting, or a cut down row's up latch (T73 review: resuming one latch late passed).
+#[test]
+fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
+    use fd_core::level::{camera::Dir, main_loop_redraws, redraw::LevelImage};
+    let case = Case::load(Path::new(CASE)).unwrap();
+    let inputs = Inputs::load(&case).unwrap();
+    let data = game_data().unwrap_or_else(|e| panic!("{e}"));
+    let mut g = engine_for(&case, data.clone());
+    let mut f = case.sync_frame;
+    while g.state().edges_resume.is_none() {
+        g.step(inputs.at(f));
+        g.take_events();
+        f += 1;
+        assert!(f < case.sync_frame + case.frames, "no cut on the route");
+    }
+    let image = LevelImage::new(&data.level);
+    let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
+    // The cut as the route makes it, then as a cut down row would leave it.
+    for from in [g.state().edges_resume.unwrap(), 1] {
+        let mut s = g.state().clone();
+        s.edges_resume = Some(from);
+        s.frame_flag = 0;
+        for dir in order {
+            s.camera.edges.latch[dir as usize] = 0xffff;
+            s.camera.edges.at[dir as usize] = (s.camera.x, s.camera.y);
+        }
+        // A row resumed into can be cut again; each call is the foreground after one more pass.
+        let mut plane = g.plane().clone();
+        for _ in 0..order.len() {
+            main_loop_redraws(&mut s, &mut plane, &image, &mut Vec::new());
+            if s.edges_resume.is_none() {
+                break;
+            }
+        }
+        for (k, dir) in order.into_iter().enumerate() {
+            let left = s.camera.edges.latch[dir as usize];
+            let want = if k < from as usize { 0xffff } else { 0 };
+            assert_eq!(left, want, "resumed at {from}: {dir:?}");
+        }
+        assert_eq!((s.frame_flag, s.edges_resume), (0, None));
+    }
+}
