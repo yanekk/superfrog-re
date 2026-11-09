@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T46 and T74, then T27 once they are ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -95,9 +95,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
-| T76 | stale-hits-taken-exclusion | —; blocks T27 | 🔍 | `character-run-slide-buttons` compares `hits_taken`, its T24 exclusion removed; `pass_input.rs` 3 of 3 green. No new tests (the task names none). No deviations. |
+| T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | Review clean, no fix commit. Old case reproduced the "hid no difference" red; `hits_taken ^ 1` in the state probe turns `pass_input.rs` red at pass 1; no case excludes anything for T24 now. |
 
-**Review queue:** T76
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
