@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-09
+**Next `pir-work` will:** review T73, then T46 and T47. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -93,9 +93,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T70 | playfield-contact | T23; blocks T24, T46 | ✅ | |
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
-| T73 | edge-latch-gap | T24; blocks T46, T27 | ⬜ | |
+| T73 | edge-latch-gap | T24; blocks T46, T27 | 🔍 | Row redraws of 8+ bobs are cut by the next pass; `main_loop_redraws` resumes from `State::edges_resume`. Case `edge-latch-route` (T24's route regenerated at `0c06449a`, no longer the planner's), `edge_latch.rs` 2 tests. Deviations: a cut row is drawn whole, its last bobs a pass early outside the view; unfrozen cuts left to T46/T47 (owner). |
 
-**Review queue:** *(empty)*
+**Review queue:** T73
 
 ## Blocked on the user
 
