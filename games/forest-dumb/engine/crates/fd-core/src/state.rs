@@ -27,6 +27,10 @@ pub struct State {
     /// cleared by `main_loop` once it has run the edge redraws (`level::main_loop_redraws`), so a
     /// pass's state always reads `$ffff`.
     pub frame_flag: u16,
+    /// Where `main_loop`'s redraw half picks up after the next pass when that pass cut it: the index
+    /// in its order down, up, left, right of the first latch not yet tested
+    /// (`level::main_loop_redraws`, T73). `None` when it finished.
+    pub edges_resume: Option<u8>,
     /// BCD.
     pub lives: u16,
     pub hits_taken: u16,
@@ -103,6 +107,7 @@ impl State {
             },
             // Set by the first pass's handler; `main_loop` has not run yet (measured, T55).
             frame_flag: 0xffff,
+            edges_resume: None,
             // `lives_reset`, `move.w #$32`.
             lives: 0x32,
             hits_taken: 0,

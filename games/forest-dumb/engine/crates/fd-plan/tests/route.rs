@@ -229,9 +229,8 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let p = short();
     let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
     // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
-    // T46 closes its gap this fails, and the constant above goes. This route parts before
-    // `edge_latch_right`'s gap (T73, `confirm::EDGE_LATCH_RIGHT`), measured on T24's route before its
-    // merge with T25 and T52.
+    // T46 closes its gap this fails, and the constant above goes. No exclusion: T24's route's
+    // `edge_latch_right` gap was a row redraw the next pass cut (T73, `cases/edge-latch-route.toml`).
     let Outcome::Differs { pass, ref var, .. } = v.outcome else {
         panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
     };

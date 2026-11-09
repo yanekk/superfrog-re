@@ -196,15 +196,58 @@ pub fn register(d: &mut Dispatch, value: u8, k: &'static dyn ObjectKind) {
     d.kinds[value as usize] = Some(k);
 }
 
-/// One pass of play after the level-3 handler's count: the original's `game_frame` (`h0+$1fec`).
-///
-/// Its calls, in the original's order, for the tasks that port them (docs/09-play-measured.md,
-/// docs/11-translation.md): `char_sprite_copy`, `h0+$94ba`, `camera_update`, `h0+$513c`,
-/// `char_sprite_position`, `h0+$9754`; if `paused`, only `play_keys`; else `h0+$2c7e`,
-/// `h0+$2fae`, `h0+$21c0`, `h0+$62b6`, `h0+$2dd6`, `h0+$3698`, `h0+$2d4c`, `read_joystick`,
-/// `char_hit_check`, `countdown_step`, `h0+$24ce`, `char_update`, `char_object_cells`, `play_keys`.
-/// T08 filled in the character's (T51's `read_joystick`, T08's `char_update`); each later porting
-/// task adds its calls in that order. Its rig proof is T63's, once every call is ported.
+/// What `game_frame`'s callees meet outside the engine's typed state: the custom chips, the play
+/// screen and the raster. In play ([`InPlay`]) blits are drawn into the display and sounds,
+/// custom-chip writes and raster reads are dropped; the routine rig (`fd-conform`'s
+/// `tests/game_frame_routine.rs`, T63) turns each into the original's writes, in order, so the
+/// whole pass is held to `game_frame` byte for byte.
+pub trait Pass {
+    /// `game_frame` calls the routine at hunk 0 `offset` next: its `bsr`s in the listing's order.
+    fn call(&mut self, _offset: u32) {}
+    /// The object ports (`objects::MapObjects`) run as the routine last [`Pass::call`]ed.
+    fn objects(&mut self, l: &mut LevelCtx, f: &mut dyn FnMut(&mut crate::objects::MapObjects));
+    /// The creature drawing (`render::objects::Creatures`) run as the routine last called.
+    fn creatures(
+        &mut self,
+        l: &mut LevelCtx,
+        f: &mut dyn FnMut(&mut crate::render::objects::Creatures),
+    );
+    /// JOY1DAT as `read_joystick` reads it.
+    fn joy1dat(&mut self, input: &FrameInput) -> u16 {
+        crate::character::joy1dat(input)
+    }
+    /// The registers and raster a routine on [`Scratch`] starts with.
+    fn scratch(&mut self) -> Scratch {
+        Scratch::default()
+    }
+    /// That routine's scratch when it returns, with the custom-chip writes it made.
+    fn scratch_done(&mut self, _s: Scratch) {}
+    /// `h0_9754`: the copper list's play screen pointers from the camera. Nothing in play reads them
+    /// before the picture, which computes them then (`render::picture`).
+    fn scroll(&mut self, _camera_x: u16, _camera_y: u16) {}
+    /// `move.w $dff006, h0+$8dfa`: the raster position stored, which nothing reads. The engine keeps
+    /// no beam, so play leaves it out.
+    fn raster_copy(&mut self) {}
+}
+
+/// [`Pass`] in play: the object ports and the creature drawing on the play screen.
+pub struct InPlay;
+
+impl Pass for InPlay {
+    fn objects(&mut self, l: &mut LevelCtx, f: &mut dyn FnMut(&mut crate::objects::MapObjects)) {
+        crate::objects::in_play(l, f);
+    }
+    fn creatures(
+        &mut self,
+        l: &mut LevelCtx,
+        f: &mut dyn FnMut(&mut crate::render::objects::Creatures),
+    ) {
+        crate::render::objects::in_play(l, f);
+    }
+}
+
+/// One pass of play after the level-3 handler's count: the original's `game_frame` (`h0+$1fec`), in
+/// play ([`InPlay`]). See [`game_frame_with`].
 pub fn game_frame(
     l: &mut LevelCtx,
     objects: &mut Vec<Object>,
@@ -212,18 +255,44 @@ pub fn game_frame(
     events: &mut Vec<Event>,
     input: FrameInput,
 ) {
+    game_frame_with(l, objects, dispatch, events, input, &mut InPlay);
+}
+
+/// `game_frame` (`h0+$1fec`) with what lies outside the typed state through `p`. Its calls, in the
+/// original's order (docs/09-play-measured.md, docs/11-translation.md): `char_sprite_copy`,
+/// `h0+$94ba`, `camera_update`, `h0+$513c`, `char_sprite_position`, `h0+$9754`; if `paused`, only
+/// `play_keys`; else `h0+$2c7e`, `h0+$2fae`, `h0+$21c0`, `h0+$62b6`, `h0+$2dd6`, `h0+$3698`,
+/// `h0+$2d4c`, `read_joystick`, `char_hit_check`, `countdown_step`, `h0+$24ce`, `char_update`,
+/// `char_object_cells`, `play_keys`. Proven whole on the routine rig, and its calls' order against
+/// `re/translate.toml` (T63, `fd-conform/tests/game_frame_routine.rs`).
+pub fn game_frame_with(
+    l: &mut LevelCtx,
+    objects: &mut Vec<Object>,
+    dispatch: &Dispatch,
+    events: &mut Vec<Event>,
+    input: FrameInput,
+    p: &mut dyn Pass,
+) {
     // char_sprite_copy, h0+$94ba (T10).
+    p.call(0x9b06);
     let s = &mut *l.state;
     l.display.sprite.copy(&mut s.motion.unhurt_t, s.anim.ptr);
+    p.call(0x94ba);
     l.display.fade.step(&l.display_data.palette(), l.program);
     // `camera_update`, then `h0+$513c` (T09).
-    s.camera.step((s.char_x, s.char_y), &mut s.frame_flag);
-    // char_sprite_position (T10). `h0+$9754` points the copper list at the play screen from the
-    // camera, which nothing changes again before the picture: `render::picture` computes it then.
+    p.call(0x4d7e);
+    s.camera.update((s.char_x, s.char_y), &mut s.frame_flag);
+    p.call(0x513c);
+    s.camera.clamp();
+    // char_sprite_position, h0+$9754 (T10).
+    p.call(0x5462);
     l.display
         .sprite
         .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
+    p.call(0x9754);
+    p.scroll(s.camera.x, s.camera.y);
     if l.state.paused != 0 {
+        p.call(0x2104);
         Play { state: l.state }.play_keys();
         return;
     }
@@ -232,13 +301,15 @@ pub fn game_frame(
     let s = &mut *l.state;
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
+    p.call(0x2c7e);
     // A frozen case's original starts no creature (T52's `freeze.rs` `ENGINE_SKIPS`, T24).
     if l.frozen.is_none() {
-        crate::render::objects::in_play(l, |c| c.restore_all());
+        p.creatures(l, &mut |c| c.restore_all());
     }
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
     // h0+$2fae: the creatures moved (T24).
+    p.call(0x2fae);
     Creatures {
         state: l.state,
         ground: &PlayGround {
@@ -250,11 +321,15 @@ pub fn game_frame(
     // Until they are ported, the dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
     // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25).
-    crate::objects::in_play(l, |o| o.spring_redraw());
-    crate::objects::in_play(l, |o| o.animate());
+    p.call(0x21c0);
+    p.objects(l, &mut |o| o.spring_redraw());
+    p.call(0x62b6);
+    p.objects(l, &mut |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
-    crate::objects::in_play(l, |o| o.write_back());
+    p.call(0x2dd6);
+    p.objects(l, &mut |o| o.write_back());
     // h0+$3698: the slots sorted by y for drawing (T24).
+    p.call(0x3698);
     Creatures {
         state: l.state,
         ground: &PlayGround {
@@ -265,37 +340,66 @@ pub fn game_frame(
     .sort();
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
+    p.call(0x2d4c);
     if l.frozen.is_none() {
-        crate::render::objects::in_play(l, |c| c.cut_all());
+        p.creatures(l, &mut |c| c.cut_all());
     }
+    p.raster_copy();
     let s = &mut *l.state;
     s.creature_draw.drawn = s.edges.creatures.active;
-    s.joy.read_joystick(&mut s.input_log, &input);
+    p.call(0x8dfc);
+    let dat = p.joy1dat(&input);
+    s.joy.read_joy1dat(&mut s.input_log, dat);
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
+    p.call(0x3b2a);
+    let mut scratch = p.scratch();
     let mut play = Play { state: l.state };
-    play.char_hit_check(l.clxdat, &mut Scratch::default());
+    play.char_hit_check(l.clxdat, &mut scratch);
+    p.scratch_done(scratch);
+    p.call(0x20b0);
     play.countdown_step();
     // h0+$24ce: a spring under the feet (T25).
-    crate::objects::in_play(l, |o| o.spring_trigger());
+    p.call(0x24ce);
+    p.objects(l, &mut |o| o.spring_trigger());
+    p.call(0x3e0c);
+    let mut scratch = p.scratch();
     Character {
         state: l.state,
         program: l.program,
         anim: l.anim,
         plane: &*l.plane,
-        scratch: &mut Scratch::default(),
+        scratch: &mut scratch,
     }
     .update();
+    p.scratch_done(scratch);
     // char_object_cells (T22).
-    crate::objects::in_play(l, |o| o.object_cells());
+    p.call(0x2698);
+    p.objects(l, &mut |o| o.object_cells());
     // play_keys (T23).
+    p.call(0x2104);
     Play { state: l.state }.play_keys();
 }
 
+/// A row redraw that cuts this many bobs is still running when the next pass starts (T73,
+/// measured on T24's planner route; docs/09, "The edge redraws and the next pass"). The redraws'
+/// blits wait for the raster to be on lines 103 to 230 (`h0_3ac2`), and the next pass comes at line
+/// 233: a row's 23 tile blits end near line 161, its first bob starts near 197, and each bob takes
+/// about 5 lines. Rows with 7 bobs finished, the 7th starting at 227; rows with 9 were cut, the 8th
+/// starting at 230 at the earliest, so 8 is taken as cut.
+pub const ROW_BOBS_CUT: usize = 8;
+
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
 /// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
-/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared. The
-/// engine runs it whole, before the next pass. The original's is cut short by the next pass when it
-/// draws two edges in one frame, and finishes after it (measured, T55; docs/09, "The edge redraws").
+/// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared.
+///
+/// The engine runs it before the next pass, except where the original's is cut by that pass in a way
+/// the state shows: a row redraw (down or up) cutting [`ROW_BOBS_CUT`] bobs or more. Then the latches
+/// after it in the order are still set during the next pass, which can neither cross them nor have
+/// them drawn, and the rest of the order runs after it, from [`State::edges_resume`], testing each
+/// latch as it then stands, `frame_flag` set or not. A latch that pass sets earlier in the order
+/// waits for the pass after. The cut row is drawn whole here: its last bobs land in the edge row
+/// outside the view a pass early. A cut anywhere else changes no state a pass reads, the latches
+/// having been cleared before their redraws (T55's two-edge frames, docs/09).
 pub fn main_loop_redraws(
     s: &mut State,
     plane: &mut CollisionPlane,
@@ -303,27 +407,39 @@ pub fn main_loop_redraws(
     blits: &mut Vec<redraw::Blit>,
 ) {
     use camera::Dir;
-    if s.frame_flag == 0 {
-        return;
-    }
+    let from = match s.edges_resume.take() {
+        Some(i) => i as usize,
+        None if s.frame_flag == 0 => return,
+        None => 0,
+    };
     let mut io = redraw::PlayIo {
         image,
         objects: &mut s.object_map,
         collision: plane,
         blits,
     };
-    for dir in [Dir::Down, Dir::Up, Dir::Left, Dir::Right] {
+    let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
+    for (k, &dir) in order.iter().enumerate().skip(from) {
         let i = dir as usize;
         if s.camera.edges.latch[i] == 0 {
             continue;
         }
         s.edges.pos = s.camera.edges.at[i];
         s.camera.edges.latch[i] = 0;
+        let before = io.blits.len();
         match dir {
             Dir::Down => s.edges.redraw_below(&mut io),
             Dir::Up => s.edges.redraw_above(&mut io),
             Dir::Left => s.edges.redraw_left(&mut io),
             Dir::Right => s.edges.redraw_right(&mut io),
+        }
+        let bobs = io.blits[before..]
+            .iter()
+            .filter(|b| matches!(b, redraw::Blit::Bob { .. }))
+            .count();
+        if matches!(dir, Dir::Down | Dir::Up) && bobs >= ROW_BOBS_CUT {
+            s.edges_resume = Some(k as u8 + 1);
+            return;
         }
     }
     s.frame_flag = 0;

@@ -211,25 +211,7 @@ impl Game {
                 self.foreground();
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
                 self.state.irq_count = self.state.irq_count.wrapping_add(1);
-                let mut ctx = LevelCtx {
-                    state: &mut self.state,
-                    level: &self.data.level,
-                    program: &self.data.program,
-                    anim: &self.data.anim,
-                    plane: &mut self.plane,
-                    image: &self.image,
-                    display: &mut self.display,
-                    display_data: &self.data.display,
-                    clxdat,
-                    frozen: self.frozen.as_deref(),
-                };
-                level::game_frame(
-                    &mut ctx,
-                    &mut self.objects,
-                    &self.dispatch,
-                    &mut self.events,
-                    i,
-                );
+                self.game_frame_on(i, clxdat, &mut level::InPlay);
                 // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
                 self.state.frame_flag = 0xffff;
                 match self.state.irq_count & 0x1f {
@@ -257,6 +239,33 @@ impl Game {
                 }
             }
         }
+    }
+
+    /// `game_frame` alone on this game's state, with `clxdat` as `char_hit_check` reads it and what
+    /// lies outside the typed state through `pass` (`level::game_frame_with`): no foreground, no
+    /// level-3 handler count. [`Game::step`] runs it with `level::InPlay`; the routine rig runs it
+    /// against the original's `game_frame` (T63).
+    pub fn game_frame_on(&mut self, i: FrameInput, clxdat: u16, pass: &mut dyn level::Pass) {
+        let mut ctx = LevelCtx {
+            state: &mut self.state,
+            level: &self.data.level,
+            program: &self.data.program,
+            anim: &self.data.anim,
+            plane: &mut self.plane,
+            image: &self.image,
+            display: &mut self.display,
+            display_data: &self.data.display,
+            clxdat,
+            frozen: self.frozen.as_deref(),
+        };
+        level::game_frame_with(
+            &mut ctx,
+            &mut self.objects,
+            &self.dispatch,
+            &mut self.events,
+            i,
+            pass,
+        );
     }
 
     /// Whether the level's end has been reached: `next_world` has run and "Level 1 complete" shows
@@ -565,6 +574,7 @@ impl Game {
         let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
         let s = &mut self.state;
         s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
+        s.edges_resume = None;
         // `h3+$fa50` less BEFORE: the map, the tail the probes reach and the slack the redraws write.
         let kept = self.plane.kept_mut();
         kept.copy_from_slice(&mem.read(3, collision::MAP - BEFORE, kept.len()));
@@ -595,6 +605,27 @@ impl Game {
         d.drawn.copy_from_slice(&mem.read(0, 0x67e6, 5));
         let last = mem.read(0, 0x687e, 4);
         c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
+        // What `game_frame`'s callees keep outside `LAYOUT` (T63): each is written in a pass before
+        // it is read, so a case runs the same without them, but the routine rig compares every byte.
+        let long = |o: u32| {
+            let b = mem.read(0, o, 4);
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        };
+        // Its low word is `LAYOUT`'s `char_screen_x`, already taken.
+        s.camera.screen_x = long(0x4d76) & 0xffff_0000 | s.camera.screen_x & 0xffff;
+        s.camera.screen_y = long(0x4d7a);
+        let crossed = mem.read(0, 0x51f8, 4);
+        s.camera.edges.crossed = std::array::from_fn(|i| crossed[i] != 0);
+        s.collect = crate::objects::Collect {
+            score_add: long(0x2a6a),
+            row: long(0x2692),
+            taken: long(0x29c6),
+        };
+        s.moving = crate::objects::creature::Moving {
+            slot: long(0x2fe6),
+            stomped: word(&mem.read(0, 0x306e, 2), 0),
+        };
+        s.edges.creatures.index = long(0x2faa);
         let used = mem.read(2, 0x1680, 48);
         let cells = mem.read(2, 0x16b0, 384);
         for n in 0..48 {
