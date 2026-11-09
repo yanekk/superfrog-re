@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-09 | 🐞 | T74 review, measured: `Amiga::set_profile(true)` changes the original's run with creatures live (`enemy-route` step 336, `enemy-contact` step 377: a pass ends a step later), not with them frozen (T74's five cases, 0 steps). Merged with T46, `enemy_cases.rs` fails; reported as a conflict. |
 | 2026-11-09 | 🐞 | T74 review: an `Engine` wrapper not forwarding `foreground_cut` silently keeps `ROW_BOBS_CUT`; `death.rs` `Watched`, `Thawed` failed `death-water`, fixed. Not forwarding, green, left: `death.rs` `Changed`, `Cut`; `level_end.rs` `Changed`; `picture_cases.rs` `Watched`; `common/mod.rs` `StandIn`; `bug.rs` `Owners`. |
 | 2026-11-09 | 📌 | T74, measured: any pass coming before `main_loop`'s `clr.w frame_flag` (`h0+$352`), in any redraw, has its earlier-order latches swallowed (docs/09). The runner hands the cut over (`edges_cut`, `Engine::foreground_cut`); a `Game` wrapper must forward it. |
 | 2026-11-09 | 📌 | T74, measured (debug, loaded machine): line sampling costs about half a step; sampled only where a cut can come, `death-spikes` 14 s to 17 s, `camera-right-left` 1.9 s to 2.9 s. Smoke time not re-measured. |
