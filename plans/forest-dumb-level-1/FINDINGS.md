@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-09 | 📌 | T73 review: `edge-latch-route` with the picture compared differs at pass 1208 (oracle frame 7510, 133 pixels from (200, 0)) the same with T73's cut switched off, so not T73's. Left; the case compares variables only. |
 | 2026-11-09 | 🔄 | Owner, T73: T46, like T47, may accept a flag such as `edge_latch_right` at a measured cut, opt-in, only on frames where the measured interrupt proves the original was cut before clearing it. |
 | 2026-11-09 | 📌 | T73, measured: unfrozen, T24's planner route cuts six row redraws with fewer than 8 bobs, first at pass 343, leaving a column latch set (longer passes, `h0_6882`'s work). Frozen cases never; T46, T47 meet it. |
 | 2026-11-06 | 🔄 | Owner, T24 review: T24's "planner's danger avoids them" test is carried by T27's and T48's requirement, a full route with no life lost, creatures live, on both sides (DESIGN §2.11). No such test in T24. |
