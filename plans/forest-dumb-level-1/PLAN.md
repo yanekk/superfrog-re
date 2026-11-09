@@ -159,6 +159,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T75](tasks/T75-enemy-redraw-race.md) | enemy-redraw-race | T74, T46; blocks T27, T48 |
 | [T77](tasks/T77-enemy-kind-4.md) | enemy-kind-4 | T46, T75; blocks T27, T48 |
 | [T78](tasks/T78-oracle-recording-observes-only.md) | oracle-recording-observes-only | T74; blocks T75 |
+| [T79](tasks/T79-unfreeze-creature-starts.md) | unfreeze-creature-starts | T75; blocks T27, T48 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

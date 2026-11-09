@@ -1,5 +1,5 @@
-# T46: the first 1 240 steps of T24's planner route (as scripts/edge-latch-route.txt, fd-plan level
-# W1-1, seed 1, 100 rounds, at 0c06449a), from the level sync point.
+# T46, T75: the first 1 300 steps of T24's planner route (as scripts/edge-latch-route.txt, fd-plan level
+# W1-1, seed 1, 100 rounds, at 0c06449a), from the level sync point, then idle.
 0: U
 28: U R
 124: L
@@ -27,3 +27,4 @@
 1032: R
 1092: L
 1156: R
+1300: -

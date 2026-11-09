@@ -40,6 +40,7 @@ workspace = "engine"
 "crates/fd-conform/tests/level_entry.rs" = "smoke"
 # T15: bug recordings compared with the original by pass, and the command on a zip: about 9 s warm
 # from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
+# T75 review: two recordings through a late creature start, about 1 s more.
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
@@ -148,7 +149,8 @@ workspace = "engine"
 # their inputs on the engine alone, 8 s warm.
 "crates/fd-conform/tests/mechanic_cases.rs" = "smoke"
 # T46: creatures live in play against the original, three cases from the cached sync point in
-# parallel, a stomp and contact watched, a mutated walk table: about 3 s warm.
+# parallel, a stomp and contact watched, a mutated walk table. T75: the cases at their scripts' whole
+# length and three runs of 200 steps with the measured cuts changed: about 13 s warm.
 "crates/fd-conform/tests/enemy_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
@@ -401,6 +403,7 @@ covers = [
     "crates/fd-conform/tests/recording_compare.rs::a_scripted_recording_stays_in_step_on_the_original",
     "crates/fd-conform/tests/recording_compare.rs::an_engine_mutation_is_reported_at_its_step",
     "crates/fd-conform/tests/recording_compare.rs::the_command_compares_a_zip_and_writes_both_pictures",
+    "crates/fd-conform/tests/recording_compare.rs::a_recording_through_a_late_creature_start_stays_in_step",
 ]
 
 [[area]]
@@ -465,6 +468,10 @@ covers = [
     "crates/fd-conform/tests/enemy_cases.rs::creatures_match_the_original_on_every_pass",
     "crates/fd-conform/tests/enemy_cases.rs::a_stomp_scores_and_three_contacts_cost_a_life",
 ]
+
+[[area]]
+name = "a creature start the next pass cut waits for that pass, only where the original was measured cut"
+covers = ["crates/fd-conform/tests/enemy_cases.rs::a_creature_start_waits_only_where_the_measured_cut_says"]
 
 [[area]]
 name = "the creatures restored and cut onto the play screen as the original draws them"

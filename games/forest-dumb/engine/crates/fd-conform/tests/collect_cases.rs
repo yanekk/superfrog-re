@@ -33,16 +33,13 @@ const T22: [&str; 8] = [
 const STATUS: [&str; 3] = ["h0_6ae8", "h0_6b70", "h0_6c20"];
 
 /// T22's routines no collecting case reaches, each with why and the task whose cases do.
-const NOT_REACHED: [(&str, &str); 2] = [
-    // Writes a creature back into the map as it leaves the view: while `freeze.rs` keeps creatures
-    // from taking a slot (T24) no slot is ever filled, so it never runs.
-    ("h0_2e0e", "T46"),
+const NOT_REACHED: [(&str, &str); 1] = [
     // The time bonus `$4c`: W1-1 holds none (docs/10-object-system.md, "Values W1-1 does not hold").
     ("countdown_plus_100", "T48, as a named exception"),
 ];
 
 /// The block above the ledge, W1-1:29..33,8..10, which both cases empty: five oranges (`$40`, +20),
-/// two apples (`$41`, +30) and four coins (+100 each): 560.
+/// two apples (`$41`, +30) and four coins (+100 each): 560; the cases' 810 adds a stomped creature's 250.
 const BLOCK: [(u32, u32); 11] = [
     (30, 8),
     (31, 8),
@@ -196,12 +193,13 @@ fn the_engine_alone_meets_each_collecting_goal() {
             }
         }
         assert!(met.is_some(), "{name}: goal missed; scores {scores:x?}");
-        // Each pickup in its order: the orange, a coin and an apple, a coin, then the rest of the
-        // block, and nothing after (collect-return takes nothing more).
+        // Each pickup in its order: the orange, a coin and an apple, a coin, the creature stomped
+        // on the ledge (+250, creatures live since T75), then the rest of the block, and nothing
+        // after (collect-return takes nothing more).
         assert_eq!(
             scores,
             [
-                0, 0x20, 0x150, 0x250, 0x270, 0x370, 0x400, 0x420, 0x440, 0x540, 0x560
+                0, 0x20, 0x150, 0x250, 0x500, 0x630, 0x650, 0x670, 0x690, 0x790, 0x810
             ],
             "{name}"
         );

@@ -426,7 +426,8 @@ mode (the exception frame is on the supervisor stack). `fd_conform::edges_cut` r
   the latch not yet tested, holds the interrupted scan's later animated cells (`Edges::deferred`) and
   adds them before resuming after the pass. Its own rule is then off. Sub-frame timing stays out of the
   engine (DESIGN §2.1): which pass is cut is the original's cycles, handed over as T67 hands the input
-  each pass read. Not handed: a creature the cut scan starts after the pass (T75), and a pass that
+  each pass read. A creature the cut scan starts after the pass is held the same way since T75
+  (docs/10, "A creature start the next pass cuts"). Not handed: a pass that
   ends within the few dozen cycles before line 233 that four clear latches' tests take.
 - **In every level case since T78** (2026-11-09). Sampling a step's lines (`Amiga::set_profile`)
   changed the original with creatures live (`enemy-route`, `enemy-contact`: a pass a step later from

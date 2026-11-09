@@ -87,14 +87,15 @@ pub trait Io {
     fn blit(&mut self, b: Blit);
     /// A word written to `collision_map` at `at` bytes from `h3+$fa50`, wrapping.
     fn collision_word(&mut self, at: u32, v: u16);
-    /// Whether the animated cell the scan found at object map cell `cell` (hunk 0 offset) is added
-    /// after the next pass: that pass cut the scan before it (T74, [`PlayIo::defer_from`]).
+    /// Whether the animated cell or creature the scan found at object map cell `cell` (hunk 0
+    /// offset) is added or started after the next pass: that pass cut the scan before it (T74, T75,
+    /// [`PlayIo::defer_from`]).
     fn defers(&self, _cell: u32) -> bool {
         false
     }
 
     /// Whether `h0_681c` returns at once, as a conformance case that freezes creatures patches it
-    /// (`fd-conform`'s `freeze.rs`, T75's entry): no creature starts and the cell stays.
+    /// (`fd-conform`'s `freeze.rs`, T79's entry): no creature starts and the cell stays.
     fn creature_starts_frozen(&self) -> bool {
         false
     }
@@ -222,10 +223,27 @@ pub struct Edges {
     pub p83c: Ptr,
     pub creatures: CreatureSlots,
     pub cells: AnimatedCells,
-    /// The animated cells a redraw's scan found after the pass that cut it, in the order found:
-    /// `main_loop` adds them (`h0_6882`) once that pass has ended, before it tests the next latch
-    /// (T74, `level::main_loop_redraws`). Empty but for the pass after such a cut.
-    pub deferred: Vec<AnimCell>,
+    /// The animated cells and creature cells a redraw's scan found after the pass that cut it, in
+    /// the order found: `main_loop` adds them (`h0_6882`) and starts them (`h0_681c`) once that
+    /// pass has ended, before it tests the next latch (T74, T75, `level::main_loop_redraws`). Empty
+    /// but for the pass after such a cut.
+    pub deferred: Vec<Deferred>,
+}
+
+/// What a cut scan does after the pass that cut it ([`Edges::deferred`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Deferred {
+    /// `h0_6882` for this cell.
+    Cell(AnimCell),
+    /// `h0_681c` for the creature at object map cell `cell` (hunk 0 offset), which is cleared if a
+    /// slot takes it. Which slot is free is decided then: the pass between can free one.
+    Creature {
+        cell: u32,
+        x: u16,
+        y: u16,
+        kind: u16,
+        facing: u8,
+    },
 }
 
 /// N after `cmpi.w #imm, v`.
@@ -399,12 +417,12 @@ impl Edges {
     /// each holds, which that pass's `h0_62b6` changes.
     fn add_cell(&mut self, io: &impl Io, cell: u32, x: u16, y: u16, code: u8) {
         if io.defers(cell) {
-            self.deferred.push(AnimCell {
+            self.deferred.push(Deferred::Cell(AnimCell {
                 x,
                 y,
                 code,
                 rest: [0; 3],
-            });
+            }));
         } else {
             self.cells.add(x, y, code);
         }
@@ -424,6 +442,19 @@ impl Edges {
         // Frozen, `h0_681c` is an `rts`: d0 comes back as passed and the scan's `tst.l d0` decides.
         let d0 = if io.creature_starts_frozen() {
             d0
+        } else if io.defers(cell) {
+            // The next pass cut the scan before this cell (T75): the original starts the creature
+            // after that pass, so it misses the pass's move and is not drawn in it. The scan's later
+            // bobs are listed as after a start that found a slot; one finding none (`d0 = -1`) only
+            // moves a bob's blit off the screen.
+            self.deferred.push(Deferred::Creature {
+                cell,
+                x: d0 as u16,
+                y,
+                kind,
+                facing,
+            });
+            return 0;
         } else if self.creatures.start(d0 as u16, y, kind, facing) {
             0xffff_ffff
         } else {
@@ -679,12 +710,12 @@ pub struct PlayIo<'a> {
     pub objects: &'a mut [u8],
     pub collision: &'a mut super::collision::CollisionPlane,
     pub blits: &'a mut Vec<Blit>,
-    /// The object map cell (hunk 0 offset) from which the scan's animated cells are added after
-    /// the next pass, which cut the scan there (T74, `level::EdgesCut`); `None` adds each at once.
+    /// The object map cell (hunk 0 offset) from which the scan's animated cells are added and its
+    /// creatures started after the next pass, which cut the scan there (T74, `level::EdgesCut`); `None` adds each at once.
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
-    /// A conformance case froze `h0_681c` (T75's `freeze.rs` entry): [`Io::creature_starts_frozen`].
+    /// A conformance case froze `h0_681c` (T79's `freeze.rs` entry): [`Io::creature_starts_frozen`].
     /// False in play, the app and the planner.
     pub creature_starts_frozen: bool,
 }

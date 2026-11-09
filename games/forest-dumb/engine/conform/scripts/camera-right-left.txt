@@ -1,7 +1,8 @@
 # T43: right along the upper route and back. From the level sync point: stand 40 frames, then right
 # with a jump (up) for 12 frames in every 40, for 620 frames, over the first hill and up the slopes to
 # W1-1:143,34 (camera_x 0 to $8db, camera_y up and down between 0 and $31f); then left the same way
-# for 120 frames. Every object frozen; no contact on the original. Measured 2026-11-05.
+# for 120 frames. Measured 2026-11-05 with every object frozen. Live since T75, creatures cost four
+# lives on the way and the run turns back at camera_x $691.
 0: -
 40: R U
 52: R

@@ -120,17 +120,16 @@ pub struct FrozenInACase {
     pub task: &'static str,
 }
 
-/// Since T47 removed T25's two (`h0_6882`, `h0_24ce`), only the creature start, for the cases T46
-/// lists (T75).
+/// Since T47 removed T25's two (`h0_6882`, `h0_24ce`), only the creature start, for the cases and
+/// tests still frozen (T79; `fd-conform`'s `freeze.rs` lists them).
 pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
     // `h0_681c`: no creature starts from an edge redraw's scan and its cell stays
-    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Frozen
-    // only in the cases T46 lists, where a redraw cut short by a late pass starts a creature a pass
-    // later in the original (T75).
+    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Live,
+    // a creature start a late pass cut waits for that pass, as measured (T75).
     FrozenInACase {
         name: "h0_681c",
         offset: 0x681c,
-        task: "T75",
+        task: "T79",
     },
 ];
 
@@ -440,8 +439,25 @@ pub fn main_loop_redraws(
 ) {
     use camera::Dir;
     // The cut redraw's scan, finished after the pass.
-    for c in std::mem::take(&mut s.edges.deferred) {
-        s.edges.cells.add(c.x, c.y, c.code);
+    for d in std::mem::take(&mut s.edges.deferred) {
+        match d {
+            redraw::Deferred::Cell(c) => s.edges.cells.add(c.x, c.y, c.code),
+            redraw::Deferred::Creature {
+                cell,
+                x,
+                y,
+                kind,
+                facing,
+            } => {
+                // `h0_681c`, then the scan's `clr.b (a2)` when a slot took it.
+                if !s.edges.creatures.start(x, y, kind, facing) {
+                    let i = cell.wrapping_sub(redraw::OBJECT_MAP) as usize;
+                    if let Some(b) = s.object_map.get_mut(i) {
+                        *b = 0;
+                    }
+                }
+            }
+        }
     }
     let from = match s.edges_resume.take() {
         Some(i) => i as usize,

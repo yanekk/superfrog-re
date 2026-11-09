@@ -4,11 +4,12 @@
 //! `creature_slots+$8N`, `+$8N+4` in `LAYOUT`) on every pass, with the character, camera, contact
 //! and status. Needs the disks and the Kickstart: absent, it fails naming where it looked.
 //!
-//! Each case stops before the first pass where an edge redraw the next pass cut short starts a
-//! creature a pass later in the original than in the engine (measured: the interrupted PC in
-//! `h0_3ac2`); T75 models that race. The runner hands the engine each measured edge cut here too
-//! (`fd_conform::records_edge_cuts`, T74; with creatures live since T78), so `enemy-route` compares
-//! `edge_latch_right`.
+//! Each case runs its source script's whole length. A pass made longer by drawn creatures can cut
+//! an edge redraw before its scan reaches a creature cell (measured: the interrupted PC in
+//! `h0_3ac2`); the original then starts that creature after the pass. The runner hands the engine
+//! each measured cut (`fd_conform::edges_cut`, T74; with creatures live since T78) and the engine
+//! starts the scan's later creatures after that pass too (T75, `Edges::deferred`), so every case
+//! compares the picture's latches and the slots through those passes.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -17,12 +18,14 @@ use std::thread;
 use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
 use fd_conform::{Case, Engine, Goal, Options, Outcome, Verdict, run_with};
+use fd_core::level::EdgesCut;
+use fd_core::level::redraw::{Deferred, OBJECT_MAP};
 use fd_core::objects::creature::{STOMPED, WALK5_LEFT};
 use fd_core::program::Program;
 use fd_core::{Event, Game, GameData, LAYOUT, Mem, PORTED, Start, Transplant, Var};
 
-/// The planner's route (kinds 0, 3, 5, stomps, lives lost to contact), the route to the exit's first
-/// steps (kinds 0, 1, 2, 5, the picture compared) and kind 3 hopping left.
+/// The planner's route (kinds 0, 3, 5, stomps, lives lost to contact), the route to the exit's cells
+/// (kinds 0, 1, 2, 5, the picture compared) and T43's run right and back (kind 3 hopping left).
 const CASES: [&str; 3] = ["enemy-route", "enemy-contact", "enemy-hop"];
 
 /// The routines T24 registered (`fd-core/src/ported.rs`, its section), the stomp's caller, and the
@@ -44,11 +47,9 @@ const T24: [&str; 14] = [
     "h0_2e0e",
 ];
 
-/// T24's routines no enemy case reaches, each with why and the task whose cases do.
-const NOT_REACHED: [(&str, &str); 1] = [
-    // Kind 2 stepping right: both of its turns on these routes come after the race (T75).
-    ("h0_3222", "T77"),
-];
+/// T24's routines no enemy case reaches, each with why and the task whose cases do. None since the
+/// cases run their whole scripts (T75): kind 2 steps right (`h0_3222`) past the first race.
+const NOT_REACHED: [(&str, &str); 0] = [];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -110,11 +111,9 @@ fn creatures_match_the_original_on_every_pass() {
         ]) {
             assert!(case.vars.iter().any(|v| v == var), "{name}: {var}");
         }
-        // Only the latch T75 hands over is set aside, and it hid something.
-        for (e, n) in &v.excluded {
-            assert_eq!(e.task, "T75", "{name}: {}", e.what);
-            assert!(*n > 0, "{name}: {} hid nothing", e.what);
-        }
+        // Nothing is set aside, and the runner handed the engine cuts (T74, T75).
+        assert!(v.excluded.is_empty(), "{name}: {v}");
+        assert!(v.edge_cuts > 0, "{name}: {v}");
     }
     assert!(
         verdicts.iter().any(|(c, _)| c.compare.picture),
@@ -185,6 +184,9 @@ impl Engine for Watched {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        Engine::foreground_cut(&mut self.game, at);
+    }
 }
 
 /// A BCD score as a number.
@@ -227,7 +229,7 @@ fn a_stomp_scores_and_three_contacts_cost_a_life() {
         }
     }
     assert!(stomps >= 1, "no stomp");
-    assert_eq!(lives_lost, 2);
+    assert_eq!(lives_lost, 6);
 }
 
 /// Kind 5 walking left a pixel further each step in the program the engine reads: `enemy-contact`
@@ -248,6 +250,146 @@ fn a_mutated_walk_table_fails_on_a_creature() {
         .unwrap_or_else(|e| panic!("{e}"));
     assert!(
         matches!(&v.outcome, Outcome::Differs { var, .. } if var.starts_with("creature_slots")),
+        "{v}"
+    );
+}
+
+/// What a test does to the measured cuts on their way to the engine.
+#[derive(Clone, Copy, PartialEq)]
+enum Change {
+    /// Handed as measured.
+    Measured,
+    /// The scan's place left out of each cut: the latches' half kept (T74), no creature waits.
+    NoScan,
+    /// A pass whose foreground starts a creature, measured as not cut, said to have cut the scan.
+    LateUnmeasured,
+}
+
+/// fd-core's game with the measured cuts changed on their way to it.
+struct Cuts {
+    game: Game,
+    change: Change,
+    /// The creatures waiting after each pass, counted.
+    waited: u32,
+    /// The waiting creatures a slot took after their pass, and those of them whose object map
+    /// cell was then cleared.
+    taken: u32,
+    cleared: u32,
+}
+
+impl Transplant for Cuts {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.game.transplant(mem);
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl Engine for Cuts {
+    fn pass(&mut self, input: FrameInput) {
+        // The step's foreground starts the creatures the last pass left waiting, before anything
+        // else changes the slots: one finding a slot free has its cell cleared (the scan's
+        // `clr.b (a2)`, `h0+$b1a`), or the next redraw over the cell starts it again.
+        let s = self.game.state();
+        let free = s.edges.creatures.active.iter().filter(|&&f| f == 0).count();
+        let cells: Vec<usize> = s
+            .edges
+            .deferred
+            .iter()
+            .filter_map(|d| match d {
+                Deferred::Creature { cell, .. } => Some((cell - OBJECT_MAP) as usize),
+                Deferred::Cell(_) => None,
+            })
+            .take(free)
+            .collect();
+        self.game.step(input);
+        self.taken += cells.len() as u32;
+        let map = &self.game.state().object_map;
+        self.cleared += cells.iter().filter(|&&c| map[c] == 0).count() as u32;
+        let waiting = &self.game.state().edges.deferred;
+        self.waited += waiting
+            .iter()
+            .filter(|d| matches!(d, Deferred::Creature { .. }))
+            .count() as u32;
+    }
+    fn picture(&self) -> Option<Picture> {
+        None
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.game.take_events()
+    }
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        let at = match self.change {
+            Change::Measured => at,
+            Change::NoScan => at.map(|c| EdgesCut {
+                defer_from: None,
+                ..c
+            }),
+            Change::LateUnmeasured => {
+                // Whether the foreground before this pass starts a creature, on a copy.
+                let mut g = self.game.clone();
+                let before = g.state().edges.creatures.active;
+                g.foreground();
+                if at.is_none() && g.state().edges.creatures.active != before {
+                    Some(EdgesCut {
+                        next: 4,
+                        defer_from: Some(0),
+                    })
+                } else {
+                    at
+                }
+            }
+        };
+        Engine::foreground_cut(&mut self.game, at);
+    }
+}
+
+/// `enemy-hop`'s first 200 steps, state only: W1-1:27,2's hopper starts at pass 84 from a redraw no
+/// pass cut, and pass 93 cuts the redraw that starts the next creature.
+fn with_cuts(change: Change) -> (Verdict, Cuts) {
+    let mut case = load("enemy-hop");
+    case.frames = 200;
+    case.compare.picture = false;
+    let mut c = Cuts {
+        game: Game::new(data(), Start::Level1),
+        change,
+        waited: 0,
+        taken: 0,
+        cleared: 0,
+    };
+    let v = run_with(&case, &mut c, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    (v, c)
+}
+
+/// A creature start waits for the next pass exactly where the original's pass was measured to cut
+/// the scan before it (T75). Handed the cuts as measured, a creature waits and the engine agrees
+/// through the race, each waiting creature's cell cleared once a slot takes it. Without the scan's
+/// place none waits, and the engine has the creature a pass
+/// before the original (pass 93). Told of a cut scan where none was measured, the engine starts
+/// the hopper a pass after the original (pass 84).
+#[test]
+fn a_creature_start_waits_only_where_the_measured_cut_says() {
+    let (v, c) = with_cuts(Change::Measured);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(c.waited > 0);
+    assert!(c.taken > 0);
+    assert_eq!(c.cleared, c.taken);
+
+    let (v, c) = with_cuts(Change::NoScan);
+    assert_eq!(c.waited, 0);
+    assert!(
+        matches!(&v.outcome, Outcome::Differs { pass: 93, var, .. } if var.starts_with("creature_")),
+        "{v}"
+    );
+
+    let (v, c) = with_cuts(Change::LateUnmeasured);
+    assert!(c.waited > 0);
+    assert!(
+        matches!(
+            &v.outcome,
+            Outcome::Differs { pass: 84, var, engine: 0, oracle: 0xff, .. } if var.starts_with("creature_active")
+        ),
         "{v}"
     );
 }

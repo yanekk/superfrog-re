@@ -226,8 +226,8 @@ are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` an
 
 ## Freezing objects (DESIGN §2.2)
 
-`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns), the one
-entry left since T22 removed taking and the bonus blits and T47 `h0_6882` and `h0_24ce`. T21 also
+`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns; T79 removes
+it), the one entry left since T22 removed taking and the bonus blits and T47 `h0_6882` and `h0_24ce`. T21 also
 froze `h0_6882` (no animated cell, so no coin, water or block drawn and no block writes
 `collision_map`), the four bonus blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no
 spring), and measured: with all of them frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
@@ -235,10 +235,40 @@ ends where it does on an empty map. Left running: the per-pass creature loop ove
 `char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
 
 Creatures run live in every case since T46 (`thaw = ["h0_681c"]`, or no freeze), held by
-`fd-conform/tests/enemy_cases.rs`; `h0_681c`'s entry stays for T75 only. Measured (T46): a pass made
-longer by drawn creatures can cut `main_loop`'s edge redraw (interrupted in `h0_3ac2`) before its scan
-reaches a creature cell, so the original starts that creature a pass after the engine and it stays a
-pass behind. Eight cases meet it and freeze it on both sides (the engine starting none, the cell kept).
+`fd-conform/tests/enemy_cases.rs`. Measured (T46): a pass made longer by drawn creatures can cut
+`main_loop`'s edge redraw (interrupted in `h0_3ac2`) before its scan reaches a creature cell, so the
+original starts that creature after the pass, a pass later than an engine that runs the redraw whole,
+and it stays a pass behind.
+
+### A creature start the next pass cuts (T75, measured 2026-11-09)
+
+The engine models no sub-frame timing (DESIGN §2.1), so the runner hands it the cut, as for the
+latches and the animated cells (T74; docs/09, "Every cut, measured"). `fd_conform::edges_cut` reads
+where the pass took the foreground; inside a redraw's scan the cell it stood at is `a2`, and a start
+still in the scan's creature branch (`h0+$abc`, `$d98`, `$10fc`, `$1444` to each `bsr.w h0_681c`) or
+in `h0_681c` and `h0_6852` short of the slot's `st.b` (`h0+$687a`) counts as not made. The engine
+(`level::main_loop_redraws`, `Cut::At`) draws the cut redraw whole but holds the scan's creature
+cells from that cell on in `Edges::deferred` with its animated cells, and starts them (`h0_681c`,
+then the cell cleared) after the pass, slots as that pass left them. Alone (the app, the planner's
+search) the engine starts every creature in its redraw: which pass is cut is the original's cycles.
+
+Measured on the original, every case comparing the five slots on every pass: without the hold the
+engine has the creature a pass early at pass 58 (`collect-ledge`, `collect-return`), 93
+(`camera-right-left`, `camera-bottom-right`, `enemy-hop`), 641 (`enemy-contact`, `contact-route`),
+571 (`death-water`, live) and 1250 (`enemy-route`, `edge-latch-route`); with it all agree to their
+ends (`enemy-route` 1 308 steps, `enemy-contact` 1 300, `camera-bottom-right` 2 165). In every one of
+those cuts the scan had not passed a creature cell, so holding the whole scan agrees too: the place
+inside a scan is proven for animated cells only (`mechanic-spring`, pass 495). A cut said where none
+was measured starts W1-1:27,2's hopper a pass late and differs at pass 84
+(`enemy_cases.rs`, `a_creature_start_waits_only_where_the_measured_cut_says`).
+
+Seven of T46's eight frozen cases run live since T75. Live, creatures hurt and are stomped, so
+`camera-bottom-right` and `collect-return` have waits and jumps added to reach their goals, and
+`collect-ledge`, `camera-right-left`, `character-edge-pit`, `contact-route` and `edge-latch-route`
+keep their inputs with the goal both sides now reach. `death-water` stays frozen: its inputs meet a
+creature before the pool. T79 moves it and the other users of `h0_681c`'s entry off the freeze
+(`mechanic-spring`, `mechanic-vanish`, `fd_plan::confirm`, `edge_latch.rs`'s frozen route,
+`object_claims.rs`).
 
 ## No dispatch tables
 
