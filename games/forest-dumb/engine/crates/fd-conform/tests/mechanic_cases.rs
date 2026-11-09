@@ -21,9 +21,9 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only tasks an exclusion of these cases may name: the creatures (T24, through `freeze.rs`) and
-/// the redraw race of a long pass (T74, owner 2026-11-09).
-const EXCLUDED_FOR: [&str; 2] = ["T24", "T74"];
+/// The only task an exclusion of these cases may name: the creatures (T24, through `freeze.rs`). The
+/// redraw race of a long pass is handed to the engine by the runner (T74).
+const EXCLUDED_FOR: [&str; 1] = ["T24"];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -114,15 +114,25 @@ fn the_mechanics_match_the_original_on_every_pass() {
             assert!(hits(v, r) > 0, "{name}: {r} never ran: {v}");
         }
     }
-    // The vanishing blocks' picture is compared whole; the springs' play area waits for T74.
-    let (vanish, spring) = (&verdicts[0].0, &verdicts[1].0);
-    assert!(vanish.exclude.iter().all(|e| e.var.is_some()), "{vanish:?}");
-    assert!(
-        spring
-            .exclude
-            .iter()
-            .any(|e| e.var.is_none() && e.rows == (0..194) && e.task == "T74")
-    );
+    // Both pictures and every edge latch are compared whole, with no exclusion (T74): the passes
+    // that came during main_loop's edge redraws were handed to the engine, pass 293 of the
+    // vanishing blocks and pass 495 of the springs among them (docs/09).
+    for (case, v) in &verdicts {
+        assert!(case.exclude.is_empty(), "{}: {:?}", case.name, case.exclude);
+        for latch in [
+            "edge_latch_down",
+            "edge_latch_up",
+            "edge_latch_left",
+            "edge_latch_right",
+        ] {
+            assert!(
+                case.vars.iter().any(|v| v == latch),
+                "{}: {latch}",
+                case.name
+            );
+        }
+        assert!(v.edge_cuts >= 10, "{}: {v}", case.name);
+    }
 }
 
 /// The case's input script, from its sync frame.

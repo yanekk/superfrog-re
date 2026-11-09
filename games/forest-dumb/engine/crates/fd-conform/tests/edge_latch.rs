@@ -1,21 +1,26 @@
-//! When the next pass cuts `main_loop`'s row redraw, on the original (plans/forest-dumb-level-1 T73;
-//! docs/09-play-measured.md, "The edge redraws and the next pass").
+//! When the next pass cuts `main_loop`'s edge redraws, on the original (plans/forest-dumb-level-1 T73,
+//! T74; docs/09-play-measured.md, "The edge redraws and the next pass").
 //!
 //! The redraws' blits wait for the raster to be on lines 103 to 230 (`h0_3ac2`), and the next pass
 //! comes at line 233. A row's 23 tiles always fit; its bobs, about 5 lines each, decide whether the
 //! row's redraw returns to `main_loop` before that pass. When it does not, the latches after it in
-//! `main_loop`'s order (left, right) are still set during the pass. The engine stops its redraw half
-//! after a row of `ROW_BOBS_CUT` bobs or more (`fd_core::level::main_loop_redraws`). Measured on the
-//! first 1 300 steps of T24's planner route, frozen as `fd_plan::confirm` freezes it.
+//! `main_loop`'s order (left, right) are still set during the pass. The engine alone stops its redraw
+//! half after a row of `ROW_BOBS_CUT` bobs or more (`fd_core::level::main_loop_redraws`). With the
+//! animated cells running passes are longer and cut columns too, which the cycles decide, so a case's
+//! runner hands the engine each measured cut ([`fd_conform::edges_cut`], T74). Measured on the first
+//! 1 300 steps of T24's planner route, frozen as `fd_plan::confirm` freezes it.
 
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use amiga_chips::Picture;
+use amiga_oracle::FrameInput;
 use fd_conform::{
-    Case, Inputs, Live, Outcome, engine_for, game_data, interrupted_pc, reach_case, run,
+    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, Sampler, Verdict, edges_cut,
+    engine_for, game_data, interrupted_pc, reach_case, records_edge_cuts, run, run_with,
 };
-use fd_core::level::ROW_BOBS_CUT;
-use fd_core::{HUNK_BASES, Mem, layout_var};
+use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
+use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
 
 const CASE: &str = "cases/edge-latch-route.toml";
 
@@ -58,12 +63,12 @@ fn rows_on_the_original(case: &Case) -> Vec<Row> {
         let waiting = matches!(pc, 0x3ac2..0x3ada) as u32;
         // Each tile and bob waits once; a column's bobs come after its 16 tiles, past the window.
         let bobs = waited + waiting - tiles;
-        // Spinning in `main_loop` (`$252..$35c`) or `h0_6a96`'s compares: the redraw half ended.
-        let ended = matches!(pc, 0x252..0x35c | 0x6a96..0x6ae8);
+        // The pass came inside the down or up redraw, or between their latches' tests: the row's.
+        let cut = matches!(edges_cut(&am), Some(EdgesCut { next: 1 | 2, .. }));
         rows.push(Row {
             pass: Live(&am).value(irq),
             bobs,
-            cut: tiles == 23 && !ended,
+            cut: tiles == 23 && cut,
         });
     }
     rows
@@ -84,14 +89,14 @@ fn cuts_on_the_engine(case: &Case) -> Vec<u32> {
     cuts
 }
 
-/// Measured 2026-11-09: rows of 9 bobs or more were cut, rows of 7 or fewer were not, and of the
-/// two rows of 8 one was cut (pass 893, still in its scan at `h0+$ca6`) and one was not (pass 899):
-/// where the 8th bob's blit ends against line 233 decides. The engine cuts at 8, which changes no
-/// state unless a later latch is waiting; neither of those had one. Measured with the animated cells
-/// frozen; since T47 they run, the original's passes are longer and it cuts other rows (one of no
-/// bobs at pass 328), so the rule waits for T74 to restate it (owner, 2026-11-09).
+/// Measured 2026-11-09 with the animated cells frozen (T73): rows of 9 bobs or more were cut, rows of
+/// 7 or fewer were not, and of the two rows of 8 one was cut (pass 893, still in its scan at
+/// `h0+$ca6`) and one was not (pass 899): where the 8th bob's blit ends against line 233 decides.
+/// Re-measured the same day with them running (T74): the same, but for one row of no bobs of the 142
+/// with 7 or fewer, cut in `h0_6882` (pass 328), which the scan's animated cells and a longer pass
+/// decide. The engine alone keeps cutting at 8, which changes no state unless a later latch is
+/// waiting; a case hands it the measured cut instead.
 #[test]
-#[ignore = "T74: T73's nine-bob rule was measured with the animated cells frozen; restate it with them running"]
 fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows() {
     let case = Case::load(Path::new(CASE)).unwrap();
     let (rows, engine) = std::thread::scope(|s| {
@@ -108,12 +113,16 @@ fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows(
     assert!(many.len() >= 15, "{many:?}");
     assert!(many.iter().all(|r| r.cut), "{many:?}");
     assert!(few.iter().any(|r| r.bobs >= 3), "{few:?}");
-    assert!(few.iter().all(|r| !r.cut), "{few:?}");
+    let few_cut: Vec<&&Row> = few.iter().filter(|r| r.cut).collect();
+    assert!(
+        few_cut.len() <= 1 && few_cut.iter().all(|r| r.bobs == 0),
+        "{few_cut:?}"
+    );
     assert!(
         eight.iter().any(|r| r.cut) && eight.iter().any(|r| !r.cut),
         "{eight:?}"
     );
-    // The engine stops after exactly the rows of `ROW_BOBS_CUT` bobs or more.
+    // The engine alone stops after exactly the rows of `ROW_BOBS_CUT` bobs or more.
     let expected: Vec<u32> = rows
         .iter()
         .filter(|r| r.bobs >= ROW_BOBS_CUT as u32)
@@ -127,23 +136,100 @@ fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows(
 }
 
 /// The route's first 1 300 steps on every compared variable, `edge_latch_right` included: it
-/// differed at pass 1211 before the engine modelled the cut. Since T47 runs the animated cells it is
-/// excluded, naming T74, on the 2 passes the original's longer passes leave it set (owner, 2026-11-09).
+/// differed at pass 1211 before the engine modelled the cut (T73), and on 2 more passes once the
+/// animated cells ran (T47), until the runner handed the engine each measured cut (T74).
 #[test]
 fn the_routes_first_1300_steps_agree_on_the_right_edge_latch() {
     let case = Case::load(Path::new(CASE)).unwrap();
-    let only_t74 =
-        |e: &fd_conform::Exclusion| e.var.as_deref() == Some("edge_latch_right") && e.task == "T74";
-    assert!(
-        case.exclude.len() == 1 && only_t74(&case.exclude[0]),
-        "{:?}",
-        case.exclude
-    );
+    assert!(case.exclude.is_empty(), "{:?}", case.exclude);
+    assert!(case.vars.iter().any(|v| v == "edge_latch_right"));
     let v = run(&case).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.goal_met.is_some(), "{v}");
     assert!(v.passes >= 1200, "{v}");
-    assert!(v.excluded.iter().all(|(_, n)| *n > 0), "{v}");
+    assert!(v.edge_cuts >= 20, "{v}");
+}
+
+/// The level engine with the runner's measured cut changed: dropped (the engine's own rule then
+/// decides), or handed without where the cut redraw's scan stood.
+struct Handed {
+    game: Game,
+    how: Hand,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Hand {
+    Dropped,
+    WholeScan,
+}
+
+impl Transplant for Handed {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.game.transplant(mem)
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl Engine for Handed {
+    fn pass(&mut self, input: FrameInput) {
+        self.game.step(input)
+    }
+    fn picture(&self) -> Option<Picture> {
+        Some(self.game.picture())
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.game.take_events()
+    }
+    fn freeze(&mut self) {
+        Engine::freeze(&mut self.game);
+    }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
+    }
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        match self.how {
+            Hand::Dropped => {}
+            Hand::WholeScan => self.game.cut_foreground(at.map(|c| EdgesCut {
+                defer_from: None,
+                ..c
+            })),
+        }
+    }
+}
+
+fn handed(name: &str, how: Hand) -> Verdict {
+    let case = Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap();
+    let game = Game::new(
+        game_data().unwrap_or_else(|e| panic!("{e}")),
+        fd_core::Start::Level1,
+    );
+    run_with(&case, &mut Handed { game, how }, &Options::default())
+        .unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// What the runner hands over is what the original showed, and each half of it is needed (T74):
+/// without the measured cut `mechanic-vanish` differs on `edge_latch_down` where pass 293 came
+/// inside the right column's redraw and `main_loop`'s `frame_flag` clear swallowed its down latch;
+/// with the cut but the right column's scan run whole before pass 495, `mechanic-spring`'s coins
+/// join other animated-cell lists and its picture differs (frame 6845).
+#[test]
+fn the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped() {
+    let (dropped, whole) = std::thread::scope(|s| {
+        let d = s.spawn(|| handed("mechanic-vanish", Hand::Dropped));
+        let w = s.spawn(|| handed("mechanic-spring", Hand::WholeScan));
+        (d.join().unwrap(), w.join().unwrap())
+    });
+    assert!(
+        matches!(&dropped.outcome, Outcome::Differs { var, pass, .. }
+            if var == "edge_latch_down" && *pass < 300),
+        "{dropped}"
+    );
+    assert!(
+        matches!(&whole.outcome, Outcome::PictureDiffers { frame, .. } if *frame < 6900),
+        "{whole}"
+    );
 }
 
 /// Resuming after a cut row runs every latch after it in the order and none before it, `frame_flag`
@@ -151,7 +237,7 @@ fn the_routes_first_1300_steps_agree_on_the_right_edge_latch() {
 /// left latch waiting, or a cut down row's up latch (T73 review: resuming one latch late passed).
 #[test]
 fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
-    use fd_core::level::{camera::Dir, main_loop_redraws, redraw::LevelImage};
+    use fd_core::level::{Cut, camera::Dir, main_loop_redraws, redraw::LevelImage};
     let case = Case::load(Path::new(CASE)).unwrap();
     let inputs = Inputs::load(&case).unwrap();
     let data = game_data().unwrap_or_else(|e| panic!("{e}"));
@@ -177,7 +263,14 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         // A row resumed into can be cut again; each call is the foreground after one more pass.
         let mut plane = g.plane().clone();
         for _ in 0..order.len() {
-            main_loop_redraws(&mut s, &mut plane, &image, &mut Vec::new(), false);
+            main_loop_redraws(
+                &mut s,
+                &mut plane,
+                &image,
+                &mut Vec::new(),
+                Cut::Rows,
+                false,
+            );
             if s.edges_resume.is_none() {
                 break;
             }
@@ -189,4 +282,87 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         }
         assert_eq!((s.frame_flag, s.edges_resume), (0, None));
     }
+}
+
+/// The original reached for `case`, twice: as it runs alone, and as [`run`] runs it, counting
+/// `camera_update` and watching pass ends (both proven to change nothing, T31) and sampling the
+/// steps [`Sampler`] picks, or every step when `every`. Steps both a frame at a time, up to `steps`,
+/// and returns the first step whose chip and slow RAM, picture or CPU registers differ, and how
+/// many steps were sampled.
+fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, u32) {
+    let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
+    let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    let mut seen = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    for am in [&mut alone, &mut seen] {
+        am.watch_pcs(&[Sampler::CAMERA_UPDATE]);
+        am.watch_write(Some(PASS_END));
+    }
+    let mut sampler = Sampler::default();
+    let (mut profiling, mut sampled) = (false, 0);
+    for step in 0..steps.min(case.frames) {
+        let sample = every || sampler.samples(&seen, case);
+        if sample != profiling {
+            seen.set_profile(sample);
+            profiling = sample;
+        }
+        sampled += sample as u32;
+        let input = inputs.at(case.sync_frame + step);
+        let a = alone.step(input).unwrap_or_else(|e| panic!("{e}"));
+        let s = seen.step(input).unwrap_or_else(|e| panic!("{e}"));
+        if a.picture != s.picture || alone.cpu() != seen.cpu() || alone.memory() != seen.memory() {
+            return (Some(step), sampled);
+        }
+        sampler.stepped(&seen);
+    }
+    (None, sampled)
+}
+
+/// A measurement that changes the original is not one (owner, 2026-11-09): in every case where the
+/// runner samples lines to read the edge cut (`records_edge_cuts`, creature starts frozen), the
+/// original sampled as the runner samples it is the original alone, every frame, in chip and slow
+/// RAM, picture and CPU registers. With creatures live it is not (next test), so those cases are not
+/// sampled for it (T78 makes the sampling observe only).
+#[test]
+fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
+    let dir = fd_conform::conform_dir().join("cases");
+    let mut cases: Vec<Case> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .map(|p| Case::load(&p).unwrap_or_else(|e| panic!("{e}")))
+        .filter(|c| c.is_level() && records_edge_cuts(c))
+        .collect();
+    cases.sort_by(|a, b| a.name.cmp(&b.name));
+    let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
+    for n in [
+        "mechanic-spring",
+        "mechanic-vanish",
+        "edge-latch-route",
+        "death-water",
+    ] {
+        assert!(names.contains(&n), "{names:?}");
+    }
+    assert!(!names.iter().any(|n| n.starts_with("enemy-")), "{names:?}");
+    let runs: Vec<(String, (Option<u32>, u32))> = std::thread::scope(|s| {
+        let hs: Vec<_> = cases
+            .iter()
+            .map(|c| s.spawn(move || (c.name.clone(), sampled_against_alone(c, u32::MAX, false))))
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for (name, (differs, sampled)) in &runs {
+        assert_eq!(*differs, None, "{name}: sampling changed the original");
+        assert!(*sampled > 0, "{name}: nothing sampled");
+    }
+}
+
+/// The check above has teeth: with creatures live, sampling every step changes the original
+/// (`enemy-contact`: a pass ends a step later from step 377, T74 review), so the runner hands no
+/// measured edge cut there.
+#[test]
+fn sampling_changes_the_original_where_creatures_are_live() {
+    let case = Case::load(Path::new("cases/enemy-contact.toml")).unwrap();
+    assert!(!records_edge_cuts(&case));
+    let (differs, _) = sampled_against_alone(&case, 420, true);
+    assert!(differs.is_some_and(|s| s < 420), "{differs:?}");
 }

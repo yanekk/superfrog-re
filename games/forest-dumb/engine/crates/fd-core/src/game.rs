@@ -114,6 +114,11 @@ pub struct Game {
     /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
     /// (`fd-conform/tests/mechanic_routines.rs`).
     frozen: Option<Vec<u32>>,
+    /// `Some` once a conformance case hands the engine where the original's next pass cut
+    /// `main_loop`'s redraw half ([`Game::cut_foreground`], T74): the cut for the next step's
+    /// foreground. `None` alone, where the engine's own rule decides (`level::Cut::Rows`). Left out
+    /// of equality, like `frozen`.
+    foreground_cut: Option<Option<level::EdgesCut>>,
 }
 
 impl Game {
@@ -132,6 +137,7 @@ impl Game {
                     objects: &mut state.object_map,
                     collision: &mut plane,
                     blits: &mut blits,
+                    defer_from: None,
                     creature_starts_frozen: false,
                 });
                 // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
@@ -166,6 +172,7 @@ impl Game {
                     blits,
                     late: None,
                     frozen: None,
+                    foreground_cut: None,
                 }
             }
         }
@@ -303,14 +310,25 @@ impl Game {
         frozen.len() < before
     }
 
+    /// For a conformance case (`fd-conform`'s `Engine::foreground_cut`, and nothing else): where the
+    /// original's pass that the next [`Game::step`] runs cut `main_loop`'s redraw half, measured on
+    /// the original (`level::Cut::At`); `None` when it did not. From the first call on, the engine's
+    /// own rule (`level::ROW_BOBS_CUT`) is off: the original's cuts depend on the cycles each pass
+    /// took, which the engine does not model (DESIGN §2.1; T74, docs/09).
+    pub fn cut_foreground(&mut self, at: Option<level::EdgesCut>) {
+        self.foreground_cut = Some(at);
+    }
+
     fn restart(&mut self) {
-        let (events, frozen) = (
+        let (events, frozen, cut) = (
             std::mem::take(&mut self.events),
             std::mem::take(&mut self.frozen),
+            self.foreground_cut,
         );
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
         self.frozen = frozen;
+        self.foreground_cut = cut;
         self.events.push(Event::Restart);
     }
 
@@ -342,12 +360,17 @@ impl Game {
                 self.status_redraw(&mut status);
                 self.display.status = status;
                 let from = self.blits.len();
+                let cut = match self.foreground_cut {
+                    Some(at) => level::Cut::At(at),
+                    None => level::Cut::Rows,
+                };
                 let frozen = self.frozen.as_ref().is_some_and(|f| f.contains(&0x681c));
                 level::main_loop_redraws(
                     &mut self.state,
                     &mut self.plane,
                     &self.image,
                     &mut self.blits,
+                    cut,
                     frozen,
                 );
                 let data = &self.data.display;
@@ -578,6 +601,7 @@ impl Game {
         let s = &mut self.state;
         s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
         s.edges_resume = None;
+        s.edges.deferred.clear();
         // `h3+$fa50` less BEFORE: the map, the tail the probes reach and the slack the redraws write.
         let kept = self.plane.kept_mut();
         kept.copy_from_slice(&mem.read(3, collision::MAP - BEFORE, kept.len()));

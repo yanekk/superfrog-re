@@ -6,7 +6,8 @@
 //!
 //! Each case stops before the first pass where an edge redraw the next pass cut short starts a
 //! creature a pass later in the original than in the engine (measured: the interrupted PC in
-//! `h0_3ac2`); T75 models that race. `enemy-route` sets `edge_latch_right` aside for T74.
+//! `h0_3ac2`); T75 models that race. `enemy-route` sets `edge_latch_right` aside for T75: with
+//! creatures live the runner hands no measured edge cut (`fd_conform::records_edge_cuts`, T74, T78).
 
 use std::path::Path;
 use std::sync::Arc;
@@ -108,9 +109,9 @@ fn creatures_match_the_original_on_every_pass() {
         ]) {
             assert!(case.vars.iter().any(|v| v == var), "{name}: {var}");
         }
-        // Only T74's latch is set aside, and it hid something.
+        // Only the latch T75 hands over is set aside, and it hid something.
         for (e, n) in &v.excluded {
-            assert_eq!(e.task, "T74", "{name}: {}", e.what);
+            assert_eq!(e.task, "T75", "{name}: {}", e.what);
             assert!(*n > 0, "{name}: {} hid nothing", e.what);
         }
     }

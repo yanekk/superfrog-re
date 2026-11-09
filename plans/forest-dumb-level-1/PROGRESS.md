@@ -98,6 +98,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
+| T78 | oracle-recording-observes-only | T74; blocks T75 | ⬜ | |
 
 **Review queue:** *(empty)*
 

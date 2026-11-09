@@ -293,6 +293,9 @@ impl Engine for Watched {
     fn game_over(&self) -> bool {
         matches!(self.game.scene(), Scene::GameOver(_))
     }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        self.game.cut_foreground(at);
+    }
 }
 
 /// The slide drops into the spike pit; three passes of contact cost a life at frame 6524, then the
@@ -496,6 +499,9 @@ impl Engine for Thawed {
     }
     fn events(&mut self) -> Vec<Event> {
         self.0.events()
+    }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        self.0.foreground_cut(at);
     }
 }
 

@@ -184,7 +184,8 @@ original's pass grows with the animated cells' blits and more pass ends go unsee
 an edge redraw, has its `frame_flag` cleared by `main_loop` when that redraw ends, so its latch waits a
 pass: `edge_latch_down` differs for one pass (`camera-bottom-right` pass 495, `mechanic-vanish` 293),
 and on `mechanic-spring` the row is scanned a pass late, so its coins join other animated-cell lists
-and spin out of step. Not modelled; excluded naming T74.
+and spin out of step. Since T74 the case runner measures where each pass cut `main_loop`'s redraws and
+hands it to the engine (docs/09, "The edge redraws and the next pass"); no exclusion is left.
 
 **Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
 porting. All three run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot cut

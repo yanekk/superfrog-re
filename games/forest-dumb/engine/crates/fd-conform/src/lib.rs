@@ -28,10 +28,12 @@ use amiga_chips::{Picture, to_rgb12};
 use amiga_conform::compare::{PictureClass, PictureJudge, classify, picture_except};
 use amiga_conform::{Mode, Tolerance, report, script};
 use amiga_oracle::{
-    Amiga, AmigaMemory, FrameInput, OracleConfig, Rgb12Frame, SLOW_BASE, kickstart_path,
+    Amiga, AmigaMemory, FrameInput, LineSample, OracleConfig, Rgb12Frame, SLOW_BASE, kickstart_path,
 };
 use std::sync::Arc;
 
+use fd_core::level::EdgesCut;
+use fd_core::level::redraw::{OBJECT_MAP, TILE_MAP};
 use fd_core::{
     Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, Width,
     layout_var,
@@ -78,11 +80,19 @@ const AFTER_GAME_FRAME: u32 = 0x1efa;
 /// then SR and PC), read off the first line sample from line 233, where the interrupt comes, that
 /// holds [`AFTER_GAME_FRAME`]. Needs [`Amiga::set_profile`] on for the step; `None` without samples.
 pub fn interrupted_pc(am: &Amiga) -> Option<u32> {
+    interrupt(&am.line_samples()).map(|(_, pc, _)| pc)
+}
+
+/// The first line sample from line 233 inside a pass ([`interrupted_pc`]): its index in `samples`,
+/// the foreground's PC the interrupt took (a hunk 0 offset) and its registers d0-d7/a0-a6 as
+/// `level3_handler`'s `movem.l` saved them.
+fn interrupt(samples: &[LineSample]) -> Option<(usize, u32, [u32; 15])> {
     let ret = HUNK_BASES[0] + AFTER_GAME_FRAME;
-    am.line_samples()
+    samples
         .iter()
-        .filter(|s| s.vpos >= 233)
-        .find_map(|s| {
+        .enumerate()
+        .filter(|(_, s)| s.vpos >= 233)
+        .find_map(|(k, s)| {
             let i = s.stack.iter().position(|&l| l == ret)?;
             let word = |b: usize| -> Option<u32> {
                 let l = *s.stack.get(b / 4)?;
@@ -90,8 +100,161 @@ pub fn interrupted_pc(am: &Amiga) -> Option<u32> {
             };
             let at = 4 * (i + 1) + 15 * 4 + 2;
             let pc = (word(at)? << 16) | word(at + 2)?;
-            Some(pc.wrapping_sub(HUNK_BASES[0]))
+            let regs = s.stack.get(i + 1..i + 16)?.try_into().ok()?;
+            Some((k, pc.wrapping_sub(HUNK_BASES[0]), regs))
         })
+}
+
+/// The edge latches right, left, up, down and `frame_flag` (`h0+$5196` to `$519f`), where the
+/// original runs.
+const FLAG_AND_LATCHES: u32 = HUNK_BASES[0] + 0x5196;
+
+/// `camera_update` (`h0+$4d7e`), `game_frame`'s third call: the one that sets the edge latches.
+const CAMERA_UPDATE: u32 = 0x4d7e;
+
+/// Whether the runner reads, on the original, where each pass cut `main_loop`'s edge redraws and
+/// hands it to the engine (T74): only where the case freezes creature starts (`h0_681c`). Reading
+/// it samples the lines of a step ([`Amiga::set_profile`]), which with creatures live changes the
+/// original's run (a pass ends a step later on `enemy-route`, T74 review), so a measurement there
+/// is not one; with them frozen `tests/edge_latch.rs` holds the original identical every frame
+/// with and without it. Elsewhere the engine keeps its own rule (`ROW_BOBS_CUT`) until T78.
+pub fn records_edge_cuts(case: &Case) -> bool {
+    case.freeze
+        && freeze::for_case(&case.thaw)
+            .iter()
+            .any(|f| (f.hunk, f.offset) == (0, 0x681c))
+}
+
+/// Which steps the runner samples line by line, as [`run_with`] decides it, shared with the check
+/// that the sampling leaves the original unchanged. A step is sampled where it starts pass
+/// `32k + 1`, whose cut decides the status bar (T71), and, when [`records_edge_cuts`], where its
+/// pass may find the foreground in the edge redraws (T74): `frame_flag` or a latch set at the
+/// step's start (a crossing scroll sets both), or the last pass still running short of
+/// `camera_update`, which latches; else, at most, the last pass's end leaves four clear latches to
+/// test, a few dozen cycles, before it spins. The oracle must count
+/// [`Sampler::CAMERA_UPDATE`] and watch [`PASS_END`].
+#[derive(Debug, Clone, Default)]
+pub struct Sampler {
+    camera_ran: bool,
+    last_end: Option<u32>,
+}
+
+impl Sampler {
+    /// `camera_update`'s address, for [`Amiga::watch_pcs`].
+    pub const CAMERA_UPDATE: u32 = HUNK_BASES[0] + CAMERA_UPDATE;
+
+    /// Whether to sample the next step of `case` on `am`.
+    pub fn samples(&self, am: &Amiga, case: &Case) -> bool {
+        let irq = layout_var("irq_count").expect("irq_count in LAYOUT");
+        let started = Live(am).value(irq);
+        let running = self.last_end.is_none_or(|last| started > last);
+        let busy = records_edge_cuts(case)
+            && ((running && !self.camera_ran)
+                || am.peek(FLAG_AND_LATCHES, 10).iter().any(|&b| b != 0));
+        busy || (case.compare.picture && started.wrapping_add(1) & 31 == 1)
+    }
+
+    /// After each step: whether `camera_update` ran in it, and the last pass that ended.
+    pub fn stepped(&mut self, am: &Amiga) {
+        self.camera_ran = am
+            .pc_hits()
+            .iter()
+            .any(|&(p, n)| p == Self::CAMERA_UPDATE && n > 0);
+        if let Some(mem) = am.watched_memory() {
+            let irq = layout_var("irq_count").expect("irq_count in LAYOUT");
+            let ended = OracleMem(&mem).value(irq);
+            self.last_end = Some(self.last_end.map_or(ended, |l| l.max(ended)));
+        }
+    }
+}
+
+/// `main_loop`'s `bsr.w redraw_edge_a` to `_d` return here (`h0+$2da`, `$302`, `$32a`, `$352`): one
+/// on the foreground's stack means that redraw was running, and the latches up to it were tested.
+const AFTER_REDRAW: [u32; 4] = [0x2da, 0x302, 0x32a, 0x352];
+
+/// Each redraw's object scan (`redraw_edge_a` to `_d`): the loop's top (`lea.l h0+$cb38, a2`, then
+/// `d5` and `d6` added), where a found cell's compares start, and the `bra.w` after its
+/// `bsr.w h0_6882`. From the compares to that `bra.w` the cell's add has not been made.
+const SCANS: [(u32, u32, u32); 4] = [
+    (0x98a, 0x9a8, 0xa02),
+    (0xc6c, 0xc88, 0xce0),
+    (0xfd8, 0xff4, 0x1048),
+    (0x1318, 0x1334, 0x138c),
+];
+
+/// `h0_6882`, and its `movem.l` after the `st.b` that marks the new cell used.
+const ADD_CELL: Range<u32> = 0x6882..0x69a0;
+
+/// Where the last step's pass cut `main_loop`'s redraw half (`h0+$2b2` to `$358`), as
+/// [`fd_core::level::Cut::At`] takes it; `None` when the interrupt found the foreground elsewhere
+/// (T74). Needs [`Amiga::set_profile`] on for the step.
+///
+/// The interrupted PC decides inside `main_loop`. Inside a redraw it is often in a routine many
+/// callers share, and the exception frame is on the supervisor stack while the foreground runs on
+/// the user stack, so the redraw is named by `main_loop`'s return address on the user stack of the
+/// last line sample before the interrupt taken in user mode. Its scan's position is the foreground's
+/// `a2`, which no routine the scan calls writes ([`edges_cut_at`]).
+pub fn edges_cut(am: &Amiga) -> Option<EdgesCut> {
+    let samples = am.line_samples();
+    let (k, pc, regs) = interrupt(&samples)?;
+    let returns: Vec<u32> = samples[..k]
+        .iter()
+        .rev()
+        .find(|s| s.sr & 0x2000 == 0)
+        .map(|s| {
+            s.stack
+                .iter()
+                .map(|l| l.wrapping_sub(HUNK_BASES[0]))
+                .collect()
+        })
+        .unwrap_or_default();
+    edges_cut_at(pc, &returns, &regs)
+}
+
+/// [`edges_cut`] from the interrupted PC, the foreground's stack (longs, as hunk 0 offsets) and its
+/// registers d0-d7/a0-a6. `main_loop`'s `clr.w` of each latch (`h0+$2d0`, `$2f8`, `$320`, `$348`)
+/// and of `frame_flag` (`$352`) mark the bounds: a PC at one has not run it yet. Below `$2b2` the
+/// loop may be spinning with `frame_flag` clear, or in `h0_6a96`'s status redraw before the redraw
+/// half, which this does not tell apart: not a cut (the redraw half then runs whole after the pass,
+/// never measured to change a latch).
+///
+/// In a redraw, its scan has not started while `a2` is outside the object map (the tile and shape
+/// loops keep table pointers there); at the loop's top the cell is `h0+$cb38 + d5 + d6`, not yet
+/// looked at; elsewhere it is `a2`, its add made unless the PC is between its compares and the
+/// return from `h0_6882`'s `st.b`.
+pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesCut> {
+    let next = match pc {
+        0x2b2..=0x2d0 => 0,
+        0x2d2..=0x2f8 => 1,
+        0x2fa..=0x320 => 2,
+        0x322..=0x348 => 3,
+        0x34a..=0x352 => 4,
+        // The rest of `main_loop`, and the status bar's redraw and draw routines (T71).
+        0x252..0x35c | 0x6a96..0x6da0 => return None,
+        _ => {
+            let r = returns
+                .iter()
+                .find_map(|r| AFTER_REDRAW.iter().position(|a| a == r))?;
+            let (top, compares, added) = SCANS[r];
+            let (d5, d6, a2) = (regs[5], regs[6], regs[10].wrapping_sub(HUNK_BASES[0]));
+            let defer_from = if (top..top + 0xc).contains(&pc) {
+                OBJECT_MAP.wrapping_add(d5).wrapping_add(d6)
+            } else if (OBJECT_MAP..TILE_MAP).contains(&a2) {
+                let pending = (compares..added).contains(&pc) || ADD_CELL.contains(&pc);
+                a2 + !pending as u32
+            } else {
+                0
+            };
+            return Some(EdgesCut {
+                next: r as u8 + 1,
+                defer_from: Some(defer_from),
+            });
+        }
+    };
+    Some(EdgesCut {
+        next,
+        defer_from: None,
+    })
 }
 
 /// How many of `h0_6a96`'s four reads (countdown at `h0+$6a96`, lives `$6aaa`, score `$6abe`, items
@@ -206,6 +369,11 @@ pub trait Engine: Transplant {
     fn cut_redraw(&self, _cut: u8) -> Option<Picture> {
         None
     }
+    /// Before each [`Engine::pass`]: where the original's same pass cut `main_loop`'s redraw half
+    /// ([`edges_cut`]; `None`: it did not, or no line sample showed it), for the engine to stop
+    /// its own there (`Game::cut_foreground`, T74). A wrapper of [`Game`] forwards it; one that
+    /// does not keeps the engine's own rule.
+    fn foreground_cut(&mut self, _at: Option<EdgesCut>) {}
 }
 
 /// A new game at level 1 as `case` runs it: frozen ([`Engine::freeze`]) when the case freezes the
@@ -259,6 +427,10 @@ impl Engine for Game {
 
     fn cut_redraw(&self, cut: u8) -> Option<Picture> {
         Game::cut_redraw(self, cut)
+    }
+
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        self.cut_foreground(at);
     }
 }
 
@@ -353,6 +525,9 @@ pub struct Verdict {
     /// Frames whose status bar matched the engine's [`Engine::cut_redraw`] at the cut measured on
     /// the original, not its own redraw (T71).
     pub cut_redraws: u32,
+    /// Passes that came while `main_loop`'s edge redraws were still running on the original, so
+    /// handed to the engine as cut there ([`Engine::foreground_cut`], T74).
+    pub edge_cuts: u32,
     /// Each exclusion and the frames on which its rows differed, or the passes on which its
     /// variable did.
     pub excluded: Vec<(Exclusion, u32)>,
@@ -379,6 +554,7 @@ impl Verdict {
             unseen: 0,
             tolerated: [0; 3],
             cut_redraws: 0,
+            edge_cuts: 0,
             excluded: Vec::new(),
             events: Vec::new(),
             goal_met: None,
@@ -458,6 +634,13 @@ impl fmt::Display for Verdict {
                 f,
                 "\n{} frames' status bar as main_loop's redraw cut short by the next pass shows it",
                 self.cut_redraws
+            )?;
+        }
+        if self.edge_cuts > 0 {
+            write!(
+                f,
+                "\n{} passes came during main_loop's edge redraws, handed to the engine",
+                self.edge_cuts
             )?;
         }
         for (e, n) in &self.excluded {
@@ -902,6 +1085,10 @@ pub fn run_inputs(
         [GAME_OVER_SCREEN, HIGH_SCORES, NEXT_WORLD].map(|(h, o)| HUNK_BASES[h as usize] + o);
     let world = layout_var("world_index").ok_or("no world_index in LAYOUT")?;
     pcs.extend(scene_pcs);
+    if !pcs.contains(&Sampler::CAMERA_UPDATE) {
+        pcs.push(Sampler::CAMERA_UPDATE);
+    }
+    let records = records_edge_cuts(case);
     let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
 
@@ -933,29 +1120,37 @@ pub fn run_inputs(
     let mut cut_drawn: Vec<(u32, Vec<Picture>)> = Vec::new();
     // Pass `32k + 1` and how many of `h0_6a96`'s reads the redraw it cut made before it.
     let mut cut: Option<(u32, Range<u8>)> = None;
+    // Each pass and where it cut `main_loop`'s edge redraws on the original, by the pass number,
+    // from the step it started in to the step it ends in (T74).
+    let mut edges_cuts: Vec<(u32, Option<EdgesCut>)> = Vec::new();
+    // Which steps are sampled line by line ([`Sampler`]). Sampling costs about half a step again;
+    // turning it off clears the frame just drawn, so it changes before a step, never after one.
+    let mut sampler = Sampler::default();
     let mut profiling = false;
     // The last pass whose picture was compared.
     let mut shown_last: Option<u32> = None;
 
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
-        // A step starts one pass, at line 233. The one starting pass `32k + 1` is sampled line by
-        // line to find where it took the foreground (T71); sampling leaves the run unchanged.
-        // Turning it off clears the frame just drawn, so it goes off before the next step instead.
+        // A step starts one pass, at line 233.
         let started = Live(&am).value(irq);
-        let sample = case.compare.picture && started.wrapping_add(1) & 31 == 1;
+        let sample = sampler.samples(&am, case);
         if sample != profiling {
             am.set_profile(sample);
             profiling = sample;
         }
         am.step(input).map_err(|e| e.to_string())?;
-        if sample {
-            let now = Live(&am).value(irq);
-            if now == started.wrapping_add(1) {
+        let now = Live(&am).value(irq);
+        if sample && now == started.wrapping_add(1) {
+            if case.compare.picture && now & 31 == 1 {
                 cut = interrupted_pc(&am).and_then(redraw_cut).map(|r| (now, r));
+            }
+            if records {
+                edges_cuts.push((now, edges_cut(&am)));
             }
         }
         let frame = am.frame();
+        sampler.stepped(&am);
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
         if let Some(mem) = am.watched_memory() {
@@ -981,6 +1176,14 @@ pub fn run_inputs(
                         let pass_input = read.take(n).ok_or_else(|| {
                             format!("pass {n} ended on the original but never read its input")
                         })?;
+                        // A pass started in a step with another (none sampled) is taken as not cut.
+                        // Not recorded, nothing is handed: the engine keeps its own rule.
+                        if records {
+                            let edges = edges_cuts.iter().find(|(p, _)| *p == n).and_then(|c| c.1);
+                            edges_cuts.retain(|(p, _)| *p > n);
+                            verdict.edge_cuts += edges.is_some() as u32;
+                            engine.foreground_cut(edges);
+                        }
                         engine.pass(pass_input);
                         passes_run += 1;
                         if engine.level_end() {
@@ -1365,5 +1568,55 @@ mod tests {
         let mem = OracleMem(&m);
         assert_eq!(mem.value(layout_var("char_x").unwrap()), 0x1234);
         assert_eq!(mem.value(layout_var("mt_counter").unwrap()), 5);
+    }
+
+    /// Where `main_loop`'s redraw half was when the pass came, read as T74 measured it: the PC
+    /// within `main_loop` itself, else the redraw named by its return address on the foreground's
+    /// stack and the scan's cell from `a2` (or `d5 + d6` at the loop's top).
+    #[test]
+    fn a_pass_inside_the_edge_redraws_names_the_next_latch_and_the_scans_cell() {
+        let h = |o: u32| HUNK_BASES[0] + o;
+        let mut regs = [0u32; 15];
+        let at = |pc, returns: &[u32], regs: &[u32; 15]| edges_cut_at(pc, returns, regs);
+        let cut = |next, defer_from| Some(EdgesCut { next, defer_from });
+        // Spinning, or in the status bar's redraw before the redraw half: no cut.
+        assert_eq!(at(0x2a6, &[0x352], &regs), None);
+        assert_eq!(at(0x6a9c, &[0x352], &regs), None);
+        assert_eq!(at(0x358, &[], &regs), None);
+        // In `main_loop` between the tests: a PC at a `clr.w` has not run it.
+        assert_eq!(at(0x2b2, &[], &regs), cut(0, None));
+        assert_eq!(at(0x2d0, &[], &regs), cut(0, None));
+        assert_eq!(at(0x2d6, &[], &regs), cut(1, None));
+        assert_eq!(at(0x348, &[], &regs), cut(3, None));
+        assert_eq!(at(0x352, &[], &regs), cut(4, None));
+        // In a redraw's tiles: `a2` holds a band table, so its scan has not started.
+        regs[10] = h(0x1496);
+        assert_eq!(at(0x774, &[0x7c6, 0x352], &regs), cut(4, Some(0)));
+        // Pass 495 of `mechanic-spring`: back from `h0_6882`'s `st.b`, the cell's add made.
+        regs[10] = h(OBJECT_MAP + 0x3005);
+        assert_eq!(
+            at(0x69a4, &[0x138c, 0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3006))
+        );
+        // Inside `h0_6882` before it, or at the cell's compares: the cell's add comes after.
+        assert_eq!(
+            at(0x693e, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3005))
+        );
+        assert_eq!(
+            at(0x1356, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3005))
+        );
+        // A bob's blit in the down row: the row's cell is done.
+        assert_eq!(
+            at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
+            cut(1, Some(OBJECT_MAP + 0x3006))
+        );
+        // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.
+        (regs[5], regs[6]) = (0x60 * 7, 0x21);
+        assert_eq!(
+            at(0xc72, &[0x302], &regs),
+            cut(2, Some(OBJECT_MAP + 0x60 * 7 + 0x21))
+        );
     }
 }

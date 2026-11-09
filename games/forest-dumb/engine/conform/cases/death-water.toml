@@ -3,17 +3,14 @@
 # the engine does the same (T25's port). The character drops into the pool at W1-1:148,66 to 149,66 (frame
 # 7042); contact comes and goes with the water's frames, the third pass in a row costs a life (frame
 # 7062), and after the hurt frame, the hold and the blink the next one (frame 7204). Creatures stay
-# frozen. The original's pass grows with the animated cells' blits; a long pass has main_loop's
-# frame_flag clear swallow its latch, so that row is redrawn a pass late, which the engine does not
-# model (T74):
-# edge_latch_down differs on 2 passes and edge_latch_up on 1, everything else and every frame equal.
+# frozen. The original's pass grows with the animated cells' blits, so some passes cut main_loop's
+# redraws and its frame_flag clear swallows their latches: the runner hands the engine where (T74).
 # Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 571 a pass later in the
 # original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
 frames = 920
 compare = ["vars", "picture"]
-vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick"]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down"]
 goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 7221 }
 freeze = true
-exclude = [{ what = "var edge_latch_down", task = "T74" }, { what = "var edge_latch_up", task = "T74" }]

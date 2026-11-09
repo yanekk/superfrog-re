@@ -390,47 +390,90 @@ pub fn game_frame_with(
 /// blits wait for the raster to be on lines 103 to 230 (`h0_3ac2`), and the next pass comes at line
 /// 233: a row's 23 tile blits end near line 161, its first bob starts near 197, and each bob takes
 /// about 5 lines. Rows with 7 bobs finished, the 7th starting at 227; rows with 9 were cut, the 8th
-/// starting at 230 at the earliest, so 8 is taken as cut.
+/// starting at 230 at the earliest, so 8 is taken as cut. With the animated cells running (T74) the
+/// original also cuts columns and, rarely, rows of fewer bobs, as the cycles each pass took decide;
+/// the engine alone keeps this rule, and a conformance case hands the measured cut ([`Cut::At`]).
 pub const ROW_BOBS_CUT: usize = 8;
+
+/// Where the next pass cut `main_loop`'s redraw half, measured on the original (T74;
+/// `fd_conform::edges_cut`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EdgesCut {
+    /// The index in the order down, up, left, right of the first latch `main_loop` had not yet
+    /// tested, 4 when it had tested all but not yet cleared `frame_flag`.
+    pub next: u8,
+    /// In the redraw before `next`, the one the pass interrupted: the object map cell (hunk 0
+    /// offset) from which its scan's animated cells were added after the pass, 0 when its scan had
+    /// not started ([`redraw::PlayIo::defer_from`]); `None` when it had returned.
+    pub defer_from: Option<u32>,
+}
+
+/// Where the next pass cuts `main_loop`'s redraw half.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Cut {
+    /// The engine's own rule, alone (the app, the planner's search): after a row redraw (down or up)
+    /// cutting [`ROW_BOBS_CUT`] bobs or more.
+    Rows,
+    /// Measured on the original by a conformance case; `None` when the redraw half had finished
+    /// (or was never reached) before the next pass.
+    At(Option<EdgesCut>),
+}
 
 /// `main_loop`'s redraw half (`h0+$2a0` to `$358`), which runs in the foreground between passes: when
 /// `frame_flag` is set, each latched edge in the order down, up, left, right has its position copied to
 /// the redraws' (`h0+$1e66`), its latch cleared and its redraw run; then `frame_flag` is cleared.
 ///
-/// The engine runs it before the next pass, except where the original's is cut by that pass in a way
-/// the state shows: a row redraw (down or up) cutting [`ROW_BOBS_CUT`] bobs or more. Then the latches
-/// after it in the order are still set during the next pass, which can neither cross them nor have
+/// The engine runs it before the next pass, except where `cut` says that pass cut it. Then the
+/// latches not yet tested are still set during the next pass, which can neither cross them nor have
 /// them drawn, and the rest of the order runs after it, from [`State::edges_resume`], testing each
-/// latch as it then stands, `frame_flag` set or not. A latch that pass sets earlier in the order
-/// waits for the pass after. The cut row is drawn whole here: its last bobs land in the edge row
-/// outside the view a pass early. A cut anywhere else changes no state a pass reads, the latches
-/// having been cleared before their redraws (T55's two-edge frames, docs/09).
+/// latch as it then stands, `frame_flag` set or not, and clearing `frame_flag` at the end. So a latch
+/// that pass sets earlier in the order waits for the pass after; cut after the last redraw, before
+/// `clr.w frame_flag` (`h0+$352`), every latch that pass sets waits (T74, docs/09). The redraw the
+/// pass interrupted is drawn whole here: its last blits land outside the view a pass early.
 pub fn main_loop_redraws(
     s: &mut State,
     plane: &mut CollisionPlane,
     image: &redraw::LevelImage,
     blits: &mut Vec<redraw::Blit>,
+    cut: Cut,
     creature_starts_frozen: bool,
 ) {
     use camera::Dir;
+    // The cut redraw's scan, finished after the pass.
+    for c in std::mem::take(&mut s.edges.deferred) {
+        s.edges.cells.add(c.x, c.y, c.code);
+    }
     let from = match s.edges_resume.take() {
         Some(i) => i as usize,
         None if s.frame_flag == 0 => return,
         None => 0,
+    };
+    // A measured cut before where a resumed half picks up: the pass came while `main_loop` was
+    // still finishing the redraw it resumed into, which the engine drew whole before.
+    let (stop, defer_from) = match cut {
+        Cut::At(Some(c)) if c.next as usize > from => (Some(c.next as usize), c.defer_from),
+        Cut::At(Some(_)) => (Some(from), None),
+        _ => (None, None),
     };
     let mut io = redraw::PlayIo {
         image,
         objects: &mut s.object_map,
         collision: plane,
         blits,
+        defer_from: None,
         creature_starts_frozen,
     };
     let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
     for (k, &dir) in order.iter().enumerate().skip(from) {
+        if stop == Some(k) {
+            s.edges_resume = Some(k as u8);
+            return;
+        }
         let i = dir as usize;
         if s.camera.edges.latch[i] == 0 {
             continue;
         }
+        io.defer_from = defer_from.filter(|_| stop == Some(k + 1));
         s.edges.pos = s.camera.edges.at[i];
         s.camera.edges.latch[i] = 0;
         let before = io.blits.len();
@@ -444,10 +487,14 @@ pub fn main_loop_redraws(
             .iter()
             .filter(|b| matches!(b, redraw::Blit::Bob { .. }))
             .count();
-        if matches!(dir, Dir::Down | Dir::Up) && bobs >= ROW_BOBS_CUT {
+        if cut == Cut::Rows && matches!(dir, Dir::Down | Dir::Up) && bobs >= ROW_BOBS_CUT {
             s.edges_resume = Some(k as u8 + 1);
             return;
         }
+    }
+    if stop == Some(order.len()) {
+        s.edges_resume = Some(order.len() as u8);
+        return;
     }
     s.frame_flag = 0;
 }

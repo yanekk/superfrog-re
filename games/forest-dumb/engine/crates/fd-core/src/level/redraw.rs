@@ -87,6 +87,12 @@ pub trait Io {
     fn blit(&mut self, b: Blit);
     /// A word written to `collision_map` at `at` bytes from `h3+$fa50`, wrapping.
     fn collision_word(&mut self, at: u32, v: u16);
+    /// Whether the animated cell the scan found at object map cell `cell` (hunk 0 offset) is added
+    /// after the next pass: that pass cut the scan before it (T74, [`PlayIo::defer_from`]).
+    fn defers(&self, _cell: u32) -> bool {
+        false
+    }
+
     /// Whether `h0_681c` returns at once, as a conformance case that freezes creatures patches it
     /// (`fd-conform`'s `freeze.rs`, T75's entry): no creature starts and the cell stays.
     fn creature_starts_frozen(&self) -> bool {
@@ -216,6 +222,10 @@ pub struct Edges {
     pub p83c: Ptr,
     pub creatures: CreatureSlots,
     pub cells: AnimatedCells,
+    /// The animated cells a redraw's scan found after the pass that cut it, in the order found:
+    /// `main_loop` adds them (`h0_6882`) once that pass has ended, before it tests the next latch
+    /// (T74, `level::main_loop_redraws`). Empty but for the pass after such a cut.
+    pub deferred: Vec<AnimCell>,
 }
 
 /// N after `cmpi.w #imm, v`.
@@ -384,6 +394,22 @@ fn creature(b: u8, y: u32) -> (u16, u32) {
 }
 
 impl Edges {
+    /// `bsr.w h0_6882` for the scan's cell `cell`, now or, when the next pass cut the scan before
+    /// it, after that pass ([`Edges::deferred`]). The list a cell joins depends on how many cells
+    /// each holds, which that pass's `h0_62b6` changes.
+    fn add_cell(&mut self, io: &impl Io, cell: u32, x: u16, y: u16, code: u8) {
+        if io.defers(cell) {
+            self.deferred.push(AnimCell {
+                x,
+                y,
+                code,
+                rest: [0; 3],
+            });
+        } else {
+            self.cells.add(x, y, code);
+        }
+    }
+
     /// Start a creature from cell `cell` (hunk 0 offset), clearing it if a slot took it. `d0` is the
     /// long the scan passes in d0, x in its low word. Returns the original's `d0`: 0 taken, -1 not.
     fn start(
@@ -441,7 +467,7 @@ impl Edges {
                 Code::Bob => d0 = bob_below(io, b, (x, y), d4, d0),
                 Code::Animated => {
                     d0 = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14)) & 0xfff0;
-                    self.cells.add(d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
+                    self.add_cell(io, cell, d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
                 }
                 Code::Creature => {
                     let cx = (x as u32).wrapping_add(step(d4, 0x14));
@@ -490,7 +516,7 @@ impl Edges {
                     // `andi.w`: the high word stays.
                     let sum = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
                     d0 = (sum & 0xffff_0000) | (sum & 0xfff0);
-                    self.cells.add(d0 as u16, y8 & 0xfff0, b);
+                    self.add_cell(io, cell, d0 as u16, y8 & 0xfff0, b);
                 }
                 Code::Creature => {
                     let cx = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
@@ -542,7 +568,7 @@ impl Edges {
                 Code::Bob => bob_left(io, b, (x, y), d4),
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
-                    self.cells.add(x & 0xfff0, cy, b);
+                    self.add_cell(io, cell, x & 0xfff0, cy, b);
                 }
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
@@ -587,7 +613,7 @@ impl Edges {
                 Code::Bob => bob_right(io, b, (x, y), d4),
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
-                    self.cells.add(xr & 0xfff0, cy, b);
+                    self.add_cell(io, cell, xr & 0xfff0, cy, b);
                 }
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
@@ -653,6 +679,11 @@ pub struct PlayIo<'a> {
     pub objects: &'a mut [u8],
     pub collision: &'a mut super::collision::CollisionPlane,
     pub blits: &'a mut Vec<Blit>,
+    /// The object map cell (hunk 0 offset) from which the scan's animated cells are added after
+    /// the next pass, which cut the scan there (T74, `level::EdgesCut`); `None` adds each at once.
+    /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
+    /// higher one.
+    pub defer_from: Option<u32>,
     /// A conformance case froze `h0_681c` (T75's `freeze.rs` entry): [`Io::creature_starts_frozen`].
     /// False in play, the app and the planner.
     pub creature_starts_frozen: bool,
@@ -682,6 +713,9 @@ impl Io for PlayIo<'_> {
     }
     fn collision_word(&mut self, at: u32, v: u16) {
         self.collision.set_word(at, v);
+    }
+    fn defers(&self, cell: u32) -> bool {
+        self.defer_from.is_some_and(|f| cell >= f)
     }
     fn creature_starts_frozen(&self) -> bool {
         self.creature_starts_frozen

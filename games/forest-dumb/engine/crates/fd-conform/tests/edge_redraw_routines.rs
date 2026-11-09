@@ -133,6 +133,7 @@ fn load(cpu: &Cpu) -> Edges {
         p83c: Ptr::Raw(m.rl(h0(P83C))),
         creatures,
         cells,
+        deferred: Vec::new(),
     }
 }
 
