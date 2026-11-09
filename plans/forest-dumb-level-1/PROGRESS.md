@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** review T77; T79, then T27 once both are ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -97,11 +97,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ✅ | |
-| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
+| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | 🔍 | `enemy-kind4` case and script: `W1-1:45,92`'s kind 4 starts, walks, turns at x 784, is written back; equal on 1 390 passes. `enemy_cases.rs` gains three tests (7): its walk off the slots, its table mutated, kind 2 turning right. Deviations: state only, the picture differs at pass 477 before the corridor; kind 2's test reuses `enemy-contact`, no new case. |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T77
 
 ## Blocked on the user
 
