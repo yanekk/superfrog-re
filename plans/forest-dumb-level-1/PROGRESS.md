@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Status:** Building; 67 of 74 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-09
+**Next `pir-work` will:** T46, T47 and T73, then T27 once they finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -83,7 +83,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T60 | rig-branch-coverage | T32 | ✅ | |
 | T61 | generate-service | T33, T60; blocks T49 | ✅ | |
 | T62 | engine-shape-trial | T08, T09, T33 | ✅ | |
-| T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | 🔍 | Built `level::Pass` (play: `InPlay`), `game_frame_with`, `Game::game_frame_on`: 10 000 states pass, 947 paths, both `paused` ways; call order against translate.toml; `w1-idle` hits; 4 mutants; 7 tests. Deviations: new public `Pass` and `game_frame_on` (rig needs callees' chip writes in order); transplant takes five more non-LAYOUT values; smoke runs 500 states, 10 000 full. |
+| T63 | game-frame-rig | T08, T09, T10, T22, T23, T24, T25, T26, T51, T52, T55; blocks T27 | ✅ | Review: one fix, `char_object_cells` before `char_update` passed all 10 000 states (generator never nears an item); `over_a_coin` test added. Probed: clamp-dropped mutant red, countdown/hit-check swap equivalent, transplant extras harmless to planner and cases (`stomped` never read). 10 000 states, 947 paths, regression green. |
 | T64 | listing-odd-bytes | T08, T51 | ✅ | |
 | T66 | reshape-decision | T62; blocks T22 | ✅ | Owner answered 2026-11-06: yes, Muse tidies first through a quality loop (DESIGN §4.4, docs/11 "Reshaping by Muse"). Closed by the owner's amendment, no worker. |
 | T65 | level-start-draw | T55; blocks T13, T20 | ✅ | |
@@ -95,7 +95,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ⬜ | |
 
-**Review queue:** T63
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
