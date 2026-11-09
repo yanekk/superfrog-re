@@ -95,9 +95,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
-| T76 | stale-hits-taken-exclusion | —; blocks T27 | ⬜ | |
+| T76 | stale-hits-taken-exclusion | —; blocks T27 | 🔍 | `character-run-slide-buttons` compares `hits_taken`, its T24 exclusion removed; `pass_input.rs` 3 of 3 green. No new tests (the task names none). No deviations. |
 
-**Review queue:** *(empty)*
+**Review queue:** T76
 
 ## Blocked on the user
 
