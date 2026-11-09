@@ -323,10 +323,17 @@ impl Amiga {
     /// Sample the CPU at the end of every raster line from the next step on (or stop): test
     /// tooling that measures where the original's CPU time goes ([`Amiga::line_samples`]: the
     /// PC, the status register and the top of the stack, from which the running routine and its
-    /// callers are read; a game's profiling tools). The run itself
-    /// is unchanged: the end-of-line trap pauses the core between two instructions and it goes
-    /// on from there; no trap is set on the frame's last four lines, so a pause cannot fall
-    /// between the frame's end and the vertical sync.
+    /// callers are read; a game's profiling tools). The end-of-line trap pauses the core between
+    /// two instructions and it goes on from there; no line from 309 is sampled.
+    ///
+    /// Proven to leave the run unchanged (`tests/line_samples.rs`): switched on and off between
+    /// steps, under blits holding the CPU off the bus across the frame's end and sprite DMA on,
+    /// every frame's chip and slow RAM, picture and CPU registers equal the run never sampled, and
+    /// so are its interrupts, blits and custom-register writes with their beam positions
+    /// ([`Amiga::irqs`], [`Amiga::blit_events`], [`Amiga::cpu_writes`]); the last frame's picture
+    /// ([`Amiga::picture_in`]) is unchanged by the switch. Sound is not compared. A pause between
+    /// the frame's end and the vertical sync's flag (line 0, slot `$12`) ended the step early
+    /// before T78.
     pub fn set_profile(&mut self, on: bool) {
         unsafe { ffi::amiga_set_profile(self.raw, on as std::os::raw::c_int) };
     }
