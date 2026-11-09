@@ -428,13 +428,15 @@ mode (the exception frame is on the supervisor stack). `fd_conform::edges_cut` r
   engine (DESIGN §2.1): which pass is cut is the original's cycles, handed over as T67 hands the input
   each pass read. Not handed: a creature the cut scan starts after the pass (T75), and a pass that
   ends within the few dozen cycles before line 233 that four clear latches' tests take.
-- **Only where creature starts are frozen** (T74 review, 2026-11-09, owner). Sampling a step's lines
-  (`Amiga::set_profile`) changed the original with creatures live: `enemy-route` and `enemy-contact`
-  ended a pass a step later from step 336 and 377. A measurement that changes the original is not
-  one, so the runner samples for the cut, and hands it, only in cases freezing `h0_681c`
-  (`fd_conform::records_edge_cuts`, `Sampler`); elsewhere the engine keeps `ROW_BOBS_CUT`. In those
-  ten cases the original sampled as the runner samples it equals the original alone every frame (chip
-  and slow RAM, picture, registers; `edge_latch.rs`). T78 makes sampling observe only.
+- **In every level case since T78** (2026-11-09). Sampling a step's lines (`Amiga::set_profile`)
+  changed the original with creatures live (`enemy-route`, `enemy-contact`: a pass a step later from
+  step 336 and 377), so T74's review limited it to cases freezing `h0_681c`. Measured cause: a drawn
+  creature's blit held the CPU across the frame's end, the line pause landed in line 0 short of slot
+  `$12`, where the vertical sync's flag comes, and the shim ended the step an instruction early. The
+  shim now waits for the vertical sync (`amiga-oracle` `tests/line_samples.rs`); every level case
+  sampled as the runner samples it equals the original alone every frame (`edge_latch.rs`), and
+  `records_edge_cuts` holds for all. Fifteen more cases are handed cuts, all still agree;
+  `enemy-route` compares `edge_latch_right` again.
 
 ## What this changes for later tasks
 

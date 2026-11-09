@@ -22,6 +22,8 @@ workspace = "."
     "a_restored_run_counts_as_the_run_that_took_the_snapshot",
 ]
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
+# T78: line sampling switched on and off under blits across the frame's end, 520 frames, about 3 s.
+"crates/amiga-oracle/tests/line_samples.rs" = "smoke"
 "crates/amiga-oracle/tests/picture_in.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
 "crates/amiga-oracle/tests/routine_branches.rs" = "smoke"
@@ -77,6 +79,11 @@ covers = [
     "crates/amiga-oracle/tests/exec_counts.rs::the_vertical_blank_handler_counts_once_a_frame_and_an_unreached_address_zero",
     "crates/amiga-oracle/tests/exec_counts.rs::an_instruction_an_interrupt_pre_empts_counts_once",
 ]
+
+# A measurement that changes the original is not one: line sampling leaves the run unchanged (T78).
+[[area]]
+name = "line sampling observes only"
+covers = ["crates/amiga-oracle/tests/line_samples.rs"]
 
 # Milliseconds: the planner's explorer solves a made-up grid game with no disk. Every game's levels
 # are routed with it.

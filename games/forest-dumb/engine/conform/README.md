@@ -147,9 +147,9 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   read. The engine then stops its redraws there and finishes them, the scan's later animated cells
   included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not
   forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
-  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs. Only cases
-  that freeze creature starts (`h0_681c`) are sampled for it (`records_edge_cuts`, `Sampler`): with
-  creatures live sampling changes the original's run, so the engine keeps its own rule there (T78).
+  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
+  the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
+  creatures live or frozen (T78).
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
   (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.

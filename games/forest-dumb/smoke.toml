@@ -217,15 +217,15 @@ workspace = "engine"
 "crates/fd-conform/tests/status_race.rs" = "smoke"
 # T73: when the next pass cuts a row's redraw, on the original over 1 300 steps of T24's route, and
 # the route's case on every latch; T74: the two mechanic cases with the runner's measured cut dropped
-# or changed, and sampling caught changing the original with creatures live: 9 s warm from the cached
-# sync point. The check that sampling leaves every creature-frozen case's original unchanged
-# (22 s, ten cases run twice) is full.
+# or changed; T78: enemy-contact and enemy-route sampled every step equal the original alone (6 s):
+# about 12 s warm from the cached sync point. The check that sampling leaves every level case's
+# original unchanged (about 5 min, death-countdown's 62 900 frames run twice) is full.
 "crates/fd-conform/tests/edge_latch.rs" = [
     "a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows",
     "the_routes_first_1300_steps_agree_on_the_right_edge_latch",
     "the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped",
     "a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one",
-    "sampling_changes_the_original_where_creatures_are_live",
+    "sampling_every_step_leaves_the_original_unchanged_where_creatures_are_live",
 ]
 # T72 adds the pool's contact with the water drawn (T47: no longer also without it).
 "crates/fd-conform/tests/contact.rs" = "smoke"

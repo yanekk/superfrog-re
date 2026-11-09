@@ -113,16 +113,14 @@ const FLAG_AND_LATCHES: u32 = HUNK_BASES[0] + 0x5196;
 const CAMERA_UPDATE: u32 = 0x4d7e;
 
 /// Whether the runner reads, on the original, where each pass cut `main_loop`'s edge redraws and
-/// hands it to the engine (T74): only where the case freezes creature starts (`h0_681c`). Reading
-/// it samples the lines of a step ([`Amiga::set_profile`]), which with creatures live changes the
-/// original's run (a pass ends a step later on `enemy-route`, T74 review), so a measurement there
-/// is not one; with them frozen `tests/edge_latch.rs` holds the original identical every frame
-/// with and without it. Elsewhere the engine keeps its own rule (`ROW_BOBS_CUT`) until T78.
+/// hands it to the engine (T74): in every level case, creatures live or frozen. Reading it samples
+/// the lines of a step ([`Amiga::set_profile`]), which leaves the original's run unchanged
+/// (`amiga-oracle`'s `tests/line_samples.rs`; here `tests/edge_latch.rs`, every case the runner
+/// samples, every frame). Before T78 a sampled step could end early where a blit held the CPU across
+/// the frame's end (a pass ended a step later on `enemy-route`), so it was limited to cases freezing
+/// creature starts (`h0_681c`).
 pub fn records_edge_cuts(case: &Case) -> bool {
-    case.freeze
-        && freeze::for_case(&case.thaw)
-            .iter()
-            .any(|f| (f.hunk, f.offset) == (0, 0x681c))
+    case.is_level()
 }
 
 /// Which steps the runner samples line by line, as [`run_with`] decides it, shared with the check
@@ -1124,7 +1122,7 @@ pub fn run_inputs(
     // from the step it started in to the step it ends in (T74).
     let mut edges_cuts: Vec<(u32, Option<EdgesCut>)> = Vec::new();
     // Which steps are sampled line by line ([`Sampler`]). Sampling costs about half a step again;
-    // turning it off clears the frame just drawn, so it changes before a step, never after one.
+    // it is switched before a step, and switching leaves the frame just drawn as it was (T78).
     let mut sampler = Sampler::default();
     let mut profiling = false;
     // The last pass whose picture was compared.
