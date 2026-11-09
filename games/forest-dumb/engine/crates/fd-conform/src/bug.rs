@@ -28,6 +28,7 @@ use amiga_chips::Picture;
 use amiga_conform::bug_compare::{Left, verdict_line};
 use amiga_conform::script::InputScript;
 use amiga_oracle::{FrameInput, Rgb12Frame};
+use fd_core::level::EdgesCut;
 use fd_core::recording::{ForestDumb, Location, Recording, ZIP_SCREENSHOT, check_build};
 use fd_core::{Event, Game, GameData, Mem, Start, Transplant, Var, layout_var};
 
@@ -342,6 +343,12 @@ impl Engine for Owners<'_> {
 
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
+    }
+
+    /// Without it the owner's game keeps its own rule and has a creature a pass before the
+    /// original wherever a pass cut the redraw that starts it (T75: `enemy-hop`'s inputs, step 92).
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        self.game.cut_foreground(at);
     }
 }
 

@@ -19,7 +19,7 @@ use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
 use fd_conform::{Case, Engine, Goal, Options, Outcome, Verdict, run_with};
 use fd_core::level::EdgesCut;
-use fd_core::level::redraw::Deferred;
+use fd_core::level::redraw::{Deferred, OBJECT_MAP};
 use fd_core::objects::creature::{STOMPED, WALK5_LEFT};
 use fd_core::program::Program;
 use fd_core::{Event, Game, GameData, LAYOUT, Mem, PORTED, Start, Transplant, Var};
@@ -271,6 +271,10 @@ struct Cuts {
     change: Change,
     /// The creatures waiting after each pass, counted.
     waited: u32,
+    /// The waiting creatures a slot took after their pass, and those of them whose object map
+    /// cell was then cleared.
+    taken: u32,
+    cleared: u32,
 }
 
 impl Transplant for Cuts {
@@ -284,7 +288,25 @@ impl Transplant for Cuts {
 
 impl Engine for Cuts {
     fn pass(&mut self, input: FrameInput) {
+        // The step's foreground starts the creatures the last pass left waiting, before anything
+        // else changes the slots: one finding a slot free has its cell cleared (the scan's
+        // `clr.b (a2)`, `h0+$b1a`), or the next redraw over the cell starts it again.
+        let s = self.game.state();
+        let free = s.edges.creatures.active.iter().filter(|&&f| f == 0).count();
+        let cells: Vec<usize> = s
+            .edges
+            .deferred
+            .iter()
+            .filter_map(|d| match d {
+                Deferred::Creature { cell, .. } => Some((cell - OBJECT_MAP) as usize),
+                Deferred::Cell(_) => None,
+            })
+            .take(free)
+            .collect();
         self.game.step(input);
+        self.taken += cells.len() as u32;
+        let map = &self.game.state().object_map;
+        self.cleared += cells.iter().filter(|&&c| map[c] == 0).count() as u32;
         let waiting = &self.game.state().edges.deferred;
         self.waited += waiting
             .iter()
@@ -333,6 +355,8 @@ fn with_cuts(change: Change) -> (Verdict, Cuts) {
         game: Game::new(data(), Start::Level1),
         change,
         waited: 0,
+        taken: 0,
+        cleared: 0,
     };
     let v = run_with(&case, &mut c, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
     (v, c)
@@ -340,7 +364,8 @@ fn with_cuts(change: Change) -> (Verdict, Cuts) {
 
 /// A creature start waits for the next pass exactly where the original's pass was measured to cut
 /// the scan before it (T75). Handed the cuts as measured, a creature waits and the engine agrees
-/// through the race. Without the scan's place none waits, and the engine has the creature a pass
+/// through the race, each waiting creature's cell cleared once a slot takes it. Without the scan's
+/// place none waits, and the engine has the creature a pass
 /// before the original (pass 93). Told of a cut scan where none was measured, the engine starts
 /// the hopper a pass after the original (pass 84).
 #[test]
@@ -348,6 +373,8 @@ fn a_creature_start_waits_only_where_the_measured_cut_says() {
     let (v, c) = with_cuts(Change::Measured);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(c.waited > 0);
+    assert!(c.taken > 0);
+    assert_eq!(c.cleared, c.taken);
 
     let (v, c) = with_cuts(Change::NoScan);
     assert_eq!(c.waited, 0);

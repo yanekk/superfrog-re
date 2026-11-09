@@ -10,5 +10,5 @@ sync = { script = "boot-to-level1", frame = 6301 }
 input = "contact-route"
 frames = 1300
 compare = ["vars"]
-vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_anim_ptr", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown"]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_anim_ptr", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { all = [{ var = "lives", value = 0x26 }, { var = "score", value = 0x690 }], by_frame = 7601 }
