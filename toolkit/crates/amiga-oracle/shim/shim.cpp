@@ -300,7 +300,7 @@ struct amiga_machine {
 
     // One frame with the CPU paused at the end of every line to be sampled (amiga_set_profile).
     // The end-of-line trap pauses the core between two instructions; it goes on from there, so the
-    // run is the plain step's (tests/exec_counts.rs, sampling_does_not_change_the_run).
+    // run is the plain step's (tests/line_samples.rs, sampling_does_not_change_the_run).
     //
     // A pause clears every run-loop flag (Amiga::computeFrame), the vertical sync's SYNC_THREAD
     // too, which ends a plain step. That flag is raised at line 0's HSYNC (h $12), not at the
