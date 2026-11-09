@@ -21,7 +21,7 @@ pub mod routine;
 pub mod sync;
 
 use std::fmt;
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 use std::path::{Path, PathBuf};
 
 use amiga_chips::{Picture, to_rgb12};
@@ -183,6 +183,21 @@ const SCANS: [(u32, u32, u32); 4] = [
 /// `h0_6882`, and its `movem.l` after the `st.b` that marks the new cell used.
 const ADD_CELL: Range<u32> = 0x6882..0x69a0;
 
+/// Each scan's creature branch, from its first instruction to its `bsr.w h0_681c`: a PC in it has
+/// not started the cell's creature (T75).
+const CREATURE_BRANCH: [RangeInclusive<u32>; 4] = [
+    0xabc..=0xb10,
+    0xd98..=0xde6,
+    0x10fc..=0x113a,
+    0x1444..=0x1486,
+];
+
+/// `h0_681c` and `h0_6852`, up to the `st.b` that marks the slot used: until it runs the pass sees
+/// the slot free, so the creature is not started yet. Not `h0_681c`'s two instructions after its
+/// `bsr.w h0_6852` (`h0+$6836`, `$6838`), where it is.
+const START_CREATURE: RangeInclusive<u32> = 0x681c..=0x687a;
+const STARTED: RangeInclusive<u32> = 0x6836..=0x6838;
+
 /// Where the last step's pass cut `main_loop`'s redraw half (`h0+$2b2` to `$358`), as
 /// [`fd_core::level::Cut::At`] takes it; `None` when the interrupt found the foreground elsewhere
 /// (T74). Needs [`Amiga::set_profile`] on for the step.
@@ -218,8 +233,9 @@ pub fn edges_cut(am: &Amiga) -> Option<EdgesCut> {
 ///
 /// In a redraw, its scan has not started while `a2` is outside the object map (the tile and shape
 /// loops keep table pointers there); at the loop's top the cell is `h0+$cb38 + d5 + d6`, not yet
-/// looked at; elsewhere it is `a2`, its add made unless the PC is between its compares and the
-/// return from `h0_6882`'s `st.b`.
+/// looked at; elsewhere it is `a2`, its add or creature start made unless the PC is between its
+/// compares and the return from `h0_6882`'s `st.b`, or in its creature branch short of
+/// `h0_6852`'s `st.b` (T75).
 pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesCut> {
     let next = match pc {
         0x2b2..=0x2d0 => 0,
@@ -238,7 +254,10 @@ pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesC
             let defer_from = if (top..top + 0xc).contains(&pc) {
                 OBJECT_MAP.wrapping_add(d5).wrapping_add(d6)
             } else if (OBJECT_MAP..TILE_MAP).contains(&a2) {
-                let pending = (compares..added).contains(&pc) || ADD_CELL.contains(&pc);
+                let pending = (compares..added).contains(&pc)
+                    || ADD_CELL.contains(&pc)
+                    || CREATURE_BRANCH[r].contains(&pc)
+                    || (START_CREATURE.contains(&pc) && !STARTED.contains(&pc));
                 a2 + !pending as u32
             } else {
                 0
@@ -1608,6 +1627,31 @@ mod tests {
         // A bob's blit in the down row: the row's cell is done.
         assert_eq!(
             at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
+            cut(1, Some(OBJECT_MAP + 0x3006))
+        );
+        // In the down row's creature branch, or in `h0_681c` and `h0_6852` short of the slot's
+        // `st.b`: the creature starts after the pass (T75). Back from it, it has started.
+        for pc in [0xabc, 0xb10, 0x681c, 0x6862, 0x687a] {
+            assert_eq!(
+                at(pc, &[0x2da], &regs),
+                cut(1, Some(OBJECT_MAP + 0x3005)),
+                "{pc:#x}"
+            );
+        }
+        for pc in [0x687c, 0x6836, 0xb14, 0xb1a] {
+            assert_eq!(
+                at(pc, &[0x2da], &regs),
+                cut(1, Some(OBJECT_MAP + 0x3006)),
+                "{pc:#x}"
+            );
+        }
+        // Each scan has its own creature branch: the left column's is not the down row's.
+        assert_eq!(
+            at(0x113a, &[0x32a], &regs),
+            cut(3, Some(OBJECT_MAP + 0x3005))
+        );
+        assert_eq!(
+            at(0x113a, &[0x2da], &regs),
             cut(1, Some(OBJECT_MAP + 0x3006))
         );
         // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.

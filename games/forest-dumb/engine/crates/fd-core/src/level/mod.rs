@@ -440,8 +440,25 @@ pub fn main_loop_redraws(
 ) {
     use camera::Dir;
     // The cut redraw's scan, finished after the pass.
-    for c in std::mem::take(&mut s.edges.deferred) {
-        s.edges.cells.add(c.x, c.y, c.code);
+    for d in std::mem::take(&mut s.edges.deferred) {
+        match d {
+            redraw::Deferred::Cell(c) => s.edges.cells.add(c.x, c.y, c.code),
+            redraw::Deferred::Creature {
+                cell,
+                x,
+                y,
+                kind,
+                facing,
+            } => {
+                // `h0_681c`, then the scan's `clr.b (a2)` when a slot took it.
+                if !s.edges.creatures.start(x, y, kind, facing) {
+                    let i = cell.wrapping_sub(redraw::OBJECT_MAP) as usize;
+                    if let Some(b) = s.object_map.get_mut(i) {
+                        *b = 0;
+                    }
+                }
+            }
+        }
     }
     let from = match s.edges_resume.take() {
         Some(i) => i as usize,
