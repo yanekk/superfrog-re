@@ -87,26 +87,13 @@ const STALL: u32 = 64;
 /// Frames the original is given past twice the recording's steps.
 const SLACK: u32 = 2_000;
 
-/// What a bug compare does not judge yet, and the task that makes it judged (DESIGN §2.2: no gap
-/// is silent): the creature slots (`creature_active+$N`, `creature_slots+...`), CLXDAT as
-/// `char_hit_check` copies it and the `hits_taken` it counts. In play an edge redraw the next pass
-/// cuts short can start a creature a pass later in the original (T46, measured), which T75 models;
-/// that creature's place, and so contact with it, differ from then on. Read and counted, printed in
-/// the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
+/// What a bug compare does not judge yet, each with the task that makes it judged (DESIGN §2.2: no
+/// gap is silent). None since T75: the creature slots, CLXDAT as `char_hit_check` copies it and the
+/// `hits_taken` it counts are compared, the runner handing the engine each edge redraw the next
+/// pass cut short, where the original starts a creature a pass later (docs/10). A gap added here
+/// is read and counted, and printed in the report.
 fn known_gaps() -> Vec<Exclusion> {
-    let var = |name: &str, task: &str| Exclusion {
-        rows: 0..0,
-        cols: None,
-        var: Some(name.to_string()),
-        what: format!("var {name}"),
-        task: task.to_string(),
-    };
-    fd_core::LAYOUT
-        .iter()
-        .map(|v| v.name)
-        .filter(|n| n.starts_with("creature_") || ["hits_taken", "clxdat_copy"].contains(n))
-        .map(|n| var(n, "T75"))
-        .collect()
+    Vec::new()
 }
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
@@ -670,14 +657,11 @@ mod tests {
         ] {
             assert!(vars.iter().any(|n| n == v), "{v}");
         }
-        for v in [
-            "hits_taken",
-            "clxdat_copy",
-            "mt_counter",
-            "creature_slots+$0",
-        ] {
-            assert!(!vars.iter().any(|n| n == v), "{v}");
+        // The creatures and contact, judged since T75.
+        for v in ["hits_taken", "clxdat_copy", "creature_slots+$0"] {
+            assert!(vars.iter().any(|n| n == v), "{v}");
         }
+        assert!(!vars.iter().any(|n| n == "mt_counter"));
         // Every gap names its task.
         assert!(known_gaps().iter().all(|g| g.task.starts_with('T')));
     }
