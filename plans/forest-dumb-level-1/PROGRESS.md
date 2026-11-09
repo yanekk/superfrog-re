@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-09
+**Next `pir-work` will:** review T75, then T77 and T79, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -96,11 +96,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
-| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
+| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | 🔍 | A cut scan's creature starts wait for the pass (`Edges::deferred`, `edges_cut_at`); enemy cases whole, 1 new test, 5 unit asserts. Deviations: `death-water` stays frozen, the entry names T79 (owner); two scripts repaired, five goals reset to live values; `enemy-hop` runs 780; `edge_latch.rs` rows measured on a frozen copy; search tools in `prototype/`. |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
+| T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T75
 
 ## Blocked on the user
 

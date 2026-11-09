@@ -5,8 +5,9 @@
 # 7062), and after the hurt frame, the hold and the blink the next one (frame 7204). Creatures stay
 # frozen. The original's pass grows with the animated cells' blits, so some passes cut main_loop's
 # redraws and its frame_flag clear swallows their latches: the runner hands the engine where (T74).
-# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 571 a pass later in the
-# original, its redraw cut short by a late pass (T46, FINDINGS).
+# Creatures frozen on both sides (freeze.rs h0_681c, T79): live, these inputs lose a life to a creature at
+# pass 200 and meet another before the pool, so T79 gives the case inputs that reach it (the late creature
+# start at pass 571 is handed over since T75).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
 frames = 920
