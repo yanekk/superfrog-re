@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T46; then T74, T75 and T77 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -62,7 +62,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ✅ | |
 | T45 | case-collect | T22 | ✅ | |
-| T46 | case-enemies | T24, T45 | ⬜ | |
+| T46 | case-enemies | T24, T45 | 🔍 | Three enemy cases (route, contact, hop), nothing frozen, all creature slots compared; enemy_cases.rs, 3 tests, smoke. Deviations: creature freeze kept as T75 in eight cases (owner); enemy-route sets edge_latch_right aside (T74) and skips the picture; h0_3222 and kind 4 left to T77 (owner); LAYOUT gains symbol+$off fields; feature branch merged early (T47). |
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ✅ | |
@@ -96,8 +96,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
 | T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ⬜ | |
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
+| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
+| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T46
 
 ## Blocked on the user
 
