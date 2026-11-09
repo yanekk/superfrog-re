@@ -105,6 +105,13 @@ fn interrupt(samples: &[LineSample]) -> Option<(usize, u32, [u32; 15])> {
         })
 }
 
+/// The edge latches right, left, up, down and `frame_flag` (`h0+$5196` to `$519f`), where the
+/// original runs.
+const FLAG_AND_LATCHES: u32 = HUNK_BASES[0] + 0x5196;
+
+/// `camera_update` (`h0+$4d7e`), `game_frame`'s third call: the one that sets the edge latches.
+const CAMERA_UPDATE: u32 = 0x4d7e;
+
 /// `main_loop`'s `bsr.w redraw_edge_a` to `_d` return here (`h0+$2da`, `$302`, `$32a`, `$352`): one
 /// on the foreground's stack means that redraw was running, and the latches up to it were tested.
 const AFTER_REDRAW: [u32; 4] = [0x2da, 0x302, 0x32a, 0x352];
@@ -1022,6 +1029,10 @@ pub fn run_inputs(
         [GAME_OVER_SCREEN, HIGH_SCORES, NEXT_WORLD].map(|(h, o)| HUNK_BASES[h as usize] + o);
     let world = layout_var("world_index").ok_or("no world_index in LAYOUT")?;
     pcs.extend(scene_pcs);
+    let camera = HUNK_BASES[0] + CAMERA_UPDATE;
+    if !pcs.contains(&camera) {
+        pcs.push(camera);
+    }
     let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
 
@@ -1056,26 +1067,40 @@ pub fn run_inputs(
     // Each pass and where it cut `main_loop`'s edge redraws on the original, by the pass number,
     // from the step it started in to the step it ends in (T74).
     let mut edges_cuts: Vec<(u32, Option<EdgesCut>)> = Vec::new();
-    // Every step is sampled line by line: where each pass took the foreground decides its edge
-    // redraws (T74), and the one starting pass `32k + 1` the status bar's (T71). Sampling leaves
-    // the run unchanged; turning it off would clear the frame just drawn, so it stays on.
-    am.set_profile(true);
+    // A step is sampled line by line where its pass may find the foreground inside the edge
+    // redraws (T74), and where it starts pass `32k + 1`, whose cut decides the status bar (T71).
+    // Sampling leaves the run unchanged but costs about half a step again; turning it off clears
+    // the frame just drawn, so it changes before a step, never after one.
+    let mut profiling = false;
+    let mut camera_ran = false;
     // The last pass whose picture was compared.
     let mut shown_last: Option<u32> = None;
 
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
-        // A step starts one pass, at line 233.
+        // A step starts one pass, at line 233. Its foreground has redraws to run then only if
+        // `frame_flag` or a latch is set (a crossing scroll sets both), or the last pass is still
+        // running and has not reached `camera_update`, which latches; else, at most, the last
+        // pass's end leaves four clear latches to test, a few dozen cycles, before it spins.
         let started = Live(&am).value(irq);
+        let running = at.is_none_or(|(_, last)| started > last);
+        let busy =
+            (running && !camera_ran) || am.peek(FLAG_AND_LATCHES, 10).iter().any(|&b| b != 0);
+        let sample = busy || (case.compare.picture && started.wrapping_add(1) & 31 == 1);
+        if sample != profiling {
+            am.set_profile(sample);
+            profiling = sample;
+        }
         am.step(input).map_err(|e| e.to_string())?;
         let now = Live(&am).value(irq);
-        if now == started.wrapping_add(1) {
+        if sample && now == started.wrapping_add(1) {
             if case.compare.picture && now & 31 == 1 {
                 cut = interrupted_pc(&am).and_then(redraw_cut).map(|r| (now, r));
             }
             edges_cuts.push((now, edges_cut(&am)));
         }
         let frame = am.frame();
+        camera_ran = am.pc_hits().iter().any(|&(p, n)| p == camera && n > 0);
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
         if let Some(mem) = am.watched_memory() {
@@ -1490,5 +1515,55 @@ mod tests {
         let mem = OracleMem(&m);
         assert_eq!(mem.value(layout_var("char_x").unwrap()), 0x1234);
         assert_eq!(mem.value(layout_var("mt_counter").unwrap()), 5);
+    }
+
+    /// Where `main_loop`'s redraw half was when the pass came, read as T74 measured it: the PC
+    /// within `main_loop` itself, else the redraw named by its return address on the foreground's
+    /// stack and the scan's cell from `a2` (or `d5 + d6` at the loop's top).
+    #[test]
+    fn a_pass_inside_the_edge_redraws_names_the_next_latch_and_the_scans_cell() {
+        let h = |o: u32| HUNK_BASES[0] + o;
+        let mut regs = [0u32; 15];
+        let at = |pc, returns: &[u32], regs: &[u32; 15]| edges_cut_at(pc, returns, regs);
+        let cut = |next, defer_from| Some(EdgesCut { next, defer_from });
+        // Spinning, or in the status bar's redraw before the redraw half: no cut.
+        assert_eq!(at(0x2a6, &[0x352], &regs), None);
+        assert_eq!(at(0x6a9c, &[0x352], &regs), None);
+        assert_eq!(at(0x358, &[], &regs), None);
+        // In `main_loop` between the tests: a PC at a `clr.w` has not run it.
+        assert_eq!(at(0x2b2, &[], &regs), cut(0, None));
+        assert_eq!(at(0x2d0, &[], &regs), cut(0, None));
+        assert_eq!(at(0x2d6, &[], &regs), cut(1, None));
+        assert_eq!(at(0x348, &[], &regs), cut(3, None));
+        assert_eq!(at(0x352, &[], &regs), cut(4, None));
+        // In a redraw's tiles: `a2` holds a band table, so its scan has not started.
+        regs[10] = h(0x1496);
+        assert_eq!(at(0x774, &[0x7c6, 0x352], &regs), cut(4, Some(0)));
+        // Pass 495 of `mechanic-spring`: back from `h0_6882`'s `st.b`, the cell's add made.
+        regs[10] = h(OBJECT_MAP + 0x3005);
+        assert_eq!(
+            at(0x69a4, &[0x138c, 0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3006))
+        );
+        // Inside `h0_6882` before it, or at the cell's compares: the cell's add comes after.
+        assert_eq!(
+            at(0x693e, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3005))
+        );
+        assert_eq!(
+            at(0x1356, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3005))
+        );
+        // A bob's blit in the down row: the row's cell is done.
+        assert_eq!(
+            at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
+            cut(1, Some(OBJECT_MAP + 0x3006))
+        );
+        // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.
+        (regs[5], regs[6]) = (0x60 * 7, 0x21);
+        assert_eq!(
+            at(0xc72, &[0x302], &regs),
+            cut(2, Some(OBJECT_MAP + 0x60 * 7 + 0x21))
+        );
     }
 }

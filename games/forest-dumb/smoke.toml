@@ -213,7 +213,8 @@ workspace = "engine"
 # side by side, about 7 s warm.
 "crates/fd-conform/tests/status_race.rs" = "smoke"
 # T73: when the next pass cuts a row's redraw, on the original over 1 300 steps of T24's route, and
-# the route's case on every latch: 7 s warm from the cached sync point.
+# the route's case on every latch; T74: the two mechanic cases with the runner's measured cut dropped
+# or changed: 7 s warm from the cached sync point.
 "crates/fd-conform/tests/edge_latch.rs" = "smoke"
 # T72 adds the pool's contact with the water drawn (T47: no longer also without it).
 "crates/fd-conform/tests/contact.rs" = "smoke"
@@ -466,3 +467,7 @@ covers = [
 [[area]]
 name = "springs and vanishing blocks in play, as the original runs them"
 covers = ["crates/fd-conform/tests/mechanic_cases.rs::the_mechanics_match_the_original_on_every_pass"]
+
+[[area]]
+name = "a pass that cuts main_loop's edge redraws, handed to the engine as the original measured it"
+covers = ["crates/fd-conform/tests/edge_latch.rs::the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped"]

@@ -203,6 +203,9 @@ impl Engine for ShortClamp {
     fn events(&mut self) -> Vec<Event> {
         self.0.events()
     }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        self.0.foreground_cut(at);
+    }
 }
 
 #[test]

@@ -67,6 +67,9 @@ impl Engine for Copies {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        self.game.cut_foreground(at);
+    }
 }
 
 /// Every pass of the route to the exit's cells: CLXDAT and what contact counts, equal; and the
