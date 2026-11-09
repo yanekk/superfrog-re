@@ -27,16 +27,19 @@ pub struct Frozen {
 /// `h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, which T55 ported, and `h0_26ec`, taking): the engine takes
 /// items, bonuses and the exit as the original does, so a frozen case lets both. T47 removed T25's two
 /// (`h0_6882`, the animated cells, and `h0_24ce`, springs): every case runs them on both sides, and
-/// `tests/mechanic_cases.rs` holds them to the original. T24 ported the creatures and T46 runs them
-/// live (owner, 2026-11-09): only the eight cases T46 listed (plans/forest-dumb-level-1 FINDINGS) set
-/// `freeze = true`, where a redraw cut short by a late pass starts a creature a pass later in the
-/// original than in the engine; the engine starts none either there (`fd_core::level::FROZEN_IN_A_CASE`).
+/// `tests/mechanic_cases.rs` holds them to the original. T24 ported the creatures, T46 runs them live
+/// (owner, 2026-11-09) and T75 the cases whose edge redraws a late pass cuts before a creature
+/// starts. What still sets `freeze = true` is T79's to move off it (owner, 2026-11-09): `death-water`
+/// (its inputs meet a creature before the pool), `mechanic-spring`, `mechanic-vanish`, the planner's
+/// confirmation (`fd_plan::confirm`) and the tests that measure the original frozen
+/// (`tests/edge_latch.rs`, `tests/object_claims.rs`); the engine starts none either there
+/// (`fd_core::level::FROZEN_IN_A_CASE`).
 pub const FROZEN: &[Frozen] = &[Frozen {
     hunk: 0,
     offset: 0x681c,
     what: "h0_681c: a creature value (1 to 6) in view takes a slot; returning leaves d0 non-zero, \
            so the cell stays and no creature ever exists",
-    task: "T75",
+    task: "T79",
 }];
 
 /// The entry `name` (`"h0_681c"`), as its `what` starts.

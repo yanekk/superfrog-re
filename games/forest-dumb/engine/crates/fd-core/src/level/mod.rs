@@ -120,17 +120,16 @@ pub struct FrozenInACase {
     pub task: &'static str,
 }
 
-/// Since T47 removed T25's two (`h0_6882`, `h0_24ce`), only the creature start, for the cases T46
-/// lists (T75).
+/// Since T47 removed T25's two (`h0_6882`, `h0_24ce`), only the creature start, for the cases and
+/// tests still frozen (T79; `fd-conform`'s `freeze.rs` lists them).
 pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
     // `h0_681c`: no creature starts from an edge redraw's scan and its cell stays
-    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Frozen
-    // only in the cases T46 lists, where a redraw cut short by a late pass starts a creature a pass
-    // later in the original (T75).
+    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Live,
+    // a creature start a late pass cut waits for that pass, as measured (T75).
     FrozenInACase {
         name: "h0_681c",
         offset: 0x681c,
-        task: "T75",
+        task: "T79",
     },
 ];
 

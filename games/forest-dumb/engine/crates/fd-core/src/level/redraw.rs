@@ -95,7 +95,7 @@ pub trait Io {
     }
 
     /// Whether `h0_681c` returns at once, as a conformance case that freezes creatures patches it
-    /// (`fd-conform`'s `freeze.rs`, T75's entry): no creature starts and the cell stays.
+    /// (`fd-conform`'s `freeze.rs`, T79's entry): no creature starts and the cell stays.
     fn creature_starts_frozen(&self) -> bool {
         false
     }
@@ -715,7 +715,7 @@ pub struct PlayIo<'a> {
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
-    /// A conformance case froze `h0_681c` (T75's `freeze.rs` entry): [`Io::creature_starts_frozen`].
+    /// A conformance case froze `h0_681c` (T79's `freeze.rs` entry): [`Io::creature_starts_frozen`].
     /// False in play, the app and the planner.
     pub creature_starts_frozen: bool,
 }

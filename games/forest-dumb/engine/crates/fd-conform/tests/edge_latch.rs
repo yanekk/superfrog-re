@@ -8,7 +8,8 @@
 //! half after a row of `ROW_BOBS_CUT` bobs or more (`fd_core::level::main_loop_redraws`). With the
 //! animated cells running passes are longer and cut columns too, which the cycles decide, so a case's
 //! runner hands the engine each measured cut ([`fd_conform::edges_cut`], T74). Measured on the first
-//! 1 300 steps of T24's planner route, frozen as `fd_plan::confirm` freezes it.
+//! 1 300 steps of T24's planner route, frozen as `fd_plan::confirm` freezes it ([`frozen_route`]);
+//! `edge-latch-route` itself runs creatures live since T75.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -23,6 +24,16 @@ use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
 use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
 
 const CASE: &str = "cases/edge-latch-route.toml";
+
+/// The route with creature starts frozen on both sides, as T73 and T74 measured its rows; the case
+/// itself runs them live since T75. T79 re-measures these live and drops the freeze.
+fn frozen_route() -> Case {
+    Case {
+        freeze: true,
+        goal: None,
+        ..Case::load(Path::new(CASE)).unwrap()
+    }
+}
 
 /// `h0_774`, the tile blit, and `h0_3ac2`'s `rts`: a raster wait done, before a tile's or a bob's
 /// blit.
@@ -98,7 +109,7 @@ fn cuts_on_the_engine(case: &Case) -> Vec<u32> {
 /// waiting; a case hands it the measured cut instead.
 #[test]
 fn a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows() {
-    let case = Case::load(Path::new(CASE)).unwrap();
+    let case = frozen_route();
     let (rows, engine) = std::thread::scope(|s| {
         let rows = s.spawn(|| rows_on_the_original(&case));
         let engine = s.spawn(|| cuts_on_the_engine(&case));
@@ -238,7 +249,7 @@ fn the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped() {
 #[test]
 fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
     use fd_core::level::{Cut, camera::Dir, main_loop_redraws, redraw::LevelImage};
-    let case = Case::load(Path::new(CASE)).unwrap();
+    let case = frozen_route();
     let inputs = Inputs::load(&case).unwrap();
     let data = game_data().unwrap_or_else(|e| panic!("{e}"));
     let mut g = engine_for(&case, data.clone());

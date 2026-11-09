@@ -222,7 +222,7 @@ fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
     // The whole route agrees, its goal met. Confirmation freezes creature starts on both sides
-    // since T46 (`freeze.rs`'s T75 entry); before, the engine started creatures the frozen original
+    // since T46 (`freeze.rs`'s T79 entry); before, the engine started creatures the frozen original
     // lacked and stomped one at step 566. With springs and animated cells on both sides (T47), a
     // longer pass cuts a row redraw before the right column's latch clears (pass 2156): the runner
     // hands the engine that cut, measured, as creature starts are frozen (T74).

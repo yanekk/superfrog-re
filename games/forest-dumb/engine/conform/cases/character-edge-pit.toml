@@ -1,16 +1,16 @@
-# T42: the spike pit below the first slope's end (scripts/character-edge-pit.txt), every object frozen
-# (unfrozen, char_x differs at 6727; freeze.rs names each routine's task).
+# T42: the spike pit below the first slope's end (scripts/character-edge-pit.txt), nothing frozen.
 # The slide flies off the slope into it (W1-1 char_x $29d), the spikes cost a life, and the original holds
 # the character still for about 30 passes (char_dying, its hurt frame), which char_hit_check models (T70,
 # compared since) with the grace count after it (char_unhurt_t); input waits it out. Then the pit's walls (char_x $28b,
 # $29c), a jump straight up, and a jump out left that falls into the pit below, meets its wall at char_x
-# $200 and lands at $25d,$2e4, the goal.
-# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 354 a pass later in the
-# original, its redraw cut short by a late pass (T46, FINDINGS).
+# $200 and lands at $25c,$2e5, the goal.
+# Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
+# a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
+# The leap out left stomps a creature (irq_count 426, +250), so the landing is a pixel off the frozen run's
+# ($25d,$2e4).
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "character-edge-pit"
 frames = 440
 compare = ["vars"]
 vars = ["clxdat_copy", "hits_taken", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "irq_count", "countdown"]
-goal = { all = [{ var = "char_x", value = 0x25d }, { var = "char_y", value = 0x2e4 }], by_frame = 6830 }
-freeze = true
+goal = { all = [{ var = "char_x", value = 0x25c }, { var = "char_y", value = 0x2e5 }], by_frame = 6830 }

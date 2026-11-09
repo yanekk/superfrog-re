@@ -1,5 +1,5 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with creature starts frozen (`freeze.rs`, T75), as T11's stretches do; items,
+//! the level sync point with creature starts frozen (`freeze.rs`, T79), as T11's stretches do; items,
 //! bonuses and the exit are taken (T22) and springs and animated cells run (T47) on both sides; the
 //! case's engine leaves out what it freezes (`fd_conform::engine_for`). The
 //! case compares the character's, the camera's and the status variables on every pass, and its goal
@@ -7,8 +7,9 @@
 //!
 //! Where the two first differ is where the modelled part of the route ends: contact with the
 //! playfield and the lives it costs are modelled since T70. Creatures stay frozen here on both sides
-//! (`freeze.rs`'s T75 entry, the engine starting none either since T46): live, a redraw the next pass
-//! cuts short can start one a pass later in the original, which T75 models.
+//! (`freeze.rs`'s T79 entry, the engine starting none either since T46) until T79 runs them live: a
+//! redraw the next pass cuts short starts one a pass later in the original, which the case runner
+//! hands the engine since T75.
 
 use std::sync::Arc;
 
