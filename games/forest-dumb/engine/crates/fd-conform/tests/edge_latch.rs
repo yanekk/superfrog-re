@@ -318,10 +318,9 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
 }
 
 /// A measurement that changes the original is not one (owner, 2026-11-09): in every case where the
-/// runner samples lines to read the edge cut (`records_edge_cuts`, creature starts frozen), the
-/// original sampled as the runner samples it is the original alone, every frame, in chip and slow
-/// RAM, picture and CPU registers. With creatures live it is not (next test), so those cases are not
-/// sampled for it (T78 makes the sampling observe only).
+/// runner samples lines to read the edge cut (`records_edge_cuts`: every level case, creatures live
+/// or frozen, since T78), the original sampled as the runner samples it is the original alone, every
+/// frame, in chip and slow RAM, picture and CPU registers.
 #[test]
 fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
     let dir = fd_conform::conform_dir().join("cases");
@@ -339,10 +338,12 @@ fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
         "mechanic-vanish",
         "edge-latch-route",
         "death-water",
+        "enemy-route",
+        "enemy-contact",
+        "death-countdown",
     ] {
         assert!(names.contains(&n), "{names:?}");
     }
-    assert!(!names.iter().any(|n| n.starts_with("enemy-")), "{names:?}");
     let runs: Vec<(String, (Option<u32>, u32))> = std::thread::scope(|s| {
         let hs: Vec<_> = cases
             .iter()
@@ -350,19 +351,41 @@ fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
             .collect();
         hs.into_iter().map(|h| h.join().unwrap()).collect()
     });
-    for (name, (differs, sampled)) in &runs {
+    for (name, (differs, _)) in &runs {
         assert_eq!(*differs, None, "{name}: sampling changed the original");
-        assert!(*sampled > 0, "{name}: nothing sampled");
+    }
+    let sampled: Vec<&str> = runs
+        .iter()
+        .filter(|r| r.1.1 > 0)
+        .map(|r| r.0.as_str())
+        .collect();
+    assert!(sampled.len() > cases.len() / 2, "sampled: {sampled:?}");
+    for n in ["enemy-route", "enemy-contact", "edge-latch-route"] {
+        assert!(sampled.contains(&n), "{n} not sampled: {sampled:?}");
     }
 }
 
-/// The check above has teeth: with creatures live, sampling every step changes the original
-/// (`enemy-contact`: a pass ends a step later from step 377, T74 review), so the runner hands no
+/// With creatures live, sampling every step leaves the original as it runs alone, every frame: before
+/// T78 a sampled step ended early where a blit held the CPU across the frame's end (`enemy-contact`:
+/// a pass ended a step later from step 377; `enemy-route` from 336), so the runner handed no
 /// measured edge cut there.
 #[test]
-fn sampling_changes_the_original_where_creatures_are_live() {
-    let case = Case::load(Path::new("cases/enemy-contact.toml")).unwrap();
-    assert!(!records_edge_cuts(&case));
-    let (differs, _) = sampled_against_alone(&case, 420, true);
-    assert!(differs.is_some_and(|s| s < 420), "{differs:?}");
+fn sampling_every_step_leaves_the_original_unchanged_where_creatures_are_live() {
+    std::thread::scope(|s| {
+        let hs: Vec<_> = ["enemy-contact", "enemy-route"]
+            .map(|name| {
+                s.spawn(move || {
+                    let case = Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap();
+                    assert!(!case.freeze, "{name}: creatures live");
+                    let (differs, sampled) = sampled_against_alone(&case, u32::MAX, true);
+                    assert_eq!(differs, None, "{name}: sampling changed the original");
+                    assert_eq!(sampled, case.frames, "{name}");
+                })
+            })
+            .into_iter()
+            .collect();
+        for h in hs {
+            h.join().unwrap();
+        }
+    });
 }

@@ -6,8 +6,9 @@
 //!
 //! Each case stops before the first pass where an edge redraw the next pass cut short starts a
 //! creature a pass later in the original than in the engine (measured: the interrupted PC in
-//! `h0_3ac2`); T75 models that race. `enemy-route` sets `edge_latch_right` aside for T75: with
-//! creatures live the runner hands no measured edge cut (`fd_conform::records_edge_cuts`, T74, T78).
+//! `h0_3ac2`); T75 models that race. The runner hands the engine each measured edge cut here too
+//! (`fd_conform::records_edge_cuts`, T74; with creatures live since T78), so `enemy-route` compares
+//! `edge_latch_right`.
 
 use std::path::Path;
 use std::sync::Arc;

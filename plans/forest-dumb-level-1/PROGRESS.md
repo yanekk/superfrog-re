@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-09
+**Next `pir-work` will:** review T78, then T75 (unblocked by T78), T77, T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -98,9 +98,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
-| T78 | oracle-recording-observes-only | T74; blocks T75 | ⬜ | |
+| T78 | oracle-recording-observes-only | T74; blocks T75 | 🔍 | Shim ends a sampled step once the vertical sync ran (a beam wrap ended it early when a blit held the CPU into line 0) and keeps the picture on switch. Three tests: `line_samples.rs` (fails before), two `edge_latch.rs` turned round. `records_edge_cuts`: every level case. Deviations: picture fix added; `enemy-route`'s T75 `edge_latch_right` exclusion removed, unused; cache keys unchanged, plain emulation untouched. |
 
-**Review queue:** *(empty)*
+**Review queue:** T78
 
 ## Blocked on the user
 
