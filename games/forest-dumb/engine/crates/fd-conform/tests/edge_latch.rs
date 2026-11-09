@@ -151,7 +151,7 @@ fn the_routes_first_1300_steps_agree_on_the_right_edge_latch() {
 /// left latch waiting, or a cut down row's up latch (T73 review: resuming one latch late passed).
 #[test]
 fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
-    use fd_core::level::{camera::Dir, main_loop_redraws, redraw::LevelImage};
+    use fd_core::level::{Cut, camera::Dir, main_loop_redraws, redraw::LevelImage};
     let case = Case::load(Path::new(CASE)).unwrap();
     let inputs = Inputs::load(&case).unwrap();
     let data = game_data().unwrap_or_else(|e| panic!("{e}"));
@@ -177,7 +177,7 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         // A row resumed into can be cut again; each call is the foreground after one more pass.
         let mut plane = g.plane().clone();
         for _ in 0..order.len() {
-            main_loop_redraws(&mut s, &mut plane, &image, &mut Vec::new());
+            main_loop_redraws(&mut s, &mut plane, &image, &mut Vec::new(), Cut::Rows);
             if s.edges_resume.is_none() {
                 break;
             }

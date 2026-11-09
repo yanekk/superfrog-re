@@ -4,13 +4,12 @@
 # next pass cuts the row's redraw, so the right latch stays set through it (docs/09, "The edge
 # redraws and the next pass"). Goal: where the engine stands after the route, as confirm sets it.
 # Since T47 springs and the animated cells run on both sides: the original's longer passes cut other
-# rows (a row of no bobs at pass 328), and edge_latch_right differs on 2 passes, every other variable
-# equal (T74, owner 2026-11-09).
+# rows (a row of no bobs at pass 328) and columns; the runner hands the engine where each pass cut
+# main_loop's redraws, edge_latch_right compared on every pass (T74).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "edge-latch-route"
 frames = 1308
 compare = ["vars"]
-vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "edge_latch_right"]
 goal = { all = [{ var = "char_x", value = 0x85c }, { var = "char_y", value = 0x18c }], by_frame = 7609 }
 freeze = true
-exclude = [{ what = "var edge_latch_right", task = "T74" }]
