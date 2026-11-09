@@ -426,9 +426,15 @@ mode (the exception frame is on the supervisor stack). `fd_conform::edges_cut` r
   the latch not yet tested, holds the interrupted scan's later animated cells (`Edges::deferred`) and
   adds them before resuming after the pass. Its own rule is then off. Sub-frame timing stays out of the
   engine (DESIGN §2.1): which pass is cut is the original's cycles, handed over as T67 hands the input
-  each pass read. Not handed: a creature the cut scan starts after the pass (creatures are frozen in
-  every case so far, T24), and a pass that ends within the few dozen cycles before line 233 that four
-  clear latches' tests take.
+  each pass read. Not handed: a creature the cut scan starts after the pass (T75), and a pass that
+  ends within the few dozen cycles before line 233 that four clear latches' tests take.
+- **Only where creature starts are frozen** (T74 review, 2026-11-09, owner). Sampling a step's lines
+  (`Amiga::set_profile`) changed the original with creatures live: `enemy-route` and `enemy-contact`
+  ended a pass a step later from step 336 and 377. A measurement that changes the original is not
+  one, so the runner samples for the cut, and hands it, only in cases freezing `h0_681c`
+  (`fd_conform::records_edge_cuts`, `Sampler`); elsewhere the engine keeps `ROW_BOBS_CUT`. In those
+  ten cases the original sampled as the runner samples it equals the original alone every frame (chip
+  and slow RAM, picture, registers; `edge_latch.rs`). T78 makes sampling observe only.
 
 ## What this changes for later tasks
 

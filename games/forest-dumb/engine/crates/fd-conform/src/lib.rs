@@ -112,6 +112,62 @@ const FLAG_AND_LATCHES: u32 = HUNK_BASES[0] + 0x5196;
 /// `camera_update` (`h0+$4d7e`), `game_frame`'s third call: the one that sets the edge latches.
 const CAMERA_UPDATE: u32 = 0x4d7e;
 
+/// Whether the runner reads, on the original, where each pass cut `main_loop`'s edge redraws and
+/// hands it to the engine (T74): only where the case freezes creature starts (`h0_681c`). Reading
+/// it samples the lines of a step ([`Amiga::set_profile`]), which with creatures live changes the
+/// original's run (a pass ends a step later on `enemy-route`, T74 review), so a measurement there
+/// is not one; with them frozen `tests/edge_latch.rs` holds the original identical every frame
+/// with and without it. Elsewhere the engine keeps its own rule (`ROW_BOBS_CUT`) until T78.
+pub fn records_edge_cuts(case: &Case) -> bool {
+    case.freeze
+        && freeze::for_case(&case.thaw)
+            .iter()
+            .any(|f| (f.hunk, f.offset) == (0, 0x681c))
+}
+
+/// Which steps the runner samples line by line, as [`run_with`] decides it, shared with the check
+/// that the sampling leaves the original unchanged. A step is sampled where it starts pass
+/// `32k + 1`, whose cut decides the status bar (T71), and, when [`records_edge_cuts`], where its
+/// pass may find the foreground in the edge redraws (T74): `frame_flag` or a latch set at the
+/// step's start (a crossing scroll sets both), or the last pass still running short of
+/// `camera_update`, which latches; else, at most, the last pass's end leaves four clear latches to
+/// test, a few dozen cycles, before it spins. The oracle must count
+/// [`Sampler::CAMERA_UPDATE`] and watch [`PASS_END`].
+#[derive(Debug, Clone, Default)]
+pub struct Sampler {
+    camera_ran: bool,
+    last_end: Option<u32>,
+}
+
+impl Sampler {
+    /// `camera_update`'s address, for [`Amiga::watch_pcs`].
+    pub const CAMERA_UPDATE: u32 = HUNK_BASES[0] + CAMERA_UPDATE;
+
+    /// Whether to sample the next step of `case` on `am`.
+    pub fn samples(&self, am: &Amiga, case: &Case) -> bool {
+        let irq = layout_var("irq_count").expect("irq_count in LAYOUT");
+        let started = Live(am).value(irq);
+        let running = self.last_end.is_none_or(|last| started > last);
+        let busy = records_edge_cuts(case)
+            && ((running && !self.camera_ran)
+                || am.peek(FLAG_AND_LATCHES, 10).iter().any(|&b| b != 0));
+        busy || (case.compare.picture && started.wrapping_add(1) & 31 == 1)
+    }
+
+    /// After each step: whether `camera_update` ran in it, and the last pass that ended.
+    pub fn stepped(&mut self, am: &Amiga) {
+        self.camera_ran = am
+            .pc_hits()
+            .iter()
+            .any(|&(p, n)| p == Self::CAMERA_UPDATE && n > 0);
+        if let Some(mem) = am.watched_memory() {
+            let irq = layout_var("irq_count").expect("irq_count in LAYOUT");
+            let ended = OracleMem(&mem).value(irq);
+            self.last_end = Some(self.last_end.map_or(ended, |l| l.max(ended)));
+        }
+    }
+}
+
 /// `main_loop`'s `bsr.w redraw_edge_a` to `_d` return here (`h0+$2da`, `$302`, `$32a`, `$352`): one
 /// on the foreground's stack means that redraw was running, and the latches up to it were tested.
 const AFTER_REDRAW: [u32; 4] = [0x2da, 0x302, 0x32a, 0x352];
@@ -1029,10 +1085,10 @@ pub fn run_inputs(
         [GAME_OVER_SCREEN, HIGH_SCORES, NEXT_WORLD].map(|(h, o)| HUNK_BASES[h as usize] + o);
     let world = layout_var("world_index").ok_or("no world_index in LAYOUT")?;
     pcs.extend(scene_pcs);
-    let camera = HUNK_BASES[0] + CAMERA_UPDATE;
-    if !pcs.contains(&camera) {
-        pcs.push(camera);
+    if !pcs.contains(&Sampler::CAMERA_UPDATE) {
+        pcs.push(Sampler::CAMERA_UPDATE);
     }
+    let records = records_edge_cuts(case);
     let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
 
@@ -1067,26 +1123,18 @@ pub fn run_inputs(
     // Each pass and where it cut `main_loop`'s edge redraws on the original, by the pass number,
     // from the step it started in to the step it ends in (T74).
     let mut edges_cuts: Vec<(u32, Option<EdgesCut>)> = Vec::new();
-    // A step is sampled line by line where its pass may find the foreground inside the edge
-    // redraws (T74), and where it starts pass `32k + 1`, whose cut decides the status bar (T71).
-    // Sampling leaves the run unchanged but costs about half a step again; turning it off clears
-    // the frame just drawn, so it changes before a step, never after one.
+    // Which steps are sampled line by line ([`Sampler`]). Sampling costs about half a step again;
+    // turning it off clears the frame just drawn, so it changes before a step, never after one.
+    let mut sampler = Sampler::default();
     let mut profiling = false;
-    let mut camera_ran = false;
     // The last pass whose picture was compared.
     let mut shown_last: Option<u32> = None;
 
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
-        // A step starts one pass, at line 233. Its foreground has redraws to run then only if
-        // `frame_flag` or a latch is set (a crossing scroll sets both), or the last pass is still
-        // running and has not reached `camera_update`, which latches; else, at most, the last
-        // pass's end leaves four clear latches to test, a few dozen cycles, before it spins.
+        // A step starts one pass, at line 233.
         let started = Live(&am).value(irq);
-        let running = at.is_none_or(|(_, last)| started > last);
-        let busy =
-            (running && !camera_ran) || am.peek(FLAG_AND_LATCHES, 10).iter().any(|&b| b != 0);
-        let sample = busy || (case.compare.picture && started.wrapping_add(1) & 31 == 1);
+        let sample = sampler.samples(&am, case);
         if sample != profiling {
             am.set_profile(sample);
             profiling = sample;
@@ -1097,10 +1145,12 @@ pub fn run_inputs(
             if case.compare.picture && now & 31 == 1 {
                 cut = interrupted_pc(&am).and_then(redraw_cut).map(|r| (now, r));
             }
-            edges_cuts.push((now, edges_cut(&am)));
+            if records {
+                edges_cuts.push((now, edges_cut(&am)));
+            }
         }
         let frame = am.frame();
-        camera_ran = am.pc_hits().iter().any(|&(p, n)| p == camera && n > 0);
+        sampler.stepped(&am);
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
         if let Some(mem) = am.watched_memory() {
@@ -1127,10 +1177,13 @@ pub fn run_inputs(
                             format!("pass {n} ended on the original but never read its input")
                         })?;
                         // A pass started in a step with another (none sampled) is taken as not cut.
-                        let edges = edges_cuts.iter().find(|(p, _)| *p == n).and_then(|c| c.1);
-                        edges_cuts.retain(|(p, _)| *p > n);
-                        verdict.edge_cuts += edges.is_some() as u32;
-                        engine.foreground_cut(edges);
+                        // Not recorded, nothing is handed: the engine keeps its own rule.
+                        if records {
+                            let edges = edges_cuts.iter().find(|(p, _)| *p == n).and_then(|c| c.1);
+                            edges_cuts.retain(|(p, _)| *p > n);
+                            verdict.edge_cuts += edges.is_some() as u32;
+                            engine.foreground_cut(edges);
+                        }
                         engine.pass(pass_input);
                         passes_run += 1;
                         if engine.level_end() {

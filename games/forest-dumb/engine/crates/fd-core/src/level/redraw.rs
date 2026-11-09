@@ -93,6 +93,12 @@ pub trait Io {
         false
     }
 
+    /// Whether `h0_681c` returns at once, as a conformance case that freezes creatures patches it
+    /// (`fd-conform`'s `freeze.rs`, T75's entry): no creature starts and the cell stays.
+    fn creature_starts_frozen(&self) -> bool {
+        false
+    }
+
     fn rw(&self, a: u32) -> u16 {
         u16::from_be_bytes([self.rb(a), self.rb(a.wrapping_add(1))])
     }
@@ -404,15 +410,29 @@ impl Edges {
         }
     }
 
-    /// Start a creature from cell `cell` (hunk 0 offset), clearing it if a slot took it. Returns the
-    /// original's `d0`: 0 taken, -1 not.
-    fn start(&mut self, io: &mut impl Io, cell: u32, x: u16, y: u16, kind: u16, facing: u8) -> u32 {
-        if self.creatures.start(x, y, kind, facing) {
+    /// Start a creature from cell `cell` (hunk 0 offset), clearing it if a slot took it. `d0` is the
+    /// long the scan passes in d0, x in its low word. Returns the original's `d0`: 0 taken, -1 not.
+    fn start(
+        &mut self,
+        io: &mut impl Io,
+        cell: u32,
+        d0: u32,
+        y: u16,
+        kind: u16,
+        facing: u8,
+    ) -> u32 {
+        // Frozen, `h0_681c` is an `rts`: d0 comes back as passed and the scan's `tst.l d0` decides.
+        let d0 = if io.creature_starts_frozen() {
+            d0
+        } else if self.creatures.start(d0 as u16, y, kind, facing) {
             0xffff_ffff
         } else {
-            io.clear_object(cell);
             0
+        };
+        if d0 == 0 {
+            io.clear_object(cell);
         }
+        d0
     }
 
     /// `redraw_edge_a` (`h0+$844`): the row below the view, `y + $d0`, while y is under `$53c`.
@@ -453,7 +473,7 @@ impl Edges {
                     let cx = (x as u32).wrapping_add(step(d4, 0x14));
                     let (kind, cy) = creature(b, (y.wrapping_add(0xc1) & 0xfff0) as u32);
                     let facing = if minus(d4 as u16, 0xa) { 0xff } else { 1 };
-                    d0 = self.start(io, cell, cx as u16, cy as u16, kind, facing);
+                    d0 = self.start(io, cell, cx, cy as u16, kind, facing);
                 }
             }
         }
@@ -502,7 +522,7 @@ impl Edges {
                     let cx = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
                     let (kind, cy) = creature(b, (y.wrapping_sub(1) & 0xfff0) as u32);
                     let facing = if minus(d4 as u16, 0xa) { 0xff } else { 1 };
-                    d0 = self.start(io, cell, cx as u16, cy as u16, kind, facing);
+                    d0 = self.start(io, cell, cx, cy as u16, kind, facing);
                 }
             }
         }
@@ -553,7 +573,7 @@ impl Edges {
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
                     let (kind, cy) = creature(b, cy);
-                    self.start(io, cell, x.wrapping_sub(7), cy as u16, kind, 1);
+                    self.start(io, cell, x.wrapping_sub(7) as u32, cy as u16, kind, 1);
                 }
             }
         }
@@ -598,7 +618,7 @@ impl Edges {
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
                     let (kind, cy) = creature(b, cy);
-                    self.start(io, cell, xr.wrapping_sub(7), cy as u16, kind, 0xff);
+                    self.start(io, cell, xr.wrapping_sub(7) as u32, cy as u16, kind, 0xff);
                 }
             }
         }
@@ -664,6 +684,9 @@ pub struct PlayIo<'a> {
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
+    /// A conformance case froze `h0_681c` (T75's `freeze.rs` entry): [`Io::creature_starts_frozen`].
+    /// False in play, the app and the planner.
+    pub creature_starts_frozen: bool,
 }
 
 impl PlayIo<'_> {
@@ -693,6 +716,9 @@ impl Io for PlayIo<'_> {
     }
     fn defers(&self, cell: u32) -> bool {
         self.defer_from.is_some_and(|f| cell >= f)
+    }
+    fn creature_starts_frozen(&self) -> bool {
+        self.creature_starts_frozen
     }
 }
 

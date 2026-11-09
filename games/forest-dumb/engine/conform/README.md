@@ -81,7 +81,9 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   `freeze = true` is an error until then.
 - **`thaw`.** Names `freeze.rs` entries (`h0_681c`) a frozen case leaves running on both sides: the
   original is not patched there and the engine runs the routine (`Engine::thaw`, `Game::thaw_in_a_case`).
-  T72's `death-water` thawed `h0_6882` to draw the water until T47 removed that entry. An unknown
+  T72's `death-water` thawed `h0_6882` to draw the water until T47 removed that entry. Since T46 only
+  the eight cases where a cut edge redraw starts a creature a pass late in the original freeze (T75,
+  `h0_681c`); frozen, the engine starts none either. An unknown
   name, a name given twice or `thaw` without `freeze = true` is an error.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
@@ -145,9 +147,12 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   read. The engine then stops its redraws there and finishes them, the scan's later animated cells
   included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not
   forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
-  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs.
+  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs. Only cases
+  that freeze creature starts (`h0_681c`) are sampled for it (`records_edge_cuts`, `Sampler`): with
+  creatures live sampling changes the original's run, so the engine keeps its own rule there (T78).
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
-  the engine's `Transplant::probe` arm for it.
+  the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
+  (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.
 
 ## The coverage report
 

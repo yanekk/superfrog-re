@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 72 of 79 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-09
-**Next `pir-work` will:** T76 and T46, then T27 and T48 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T78, then T75, T77, T27 and T48 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -62,7 +62,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T23 | lives-and-game-over | T11, T13, T14, T20 | ✅ | |
 | T24 | enemies | T20, T21, T22, T23 | ✅ | |
 | T45 | case-collect | T22 | ✅ | |
-| T46 | case-enemies | T24, T45 | ⬜ | |
+| T46 | case-enemies | T24, T45 | ✅ | |
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ✅ | |
@@ -94,8 +94,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T71 | status-redraw-race | T70; blocks T27 | ✅ | |
 | T72 | water-contact | T25, T70; blocks T47, T27 | ✅ | |
 | T73 | edge-latch-gap | T24; blocks T46, T27 | ✅ | |
-| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | Review: one fix, `death.rs` `Watched`, `Thawed` now forward the cut (`death-water` failed at pass 293). Probed: all 37 cases run, only T76's known `character-run-slide-buttons` fails; sampling every step gives identical cut counts; three mutations (cut before `frame_flag` clear, deferred-cell boundary, sampling gate) go red. docs/09's 17 nine-bob rows read-only. |
-| T76 | stale-hits-taken-exclusion | —; blocks T27 | ⬜ | |
+| T74 | switched-on-redraw-race | T47, T73; blocks T27, T48 | ✅ | Review: one fix, `death.rs` wrappers forward the cut. Merged with T46: sampling changed the original with creatures live, so the cut is sampled and handed only where `h0_681c` is frozen, an identity check proves those ten cases unchanged (owner); `enemy-route`'s exclusion now names T75; T78 added. Three mutations red; 37 cases run pre-merge. |
+| T76 | stale-hits-taken-exclusion | —; blocks T27 | ✅ | |
+| T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ⬜ | |
+| T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
+| T78 | oracle-recording-observes-only | T74; blocks T75 | ⬜ | |
 
 **Review queue:** *(empty)*
 

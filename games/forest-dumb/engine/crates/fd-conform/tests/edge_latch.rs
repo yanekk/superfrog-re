@@ -16,8 +16,8 @@ use std::path::Path;
 use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
 use fd_conform::{
-    Case, Engine, Inputs, Live, Options, Outcome, Verdict, edges_cut, engine_for, game_data,
-    interrupted_pc, reach_case, run, run_with,
+    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, Sampler, Verdict, edges_cut,
+    engine_for, game_data, interrupted_pc, reach_case, records_edge_cuts, run, run_with,
 };
 use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
 use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
@@ -263,7 +263,14 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         // A row resumed into can be cut again; each call is the foreground after one more pass.
         let mut plane = g.plane().clone();
         for _ in 0..order.len() {
-            main_loop_redraws(&mut s, &mut plane, &image, &mut Vec::new(), Cut::Rows);
+            main_loop_redraws(
+                &mut s,
+                &mut plane,
+                &image,
+                &mut Vec::new(),
+                Cut::Rows,
+                false,
+            );
             if s.edges_resume.is_none() {
                 break;
             }
@@ -275,4 +282,87 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         }
         assert_eq!((s.frame_flag, s.edges_resume), (0, None));
     }
+}
+
+/// The original reached for `case`, twice: as it runs alone, and as [`run`] runs it, counting
+/// `camera_update` and watching pass ends (both proven to change nothing, T31) and sampling the
+/// steps [`Sampler`] picks, or every step when `every`. Steps both a frame at a time, up to `steps`,
+/// and returns the first step whose chip and slow RAM, picture or CPU registers differ, and how
+/// many steps were sampled.
+fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, u32) {
+    let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
+    let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    let mut seen = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    for am in [&mut alone, &mut seen] {
+        am.watch_pcs(&[Sampler::CAMERA_UPDATE]);
+        am.watch_write(Some(PASS_END));
+    }
+    let mut sampler = Sampler::default();
+    let (mut profiling, mut sampled) = (false, 0);
+    for step in 0..steps.min(case.frames) {
+        let sample = every || sampler.samples(&seen, case);
+        if sample != profiling {
+            seen.set_profile(sample);
+            profiling = sample;
+        }
+        sampled += sample as u32;
+        let input = inputs.at(case.sync_frame + step);
+        let a = alone.step(input).unwrap_or_else(|e| panic!("{e}"));
+        let s = seen.step(input).unwrap_or_else(|e| panic!("{e}"));
+        if a.picture != s.picture || alone.cpu() != seen.cpu() || alone.memory() != seen.memory() {
+            return (Some(step), sampled);
+        }
+        sampler.stepped(&seen);
+    }
+    (None, sampled)
+}
+
+/// A measurement that changes the original is not one (owner, 2026-11-09): in every case where the
+/// runner samples lines to read the edge cut (`records_edge_cuts`, creature starts frozen), the
+/// original sampled as the runner samples it is the original alone, every frame, in chip and slow
+/// RAM, picture and CPU registers. With creatures live it is not (next test), so those cases are not
+/// sampled for it (T78 makes the sampling observe only).
+#[test]
+fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
+    let dir = fd_conform::conform_dir().join("cases");
+    let mut cases: Vec<Case> = std::fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .map(|p| Case::load(&p).unwrap_or_else(|e| panic!("{e}")))
+        .filter(|c| c.is_level() && records_edge_cuts(c))
+        .collect();
+    cases.sort_by(|a, b| a.name.cmp(&b.name));
+    let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
+    for n in [
+        "mechanic-spring",
+        "mechanic-vanish",
+        "edge-latch-route",
+        "death-water",
+    ] {
+        assert!(names.contains(&n), "{names:?}");
+    }
+    assert!(!names.iter().any(|n| n.starts_with("enemy-")), "{names:?}");
+    let runs: Vec<(String, (Option<u32>, u32))> = std::thread::scope(|s| {
+        let hs: Vec<_> = cases
+            .iter()
+            .map(|c| s.spawn(move || (c.name.clone(), sampled_against_alone(c, u32::MAX, false))))
+            .collect();
+        hs.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    for (name, (differs, sampled)) in &runs {
+        assert_eq!(*differs, None, "{name}: sampling changed the original");
+        assert!(*sampled > 0, "{name}: nothing sampled");
+    }
+}
+
+/// The check above has teeth: with creatures live, sampling every step changes the original
+/// (`enemy-contact`: a pass ends a step later from step 377, T74 review), so the runner hands no
+/// measured edge cut there.
+#[test]
+fn sampling_changes_the_original_where_creatures_are_live() {
+    let case = Case::load(Path::new("cases/enemy-contact.toml")).unwrap();
+    assert!(!records_edge_cuts(&case));
+    let (differs, _) = sampled_against_alone(&case, 420, true);
+    assert!(differs.is_some_and(|s| s < 420), "{differs:?}");
 }

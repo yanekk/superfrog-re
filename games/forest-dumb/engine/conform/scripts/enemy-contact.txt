@@ -1,0 +1,21 @@
+# T46: the first 630 steps of fd-plan's route to the exit's cells (as scripts/contact-route.txt,
+# seed 1, 100 rounds, 2026-11-06), from the level sync point.
+0: L
+4: R
+76: U R
+116: U L
+136: R
+220: -
+228: U R
+260: R
+276: U
+280: U R
+296: R
+376: U L
+408: R
+460: L
+464: R
+496: U R
+564: D
+572: -
+604: R

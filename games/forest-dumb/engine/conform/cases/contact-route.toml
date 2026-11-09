@@ -3,6 +3,8 @@
 # counts, with the character, on all of the route's passes. Since T47 the water is drawn in every case,
 # and the route drops into the pool at W1-1:195..197,94 (frame 7483), where its contact costs a life:
 # the goal, char_x $c44, char_y $5c4 in the water, lives 31. It no longer reaches the exit's cells.
+# Creatures frozen on both sides (freeze.rs h0_681c, T75): live, a creature started at pass 641 a pass later in the
+# original, its redraw cut short by a late pass (T46, FINDINGS).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "contact-route"
 frames = 1300

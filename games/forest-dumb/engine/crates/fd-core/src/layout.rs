@@ -132,6 +132,24 @@ pub const LAYOUT: &[Var] = &[
     var("water_cycle", 0, 0x6342, Width::Word),
     // CLXDAT as `char_hit_check` copied it (T70).
     var("clxdat_copy", 0, 0x1fe6, Width::Word),
+    // The five creature slots (T46), each a field inside `creature_active` or `creature_slots`
+    // (`name+$offset`, the symbol's own bytes): its flag, x and y as one long, and kind, facing and
+    // phase as one long, so a slot's path, spawn and despawn are compared every pass.
+    var("creature_active+$0", 0, 0x67da, Width::Byte),
+    var("creature_active+$1", 0, 0x67db, Width::Byte),
+    var("creature_active+$2", 0, 0x67dc, Width::Byte),
+    var("creature_active+$3", 0, 0x67dd, Width::Byte),
+    var("creature_active+$4", 0, 0x67de, Width::Byte),
+    var("creature_slots+$0", 0, 0x67ec, Width::Long),
+    var("creature_slots+$4", 0, 0x67f0, Width::Long),
+    var("creature_slots+$8", 0, 0x67f4, Width::Long),
+    var("creature_slots+$c", 0, 0x67f8, Width::Long),
+    var("creature_slots+$10", 0, 0x67fc, Width::Long),
+    var("creature_slots+$14", 0, 0x6800, Width::Long),
+    var("creature_slots+$18", 0, 0x6804, Width::Long),
+    var("creature_slots+$1c", 0, 0x6808, Width::Long),
+    var("creature_slots+$20", 0, 0x680c, Width::Long),
+    var("creature_slots+$24", 0, 0x6810, Width::Long),
 ];
 
 /// The variable called `name`.
@@ -171,6 +189,31 @@ mod tests {
         // a case compare the engine with some other byte.
         let map = include_str!("../../../../re/symbols.toml");
         for v in LAYOUT {
+            // A field of a larger symbol (`creature_slots+$8`) lies inside that symbol's bytes.
+            if let Some((name, off)) = v.name.split_once("+$") {
+                let off = u32::from_str_radix(off, 16).unwrap();
+                let entry = map
+                    .split("[[sym]]")
+                    .find(|s| s.contains(&format!("name = \"{name}\"\n")))
+                    .unwrap_or_else(|| panic!("{name} is not in symbols.toml"));
+                let field = |key: &str| {
+                    let line = entry.lines().find(|l| l.starts_with(key)).unwrap();
+                    let n = line.split('=').nth(1).unwrap().trim();
+                    match n.strip_prefix("0x") {
+                        Some(h) => u32::from_str_radix(h, 16).unwrap(),
+                        None => n.parse().unwrap(),
+                    }
+                };
+                assert!(entry.contains("kind = \"var\"\n"), "{name}");
+                assert_eq!(field("hunk ="), v.hunk as u32, "{}", v.name);
+                assert_eq!(field("offset ="), v.offset - off, "{}", v.name);
+                assert!(
+                    off + v.width.bytes() as u32 <= field("size ="),
+                    "{}",
+                    v.name
+                );
+                continue;
+            }
             let entry = map
                 .split("[[sym]]")
                 .find(|s| s.contains(&format!("name = \"{}\"\n", v.name)))

@@ -147,6 +147,9 @@ workspace = "engine"
 # T47: springs and vanishing blocks against the original, two cases from the cached sync point and
 # their inputs on the engine alone, 8 s warm.
 "crates/fd-conform/tests/mechanic_cases.rs" = "smoke"
+# T46: creatures live in play against the original, three cases from the cached sync point in
+# parallel, a stomp and contact watched, a mutated walk table: about 3 s warm.
+"crates/fd-conform/tests/enemy_cases.rs" = "smoke"
 # T21: what each object value of W1-1 does, scripted slides from the cached sync point, 3 s warm;
 # the map and note checks read disk 2. A machine with no sync cache boots to W1-1 once first.
 "crates/fd-conform/tests/object_claims.rs" = "smoke"
@@ -214,8 +217,16 @@ workspace = "engine"
 "crates/fd-conform/tests/status_race.rs" = "smoke"
 # T73: when the next pass cuts a row's redraw, on the original over 1 300 steps of T24's route, and
 # the route's case on every latch; T74: the two mechanic cases with the runner's measured cut dropped
-# or changed: 7 s warm from the cached sync point.
-"crates/fd-conform/tests/edge_latch.rs" = "smoke"
+# or changed, and sampling caught changing the original with creatures live: 9 s warm from the cached
+# sync point. The check that sampling leaves every creature-frozen case's original unchanged
+# (22 s, ten cases run twice) is full.
+"crates/fd-conform/tests/edge_latch.rs" = [
+    "a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows",
+    "the_routes_first_1300_steps_agree_on_the_right_edge_latch",
+    "the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped",
+    "a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one",
+    "sampling_changes_the_original_where_creatures_are_live",
+]
 # T72 adds the pool's contact with the water drawn (T47: no longer also without it).
 "crates/fd-conform/tests/contact.rs" = "smoke"
 # T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
@@ -446,6 +457,13 @@ covers = [
     "crates/fd-conform/tests/enemy_routines.rs::every_t24_routine_matches_the_original",
     "crates/fd-conform/tests/enemy_routines.rs::creatures_move_and_sort_in_play",
     "crates/fd-conform/tests/death_routines.rs::every_death_routine_matches_the_original",
+]
+
+[[area]]
+name = "level 1's creatures live in play, paths, starts, contact and stomps, against the original"
+covers = [
+    "crates/fd-conform/tests/enemy_cases.rs::creatures_match_the_original_on_every_pass",
+    "crates/fd-conform/tests/enemy_cases.rs::a_stomp_scores_and_three_contacts_cost_a_life",
 ]
 
 [[area]]

@@ -54,7 +54,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `PassInputs::{anchor, pcs, step, drop_through, next_read, next_start, take}`: a pass's input is not its step's (T67).
 - `sync::reach_level_1(frames)`, `sync::reach_level_1_in(kickstart, disk_dir, cache, frames)`, `sync::LEVEL_1_SYNC` (6301), `LEVEL_1_SCRIPT`, `cache_dir()`, `level_1_key`, `level_1_script()`.
 - `OracleMem(&AmigaMemory)` and `Live(&Amiga)` implement `fd_core::Mem`, so `.value(var)` reads a `LAYOUT` variable.
-- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws).
+- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws), `records_edge_cuts`, `Sampler` (which cases and steps the runner samples for it).
 - Constants: `HUNK_BASES`, `PLAY_WINDOW`, `STATUS_ROWS`, `PASS_END` (for `am.watch_write`), `GAME_OVER_SCREEN`, `HIGH_SCORES`, `NEXT_WORLD`, `READ_JOYSTICK`, `PAUSED_BRANCH`, `AFTER_NEXT_WORLD`.
 
 **Data** (`src/lib.rs`, `src/disks.rs`)
@@ -84,7 +84,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 
 **Freeze** (`src/freeze.rs`)
-- `FROZEN`, `ENGINE_SKIPS`, `named(name)`, `for_case(thaw)`, `apply(&mut Amiga, &[Frozen])`.
+- `FROZEN`, `named(name)`, `for_case(thaw)`, `apply(&mut Amiga, &[Frozen])`.
 
 **Bug zips** (`src/bug.rs`)
 - `open_zip(bytes, build)`, `replay(data, &rec, each) -> Replayed`, `retime(&rec) -> Retimed`.

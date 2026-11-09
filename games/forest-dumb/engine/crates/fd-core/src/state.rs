@@ -175,6 +175,9 @@ impl State {
     /// The value of the variable called `name`, zero-extended, or `None` if the state has no such
     /// variable.
     pub fn get(&self, name: &str) -> Option<u32> {
+        if let Some(field) = CreatureField::named(name) {
+            return Some(field.get(&self.edges.creatures));
+        }
         Some(match name {
             "mt_counter" => self.mt_counter.into(),
             "char_x" => self.char_x,
@@ -255,6 +258,10 @@ impl State {
     /// Set the variable called `name` to `value`, truncated to its width; `false` if the state has
     /// no such variable.
     pub fn set(&mut self, name: &str, value: u32) -> bool {
+        if let Some(field) = CreatureField::named(name) {
+            field.set(&mut self.edges.creatures, value);
+            return true;
+        }
         let (b, w) = (value as u8, value as u16);
         match name {
             "mt_counter" => self.mt_counter = b,
@@ -368,5 +375,50 @@ mod tests {
         assert_eq!(s.get("no_such"), None);
         assert!(!s.set("no_such", 1));
         assert_eq!(s, State::level_1());
+    }
+}
+
+/// A creature slot's field as `LAYOUT` names it (T46): `creature_active+$N` is slot N's flag byte,
+/// `creature_slots+$8N` its x and y as one long, `creature_slots+$8N+4` its kind, facing and phase
+/// as one long, the way the original stores them (`level::redraw::CreatureSlot`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CreatureField {
+    Flag(usize),
+    Place(usize),
+    Kind(usize),
+}
+
+impl CreatureField {
+    fn named(name: &str) -> Option<CreatureField> {
+        let (base, off) = name.split_once("+$")?;
+        let off = usize::from_str_radix(off, 16).ok()?;
+        match base {
+            "creature_active" if off < 5 => Some(CreatureField::Flag(off)),
+            "creature_slots" if off < 40 && off % 8 == 0 => Some(CreatureField::Place(off / 8)),
+            "creature_slots" if off < 40 && off % 8 == 4 => Some(CreatureField::Kind(off / 8)),
+            _ => None,
+        }
+    }
+
+    fn get(self, c: &crate::level::redraw::CreatureSlots) -> u32 {
+        match self {
+            CreatureField::Flag(i) => c.active[i].into(),
+            CreatureField::Place(i) => (c.slots[i].x as u32) << 16 | c.slots[i].y as u32,
+            CreatureField::Kind(i) => {
+                let s = &c.slots[i];
+                (s.kind as u32) << 16 | (s.facing as u32) << 8 | s.phase as u32
+            }
+        }
+    }
+
+    fn set(self, c: &mut crate::level::redraw::CreatureSlots, v: u32) {
+        match self {
+            CreatureField::Flag(i) => c.active[i] = v as u8,
+            CreatureField::Place(i) => (c.slots[i].x, c.slots[i].y) = ((v >> 16) as u16, v as u16),
+            CreatureField::Kind(i) => {
+                let s = &mut c.slots[i];
+                (s.kind, s.facing, s.phase) = ((v >> 16) as u16, (v >> 8) as u8, v as u8);
+            }
+        }
     }
 }

@@ -94,6 +94,9 @@ impl Engine for Changed {
     fn freeze(&mut self) {
         Engine::freeze(&mut self.game);
     }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.passes += 1;
         self.game.step(input)

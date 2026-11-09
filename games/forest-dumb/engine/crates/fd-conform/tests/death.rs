@@ -95,6 +95,9 @@ impl Engine for Changed {
     fn freeze(&mut self) {
         Engine::freeze(&mut self.game);
     }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -269,6 +272,9 @@ impl Engine for Watched {
     fn freeze(&mut self) {
         Engine::freeze(&mut self.game);
     }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
+    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -307,7 +313,8 @@ fn falling_into_the_spike_pit_loses_a_life_as_the_originals() {
     let v = run(&case, &mut w);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.events.is_empty(), "{v}");
-    assert_eq!(v.goal_met, Some(6661), "the second life lost");
+    // 6661 with creatures frozen; live since T46, a pass ends a frame later.
+    assert_eq!(v.goal_met, Some(6662), "the second life lost");
     assert!(v.passes > 320 && v.pictures > 320, "{v}");
     assert_eq!(v.tolerated, [0, 0, 0], "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
@@ -336,7 +343,8 @@ fn the_last_life_lost_on_the_spikes_ends_the_game_as_the_originals() {
     let case = load("death-spikes");
     let v = run(&case, &mut game());
     assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert_eq!(v.game_over, Some((10716, Some(10774))), "{v}");
+    // 10716 with creatures frozen; live since T46, the last life goes a frame later.
+    assert_eq!(v.game_over, Some((10717, Some(10774))), "{v}");
     let events: Vec<Event> = v.events.iter().map(|(_, e)| *e).collect();
     assert_eq!(events, [Event::GameOver, Event::Restart], "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 32, "{v}");
@@ -377,6 +385,9 @@ impl Transplant for Cut {
 impl Engine for Cut {
     fn freeze(&mut self) {
         Engine::freeze(&mut self.game);
+    }
+    fn thaw(&mut self, offset: u32) {
+        Engine::thaw(&mut self.game, offset);
     }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)

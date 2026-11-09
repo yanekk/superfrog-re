@@ -234,6 +234,12 @@ spring), and measured: with all of them frozen, a creature, coin, bonus, block a
 ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
 `char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
 
+Creatures run live in every case since T46 (`thaw = ["h0_681c"]`, or no freeze), held by
+`fd-conform/tests/enemy_cases.rs`; `h0_681c`'s entry stays for T75 only. Measured (T46): a pass made
+longer by drawn creatures can cut `main_loop`'s edge redraw (interrupted in `h0_3ac2`) before its scan
+reaches a creature cell, so the original starts that creature a pass after the engine and it stays a
+pass behind. Eight cases meet it and freeze it on both sides (the engine starting none, the cell kept).
+
 ## No dispatch tables
 
 The plan expected object routines reached only through dispatch tables, outside T34's call-tree scan
