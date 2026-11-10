@@ -18,8 +18,8 @@ use std::path::Path;
 use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
 use fd_conform::{
-    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, Sampler, Verdict, edges_cut, game_data,
-    interrupted_pc, reach_case, records_edge_cuts, run, run_with,
+    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, STATUS_REDRAW, Sampler, Verdict,
+    edges_cut, game_data, interrupted_pc, reach_case, records_edge_cuts, run, run_with,
 };
 use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
 use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
@@ -279,6 +279,7 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
 /// The original reached for `case`, twice: as it runs alone, and as [`run`] runs it, counting
 /// `camera_update` and watching pass ends (both proven to change nothing, T31) and sampling the
 /// steps [`Sampler`] picks, or every step when `every`. Steps both a frame at a time, up to `steps`,
+/// and counting the status redraw's calls (T82),
 /// and returns the first step whose chip and slow RAM, picture or CPU registers differ, and how
 /// many steps were sampled. The sampled side's creature cuts are read every step as the runner
 /// reads them (T80), from what the oracle keeps of each step whether read or not.
@@ -286,8 +287,12 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
     let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
     let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
     let mut seen = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    // The runner also counts `main_loop`'s status redraw calls (T82): on the sampled side only,
+    // so the count is held to change nothing as well.
+    let status_redraw = HUNK_BASES[STATUS_REDRAW.0 as usize] + STATUS_REDRAW.1;
+    alone.watch_pcs(&[Sampler::CAMERA_UPDATE]);
+    seen.watch_pcs(&[Sampler::CAMERA_UPDATE, status_redraw]);
     for am in [&mut alone, &mut seen] {
-        am.watch_pcs(&[Sampler::CAMERA_UPDATE]);
         am.watch_write(Some(PASS_END));
     }
     let mut sampler = Sampler::default();
