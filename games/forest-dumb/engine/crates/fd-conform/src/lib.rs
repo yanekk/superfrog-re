@@ -32,8 +32,8 @@ use amiga_oracle::{
 };
 use std::sync::Arc;
 
-use fd_core::level::EdgesCut;
 use fd_core::level::redraw::{OBJECT_MAP, SCREEN_LINE, TILE_MAP};
+use fd_core::level::{AddCut, EdgesCut};
 use fd_core::render::objects::CUT_ROWS;
 use fd_core::render::playfield::{SCREEN, Scroll};
 use fd_core::{
@@ -69,6 +69,11 @@ pub const HIGH_SCORES: (u8, u32) = (0, 0x89d0);
 /// `next_world` (`h0+$1ba`): `main_loop` has found the level's end; its first instruction adds one
 /// to `world_index` (T26).
 pub const NEXT_WORLD: (u8, u32) = (0, 0x1ba);
+
+/// `main_loop`'s `bsr.w h0_6a96` (`h0+$29c`), its status bar redraw: reached only on a turn that
+/// read `irq_count` as a multiple of 32, so only between the starts of passes `32k` and `32k + 1`.
+/// A period with no hit never redrew its bar (T82).
+pub const STATUS_REDRAW: (u8, u32) = (0, 0x29c);
 
 /// The rows of [`PLAY_WINDOW`] the status bar fills (lines 241 to 296).
 pub const STATUS_ROWS: Range<u16> = 194..250;
@@ -181,8 +186,22 @@ const SCANS: [(u32, u32, u32); 4] = [
     (0x1318, 0x1334, 0x138c),
 ];
 
+/// Each redraw's bob routine (`h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`): its first instruction and
+/// its `move.w #$1401, $dff058.l`, which starts the blit. A PC from one to the other has not.
+const BOBS: [(u32, u32); 4] = [
+    (0xa06, 0xab2),
+    (0xce4, 0xd8c),
+    (0x104c, 0x10f2),
+    (0x1390, 0x143a),
+];
+
 /// `h0_6882`, and its `movem.l` after the `st.b` that marks the new cell used.
 const ADD_CELL: Range<u32> = 0x6882..0x69a0;
+/// In `h0_6882`: the first instruction after its four counts, where it has found the chosen
+/// list's free entry, and its `st.b` (T82, `fd_core::level::AddCut`). A PC at one has not run it.
+const ADD_COUNTED: u32 = 0x691e;
+const ADD_FOUND: u32 = 0x6984;
+const ADD_MARK: u32 = 0x699e;
 
 /// Each scan's creature branch, from its first instruction to its `bsr.w h0_681c`: a PC in it has
 /// not started the cell's creature (T75).
@@ -299,7 +318,12 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
             } else if (top..top + 0xc).contains(&pc) {
                 OBJECT_MAP.wrapping_add(d5).wrapping_add(d6)
             } else if (OBJECT_MAP..TILE_MAP).contains(&a2) {
+                // A bob not yet started: in its routine up to its BLTSIZE write, or in the
+                // blitter wait, which only a bob calls once the scan runs (T82).
+                let (bob, size) = BOBS[r];
                 let pending = (compares..added).contains(&pc)
+                    || (bob..=size).contains(&pc)
+                    || WAIT.contains(&pc)
                     || ADD_CELL.contains(&pc)
                     || CREATURE_BRANCH[r].contains(&pc)
                     || (START_CREATURE.contains(&pc) && !STARTED.contains(&pc));
@@ -307,10 +331,18 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
             } else {
                 0
             };
+            // Inside `h0_6882` for the scan's cell: what it had settled before the pass (T82).
+            let add = match pc {
+                _ if !scanning || defer_from != a2 => AddCut::Whole,
+                ADD_COUNTED..ADD_FOUND => AddCut::List,
+                ADD_FOUND..=ADD_MARK => AddCut::Entry,
+                _ => AddCut::Whole,
+            };
             return Some(EdgesCut {
                 next: r as u8 + 1,
                 defer_from: Some(defer_from),
                 shape_words: (!scanning).then(|| shapes_copied(r, pc, regs)),
+                add,
             });
         }
     };
@@ -318,6 +350,7 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
         next,
         defer_from: None,
         shape_words: None,
+        add: AddCut::Whole,
     })
 }
 
@@ -602,6 +635,15 @@ pub trait Engine: Transplant {
     fn creatures_uncut(&self, _rows: &[u16]) -> Option<Picture> {
         None
     }
+    /// The picture after the last pass as the original shows it through a status period whose
+    /// redraw `main_loop` never reached: the bar as it stood before that redraw
+    /// (`Game::redraw_skipped`, T82), the play area with `uncut`'s creature rows left out when the
+    /// frame also saw [`Engine::creatures_uncut`]'s cut. `None` if the bar is the same or the
+    /// engine cannot draw it. A wrapper of [`Game`] forwards it; one that does not fails a case
+    /// that meets such a period.
+    fn redraw_skipped(&self, _uncut: Option<&[u16]>) -> Option<Picture> {
+        None
+    }
 }
 
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
@@ -641,6 +683,10 @@ impl Engine for Game {
 
     fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
         Game::creatures_uncut(self, rows)
+    }
+
+    fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        Game::redraw_skipped(self, uncut)
     }
 }
 
@@ -735,6 +781,9 @@ pub struct Verdict {
     /// Frames whose status bar matched the engine's [`Engine::cut_redraw`] at the cut measured on
     /// the original, not its own redraw (T71).
     pub cut_redraws: u32,
+    /// Frames compared with the status bar as it stood before a redraw the original never
+    /// reached, its calls counted on the original ([`Engine::redraw_skipped`], T82).
+    pub skipped_redraws: u32,
     /// Passes that came while `main_loop`'s edge redraws were still running on the original, so
     /// handed to the engine as cut there ([`Engine::foreground_cut`], T74).
     pub edge_cuts: u32,
@@ -767,6 +816,7 @@ impl Verdict {
             unseen: 0,
             tolerated: [0; 3],
             cut_redraws: 0,
+            skipped_redraws: 0,
             edge_cuts: 0,
             creature_cuts: 0,
             excluded: Vec::new(),
@@ -848,6 +898,13 @@ impl fmt::Display for Verdict {
                 f,
                 "\n{} frames' status bar as main_loop's redraw cut short by the next pass shows it",
                 self.cut_redraws
+            )?;
+        }
+        if self.skipped_redraws > 0 {
+            write!(
+                f,
+                "\n{} frames' status bar as it stood before a redraw main_loop never reached",
+                self.skipped_redraws
             )?;
         }
         if self.edge_cuts > 0 {
@@ -1312,6 +1369,10 @@ pub fn run_inputs(
     if !pcs.contains(&Sampler::CAMERA_UPDATE) {
         pcs.push(Sampler::CAMERA_UPDATE);
     }
+    let status_redraw = HUNK_BASES[STATUS_REDRAW.0 as usize] + STATUS_REDRAW.1;
+    if !pcs.contains(&status_redraw) {
+        pcs.push(status_redraw);
+    }
     let records = records_edge_cuts(case);
     let (mut am, mut read) = reach_case_counting(case, 0, &pcs)?;
     am.watch_write(Some(PASS_END));
@@ -1344,6 +1405,12 @@ pub fn run_inputs(
     let mut cut_drawn: Vec<(u32, Vec<Picture>)> = Vec::new();
     // Pass `32k + 1` and how many of `h0_6a96`'s reads the redraw it cut made before it.
     let mut cut: Option<(u32, Range<u8>)> = None;
+    // `main_loop`'s calls of its status redraw since the last pass `32k` started, and the pass
+    // `32k` after which it made none before pass `32k + 1` took it elsewhere (T82): that period's
+    // frames show the bar as it stood, which the engine draws for them.
+    let mut redraws = 0u32;
+    let mut skipped: Option<u32> = None;
+    let mut skip_drawn: Vec<(u32, Picture)> = Vec::new();
     // Each pass and where it cut `main_loop`'s edge redraws on the original, by the pass number,
     // from the step it started in to the step it ends in (T74).
     let mut edges_cuts: Vec<(u32, Option<EdgesCut>)> = Vec::new();
@@ -1369,9 +1436,22 @@ pub fn run_inputs(
         }
         am.step(input).map_err(|e| e.to_string())?;
         let now = Live(&am).value(irq);
+        if now != started && now & 31 == 0 {
+            redraws = 0;
+        }
+        redraws += am
+            .pc_hits()
+            .iter()
+            .find(|h| h.0 == status_redraw)
+            .map_or(0, |h| h.1);
         if sample && now == started.wrapping_add(1) {
             if case.compare.picture && now & 31 == 1 {
-                cut = interrupted_pc(&am).and_then(redraw_cut).map(|r| (now, r));
+                let pc = interrupted_pc(&am);
+                cut = pc.and_then(redraw_cut).map(|r| (now, r));
+                // Never called, and the pass did not come between the turn's read of the count
+                // and the call (`redraw_cut`'s first arm, which redraws after the pass).
+                let never = pc.is_some() && cut.is_none() && redraws == 0;
+                skipped = never.then_some(now - 1);
             }
             if records {
                 edges_cuts.push((now, edges_cut(&am)));
@@ -1426,12 +1506,21 @@ pub fn run_inputs(
                             // This step's frame shows pass `n` where it started in the step before
                             // and ends in this one; the engine draws it as the beam found it.
                             uncut_drawn = None;
+                            let mut behind = None;
                             if n == started && n == ended && !late_cuts.is_empty() {
                                 let at = camera.map(|v| theirs.value(v) as u16);
-                                let behind = rows_behind_beam(&late_cuts, (at[0], at[1]));
-                                if behind.iter().any(|&b| b > 0) {
-                                    uncut_drawn = engine.creatures_uncut(&behind).map(|p| (n, p));
+                                let rows = rows_behind_beam(&late_cuts, (at[0], at[1]));
+                                if rows.iter().any(|&b| b > 0) {
+                                    uncut_drawn = engine.creatures_uncut(&rows).map(|p| (n, p));
+                                    behind = Some(rows);
                                 }
+                            }
+                            // Pass `32k` is drawn before the step that shows whether its redraw
+                            // was reached; the frame's comparison decides whether to take it.
+                            if (n & 31 == 0 || skipped.is_some_and(|k| (k..k + 32).contains(&n)))
+                                && let Some(p) = engine.redraw_skipped(behind.as_deref())
+                            {
+                                skip_drawn.push((n, p));
                             }
                             if let Some((from, r)) = cut.as_ref()
                                 && (*from..from + 31).contains(&n)
@@ -1612,7 +1701,16 @@ pub fn run_inputs(
         // draws with the measured rows left out, and nothing else stands in for it.
         let uncut = uncut_drawn.take_if(|(n, _)| *n == shown).map(|(_, p)| p);
         verdict.creature_cuts += uncut.is_some() as u32;
-        let ours = uncut.unwrap_or(whole);
+        // Through a status period whose redraw the original never reached, the engine's picture is
+        // the one with the bar as it stood (T82), on that period's frames and no other.
+        let unredrawn = skip_drawn
+            .iter()
+            .position(|(n, _)| *n == shown)
+            .map(|k| skip_drawn.swap_remove(k).1)
+            .filter(|_| skipped.is_some_and(|k| (k..k + 32).contains(&shown)));
+        skip_drawn.retain(|(n, _)| *n > shown);
+        verdict.skipped_redraws += unredrawn.is_some() as u32;
+        let ours = unredrawn.or(uncut).unwrap_or(whole);
         let cut_ours = cut_drawn
             .iter()
             .position(|(n, _)| *n == shown)
@@ -1645,11 +1743,14 @@ pub fn run_inputs(
         if cut_shows {
             verdict.cut_redraws += 1;
         }
-        let failed = match (opts.mode, class) {
-            (_, PictureClass::Same) => None,
-            _ if cut_shows => None,
-            (Mode::Strict, other) => Some(format!("{other:?}, strict")),
-            (Mode::Faithful, other) => judge.frame(frame, other).err(),
+        // The judge hears of every compared frame, as the toolkit counts (T82, coordinator 2026-11-10):
+        // an identical frame, or one accepted as the measured cut redraw, ends a run of glitches.
+        // Told only of differing frames it counted glitches thousands of frames apart as a run.
+        let accepted = class == PictureClass::Same || cut_shows;
+        let failed = match opts.mode {
+            _ if accepted => judge.frame(frame, PictureClass::Same).err(),
+            Mode::Strict => Some(format!("{class:?}, strict")),
+            Mode::Faithful => judge.frame(frame, class).err(),
         };
         verdict.pictures += 1;
         verdict.tolerated = [
@@ -1868,6 +1969,7 @@ mod tests {
                 next,
                 defer_from,
                 shape_words: (defer_from == Some(0)).then_some(0),
+                add: AddCut::Whole,
             })
         };
         // Spinning, or in the status bar's redraw before the redraw half: no cut.
@@ -1890,13 +1992,33 @@ mod tests {
             cut(4, Some(OBJECT_MAP + 0x3006))
         );
         // Inside `h0_6882` before it, or at the cell's compares: the cell's add comes after.
+        let adding = |pc, add| {
+            let c = at(pc, &[0x352], &regs).unwrap();
+            assert_eq!((c.next, c.defer_from), (4, Some(OBJECT_MAP + 0x3005)));
+            assert_eq!(c.add, add, "h0+${pc:x}");
+        };
+        adding(0x1356, AddCut::Whole);
+        // T82: still counting, the add is whole after the pass; past the four counts (pass
+        // 12 569 of the route, in the sort) its list is chosen; past its search, its entry too.
+        adding(0x6882, AddCut::Whole);
+        adding(0x691a, AddCut::Whole);
+        adding(0x691e, AddCut::List);
+        adding(0x693e, AddCut::List);
+        adding(0x697a, AddCut::List);
+        adding(0x6984, AddCut::Entry);
+        adding(0x699e, AddCut::Entry);
+        // T82: a bob not yet started (in its routine up to its BLTSIZE write, or in the blitter
+        // wait) is still to come for the scan's cell; past the write it is made.
+        for pc in [0x1390, 0x143a] {
+            let c = at(pc, &[0x352], &regs).unwrap();
+            assert_eq!(c.defer_from, Some(OBJECT_MAP + 0x3005), "h0+${pc:x}");
+        }
+        // The wait, called from the bob (`h0+$13e4`).
+        let c = at(0x3ac2, &[0x13e8, 0x352], &regs).unwrap();
+        assert_eq!(c.defer_from, Some(OBJECT_MAP + 0x3005));
         assert_eq!(
-            at(0x693e, &[0x352], &regs),
-            cut(4, Some(OBJECT_MAP + 0x3005))
-        );
-        assert_eq!(
-            at(0x1356, &[0x352], &regs),
-            cut(4, Some(OBJECT_MAP + 0x3005))
+            at(0x1442, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3006))
         );
         // In the shapes (T48): 16 words a shape copied, and the words of the one being copied.
         let shapes = |next, n| {
@@ -1904,6 +2026,7 @@ mod tests {
                 next,
                 defer_from: Some(0),
                 shape_words: Some(n),
+                add: AddCut::Whole,
             })
         };
         let mut r = [0u32; 15];
@@ -1930,10 +2053,11 @@ mod tests {
         r[2] = 0x2c0 + 4 * 15;
         assert_eq!(at(0xfb2, &[0x32a], &r), shapes(3, 15 * 16));
         assert_eq!(at(0xfb6, &[0x32a], &r), shapes(3, 16 * 16));
-        // A bob's blit in the down row: the row's cell is done.
+        // In the down row's bob, waiting for the blitter: its blit has not started, so the bob
+        // is the scan's still (T82: the bobs from the cut cell on start after the pass).
         assert_eq!(
             at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
-            cut(1, Some(OBJECT_MAP + 0x3006))
+            cut(1, Some(OBJECT_MAP + 0x3005))
         );
         // In the down row's creature branch, or in `h0_681c` and `h0_6852` short of the slot's
         // `st.b`: the creature starts after the pass (T75). Back from it, it has started.
@@ -1986,7 +2110,7 @@ mod tests {
         );
         assert_eq!(
             edges_cut_at(0x3aca, 0x7dc, &[0x96c, 0x2da], &regs),
-            cut(1, Some(OBJECT_MAP + 0x3006))
+            cut(1, Some(OBJECT_MAP + 0x3005))
         );
         // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.
         (regs[5], regs[6]) = (0x60 * 7, 0x21);

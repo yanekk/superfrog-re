@@ -41,9 +41,9 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `run_with(&Case, &mut dyn Engine, &Options) -> Result<Verdict, String>`: level cases only.
 - `run_inputs(&Case, &Inputs, &mut dyn Engine, &Options)`: the same on inputs held in memory (bug zips).
 - `Options { mode, register, diff_dir }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
-- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, edge_cuts, creature_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
+- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, skipped_redraws, edge_cuts, creature_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
 - `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers}`. An unused exclusion fails the case.
-- `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`, `creatures_uncut`); `Game` implements it. A wrapper of `Game` forwards the last three, or fails the cases that meet them.
+- `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`, `creatures_uncut`, `redraw_skipped`); `Game` implements it. A wrapper of `Game` forwards the last four, or fails the cases that meet them.
 
 **Reaching the original** (`src/lib.rs`, `src/sync.rs`)
 - `reach_case(&Case, slack) -> Result<Amiga, String>`: at the case's sync frame, `set` applied.

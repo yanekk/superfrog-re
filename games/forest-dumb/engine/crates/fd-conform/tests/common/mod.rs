@@ -54,6 +54,8 @@ pub struct StandIn {
     pub bump: Option<(u32, &'static str)>,
     /// Paint `pixels` pixels of row `row` white on these passes.
     pub paint: Option<(Range<u32>, u16, u16)>,
+    /// The same paint on these passes too.
+    pub paint_again: Option<Range<u32>>,
     /// Raise `Event::Unported(0xee)` on this pass.
     pub event: Option<u32>,
     events: Vec<Event>,
@@ -75,6 +77,7 @@ impl StandIn {
             passes: 0,
             bump: None,
             paint: None,
+            paint_again: None,
             event: None,
             events: Vec::new(),
         }
@@ -165,7 +168,8 @@ impl Engine for StandIn {
     fn picture(&self) -> Option<Picture> {
         let mut pic = self.pic.clone()?;
         if let Some((passes, row, pixels)) = &self.paint {
-            if passes.contains(&self.passes) {
+            let again = self.paint_again.as_ref();
+            if passes.contains(&self.passes) || again.is_some_and(|a| a.contains(&self.passes)) {
                 let w = pic.width as usize;
                 for x in 0..*pixels as usize {
                     let p = &mut pic.pixels[*row as usize * w + x];

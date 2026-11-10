@@ -284,9 +284,16 @@ workspace = "engine"
     "a_route_the_original_agrees_with_meets_its_goal_at_any_length",
 ]
 # T48, the whole level on the original (cases/route-W1-1.toml): its first 600 steps, variables and the
-# whole picture, 2.4 s warm. The whole route to the level's end (80 s), the routines it never runs
-# in their case (5 s) and the cut before a row's shapes (25 s) are full.
-"crates/fd-conform/tests/full_route.rs" = ["the_routes_first_600_steps_agree_with_the_original"]
+# whole picture, 2.4 s warm. T82: its first 640 steps strict, to the pixel, with the bar a status
+# redraw never reached leaves and failing without it, and a bar left unredrawn failing, 3 s the
+# three. The whole route to the level's end (80 s), the routines it never runs in their case (5 s),
+# the cut before a row's shapes (25 s) and the route failing on T48's frames without T82's rule or
+# fix (60 s) are full.
+"crates/fd-conform/tests/full_route.rs" = [
+    "the_routes_first_600_steps_agree_with_the_original",
+    "the_opening_is_the_originals_to_the_pixel_through_a_redraw_never_reached",
+    "a_bar_left_unredrawn_where_the_original_redrew_fails",
+]
 # T27, the whole level: the committed route (tests/routes/W1-1.txt) replayed on the engine alone to
 # the level's end with no life lost, past its milestones, about 1.3 s debug. The planner finding
 # that route again (2 095 rounds, 2.5 to 4 minutes release on 10 threads) is full.
@@ -442,7 +449,10 @@ covers = [
 
 [[area]]
 name = "the route through the whole of level 1 on the original: its opening, state and picture"
-covers = ["crates/fd-conform/tests/full_route.rs::the_routes_first_600_steps_agree_with_the_original"]
+covers = [
+    "crates/fd-conform/tests/full_route.rs::the_routes_first_600_steps_agree_with_the_original",
+    "crates/fd-conform/tests/full_route.rs::the_opening_is_the_originals_to_the_pixel_through_a_redraw_never_reached",
+]
 
 [[area]]
 name = "taking level 1's coins, bonuses and exit, and creatures written back, against the original"

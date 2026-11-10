@@ -105,6 +105,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T82 | route-picture | T48; blocks T29 | ⬜ | |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
+| T85 | observes-only-flake | —; blocks T29 | ⬜ | |
 
 **Review queue:** *(empty)*
 

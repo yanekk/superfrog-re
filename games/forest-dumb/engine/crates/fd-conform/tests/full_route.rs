@@ -12,9 +12,10 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use amiga_chips::Picture;
+use amiga_conform::Mode;
 use amiga_oracle::FrameInput;
 use fd_conform::{Case, Engine, Goal, Options, Outcome, Verdict, game_data, run, run_with};
-use fd_core::level::EdgesCut;
+use fd_core::level::{AddCut, EdgesCut};
 use fd_core::{Event, Game, Mem, PORTED, Start, Transplant, Var};
 
 /// Lives at the level's start (docs/09), BCD as `lives` holds them.
@@ -63,6 +64,14 @@ enum Shapes {
     Measured,
     /// As the engine did before T48: every shape copied before the pass.
     CopiedEarly,
+    /// As before T82: an animated cell's add cut after its counts is made whole after the pass
+    /// ([`AddCut`]).
+    AddedWhole,
+    /// As before T82: the status bar a redraw never reached is not handed over
+    /// ([`Engine::redraw_skipped`]).
+    AlwaysRedrawn,
+    /// The bar as it stood before each redraw, on every period, reached or not.
+    NeverRedrawn,
 }
 
 /// The game, watched: the first pass a life was lost or the character was dying in.
@@ -101,7 +110,11 @@ impl Engine for Watched {
         }
     }
     fn picture(&self) -> Option<Picture> {
-        Engine::picture(&self.game)
+        let stale = match self.shapes {
+            Shapes::NeverRedrawn => self.game.redraw_skipped(None),
+            _ => None,
+        };
+        stale.or_else(|| Engine::picture(&self.game))
     }
     fn events(&mut self) -> Vec<Event> {
         Engine::events(&mut self.game)
@@ -120,16 +133,26 @@ impl Engine for Watched {
     }
     fn foreground_cut(&mut self, at: Option<EdgesCut>) {
         let at = match self.shapes {
-            Shapes::Measured => at,
             Shapes::CopiedEarly => at.map(|c| EdgesCut {
                 shape_words: None,
                 ..c
             }),
+            Shapes::AddedWhole => at.map(|c| EdgesCut {
+                add: AddCut::Whole,
+                ..c
+            }),
+            _ => at,
         };
         Engine::foreground_cut(&mut self.game, at)
     }
     fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
         Engine::creatures_uncut(&self.game, rows)
+    }
+    fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        match self.shapes {
+            Shapes::AlwaysRedrawn => None,
+            _ => Engine::redraw_skipped(&self.game, uncut),
+        }
     }
 }
 
@@ -173,30 +196,99 @@ fn the_routes_first_600_steps_agree_with_the_original() {
     assert_eq!((g.lost, v.events.len()), (None, 0), "{}", head(&v));
 }
 
+/// The route's first `frames` steps, nothing excluded, the goal that no life is lost.
+fn opening(frames: u32) -> Case {
+    let mut c = case("route-W1-1");
+    c.frames = frames;
+    c.goal = Some(Goal::All {
+        all: vec![("lives".into(), LIVES as u32)],
+        by_frame: c.sync_frame + frames,
+    });
+    c
+}
+
+fn run_as(c: &Case, shapes: Shapes, mode: Mode) -> Verdict {
+    let opts = Options {
+        mode,
+        ..Options::default()
+    };
+    run_with(c, &mut Watched::new(shapes), &opts).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// T82, a status bar redraw never reached: `main_loop` makes no call of `h0_6a96` between the
+/// starts of passes 576 and 577, so the original shows the old countdown through passes 576 to
+/// 607 (frames 6877 to 6908). With the bar the engine draws for that, the route's first 640 steps
+/// are the original's to the pixel, strict; an engine that always redraws differs at frame 6877.
+#[test]
+fn the_opening_is_the_originals_to_the_pixel_through_a_redraw_never_reached() {
+    let c = opening(640);
+    let (with, without) = std::thread::scope(|s| {
+        let with = s.spawn(|| run_as(&c, Shapes::Measured, Mode::Strict));
+        let without = s.spawn(|| run_as(&c, Shapes::AlwaysRedrawn, Mode::Strict));
+        (with.join().unwrap(), without.join().unwrap())
+    });
+    assert_eq!(with.outcome, Outcome::Same, "{}", head(&with));
+    assert_eq!(with.skipped_redraws, 32, "{}", head(&with));
+    assert!(
+        matches!(without.outcome, Outcome::PictureDiffers { frame: 6877, .. }),
+        "{}",
+        head(&without)
+    );
+    assert_eq!(without.skipped_redraws, 0, "{}", head(&without));
+}
+
+/// The rule takes the old bar only for a period whose redraw was counted as never called
+/// (coordinator, 2026-11-10): an engine showing the bar as it stood before every redraw fails in
+/// a period the original redrew, before the first one it did not (pass 576).
+#[test]
+fn a_bar_left_unredrawn_where_the_original_redrew_fails() {
+    let v = run_as(&opening(570), Shapes::NeverRedrawn, Mode::Faithful);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { .. }),
+        "{}",
+        head(&v)
+    );
+    assert_eq!(v.skipped_redraws, 0, "{}", head(&v));
+}
+
+/// T82 on the frames T48 named: without the bar a skipped redraw leaves, the route fails at frame
+/// 18 367, the third of the period from pass 12 064; with an add cut after its counts made whole
+/// after the pass, two coins run a phase apart and it fails at frame 18 896, the third in a row.
+#[test]
+#[ignore = "full: 12 600 frames on the original with the picture, twice at once, about 60 s"]
+fn without_the_skipped_redraw_or_the_cut_add_the_route_fails_on_the_frames_named() {
+    let c = opening(12_600);
+    let (bar, add) = std::thread::scope(|s| {
+        let bar = s.spawn(|| run_as(&c, Shapes::AlwaysRedrawn, Mode::Faithful));
+        let add = s.spawn(|| run_as(&c, Shapes::AddedWhole, Mode::Faithful));
+        (bar.join().unwrap(), add.join().unwrap())
+    });
+    assert!(
+        matches!(bar.outcome, Outcome::PictureDiffers { frame: 18367, .. }),
+        "{}",
+        head(&bar)
+    );
+    assert!(
+        matches!(add.outcome, Outcome::PictureDiffers { frame: 18896, .. }),
+        "{}",
+        head(&add)
+    );
+}
+
 /// `items_left` (BCD) after the route's first 600 steps, measured 2026-11-10.
 const OPENING_ITEMS: u32 = 0x272;
 
 /// The whole route: the case passes with the level's end as its goal, no life is lost on any pass,
-/// nothing but the level's end is raised, only T82's boxes are left out of the picture, and the ported
-/// routines the route never runs are exactly the named ones (DESIGN §4.1).
+/// nothing but the level's end is raised, the whole picture is compared with nothing set aside
+/// (T82), and the ported routines the route never runs are exactly the named ones (DESIGN §4.1).
 #[test]
 #[ignore = "full: 22 536 frames on the original with the picture, about 80 s"]
 fn the_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {
     let c = case("route-W1-1");
     assert!(c.compare.vars && c.compare.picture);
     assert!(matches!(c.goal, Some(Goal::LevelEnd { .. })));
-    // Sound is not compared (DESIGN §2.1). The picture is, but for T82's boxes: each on its own
-    // frames, 40 frames in all, and the runner fails one that hides nothing.
-    let mut frames = BTreeSet::new();
-    for e in &c.exclude {
-        assert!(
-            e.task == "T82" && e.var.is_none() && e.cols.is_some(),
-            "{}",
-            e.what
-        );
-        frames.extend(e.frames.clone().expect("a box on named frames"));
-    }
-    assert_eq!((c.exclude.len(), frames.len()), (10, 40));
+    // Sound is not compared (DESIGN §2.1). The whole picture is, on every frame (T82).
+    assert!(c.exclude.is_empty(), "{:?}", c.exclude);
     for slot in [
         "creature_active+$0",
         "creature_slots+$24",
@@ -222,6 +314,11 @@ fn the_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {
     assert_eq!(events, [Event::LevelEnd]);
     assert_eq!(g.game.state().items_left, 0);
     assert!(v.passes > 21_000 && v.pictures > 21_000, "{}", head(&v));
+    // The picture, measured 2026-11-10 (docs/13, "The picture on the route"): seven status
+    // periods whose redraw the original never reached, and nine frames past a few pixels, each a
+    // taken item erased behind the beam, never three in a row.
+    assert_eq!(v.skipped_redraws, 220, "{}", head(&v));
+    assert_eq!(v.tolerated[2], 9, "{}", head(&v));
     // Coverage: what the route never ran is the named list, no more and no fewer.
     let unreached: BTreeSet<&str> = v.coverage.unreached().into_iter().collect();
     let named: BTreeSet<&str> = NOT_ON_ROUTE.iter().map(|(n, _, _)| *n).collect();

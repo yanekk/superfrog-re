@@ -108,6 +108,10 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
+    /// The status bar as it stood before the redraw after the last pass `32k`, until the next:
+    /// what the original still shows when `main_loop` never reached that redraw
+    /// ([`Game::redraw_skipped`], T82). Picture state, left out of equality.
+    bar_before: Option<render::status::Status>,
     /// `Some` once a conformance case hands the engine where the original's next pass cut
     /// `main_loop`'s redraw half ([`Game::cut_foreground`], T74): the cut for the next step's
     /// foreground. `None` alone, where the engine's own rule decides (`level::Cut::Rows`). Left out
@@ -132,6 +136,9 @@ impl Game {
                     collision: &mut plane,
                     blits: &mut blits,
                     defer_from: None,
+                    add_cut: level::AddCut::Whole,
+                    bob_late: false,
+                    late_bobs: Vec::new(),
                     late_from: None,
                     written: 0,
                     late: Vec::new(),
@@ -167,6 +174,7 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
+                    bar_before: None,
                     foreground_cut: None,
                 }
             }
@@ -221,7 +229,7 @@ impl Game {
                 self.state.frame_flag = 0xffff;
                 match self.state.irq_count & 0x1f {
                     1 => self.late = Some(self.numbers()),
-                    0 => self.late = None,
+                    0 => (self.late, self.bar_before) = (None, None),
                     _ => {}
                 }
             }
@@ -337,6 +345,9 @@ impl Game {
                         shown,
                     },
                 );
+                if self.state.irq_count & 0x1f == 0 {
+                    self.bar_before = Some(status.clone());
+                }
                 self.status_redraw(&mut status);
                 self.display.status = status;
                 let from = self.blits.len();
@@ -435,6 +446,51 @@ impl Game {
             (c.x, c.y),
             &self.data.program,
         ))
+    }
+
+    /// [`Game::picture`] as the original shows it through passes `32k` to `32k + 31` when
+    /// `main_loop` never reached its status bar redraw after pass `32k`: the bar as it stood
+    /// before. `None` out of play, or when the redraw drew nothing.
+    ///
+    /// `main_loop` reads `irq_count` once a turn and redraws the bar only on a turn that reads a
+    /// multiple of 32. A turn still in its edge redraws when pass `32k + 1` comes read the count
+    /// before pass `32k` and reads it next after pass `32k + 1`, so that redraw never runs and the
+    /// numbers wait for the next (measured, T82: pass 12 064 of the route,
+    /// `engine/conform/README.md`, "A status bar redraw never reached"). How long the edge redraws take is the cycles they cost, which
+    /// nothing here counts. A case counts the redraw's calls on the original and takes this
+    /// picture for that period (`fd-conform`). With `uncut`, the play area is
+    /// [`Game::creatures_uncut`]'s for those rows, where the same frame saw a creature cut behind
+    /// the beam; `None` if that cannot be drawn.
+    pub fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        if self.scene != Scene::Level {
+            return None;
+        }
+        if let Some(rows) = uncut {
+            let data = &self.data.display;
+            let screen = self
+                .display
+                .cuts
+                .uncut(&self.display.screen, &|a| data.byte(a), rows)?;
+            let mut shown = self.clone();
+            shown.display.screen = screen;
+            return shown.redraw_skipped(None);
+        }
+        let c = &self.state.camera;
+        let draw =
+            |d: &Display| render::picture(&self.data.display, d, (c.x, c.y), &self.data.program);
+        if self.state.irq_count & 0x1f == 0 {
+            // The frame showing pass `32k`: [`Game::picture`] already draws the redraw into it.
+            let mut status = self.display.status.clone();
+            self.status_redraw(&mut status);
+            return (status.bytes != self.display.status.bytes).then(|| draw(&self.display));
+        }
+        let before = self.bar_before.as_ref()?;
+        (before.bytes != self.display.status.bytes).then(|| {
+            draw(&Display {
+                status: before.clone(),
+                ..self.display.clone()
+            })
+        })
     }
 
     /// The frame the original shows after this step, in the play area and status bar's window
@@ -712,7 +768,7 @@ impl Transplant for Game {
         }
         self.transplant_play(mem);
         self.transplant_display(mem);
-        self.late = None;
+        (self.late, self.bar_before) = (None, None);
     }
 
     fn probe(&self, v: &Var) -> u32 {

@@ -30,6 +30,8 @@ pub const SHAPE_MAP: u32 = 0x2_8f18;
 /// Bytes a map column, tile map (words) and the byte maps.
 const TILE_COLUMN: u32 = 0xc0;
 const BYTE_COLUMN: u32 = 0x60;
+use super::AddCut;
+
 /// Bytes a `collision_map` row.
 const ROW_BYTES: u32 = 0x2e;
 /// A play screen line: five interleaved planes of `$2e` bytes.
@@ -92,6 +94,13 @@ pub trait Io {
     /// [`PlayIo::defer_from`]).
     fn defers(&self, _cell: u32) -> bool {
         false
+    }
+    /// The scan is about to cut the bob of object map cell `cell`: a pass that cut the scan
+    /// before it leaves its blit for after that pass (T82, [`PlayIo::bob_late`]).
+    fn bob_cell(&mut self, _cell: u32) {}
+    /// How far `h0_6882` had got with `cell` when the next pass cut the scan (T82).
+    fn add_cut(&self, _cell: u32) -> AddCut {
+        AddCut::Whole
     }
 
     fn rw(&self, a: u32) -> u16 {
@@ -194,14 +203,45 @@ impl AnimatedCells {
     /// `h0_6882`: the cell at (`x`, `y`) with object value `code` joins the list with the fewest
     /// cells in use (the first such), at its first free entry; a full list takes nothing.
     pub fn add(&mut self, x: u16, y: u16, code: u8) {
+        let g = self.fewest();
+        if let Some(i) = self.free(g) {
+            let cell = AnimCell {
+                x,
+                y,
+                code,
+                ..self.cells[g][i]
+            };
+            self.put(g, i, cell);
+        }
+    }
+
+    /// The list `h0_6882` chooses: the one with the fewest cells in use, the first such.
+    pub fn fewest(&self) -> usize {
         let count = |g: usize| self.used[g].iter().filter(|&&f| f != 0).count();
         // The original sorts the four counts with a stable bubble sort and takes the first.
-        let g = (1..4).fold(0, |best, g| if count(g) < count(best) { g } else { best });
-        if let Some(i) = self.used[g].iter().position(|&f| f == 0) {
-            let c = &mut self.cells[g][i];
-            (c.x, c.y, c.code) = (x, y, code);
-            self.used[g][i] = 0xff;
+        (1..4).fold(0, |best, g| if count(g) < count(best) { g } else { best })
+    }
+
+    /// List `g`'s first free entry.
+    pub fn free(&self, g: usize) -> Option<usize> {
+        self.used[g].iter().position(|&f| f == 0)
+    }
+
+    /// A cut add finished after the pass ([`Deferred::CellIn`]): into `list`, at `entry` or, cut
+    /// before its search, at the list's first free entry as the pass left it; none free, nothing.
+    pub fn add_chosen(&mut self, cell: AnimCell, list: u8, entry: Option<u8>) {
+        let g = list as usize;
+        if let Some(i) = entry.map(usize::from).or_else(|| self.free(g)) {
+            self.put(g, i, cell);
         }
+    }
+
+    /// `h0+$6984`: `cell`'s place and value written to entry `i` of list `g`, which is marked
+    /// used; the entry's other bytes stay.
+    pub fn put(&mut self, g: usize, i: usize, cell: AnimCell) {
+        let c = &mut self.cells[g][i];
+        (c.x, c.y, c.code) = (cell.x, cell.y, cell.code);
+        self.used[g][i] = 0xff;
     }
 }
 
@@ -229,6 +269,13 @@ pub struct Edges {
 pub enum Deferred {
     /// `h0_6882` for this cell.
     Cell(AnimCell),
+    /// `h0_6882` for this cell, cut by the pass after it had chosen `list` from the counts as they
+    /// then were, and `entry` too if it had found one (T82, `level::AddCut`).
+    CellIn {
+        cell: AnimCell,
+        list: u8,
+        entry: Option<u8>,
+    },
     /// `h0_681c` for the creature at object map cell `cell` (hunk 0 offset), which is cleared if a
     /// slot takes it. Which slot is free is decided then: the pass between can free one.
     Creature {
@@ -238,6 +285,9 @@ pub enum Deferred {
         kind: u16,
         facing: u8,
     },
+    /// A bob of the cut scan, from the cell the pass cut it at on: its blit starts after the pass
+    /// (T82).
+    Bob(Blit),
     /// The cut redraw's `n`th `collision_map` word, `word` at `at` bytes from the map's first: the
     /// pass came before `h0_7cc` copied it (T48, `level::EdgesCut::shape_words`).
     Collision { n: u16, at: u32, word: u16 },
@@ -413,15 +463,32 @@ impl Edges {
     /// it, after that pass ([`Edges::deferred`]). The list a cell joins depends on how many cells
     /// each holds, which that pass's `h0_62b6` changes.
     fn add_cell(&mut self, io: &impl Io, cell: u32, x: u16, y: u16, code: u8) {
-        if io.defers(cell) {
-            self.deferred.push(Deferred::Cell(AnimCell {
-                x,
-                y,
-                code,
-                rest: [0; 3],
-            }));
-        } else {
+        if !io.defers(cell) {
             self.cells.add(x, y, code);
+            return;
+        }
+        let c = AnimCell {
+            x,
+            y,
+            code,
+            rest: [0; 3],
+        };
+        // What `h0_6882` had settled before the pass is settled now, from the lists as they are.
+        let list = self.cells.fewest();
+        match (io.add_cut(cell), self.cells.free(list)) {
+            (AddCut::Whole, _) => self.deferred.push(Deferred::Cell(c)),
+            (AddCut::List, _) => self.deferred.push(Deferred::CellIn {
+                cell: c,
+                list: list as u8,
+                entry: None,
+            }),
+            (AddCut::Entry, Some(i)) => self.deferred.push(Deferred::CellIn {
+                cell: c,
+                list: list as u8,
+                entry: Some(i as u8),
+            }),
+            // Past the search with no entry found is past `h0_6882`'s `rts`: nothing is added.
+            (AddCut::Entry, None) => {}
         }
     }
 
@@ -489,7 +556,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_below(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_below(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     d0 = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14)) & 0xfff0;
                     self.add_cell(io, cell, d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
@@ -536,7 +606,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_above(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_above(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     // `andi.w`: the high word stays.
                     let sum = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
@@ -590,7 +663,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_left(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_left(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
                     self.add_cell(io, cell, x & 0xfff0, cy, b);
@@ -635,7 +711,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_right(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_right(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
                     self.add_cell(io, cell, xr & 0xfff0, cy, b);
@@ -723,6 +802,14 @@ pub struct PlayIo<'a> {
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
+    /// Where the pass cut `h0_6882` for the cell at `defer_from` (T82, `level::AddCut`).
+    pub add_cut: AddCut,
+    /// The bob being cut belongs to a cell from `defer_from` on: its blit goes to `late_bobs`,
+    /// started after the next pass, a frame later than the row's first bobs (T82, measured on
+    /// the route: a row of ten, eight cut at lines 197 to 231 and two at lines 103 to 108 of the
+    /// next frame, past the view's top lines, so those two show a frame after).
+    pub bob_late: bool,
+    pub late_bobs: Vec<Blit>,
     /// The redraw's `collision_map` words from this one on are kept in `late` for after the next
     /// pass, which came before `h0_7cc` copied them (T48, `level::EdgesCut::shape_words`); `None`
     /// writes each at once.
@@ -753,7 +840,14 @@ impl Io for PlayIo<'_> {
         }
     }
     fn blit(&mut self, b: Blit) {
-        self.blits.push(b);
+        if self.bob_late && matches!(b, Blit::Bob { .. }) {
+            self.late_bobs.push(b);
+        } else {
+            self.blits.push(b);
+        }
+    }
+    fn bob_cell(&mut self, cell: u32) {
+        self.bob_late = self.defers(cell);
     }
     fn collision_word(&mut self, at: u32, v: u16) {
         let n = self.written;
@@ -766,6 +860,13 @@ impl Io for PlayIo<'_> {
     }
     fn defers(&self, cell: u32) -> bool {
         self.defer_from.is_some_and(|f| cell >= f)
+    }
+    fn add_cut(&self, cell: u32) -> AddCut {
+        if self.defer_from == Some(cell) {
+            self.add_cut
+        } else {
+            AddCut::Whole
+        }
     }
 }
 
@@ -790,6 +891,88 @@ mod tests {
         assert_eq!(image.byte(SHAPE_MAP + 0xfffe), 0);
     }
 
+    /// What an add reads of the scan: only where the pass cut it.
+    struct CutAt(u32, AddCut);
+
+    impl Io for CutAt {
+        fn rb(&self, _: u32) -> u8 {
+            0
+        }
+        fn clear_object(&mut self, _: u32) {}
+        fn blit(&mut self, _: Blit) {}
+        fn collision_word(&mut self, _: u32, _: u16) {}
+        fn defers(&self, cell: u32) -> bool {
+            cell >= self.0
+        }
+        fn add_cut(&self, cell: u32) -> AddCut {
+            if cell == self.0 {
+                self.1
+            } else {
+                AddCut::Whole
+            }
+        }
+    }
+
+    /// The lists as pass 12 569 of the route found them (T82): 3, 3, 2 and 2 cells in use, list
+    /// 1's second entry about to leave the view.
+    fn lists() -> Edges {
+        let mut e = Edges::default();
+        for (g, n) in [3, 3, 2, 2].into_iter().enumerate() {
+            e.cells.used[g][..n].fill(0xff);
+        }
+        e
+    }
+
+    /// Where the cell the cut add was adding ends up once `after` has run in place of the pass.
+    fn added(cut: AddCut, after: impl Fn(&mut AnimatedCells)) -> Option<(usize, usize)> {
+        let mut e = lists();
+        e.add_cell(&CutAt(0x100, cut), 0x100, 0x720, 0x20, 0x21);
+        assert!(
+            e.cells.cells.iter().flatten().all(|c| c.x == 0),
+            "added before the pass"
+        );
+        after(&mut e.cells);
+        for d in std::mem::take(&mut e.deferred) {
+            match d {
+                Deferred::Cell(c) => e.cells.add(c.x, c.y, c.code),
+                Deferred::CellIn { cell, list, entry } => e.cells.add_chosen(cell, list, entry),
+                other => panic!("{other:?}"),
+            }
+        }
+        (0..4)
+            .flat_map(|g| (0..12).map(move |i| (g, i)))
+            .find(|&(g, i)| e.cells.used[g][i] != 0 && e.cells.cells[g][i].x == 0x720)
+    }
+
+    /// T82: a pass that cuts `h0_6882` after its counts leaves the list chosen. The pass drops a
+    /// cell of list 1, which then holds the fewest: an add made whole after the pass joins it, the
+    /// cut one joins list 2 as the counts before the pass had it.
+    #[test]
+    fn an_add_cut_after_its_counts_joins_the_list_chosen_before_the_pass() {
+        let drop = |c: &mut AnimatedCells| c.used[1][1] = 0;
+        assert_eq!(added(AddCut::Whole, drop), Some((1, 1)));
+        assert_eq!(added(AddCut::List, drop), Some((2, 2)));
+        assert_eq!(added(AddCut::Entry, drop), Some((2, 2)));
+    }
+
+    /// Cut before the search, the entry is the first free after the pass; cut after it, the one
+    /// found before. Cut after a search that found none, nothing is added.
+    #[test]
+    fn an_add_cut_after_its_search_keeps_the_entry_too() {
+        let drop = |c: &mut AnimatedCells| c.used[2][0] = 0;
+        assert_eq!(added(AddCut::List, drop), Some((2, 0)));
+        assert_eq!(added(AddCut::Entry, drop), Some((2, 2)));
+        let mut e = lists();
+        for g in 0..4 {
+            e.cells.used[g].fill(0xff);
+        }
+        e.add_cell(&CutAt(0x100, AddCut::Entry), 0x100, 0x720, 0x20, 0x21);
+        assert_eq!(e.deferred, []);
+        // A later cell of the same scan is added whole after the pass.
+        e.add_cell(&CutAt(0x100, AddCut::Entry), 0x101, 0x730, 0x20, 0x21);
+        assert!(matches!(e.deferred[..], [Deferred::Cell(_)]));
+    }
+
     /// T48: a redraw the next pass cut after `late_from` collision words writes those and keeps
     /// the rest, in order, for after the pass.
     #[test]
@@ -807,6 +990,9 @@ mod tests {
             collision: &mut plane,
             blits: &mut blits,
             defer_from: None,
+            add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
             late_from: Some(2),
             written: 0,
             late: Vec::new(),
@@ -818,6 +1004,42 @@ mod tests {
         assert_eq!(io.written, 4);
         let got: Vec<u8> = (0..8).map(|o| plane.byte(o)).collect();
         assert_eq!(got, [0x11, 0x11, 0x22, 0x22, 0, 0, 0, 0]);
+    }
+
+    /// T82: the bobs of a cut scan from the cut cell on are kept for after the pass; the bobs
+    /// before it, and a blit that is no bob, start at once.
+    #[test]
+    fn the_bobs_from_the_cut_cell_on_are_kept_for_after_the_pass() {
+        let program = crate::program::Program::hunk0(vec![0; 0x3_8000]);
+        let image = LevelImage {
+            bytes: Vec::new(),
+            program: program.clone(),
+        };
+        let mut plane = super::super::collision::CollisionPlane::new(&program);
+        let (mut objects, mut blits) = (Vec::new(), Vec::new());
+        let mut io = PlayIo {
+            image: &image,
+            objects: &mut objects,
+            collision: &mut plane,
+            blits: &mut blits,
+            defer_from: Some(0x100),
+            add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
+            late_from: None,
+            written: 0,
+            late: Vec::new(),
+        };
+        let bob = |n| Blit::Bob { image: n, dst: n };
+        io.bob_cell(0xff);
+        io.blit(bob(1));
+        io.bob_cell(0x100);
+        io.blit(bob(2));
+        io.blit(Blit::Tile { tile: 3, dst: 3 });
+        io.bob_cell(0x101);
+        io.blit(bob(4));
+        assert_eq!(io.late_bobs, [bob(2), bob(4)]);
+        assert_eq!(blits, [bob(1), Blit::Tile { tile: 3, dst: 3 }]);
     }
 
     #[test]

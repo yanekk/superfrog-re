@@ -146,6 +146,38 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     );
 }
 
+/// T82 (coordinator, 2026-11-10): "in a row" is counted as the toolkit's `PictureJudge` counts it, the
+/// judge told of every compared frame. Two glitch frames, an identical one and a third glitch are
+/// three tolerated frames; three glitch frames with none between fail on the third. Before, the
+/// judge heard only of differing frames, so the identical frame ended no run and the first failed
+/// too. 300 frames, so that three glitches are inside the 1% budget.
+#[test]
+fn an_identical_frame_ends_a_run_of_glitches_and_three_in_a_row_still_fail() {
+    let case = short(300);
+    let (apart, together) = std::thread::scope(|s| {
+        let apart = s.spawn(|| {
+            let mut e = honest(&case);
+            e.paint = Some((10..12, 200, 320));
+            e.paint_again = Some(13..14);
+            run_on(&case, &mut e, &Options::default())
+        });
+        let together = s.spawn(|| {
+            let mut e = honest(&case);
+            e.paint = Some((10..13, 200, 320));
+            run_on(&case, &mut e, &Options::default())
+        });
+        (apart.join().unwrap(), together.join().unwrap())
+    });
+    assert_eq!(apart.outcome, Outcome::Same, "{apart}");
+    assert_eq!(apart.tolerated, [0, 0, 3], "{apart}");
+    match &together.outcome {
+        Outcome::PictureDiffers { pass: 12, why, .. } => {
+            assert!(why.contains("3 frames in a row"), "{why}")
+        }
+        other => panic!("{other}\n{together}"),
+    }
+}
+
 /// T48 review: a box naming frames hides its area on those frames alone. The same box a frame
 /// short, or on frames the difference never shows on, leaves the difference to fail the case.
 #[test]

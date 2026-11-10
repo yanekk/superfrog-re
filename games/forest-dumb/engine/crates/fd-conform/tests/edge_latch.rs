@@ -16,11 +16,12 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use amiga_chips::Picture;
+use amiga_conform::Mode;
 use amiga_oracle::FrameInput;
 use fd_conform::case::Exclusion;
 use fd_conform::{
-    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, Sampler, Verdict, edges_cut, game_data,
-    interrupted_pc, reach_case, records_edge_cuts, run, run_with,
+    Case, Engine, Inputs, Live, Options, Outcome, PASS_END, STATUS_REDRAW, Sampler, Verdict,
+    edges_cut, game_data, interrupted_pc, reach_case, records_edge_cuts, run, run_with,
 };
 use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
 use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
@@ -221,14 +222,24 @@ fn handed(name: &str, how: Hand) -> Verdict {
         game_data().unwrap_or_else(|e| panic!("{e}")),
         fd_core::Start::Level1,
     );
-    run_with(&case, &mut Handed { game, how }, &Options::default())
-        .unwrap_or_else(|e| panic!("{e}"))
+    // The scan run whole is judged to the pixel: as the toolkit counts frames in a row (T82) its
+    // 18 glitch frames, never three together, are inside the tolerance and the case passes.
+    // Measured 2026-11-10: strict, it differs at frame 6397; the hand-over whole not before 6776.
+    let opts = Options {
+        mode: match how {
+            Hand::Dropped => Mode::Faithful,
+            Hand::WholeScan => Mode::Strict,
+        },
+        ..Options::default()
+    };
+    run_with(&case, &mut Handed { game, how }, &opts).unwrap_or_else(|e| panic!("{e}"))
 }
 
 /// What the runner hands over is what the original showed, and each half of it is needed (T74):
 /// without the measured cut `mechanic-vanish` differs on `edge_latch_right` at pass 340, where a
 /// pass came inside a redraw and the latch stayed set; with the cut but the redraw's scan run whole
-/// `mechanic-spring`'s coins join other animated-cell lists and its picture differs at frame 6606.
+/// `mechanic-spring`'s coins join other animated-cell lists and its picture differs at frame 6397,
+/// to the pixel (`handed`).
 #[test]
 fn the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped() {
     let (dropped, whole) = std::thread::scope(|s| {
@@ -293,6 +304,7 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
 /// The original reached for `case`, twice: as it runs alone, and as [`run`] runs it, counting
 /// `camera_update` and watching pass ends (both proven to change nothing, T31) and sampling the
 /// steps [`Sampler`] picks, or every step when `every`. Steps both a frame at a time, up to `steps`,
+/// and counting the status redraw's calls (T82),
 /// and returns the first step whose chip and slow RAM, picture or CPU registers differ, and how
 /// many steps were sampled. The sampled side's creature cuts are read every step as the runner
 /// reads them (T80), from what the oracle keeps of each step whether read or not.
@@ -300,8 +312,12 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
     let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
     let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
     let mut seen = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    // The runner also counts `main_loop`'s status redraw calls (T82): on the sampled side only,
+    // so the count is held to change nothing as well.
+    let status_redraw = HUNK_BASES[STATUS_REDRAW.0 as usize] + STATUS_REDRAW.1;
+    alone.watch_pcs(&[Sampler::CAMERA_UPDATE]);
+    seen.watch_pcs(&[Sampler::CAMERA_UPDATE, status_redraw]);
     for am in [&mut alone, &mut seen] {
-        am.watch_pcs(&[Sampler::CAMERA_UPDATE]);
         am.watch_write(Some(PASS_END));
     }
     let mut sampler = Sampler::default();

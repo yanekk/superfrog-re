@@ -384,6 +384,27 @@ pub struct EdgesCut {
     /// a creature on the row below the view turned at a ledge the row's shapes then filled).
     /// `None` once they were all copied.
     pub shape_words: Option<u16>,
+    /// How far `h0_6882` had got with the cell at `defer_from` when the pass came.
+    pub add: AddCut,
+}
+
+/// Where a pass cut `h0_6882`, which adds a scan's animated cell to the list holding the fewest
+/// (T82). It counts the four lists, sorts the counts, then looks for the chosen list's first free
+/// entry, and the pass between drops cells from one list (`h0_62b6`), so a choice made before the
+/// pass can differ from one made after. Measured on the route: pass 12 569 came at `h0+$693e`, in
+/// the sort, and the cell joined the list the counts before the pass chose, which by then held
+/// one more than another.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum AddCut {
+    /// Not in `h0_6882`, or still counting: the cell is added whole after the pass. A pass that
+    /// came between two counts is not modelled (never measured).
+    #[default]
+    Whole,
+    /// Past the four counts (`h0+$691e`): the list is the one the counts before the pass choose,
+    /// its free entry found after the pass.
+    List,
+    /// Past the search (`h0+$6984`): the entry is the one free before the pass too.
+    Entry,
 }
 
 /// Where the next pass cuts `main_loop`'s redraw half.
@@ -431,6 +452,10 @@ pub fn main_loop_redraws(
             redraw::Deferred::Collision { at, word, .. } => plane.set_word(at, word),
             _ if again.is_some() => s.edges.deferred.push(d),
             redraw::Deferred::Cell(c) => s.edges.cells.add(c.x, c.y, c.code),
+            redraw::Deferred::Bob(b) => blits.push(b),
+            redraw::Deferred::CellIn { cell, list, entry } => {
+                s.edges.cells.add_chosen(cell, list, entry)
+            }
             redraw::Deferred::Creature {
                 cell,
                 x,
@@ -455,12 +480,12 @@ pub fn main_loop_redraws(
     };
     // A measured cut before where a resumed half picks up: the pass came while `main_loop` was
     // still finishing the redraw it resumed into, which the engine drew whole before.
-    let (stop, defer_from, shape_words) = match cut {
+    let (stop, defer_from, shape_words, add) = match cut {
         Cut::At(Some(c)) if c.next as usize > from => {
-            (Some(c.next as usize), c.defer_from, c.shape_words)
+            (Some(c.next as usize), c.defer_from, c.shape_words, c.add)
         }
-        Cut::At(Some(_)) => (Some(from), None, None),
-        _ => (None, None, None),
+        Cut::At(Some(_)) => (Some(from), None, None, AddCut::Whole),
+        _ => (None, None, None, AddCut::Whole),
     };
     let mut io = redraw::PlayIo {
         image,
@@ -468,6 +493,9 @@ pub fn main_loop_redraws(
         collision: plane,
         blits,
         defer_from: None,
+        add_cut: add,
+        bob_late: false,
+        late_bobs: Vec::new(),
         late_from: None,
         written: 0,
         late: Vec::new(),
@@ -499,6 +527,10 @@ pub fn main_loop_redraws(
                 .drain(..)
                 .map(|(n, at, word)| redraw::Deferred::Collision { n, at, word }),
         );
+        s.edges
+            .deferred
+            .extend(io.late_bobs.drain(..).map(redraw::Deferred::Bob));
+        io.bob_late = false;
         let bobs = io.blits[before..]
             .iter()
             .filter(|b| matches!(b, redraw::Blit::Bob { .. }))
