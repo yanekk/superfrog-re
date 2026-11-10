@@ -76,8 +76,9 @@ holds disk graphics: keep it under `build/`.
 `--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
 `build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
 it on the original, nothing frozen, saying for how many passes the two agree and whether the route ends
-where the planner's engine ended it. The engine takes coins (T22), so the search chases them; until contact and the level's end
-are ported (T70, T24, T26) the level never ends, so a route stalls with coins left and exits 1.
+where the planner's engine ended it. The whole level is planned (T27): `--rounds 2100` reaches the
+level's end in round 2 095, about 4 minutes, with no life lost; that route is committed and guarded
+([docs/13-full-route.md](docs/13-full-route.md)). A shorter search stalls with coins left and exits 1.
 
 ## Bug-fix procedure
 
@@ -107,6 +108,7 @@ source; open the source only for what the README lacks.
 - [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; how the freeze went; contact (creatures, water, tiles) measured.
 - [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves), `tools/generate.py` (Muse writes a generator, judged by branch coverage) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
 - [docs/12-level-start-draw.md](docs/12-level-start-draw.md): `level_init`'s first view (tiles, shapes) and what the plane's slack holds at the sync point (the title's music, `_BALLA`), measured.
+- [docs/13-full-route.md](docs/13-full-route.md): the planned route through the whole of W1-1, how it is guarded and how to plan it again.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
