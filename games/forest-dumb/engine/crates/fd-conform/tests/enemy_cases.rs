@@ -20,7 +20,9 @@ use std::thread;
 
 use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
-use fd_conform::{Case, Engine, Goal, Options, Outcome, Verdict, run_with};
+use fd_conform::{
+    Case, Engine, Goal, Inputs, Live, Options, Outcome, Verdict, conform_dir, reach_case, run_with,
+};
 use fd_core::level::EdgesCut;
 use fd_core::level::redraw::{Deferred, OBJECT_MAP};
 use fd_core::objects::creature::{LEFT, STOMPED, WALK4_RIGHT, WALK5_LEFT};
@@ -450,6 +452,9 @@ enum Change {
     NoScan,
     /// A pass whose foreground starts a creature, measured as not cut, said to have cut the scan.
     LateUnmeasured,
+    /// A row redraw cut before its scan started, said to have cut the scan at this cell (hunk 0
+    /// offset): what the runner read off a stale `a2` before T81.
+    StaleScan(u32),
 }
 
 /// fd-core's game with the measured cuts changed on their way to it.
@@ -513,6 +518,16 @@ impl Engine for Cuts {
                 defer_from: None,
                 ..c
             }),
+            Change::StaleScan(cell) => at.map(|c| match c {
+                EdgesCut {
+                    next: 1,
+                    defer_from: Some(0),
+                } => EdgesCut {
+                    next: 1,
+                    defer_from: Some(cell),
+                },
+                c => c,
+            }),
             Change::LateUnmeasured => {
                 // Whether the foreground before this pass starts a creature, on a copy.
                 let mut g = self.game.clone();
@@ -535,9 +550,18 @@ impl Engine for Cuts {
 /// `enemy-hop`'s first 200 steps, state only: W1-1:27,2's hopper starts at pass 84 from a redraw no
 /// pass cut, and pass 93 cuts the redraw that starts the next creature.
 fn with_cuts(change: Change) -> (Verdict, Cuts) {
-    let mut case = load("enemy-hop");
-    case.frames = 200;
+    with_cuts_on("enemy-hop", 200, change)
+}
+
+/// The first `frames` steps of case `name`, state only, its goal dropped, with the measured cuts
+/// changed.
+fn with_cuts_on(name: &str, frames: u32, change: Change) -> (Verdict, Cuts) {
+    let mut case = load(name);
+    case.frames = frames;
+    case.goal = None;
     case.compare.picture = false;
+    // An exclusion of picture rows hides nothing with no picture compared.
+    case.exclude.retain(|e| e.var.is_some());
     let mut c = Cuts {
         game: Game::new(data(), Start::Level1),
         change,
@@ -579,4 +603,111 @@ fn a_creature_start_waits_only_where_the_measured_cut_says() {
         ),
         "{v}"
     );
+}
+
+/// A row redraw the next pass cuts before its scan has started starts none of the scan's creatures
+/// until that pass has ended (T81). `mechanic-vanish`'s pass 331 cuts `redraw_edge_a` in its shape
+/// copy (`h0+$7da`), `a2` still where the column scan before it stopped, column 72, row 71: read as
+/// the row scan's place, as the runner did before T81, the engine starts W1-1:66,72's creature
+/// before the pass, in the slot pass 330 freed, and the original has not (the case's pass 330).
+#[test]
+fn a_scan_not_started_starts_no_creature_before_the_pass() {
+    let (v, c) = with_cuts_on("mechanic-vanish", 345, Change::Measured);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(c.waited > 0);
+    assert_eq!(c.cleared, c.taken);
+
+    let stale = OBJECT_MAP + 72 * 0x60 + 71 + 1;
+    let (v, _) = with_cuts_on("mechanic-vanish", 345, Change::StaleScan(stale));
+    assert_eq!(
+        v.outcome,
+        Outcome::Differs {
+            pass: 330,
+            frame: 6632,
+            var: "creature_active+$0".into(),
+            engine: 0xff,
+            oracle: 0,
+        },
+        "{v}"
+    );
+}
+
+/// The level cases that name no creature slot variable, compared or excluded, whose run fills a
+/// slot on the original: creatures live and nothing said of them. None since T81, which added the
+/// fifteen variables to every such case (all agreed).
+const SLOTS_UNCOMPARED: [&str; 0] = [];
+
+/// A case this long is checked in the nightly set (`death-countdown`, 62 983 steps).
+const LONG: u32 = 5000;
+
+/// Every level case under `conform/cases/` that names no creature slot variable in `vars` or
+/// `exclude`.
+fn cases_naming_no_slot() -> Vec<Case> {
+    let mut cases: Vec<Case> = std::fs::read_dir(conform_dir().join("cases"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .map(|p| Case::load(&p).unwrap_or_else(|e| panic!("{e}")))
+        .filter(|c| c.is_level())
+        .filter(|c| {
+            let excluded = c.exclude.iter().filter_map(|e| e.var.as_deref());
+            !c.vars
+                .iter()
+                .map(String::as_str)
+                .chain(excluded)
+                .any(|n| n.starts_with("creature_"))
+        })
+        .collect();
+    cases.sort_by(|a, b| a.name.cmp(&b.name));
+    cases
+}
+
+/// Whether a creature slot's flag is set after any step of the case on the original.
+fn fills_a_slot(case: &Case) -> bool {
+    let flags: Vec<&Var> = creature_vars()
+        .into_iter()
+        .filter(|v| v.name.starts_with("creature_active"))
+        .collect();
+    assert_eq!(flags.len(), 5);
+    let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
+    let mut am = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
+    (0..case.frames).any(|_| {
+        let f = am.frame();
+        am.step(inputs.at(f)).unwrap();
+        flags.iter().any(|v| Live(&am).value(v) != 0)
+    })
+}
+
+/// Of `cases`, those whose run fills a slot on the original, each on its own thread.
+fn live_and_uncompared(cases: Vec<Case>) -> Vec<String> {
+    let runs: Vec<_> = cases
+        .into_iter()
+        .map(|c| thread::spawn(move || fills_a_slot(&c).then_some(c.name)))
+        .collect();
+    runs.into_iter().filter_map(|t| t.join().unwrap()).collect()
+}
+
+/// No level case runs creatures live on the original and says nothing of their slots (T81): a
+/// case added later that scrolls a creature in must compare the slots or exclude them by name.
+/// `mechanic-vanish` ran so until T79's review, its engine a pass early and the case passing.
+#[test]
+fn no_level_case_runs_creatures_live_without_naming_their_slots() {
+    let cases = cases_naming_no_slot();
+    assert!(
+        cases.iter().any(|c| c.name == "w1-idle"),
+        "no case was read"
+    );
+    let short = cases.into_iter().filter(|c| c.frames <= LONG).collect();
+    assert_eq!(live_and_uncompared(short), SLOTS_UNCOMPARED);
+}
+
+/// The same for the cases over [`LONG`] steps.
+#[test]
+#[ignore = "full: death-countdown's 62 983 steps on the original, about 2 minutes"]
+fn no_long_level_case_runs_creatures_live_without_naming_their_slots() {
+    let long: Vec<Case> = cases_naming_no_slot()
+        .into_iter()
+        .filter(|c| c.frames > LONG)
+        .collect();
+    assert_eq!(live_and_uncompared(long), SLOTS_UNCOMPARED);
 }

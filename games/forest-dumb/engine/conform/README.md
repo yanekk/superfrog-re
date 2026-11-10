@@ -132,7 +132,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   "The edge redraws and the next pass"). The runner samples the lines of each step whose pass may find
   it there (`frame_flag` or a latch set at the step's start, or the last pass still running short of
   `camera_update`), reads where the pass took the foreground (`edges_cut`: the next latch to test and
-  where the interrupted redraw's object scan stood) and hands it to the engine before the engine runs
+  where the interrupted redraw's object scan stood, or that it had not started, T81) and hands it to the engine before the engine runs
   that pass (`Engine::foreground_cut`, `Game::cut_foreground`), as it hands over the input each pass
   read. The engine then stops its redraws there and finishes them, the scan's later animated cells
   and creature starts (T75, docs/10) included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not

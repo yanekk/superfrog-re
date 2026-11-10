@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** review T81; T80 is pending, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -101,9 +101,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ⬜ | |
-| T81 | creature-start-pass-early | T79; blocks T27, T48 | ⬜ | |
+| T81 | creature-start-pass-early | T79; blocks T27, T48 | 🔍 | Cause: `edges_cut` read a stale `a2` as the scan's place when a pass cut a row redraw before its scan; the PC decides now (docs/10). `mechanic-vanish` compares fifteen slots. Eleven cases filled slots uncompared, now compared, all agree. 3 tests, 1 `#[ignore]`d. Deviations: no engine change; the PC also names the redraw; probe kept in `prototype/t81-scan-start/`. |
 
-**Review queue:** *(empty)*
+**Review queue:** T81
 
 ## Blocked on the user
 
