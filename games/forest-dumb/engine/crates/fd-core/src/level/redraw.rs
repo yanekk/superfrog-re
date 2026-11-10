@@ -1006,6 +1006,42 @@ mod tests {
         assert_eq!(got, [0x11, 0x11, 0x22, 0x22, 0, 0, 0, 0]);
     }
 
+    /// T82: the bobs of a cut scan from the cut cell on are kept for after the pass; the bobs
+    /// before it, and a blit that is no bob, start at once.
+    #[test]
+    fn the_bobs_from_the_cut_cell_on_are_kept_for_after_the_pass() {
+        let program = crate::program::Program::hunk0(vec![0; 0x3_8000]);
+        let image = LevelImage {
+            bytes: Vec::new(),
+            program: program.clone(),
+        };
+        let mut plane = super::super::collision::CollisionPlane::new(&program);
+        let (mut objects, mut blits) = (Vec::new(), Vec::new());
+        let mut io = PlayIo {
+            image: &image,
+            objects: &mut objects,
+            collision: &mut plane,
+            blits: &mut blits,
+            defer_from: Some(0x100),
+            add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
+            late_from: None,
+            written: 0,
+            late: Vec::new(),
+        };
+        let bob = |n| Blit::Bob { image: n, dst: n };
+        io.bob_cell(0xff);
+        io.blit(bob(1));
+        io.bob_cell(0x100);
+        io.blit(bob(2));
+        io.blit(Blit::Tile { tile: 3, dst: 3 });
+        io.bob_cell(0x101);
+        io.blit(bob(4));
+        assert_eq!(io.late_bobs, [bob(2), bob(4)]);
+        assert_eq!(blits, [bob(1), Blit::Tile { tile: 3, dst: 3 }]);
+    }
+
     #[test]
     fn a_tile_row_lands_in_the_band_of_its_row() {
         // Entry j of block b holds band (j - 1 - b) & 15; edge a's entry 13 of block 15 - (r & 15)
