@@ -536,12 +536,6 @@ fn game_frame_restores_and_cuts_the_creatures() {
         // and the cut with the slots the step moved and sorted (T24).
         let mut want = g.clone();
         want.foreground();
-        let undrawn = want.display().screen.clone();
-        // A case freezing creatures in the original skips the drawing (owner, 2026-11-06): its step
-        // leaves the screen as the foreground does.
-        let mut frozen = g.clone();
-        frozen.freeze_as_a_case();
-        frozen.step(amiga_oracle::FrameInput::NONE);
         g.step(amiga_oracle::FrameInput::NONE);
         let s = g.state();
         let (want, _) = drawn(&want, &creatures, &s.edges.creatures);
@@ -562,21 +556,6 @@ fn game_frame_restores_and_cuts_the_creatures() {
         assert!(
             g.display().screen.bytes == want.bytes,
             "pass {f}: game_frame's drawing differs from the ports run in its order"
-        );
-        assert!(
-            frozen.display().screen.bytes == undrawn.bytes,
-            "pass {f}: a frozen case drew the creatures"
-        );
-        // Beyond the drawing's own variables, which it leaves as they were, and what T25's frozen
-        // routines keep (`level::FROZEN_IN_A_CASE`).
-        let mut fs = frozen.state().clone();
-        fs.creature_draw = s.creature_draw;
-        fs.edges.creatures.current = s.edges.creatures.current;
-        fs.edges.cells = s.edges.cells.clone();
-        fs.spring = s.spring;
-        assert!(
-            &fs == s,
-            "pass {f}: the skip changed more than the drawing's state"
         );
         checked += 1;
     }

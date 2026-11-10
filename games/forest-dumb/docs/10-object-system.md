@@ -82,13 +82,14 @@ from the level start and wraps to 0 about 100 passes after the sync point: until
 hurts. Measured: a creature (kinds 0, 1, 5) over the standing character, hits 1, 2, 3, a life lost on
 the third; one 200 pixels away, no contact. A creature under the falling character, kind 7 and +250.
 `$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
-tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
+tiles where the first slope ends against a wall (`W1-1:42,35`, no creature in the map: contact from pass
 133, a life lost at 135). Which tiles carry the colours there is not measured. In W1-1's own water (T72, 2026-11-06,
-`death-water`, `contact.rs`): with the water drawn (`h0_6882` thawed; since T47 no case freezes it) the character drops into the
+`death-water`, `contact.rs`): with the water drawn the character drops into the
 pool at `W1-1:148,66` to `149,66` (frame 7042), and three contact passes cost a life at frame 7062 and
-the next at 7204, engine and original equal on every pass and frame. The pool's tiles carry colour 29
+the next at 7204, engine and original equal on every pass and frame (T72's inputs, creatures frozen;
+since T79 the case reaches the pool with creatures live, at `149,66`, and the lives go at pass 2211 and frame 8652). The pool's tiles carry colour 29
 themselves: the same run with the water undrawn loses the same two lives, and the water's frames change
-CLXDAT only on a few passes (pass 773 sets a bit the tiles do not; 758 and 786 to 793 cover theirs). Those colours are in
+CLXDAT only on a few passes (on T72's inputs pass 773 sets a bit the tiles do not; 758 and 786 to 793 cover theirs). Those colours are in
 134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1` (counted for 21, 23, 29, 31). The oracle reports
 collision only since T59 (`DENISE_CLX_SPR_PLF`, off in vAmiga by default; before it CLXDAT read `$8000`).
 
@@ -226,19 +227,23 @@ are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` an
 
 ## Freezing objects (DESIGN §2.2)
 
-`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns; T79 removes
-it), the one entry left since T22 removed taking and the bonus blits and T47 `h0_6882` and `h0_24ce`. T21 also
-froze `h0_6882` (no animated cell, so no coin, water or block drawn and no block writes
-`collision_map`), the four bonus blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no
-spring), and measured: with all of them frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
-ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
-`char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
+**The freeze is gone (T79, 2026-11-10).** No case or test returns early from a routine of the
+original, and the case format has no `freeze` or `thaw` key. History: T21 froze `h0_681c` (no creature
+ever started), `h0_6882` (no animated cell), the four bonus blits, `h0_26ec` (nothing taken, no exit)
+and `h0_24ce` (no spring) in `fd-conform/src/freeze.rs`; T22 removed taking and the bonus blits, T47
+`h0_6882` and `h0_24ce`, T46 and T75 ran the enemy cases live, and T79 the last users of `h0_681c`.
 
-Creatures run live in every case since T46 (`thaw = ["h0_681c"]`, or no freeze), held by
-`fd-conform/tests/enemy_cases.rs`. Measured (T46): a pass made longer by drawn creatures can cut
-`main_loop`'s edge redraw (interrupted in `h0_3ac2`) before its scan reaches a creature cell, so the
-original starts that creature after the pass, a pass later than an engine that runs the redraw whole,
-and it stays a pass behind.
+What the freeze hid, measured when it went: a frozen `h0_681c` left each creature cell in the object
+map, where the edge redraw's scan cut it as a bob, so the frozen runs' rows of 8 and 9 bobs were
+creature cells (docs/09, "The edge redraws and the next pass"). A claim that needs no creature
+about takes the creature values (1 to 6, `$87` to `$fe`) out of the map instead
+(`tests/object_claims.rs`, `no_creatures`): so isolated, the slide still ends against the tiles at
+`W1-1:42,35` in contact from pass 133 and loses a life at pass 135.
+
+Creatures run live in every case, held by `fd-conform/tests/enemy_cases.rs`. Measured (T46): a pass
+made longer by drawn creatures can cut `main_loop`'s edge redraw (interrupted in `h0_3ac2`) before
+its scan reaches a creature cell, so the original starts that creature after the pass, a pass later
+than an engine that runs the redraw whole, and it stays a pass behind.
 
 ### A creature start the next pass cuts (T75, measured 2026-11-09)
 
@@ -265,10 +270,33 @@ was measured starts W1-1:27,2's hopper a pass late and differs at pass 84
 Seven of T46's eight frozen cases run live since T75. Live, creatures hurt and are stomped, so
 `camera-bottom-right` and `collect-return` have waits and jumps added to reach their goals, and
 `collect-ledge`, `camera-right-left`, `character-edge-pit`, `contact-route` and `edge-latch-route`
-keep their inputs with the goal both sides now reach. `death-water` stays frozen: its inputs meet a
-creature before the pool. T79 moves it and the other users of `h0_681c`'s entry off the freeze
-(`mechanic-spring`, `mechanic-vanish`, `fd_plan::confirm`, `edge_latch.rs`'s frozen route,
-`object_claims.rs`).
+keep their inputs with the goal both sides now reach. T79 (2026-11-10) gave the last three their live
+inputs, each found with the original in the loop (`plans/forest-dumb-level-1/prototype/t79-route-repair/`):
+`death-water` and `mechanic-vanish` by fd-plan's explorer planned from the original's states, no life
+lost; `mechanic-spring` from `camera-bottom-right`'s live opening. The planner's confirmation
+(`fd_plan::confirm`) runs live too: the 100-round route agrees on every pass but ends elsewhere than
+the engine alone from 120 steps on, the engine alone not knowing the original's cuts.
+
+### A creature the engine starts a pass early (T79 review, measured 2026-11-10; T81 fixes it)
+
+`mechanic-vanish`, pass 330 (oracle frame 6632): the runner hands the cut `next: 1`, `defer_from`
+59008, the engine's row redraw starts the kind 0 creature at `$429,$482` before the pass, and the
+original has not started it when the pass ends (slot 0 still the creature freed at `$3bb,$3a2`, its
+flag 0). A pass later flags and places agree; the kind, facing and phase longs stay apart
+(`creature_slots+$4` 28 passes, `+$c` 544). The character never meets it, so every other variable
+agrees. The case excludes those five slot variables naming T81; `death-water` and
+`mechanic-spring` compare all fifteen and agree.
+
+### A creature cut behind the beam (T79, measured 2026-11-10; T80 models it)
+
+With several creatures drawn a pass runs long, and `h0_5820` cuts a creature after the beam has
+passed its lines: that frame shows it restored and not yet cut, so it is missing, where the engine,
+drawing a pass whole, shows it. Measured on `mechanic-spring` from pass 475, five creatures in view:
+the play screen's bytes equal the engine's where each pass ends, the frame differs (445 pixels at
+frame 6779, a creature at the top of the view), 3 frames and more in a row, past the tolerance's 2.
+Frames differing so: 41 of `mechanic-spring`'s 3 609, 59 of `mechanic-vanish`'s 1 469, 30 of
+`death-water`'s 2 364, at any height of the play area. Those three cases exclude the play area's
+picture (`rows 0..194`), naming T80 (owner, 2026-11-10); their variables and status bar stay compared.
 
 ### Kind 4 in play (T77, measured 2026-11-10)
 

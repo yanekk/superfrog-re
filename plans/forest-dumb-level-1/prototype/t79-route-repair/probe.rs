@@ -29,6 +29,23 @@ impl Engine for W {
         self.game.step(input);
         let s = self.game.state();
         let c = &s.edges.creatures;
+        if let Ok(r) = std::env::var("BOX") {
+            let v: Vec<usize> = r.split(',').map(|x| x.parse().unwrap()).collect();
+            if self.seen.len() >= v[4] && self.seen.len() <= v[5] {
+                let p = self.game.picture();
+                let mut vals = std::collections::BTreeMap::new();
+                for y in v[1]..v[3] { for x in v[0]..v[2] { *vals.entry(p.pixels[y * p.width as usize + x]).or_insert(0usize) += 1; } }
+                std::fs::write(format!("{}/eng-{}.png", std::env::var("DIFF").unwrap(), self.seen.len()), fd_conform::bug::picture_png(&p)).unwrap();
+                let s = self.game.state();
+                println!("pass {} irq {} box {:?} draw {:?} cam {:x},{:x} resume {:?}", self.seen.len(), s.irq_count, vals, s.creature_draw, s.camera.x, s.camera.y, s.edges_resume);
+            }
+        }
+        if std::env::var("SPR").is_ok() {
+            let v = |n: &str| self.game.probe(fd_core::layout_var(n).unwrap());
+            if v("spring_timer") == 6 {
+                println!("spr pass {} irq {} spring_x {:x} kind {:x} char {:x},{:x}", self.seen.len(), v("irq_count"), v("spring_x"), v("spring_kind"), v("char_x"), v("char_y"));
+            }
+        }
         self.seen.push(format!(
             "irq {} x {:#x} y {:#x} cam {:#x},{:#x} score {:x} items {:x} lives {:x} hits {} active {:?} kinds {:?}",
             s.irq_count, s.char_x, s.char_y, s.camera.x, s.camera.y, s.score, s.items_left, s.lives, s.hits_taken, c.active, c.slots.map(|s| s.kind)
@@ -105,7 +122,7 @@ fn scratch() {
                     inputs: Vec::new(),
                     fwd,
                 };
-                let v = run_with(&case, &mut w, &Options::default());
+                let v = run_with(&case, &mut w, &Options { diff_dir: std::env::var("DIFF").ok().map(std::path::PathBuf::from), ..Options::default() });
                 let mut out = format!("=== {n}\n");
                 match v {
                     Ok(v) => {

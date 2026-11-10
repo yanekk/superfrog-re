@@ -17,8 +17,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
    `let v = run(&Case::load(Path::new("cases/w1-idle.toml"))?)?; assert_eq!(v.outcome, Outcome::Same, "{v}");`
    `run` picks the title or level runner and builds `Game::new(game_data()?, Start::Level1)` itself.
 2. **Run a case on a `Game` you keep** (`tests/camera_cases.rs`):
-   `run_with(&case, &mut game, &Options::default())`. Use `engine_for(&case, data)` when the case may
-   freeze; it freezes the `Game` only if `case.freeze`.
+   `run_with(&case, &mut game, &Options::default())`, the game a `Game::new(data, Start::Level1)`.
 3. **Read the original at a case's sync point** (`tests/camera_cases.rs`): `reach_case(&c, 0)` returns
    the `Amiga` there, with `Inputs::load(&c)?.at(frame)` for each later step's input.
 4. **Judge a routine port** (`tests/camera_routines.rs`):
@@ -34,21 +33,20 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 
 **Cases** (`src/case.rs`, re-exported at the root)
 - `Case::load(&Path) -> Result<Case, String>`, `Case::parse(name, text)`, `case.is_level()`.
-- `Case` fields: `sync_frame`, `frames`, `input`, `vars`, `goal`, `exclude`, `freeze`, `thaw`, `set`, `swap`.
+- `Case` fields: `sync_frame`, `frames`, `input`, `vars`, `goal`, `exclude`, `set`, `swap`.
 - `Goal::{All { all, by_frame }, Idle, GameOver { by_frame }, LevelEnd { by_frame }}`; `Compare { vars, picture }`; `Exclusion { rows, cols, var, what, task }`.
 
 **Running and verdicts** (`src/lib.rs`)
 - `run(&Case) -> Result<Verdict, String>`: title or level; the default options.
 - `run_with(&Case, &mut dyn Engine, &Options) -> Result<Verdict, String>`: level cases only.
 - `run_inputs(&Case, &Inputs, &mut dyn Engine, &Options)`: the same on inputs held in memory (bug zips).
-- `engine_for(&Case, Arc<GameData>) -> Game`.
 - `Options { mode, register, diff_dir }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
 - `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, edge_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
 - `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers}`. An unused exclusion fails the case.
-- `trait Engine: Transplant` (`pass`, `picture`, `events`, `freeze`, `thaw`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`); `Game` implements it.
+- `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`); `Game` implements it.
 
 **Reaching the original** (`src/lib.rs`, `src/sync.rs`)
-- `reach_case(&Case, slack) -> Result<Amiga, String>`: at the case's sync frame, frozen and `set` applied.
+- `reach_case(&Case, slack) -> Result<Amiga, String>`: at the case's sync frame, `set` applied.
 - `reach_case_counting(&Case, slack, extra: &[u32]) -> Result<(Amiga, PassInputs), String>`: also pairs passes with their inputs.
 - `Inputs::load(&Case)`, `Inputs::with_after(&Case, InputScript)`, `inputs.at(frame) -> FrameInput`.
 - `PassInputs::{anchor, pcs, step, drop_through, next_read, next_start, take}`: a pass's input is not its step's (T67).
@@ -82,9 +80,6 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
-
-**Freeze** (`src/freeze.rs`)
-- `FROZEN`, `named(name)`, `for_case(thaw)`, `apply(&mut Amiga, &[Frozen])`.
 
 **Bug zips** (`src/bug.rs`)
 - `open_zip(bytes, build)`, `replay(data, &rec, each) -> Replayed`, `retime(&rec) -> Retimed`.

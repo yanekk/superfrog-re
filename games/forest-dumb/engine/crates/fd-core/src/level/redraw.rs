@@ -94,12 +94,6 @@ pub trait Io {
         false
     }
 
-    /// Whether `h0_681c` returns at once, as a conformance case that freezes creatures patches it
-    /// (`fd-conform`'s `freeze.rs`, T79's entry): no creature starts and the cell stays.
-    fn creature_starts_frozen(&self) -> bool {
-        false
-    }
-
     fn rw(&self, a: u32) -> u16 {
         u16::from_be_bytes([self.rb(a), self.rb(a.wrapping_add(1))])
     }
@@ -439,10 +433,7 @@ impl Edges {
         kind: u16,
         facing: u8,
     ) -> u32 {
-        // Frozen, `h0_681c` is an `rts`: d0 comes back as passed and the scan's `tst.l d0` decides.
-        let d0 = if io.creature_starts_frozen() {
-            d0
-        } else if io.defers(cell) {
+        let d0 = if io.defers(cell) {
             // The next pass cut the scan before this cell (T75): the original starts the creature
             // after that pass, so it misses the pass's move and is not drawn in it. The scan's later
             // bobs are listed as after a start that found a slot; one finding none (`d0 = -1`) only
@@ -715,9 +706,6 @@ pub struct PlayIo<'a> {
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
-    /// A conformance case froze `h0_681c` (T79's `freeze.rs` entry): [`Io::creature_starts_frozen`].
-    /// False in play, the app and the planner.
-    pub creature_starts_frozen: bool,
 }
 
 impl PlayIo<'_> {
@@ -747,9 +735,6 @@ impl Io for PlayIo<'_> {
     }
     fn defers(&self, cell: u32) -> bool {
         self.defer_from.is_some_and(|f| cell >= f)
-    }
-    fn creature_starts_frozen(&self) -> bool {
-        self.creature_starts_frozen
     }
 }
 

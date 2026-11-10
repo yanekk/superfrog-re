@@ -354,6 +354,13 @@ before porting; the cut was then measured.
 
 ### The edge redraws and the next pass (T73)
 
+**Re-measured live, T79, 2026-11-10** (`edge_latch.rs`, creatures running): the same 1 300 steps hold
+166 row redraws, none of more than 5 bobs; 4 are cut by the next pass (passes 344, 348, 352 and 633),
+each a row of no bobs, the longer pass deciding and not the row; the engine alone cuts none. The rows
+of 8 and 9 bobs below were creature cells: the frozen `h0_681c` left them in the object map and the
+scan cut each as a bob. No live row of W1-1 measured reaches `ROW_BOBS_CUT`; the rule stays for the
+engine alone. What follows is the frozen measurement, kept for the window and the order of events.
+
 Measured 2026-11-09 on T24's planner route (`fd-plan level W1-1`, seed 1, 100 rounds, at `0c06449a`),
 frozen as `fd_plan::confirm` plays it; its first 1 300 steps are `cases/edge-latch-route.toml`, held by
 `fd-conform/tests/edge_latch.rs`.

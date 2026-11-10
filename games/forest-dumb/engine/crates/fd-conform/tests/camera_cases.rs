@@ -191,12 +191,6 @@ impl Transplant for ShortClamp {
 }
 
 impl Engine for ShortClamp {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.0);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.0, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.0.pass(input);
     }

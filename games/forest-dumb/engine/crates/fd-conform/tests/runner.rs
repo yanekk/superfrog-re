@@ -249,20 +249,3 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
     assert_eq!(v.coverage.unreached(), vec!["title_screen"]);
     assert!(v.to_string().contains("never reached"), "{v}");
 }
-
-#[test]
-fn a_freeze_case_patches_every_listed_entry_and_an_empty_list_is_an_error() {
-    let case = Case {
-        freeze: true,
-        thaw: Vec::new(),
-        ..short(5)
-    };
-    let am = fd_conform::reach_case(&case, 0).unwrap_or_else(|e| panic!("{e}"));
-    for f in fd_conform::freeze::FROZEN {
-        let at = fd_conform::HUNK_BASES[f.hunk as usize] + f.offset;
-        assert_eq!(am.peek(at, 2), [0x4e, 0x75], "{} not frozen", f.what);
-    }
-    let mut am = am;
-    let err = fd_conform::freeze::apply(&mut am, &[]).unwrap_err();
-    assert!(err.contains("empty"), "{err}");
-}

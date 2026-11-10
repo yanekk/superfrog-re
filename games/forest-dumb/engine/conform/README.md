@@ -44,8 +44,6 @@ compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
-freeze = false               # optional
-thaw = ["h0_681c"]           # optional, with freeze = true: entries of freeze.rs left running
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
@@ -53,7 +51,7 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
 - **`sync`.** A script of `boot-to-level1` makes a level case: it starts from the cached level sync
   point (frame 6301, disk 2 already in df0, so no `swap`) and runs the script on to `frame`. Any other
   script makes a title case, booted from power-on, stepping forest-dumb-start's title scene a frame
-  at a time; title cases compare `vars` only and take no `goal`, `exclude` or `freeze`.
+  at a time; title cases compare `vars` only and take no `goal` or `exclude`.
 - **`input`.** Without it the sync script goes on after the sync point.
 - **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
   alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
@@ -74,18 +72,9 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
   needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
-- **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
-  original at the sync point, and has the engine leave out the ones it ports
-  (`fd_core::level::FROZEN_IN_A_CASE`, through `Engine::freeze`; empty since T47 removed T25's springs
-  and animated cells, so it holds creatures alone). The list is empty until T21 measures the object entry points, so
-  `freeze = true` is an error until then.
-- **`thaw`.** Names `freeze.rs` entries (`h0_681c`) a frozen case leaves running on both sides: the
-  original is not patched there and the engine runs the routine (`Engine::thaw`, `Game::thaw_in_a_case`).
-  T72's `death-water` thawed `h0_6882` to draw the water until T47 removed that entry. Since T75 the
-  cases where a cut edge redraw starts a creature a pass late run live; `death-water`,
-  `mechanic-spring` and `mechanic-vanish` still freeze `h0_681c` (T79), and frozen, the engine starts
-  none either. An unknown
-  name, a name given twice or `thaw` without `freeze = true` is an error.
+- **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
+  the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
+  as any unknown key is.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
   sets, so HELP ends the level (T26).
@@ -150,7 +139,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
   (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
   the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
-  creatures live or frozen (T78).
+  since T78.
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
   (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.

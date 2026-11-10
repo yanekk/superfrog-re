@@ -66,11 +66,14 @@ The level (`facts.rs`):
 
 On the original (`confirm.rs`):
 - `confirm(data, inputs) -> Result<Verdict, String>` and `confirm_excluding(data, inputs, exclude: &[(&str, &str)])`.
-- `case(data, inputs) -> Result<Case, String>` and `case_excluding(...)`: the case, synced at `sync::LEVEL_1_SYNC`, `freeze = true`, goal the frozen engine's `char_x`/`char_y`.
+- `case(data, inputs) -> Result<Case, String>` and `case_excluding(...)`: the case, synced at `sync::LEVEL_1_SYNC`, nothing frozen, goal the `char_x`/`char_y` the engine alone ends at.
 - `VARS`: the compared variables. `SLACK` (8): idle frames past the route, because the original ends its passes about one behind.
 
-Gotcha: the case runs the original with creatures frozen (springs and animated cells run since T47), so where a route meets
-a creature the two sides can differ; `tests/route.rs` shows how a test handles that today.
+Gotcha: creatures run on both sides (T79). The engine alone does not know which step each pass of the
+original read or which pass cut a redraw, so it can meet a creature a pass apart: the verdict is then
+`Outcome::GoalMissed`, every pass agreeing and the route ending elsewhere than planned, which the
+command prints as "agrees on all N passes but ends elsewhere than the engine alone". The 100-round
+route does so from 120 steps on (`tests/route.rs`).
 
 ## Where the details are
 

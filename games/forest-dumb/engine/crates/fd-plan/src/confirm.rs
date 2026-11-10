@@ -1,15 +1,13 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with creature starts frozen (`freeze.rs`, T79), as T11's stretches do; items,
-//! bonuses and the exit are taken (T22) and springs and animated cells run (T47) on both sides; the
-//! case's engine leaves out what it freezes (`fd_conform::engine_for`). The
-//! case compares the character's, the camera's and the status variables on every pass, and its goal
-//! is where that engine ends.
+//! the level sync point, nothing frozen: creatures, items, bonuses, the exit, springs and animated
+//! cells run on both sides. The case compares the character's, the camera's and the status
+//! variables on every pass, and its goal is where the engine alone ends on the route.
 //!
-//! Where the two first differ is where the modelled part of the route ends: contact with the
-//! playfield and the lives it costs are modelled since T70. Creatures stay frozen here on both sides
-//! (`freeze.rs`'s T79 entry, the engine starting none either since T46) until T79 runs them live: a
-//! redraw the next pass cuts short starts one a pass later in the original, which the case runner
-//! hands the engine since T75.
+//! Where the two first differ is where the modelled part of the route ends. Agreeing on every pass
+//! and missing the goal (`Outcome::GoalMissed`) means the original's timing took the route
+//! elsewhere than the planner's engine: a pass reads the step before or after its own now and then
+//! (T67) and a redraw the next pass cuts short starts a creature a pass later (T75), both handed to
+//! the case's engine and unknown to the engine alone, so a creature can be met a pass apart.
 
 use std::sync::Arc;
 
@@ -61,16 +59,13 @@ pub fn case_excluding(
              compare = [\"vars\"]\n\
              vars = [{vars}]\n\
              goal = {goal}\n\
-             freeze = true\n\
              {excluded}",
             script = sync::LEVEL_1_SCRIPT,
             sync = sync::LEVEL_1_SYNC,
         )
     };
-    // The goal is where the case's own engine ends, frozen as the case freezes the original, so it
-    // is played on `engine_for` the case without its goal first.
-    let ahead = Case::parse("planned-route", &text("{ idle = true }"))?;
-    let mut g = fd_conform::engine_for(&ahead, data.clone());
+    // The goal is where the engine alone ends on these inputs, creatures live as in the case.
+    let mut g = Game::new(data.clone(), Start::Level1);
     for &i in inputs {
         g.step(i);
         g.take_events();

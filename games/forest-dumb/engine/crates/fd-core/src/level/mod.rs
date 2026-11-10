@@ -104,34 +104,7 @@ pub struct LevelCtx<'a> {
     /// CLXDAT as this pass's `char_hit_check` reads it: the collisions of the frame the display
     /// showed since the last pass (`render::contact`, T70).
     pub clxdat: u16,
-    /// `Some` when a conformance case froze the original (`Game::freeze_as_a_case`): the hunk 0
-    /// offsets of the routines [`FROZEN_IN_A_CASE`] names that are left out here too, less any the
-    /// case thaws (`Game::thaw_in_a_case`, T72). `None` in play.
-    pub frozen: Option<&'a [u32]>,
 }
-
-/// What the engine leaves out while a conformance case freezes the original (`freeze = true`,
-/// DESIGN §2.2), as `fd-conform`'s `freeze.rs` patches the same routines to return at once, each
-/// with the task whose freeze it mirrors. An exclusion: it goes when that task's `freeze.rs` entry
-/// goes, which `fd-conform/tests/mechanic_routines.rs` holds.
-pub struct FrozenInACase {
-    pub name: &'static str,
-    pub offset: u32,
-    pub task: &'static str,
-}
-
-/// Since T47 removed T25's two (`h0_6882`, `h0_24ce`), only the creature start, for the cases and
-/// tests still frozen (T79; `fd-conform`'s `freeze.rs` lists them).
-pub const FROZEN_IN_A_CASE: &[FrozenInACase] = &[
-    // `h0_681c`: no creature starts from an edge redraw's scan and its cell stays
-    // (`redraw::Io::creature_starts_frozen`), so no slot is ever filled and nothing is drawn. Live,
-    // a creature start a late pass cut waits for that pass, as measured (T75).
-    FrozenInACase {
-        name: "h0_681c",
-        offset: 0x681c,
-        task: "T79",
-    },
-];
 
 /// One thing an object shows: an image at a place in level pixels. T10 and the kinds' tasks
 /// (T22, T24, T25, T52) say what `image` numbers.
@@ -435,7 +408,6 @@ pub fn main_loop_redraws(
     image: &redraw::LevelImage,
     blits: &mut Vec<redraw::Blit>,
     cut: Cut,
-    creature_starts_frozen: bool,
 ) {
     use camera::Dir;
     // The cut redraw's scan, finished after the pass.
@@ -477,7 +449,6 @@ pub fn main_loop_redraws(
         collision: plane,
         blits,
         defer_from: None,
-        creature_starts_frozen,
     };
     let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
     for (k, &dir) in order.iter().enumerate().skip(from) {

@@ -108,16 +108,10 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
-    /// `Some` when a conformance case froze the original: the hunk 0 offsets of the routines the
-    /// engine leaves out, from `level::FROZEN_IN_A_CASE` less those the case thaws (T72). `Some` even
-    /// when every one is thawed. Set only
-    /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
-    /// (`fd-conform/tests/mechanic_routines.rs`).
-    frozen: Option<Vec<u32>>,
     /// `Some` once a conformance case hands the engine where the original's next pass cut
     /// `main_loop`'s redraw half ([`Game::cut_foreground`], T74): the cut for the next step's
     /// foreground. `None` alone, where the engine's own rule decides (`level::Cut::Rows`). Left out
-    /// of equality, like `frozen`.
+    /// of equality.
     foreground_cut: Option<Option<level::EdgesCut>>,
 }
 
@@ -138,7 +132,6 @@ impl Game {
                     collision: &mut plane,
                     blits: &mut blits,
                     defer_from: None,
-                    creature_starts_frozen: false,
                 });
                 // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
                 // takes the first view's tiles as it takes an edge redraw's.
@@ -171,7 +164,6 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
-                    frozen: None,
                     foreground_cut: None,
                 }
             }
@@ -264,7 +256,6 @@ impl Game {
             display: &mut self.display,
             display_data: &self.data.display,
             clxdat,
-            frozen: self.frozen.as_deref(),
         };
         level::game_frame_with(
             &mut ctx,
@@ -292,24 +283,6 @@ impl Game {
 
     /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
     /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
-    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
-    /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
-    /// frozen original does. A restart keeps it.
-    pub fn freeze_as_a_case(&mut self) {
-        self.frozen = Some(level::FROZEN_IN_A_CASE.iter().map(|f| f.offset).collect());
-    }
-
-    /// For a frozen case that thaws the routine at hunk 0 `offset` (a case's `thaw`, T72): the
-    /// engine runs it again, as the original does. False when it was not left out.
-    pub fn thaw_in_a_case(&mut self, offset: u32) -> bool {
-        let Some(frozen) = &mut self.frozen else {
-            return false;
-        };
-        let before = frozen.len();
-        frozen.retain(|&f| f != offset);
-        frozen.len() < before
-    }
-
     /// For a conformance case (`fd-conform`'s `Engine::foreground_cut`, and nothing else): where the
     /// original's pass that the next [`Game::step`] runs cut `main_loop`'s redraw half, measured on
     /// the original (`level::Cut::At`); `None` when it did not. From the first call on, the engine's
@@ -320,14 +293,9 @@ impl Game {
     }
 
     fn restart(&mut self) {
-        let (events, frozen, cut) = (
-            std::mem::take(&mut self.events),
-            std::mem::take(&mut self.frozen),
-            self.foreground_cut,
-        );
+        let (events, cut) = (std::mem::take(&mut self.events), self.foreground_cut);
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
-        self.frozen = frozen;
         self.foreground_cut = cut;
         self.events.push(Event::Restart);
     }
@@ -364,14 +332,12 @@ impl Game {
                     Some(at) => level::Cut::At(at),
                     None => level::Cut::Rows,
                 };
-                let frozen = self.frozen.as_ref().is_some_and(|f| f.contains(&0x681c));
                 level::main_loop_redraws(
                     &mut self.state,
                     &mut self.plane,
                     &self.image,
                     &mut self.blits,
                     cut,
-                    frozen,
                 );
                 let data = &self.data.display;
                 for b in &self.blits[from..] {

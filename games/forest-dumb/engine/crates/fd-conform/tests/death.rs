@@ -92,12 +92,6 @@ impl Transplant for Changed {
 }
 
 impl Engine for Changed {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -269,12 +263,6 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -383,12 +371,6 @@ impl Transplant for Cut {
 }
 
 impl Engine for Cut {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -472,10 +454,10 @@ fn a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it() {
     }
 }
 
-/// fd-core's game as [`Watched`], thawing what the case thaws (T72).
-struct Thawed(Watched);
+/// fd-core's game as [`Watched`], with the status bar's cut redraw (T71) handed on.
+struct Barred(Watched);
 
-impl Transplant for Thawed {
+impl Transplant for Barred {
     fn transplant(&mut self, mem: &dyn Mem) {
         self.0.transplant(mem)
     }
@@ -484,13 +466,7 @@ impl Transplant for Thawed {
     }
 }
 
-impl Engine for Thawed {
-    fn freeze(&mut self) {
-        self.0.freeze();
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.0.game, offset);
-    }
+impl Engine for Barred {
     fn pass(&mut self, input: FrameInput) {
         self.0.pass(input)
     }
@@ -503,25 +479,32 @@ impl Engine for Thawed {
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         self.0.foreground_cut(at);
     }
+    // The route takes items since T79, so the status bar is redrawn and a pass cuts it (T71).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        Engine::cut_redraw(&self.0.game, cut)
+    }
 }
 
-/// The character drops into the pool at `W1-1:148,66` to `149,66`; since T47 no case freezes `h0_6882`,
-/// so both sides draw the water (T25's `h0_62b6`): three contact passes in a row cost a life at frame 7062 and the next one
-/// after the hold at 7204, every pass's variables and every frame's picture equal to the original's.
-/// The character stays where the water hurt it.
+/// The character reaches the pool with creatures live (T79, no life lost on the way) and drops into
+/// it at `W1-1:149,66`; both sides draw the water (T25's `h0_62b6`): three contact passes in a row
+/// cost a life and the next one after the hold, at frame 8652, every pass's variables and every
+/// frame's status bar equal to the original's (the play area's picture is T80's). The character
+/// stays where the water hurt it.
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
-    assert!(case.freeze && case.thaw.is_empty());
-    let mut w = Thawed(Watched {
+    // Creatures are met on the way to the pool: all five slots and flags are compared (T79 review).
+    let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
+    assert_eq!(slots.count(), 15, "{:?}", case.vars);
+    let mut w = Barred(Watched {
         game: game(),
         seen: Vec::new(),
     });
     let v = run(&case, &mut w);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.events.is_empty(), "{v}");
-    assert_eq!(v.goal_met, Some(7204), "the second life lost");
-    assert!(v.passes > 860 && v.pictures > 900, "{v}");
+    assert_eq!(v.goal_met, Some(8652), "the second life lost");
+    assert!(v.passes > 2300 && v.pictures > 2300, "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
     // The original adds the cells in view, the water among them, to the animated cells.
     assert!(hits(&v, "h0_6882") > 0, "{v}");

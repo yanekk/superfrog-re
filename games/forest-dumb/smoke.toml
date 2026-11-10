@@ -112,7 +112,7 @@ workspace = "engine"
 # T24: the creatures' twelve routines on the rig, the in-play move and sort, two mutants: about 9 s warm.
 "crates/fd-conform/tests/enemy_routines.rs" = "smoke"
 # T25: the three mechanics routines on the rig, about 29 s at load 6.5 (smoke was 761 s of 900 on
-# 2026-11-05); the in-play, freeze and picture checks, about a second; the four mutants (27 s) stay
+# 2026-11-05); the in-play and picture checks, about a second; the four mutants (27 s) stay
 # in full.
 "crates/fd-conform/tests/mechanic_routines.rs" = [
     "every_t25_routine_is_registered_and_checked_here",
@@ -121,9 +121,6 @@ workspace = "engine"
     "a_spring_under_the_falling_character_fires_in_play",
     "the_play_screen_draws_each_t25_blit_as_the_blitter_does",
     "the_engine_holds_the_mechanics_pictures_the_original_loaded",
-    "a_frozen_case_runs_springs_and_animated_cells_too",
-    "the_engines_freeze_is_the_originals_entry_for_entry",
-    "the_engines_freeze_is_set_by_the_case_runner_alone",
 ]
 # T41: the character's runs in play against the original, five cases from the cached sync point in
 # parallel: about 1.5 s warm. A machine with no sync cache boots to W1-1 once first (about 16 s).
@@ -213,7 +210,7 @@ workspace = "engine"
     "the_frame_main_loop_finds_the_game_over_after_keeps_the_old_status_bar",
     "falling_into_the_spike_pit_loses_a_life_as_the_originals",
     "a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it",
-    # T72: death-water, two lives lost in the pool at W1-1:148,66 with h0_6882 thawed, 920 frames.
+    # T72: death-water, two lives lost in the pool at W1-1:149,66, creatures live (T79), 2380 frames.
     "falling_into_the_water_loses_a_life_as_the_originals",
 ]
 # T71: where pass 32k+1 cuts main_loop's status bar redraw, idle and on death-spikes, 1600 frames each
@@ -225,7 +222,7 @@ workspace = "engine"
 # about 12 s warm from the cached sync point. The check that sampling leaves every level case's
 # original unchanged (about 5 min, death-countdown's 62 900 frames run twice) is full.
 "crates/fd-conform/tests/edge_latch.rs" = [
-    "a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows",
+    "live_no_row_reaches_the_bob_rule_and_the_cut_rows_are_the_long_passes",
     "the_routes_first_1300_steps_agree_on_the_right_edge_latch",
     "the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped",
     "a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one",
@@ -235,7 +232,7 @@ workspace = "engine"
 "crates/fd-conform/tests/contact.rs" = "smoke"
 # T52, the creatures drawn: the routine rig on 10 000 states of each of the four routines (about 2 min in
 # debug, the restores' blits) and its two mutants (about 1 min each) are full; the register check, the
-# sync-point state, the picture check over 520 passes, game_frame's calls and the frozen case's skip take about
+# sync-point state, the picture check over 520 passes, game_frame's calls take about
 # 5 s warm.
 "crates/fd-conform/tests/creature_drawing_routines.rs" = [
     "every_t52_routine_is_registered_and_checked_here",

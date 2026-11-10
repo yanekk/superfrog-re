@@ -100,6 +100,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ✅ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
+| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ⬜ | |
+| T81 | creature-start-pass-early | T79; blocks T27, T48 | ⬜ | |
 
 **Review queue:** *(empty)*
 
