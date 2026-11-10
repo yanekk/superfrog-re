@@ -310,13 +310,75 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
             return Some(EdgesCut {
                 next: r as u8 + 1,
                 defer_from: Some(defer_from),
+                shape_words: (!scanning).then(|| shapes_copied(r, pc, regs)),
             });
         }
     };
     Some(EdgesCut {
         next,
         defer_from: None,
+        shape_words: None,
     })
+}
+
+/// `h0_7cc`, the shape copy, and its first `move.w`: a PC at a `move.w` has not run it.
+const SHAPE_COPY: Range<u32> = 0x7cc..0x83c;
+const SHAPE_COPY_FIRST: u32 = 0x7da;
+/// The row redraws' shape loops (`redraw_edge_a`, `_b`): the loop's top, its `bsr.w h0_7cc`, its
+/// `dbra d0` (22 shapes, `d0` from `$15`), and the `bsr.w` of the 23rd after it.
+const ROW_SHAPES: [(u32, u32, u32, u32); 2] =
+    [(0x938, 0x940, 0x950, 0x968), (0xc12, 0xc1a, 0xc2a, 0xc42)];
+/// The column redraws' (`_c`, `_d`): where `d2` takes the band block, then each `bsr.w h0_7cc` with
+/// the `addi.l #4, d2` after it for the loop of 14 and the 15th shape, and the 16th's `bsr.w`.
+/// `d2` is the block (a multiple of `$40`) plus 4 a shape, so its low six bits name the shape.
+const COLUMN_SHAPES: [(u32, [(u32, u32); 2], u32); 2] = [
+    (0xf0a, [(0xf3c, 0xf46), (0xf7c, 0xf86)], 0xfb2),
+    (0x124e, [(0x1280, 0x128a), (0x12c0, 0x12ca)], 0x12f6),
+];
+
+/// How many `collision_map` words redraw `r` (0 to 3, `redraw_edge_a` to `_d`) had copied when a
+/// pass interrupted it at `pc` before its scan, with `regs` at the interrupt
+/// ([`EdgesCut::shape_words`], T48): 16 a shape already copied, by the PC's place in the redraw's
+/// own code and its loop's counter, and inside `h0_7cc` the words its `move.w`s before the PC made.
+/// In the tile blit or its raster wait none is copied yet.
+fn shapes_copied(r: usize, pc: u32, regs: &[u32; 15]) -> u16 {
+    let copying = SHAPE_COPY.contains(&pc);
+    let words = if !copying || pc <= SHAPE_COPY_FIRST {
+        0
+    } else {
+        ((pc - SHAPE_COPY_FIRST - 2) / 6 + 1).min(16)
+    };
+    let own = REDRAWS[r].0.contains(&pc);
+    let whole = if r < 2 {
+        let (top, call, dbra, last) = ROW_SHAPES[r];
+        let d0 = regs[0] & 0xffff;
+        let k = 0x15u32.wrapping_sub(d0);
+        match pc {
+            _ if copying => {
+                if d0 == 0xffff {
+                    22
+                } else {
+                    k
+                }
+            }
+            _ if !own || pc < top => 0,
+            _ if pc <= call => k,
+            _ if pc <= dbra => k + 1,
+            _ if pc <= last => 22,
+            _ => 23,
+        }
+    } else {
+        let (load, calls, last) = COLUMN_SHAPES[r - 2];
+        let j = (regs[2] & 0x3f) >> 2;
+        match pc {
+            _ if copying => j,
+            _ if !own || pc <= load => 0,
+            _ if pc > last => 16,
+            _ if calls.iter().any(|&(call, addi)| pc > call && pc <= addi) => j + 1,
+            _ => j,
+        }
+    };
+    (whole * 16 + words) as u16
 }
 
 /// One blit of a creature's cut (`h0_5820`) as the original made it (T80).
@@ -994,8 +1056,11 @@ fn reach_case_with(
     Ok(am)
 }
 
-/// `read_joystick`, `h0+$8dfc`: `game_frame` reads JOY1DAT here once a pass while not paused.
-pub const READ_JOYSTICK: (u8, u32) = (0, 0x8dfc);
+/// `read_joystick`'s `move.w $dff00c.l, d0` (`h0+$8e1c`): `game_frame` reads JOY1DAT here once a
+/// pass while not paused. Not the routine's entry, `h0+$8dfc`: a frame can end between the two, and
+/// the pass then reads the next step's joystick (T48, measured on the route: step 12 287 entered
+/// and step 12 288 read, and so on for six passes, the last across an input change).
+pub const READ_JOYSTICK: (u8, u32) = (0, 0x8e1c);
 /// `game_frame`'s paused branch, `h0+$200e` (`bsr.w play_keys` after `tst.w paused`): a paused
 /// pass runs this and no `read_joystick`.
 pub const PAUSED_BRANCH: (u8, u32) = (0, 0x200e);
@@ -1016,6 +1081,9 @@ const INPUT_LOG_FULL: u32 = 12000;
 /// step `N + 1` when sliding; `level2_handler` puts the byte in `last_key_byte` before that step's
 /// level-3 interrupt). A paused pass reads no joystick: it gets the joystick of the step its paused
 /// branch ran in, which nothing reads.
+///
+/// `Clone` keeps the count beside an oracle snapshot, for a tool that goes back to one.
+#[derive(Debug, Clone)]
 pub struct PassInputs {
     /// `irq_count` at the last step's end: passes up to it have started.
     started: u32,
@@ -1096,7 +1164,7 @@ impl PassInputs {
         }
         self.log = (self.log + reads).min(INPUT_LOG_FULL);
         let log = Live(am).value(var("input_log_index")?);
-        // A read that started just before the step's end counts at `h0+$8dfc` in this step but adds
+        // A read made just before the step's end counts at `h0+$8e1c` in this step but adds
         // to `input_log_index` (`h0+$8eb4`) in the next: one behind is allowed only in a step that
         // counted a read, and the next step's check holds it to the count (T15, measured at frame
         // 7715 of a long varied recording, the character dying).
@@ -1791,7 +1859,14 @@ mod tests {
         let mut regs = [0u32; 15];
         // The sample a line before: the same place, unless a check says otherwise.
         let at = |pc, returns: &[u32], regs: &[u32; 15]| edges_cut_at(pc, pc, returns, regs);
-        let cut = |next, defer_from| Some(EdgesCut { next, defer_from });
+        // Before the scan and in none of the shapes' code: no shape copied yet.
+        let cut = |next, defer_from| {
+            Some(EdgesCut {
+                next,
+                defer_from,
+                shape_words: (defer_from == Some(0)).then_some(0),
+            })
+        };
         // Spinning, or in the status bar's redraw before the redraw half: no cut.
         assert_eq!(at(0x2a6, &[0x352], &regs), None);
         assert_eq!(at(0x6a9c, &[0x352], &regs), None);
@@ -1820,6 +1895,38 @@ mod tests {
             at(0x1356, &[0x352], &regs),
             cut(4, Some(OBJECT_MAP + 0x3005))
         );
+        // In the shapes (T48): 16 words a shape copied, and the words of the one being copied.
+        let shapes = |next, n| {
+            Some(EdgesCut {
+                next,
+                defer_from: Some(0),
+                shape_words: Some(n),
+            })
+        };
+        let mut r = [0u32; 15];
+        // The down row: before its loop, at the fourth shape's `bsr.w`, after it, in its copy with
+        // three words made, after the loop, in the 23rd's copy, and after it.
+        r[0] = 0x15 - 3;
+        assert_eq!(at(0x920, &[0x2da], &r), shapes(1, 0));
+        assert_eq!(at(0x940, &[0x2da], &r), shapes(1, 3 * 16));
+        assert_eq!(at(0x944, &[0x2da], &r), shapes(1, 4 * 16));
+        assert_eq!(at(0x7da, &[0x944, 0x2da], &r), shapes(1, 3 * 16));
+        assert_eq!(at(0x7e8, &[0x944, 0x2da], &r), shapes(1, 3 * 16 + 3));
+        assert_eq!(at(0x836, &[0x944, 0x2da], &r), shapes(1, 4 * 16));
+        r[0] = 0xffff;
+        assert_eq!(at(0x960, &[0x2da], &r), shapes(1, 22 * 16));
+        assert_eq!(at(0x7dc, &[0x96c, 0x2da], &r), shapes(1, 22 * 16 + 1));
+        assert_eq!(at(0x96c, &[0x2da], &r), shapes(1, 23 * 16));
+        // The left column: `d2`'s low six bits name the shape; past its `bsr.w` and short of the
+        // `addi.l` one more is copied.
+        r[2] = 0x2c0 + 4 * 5;
+        assert_eq!(at(0xf0a, &[0x32a], &r), shapes(3, 0));
+        assert_eq!(at(0xf3c, &[0x32a], &r), shapes(3, 5 * 16));
+        assert_eq!(at(0xf40, &[0x32a], &r), shapes(3, 6 * 16));
+        assert_eq!(at(0x7e2, &[0xf40, 0x32a], &r), shapes(3, 5 * 16 + 2));
+        r[2] = 0x2c0 + 4 * 15;
+        assert_eq!(at(0xfb2, &[0x32a], &r), shapes(3, 15 * 16));
+        assert_eq!(at(0xfb6, &[0x32a], &r), shapes(3, 16 * 16));
         // A bob's blit in the down row: the row's cell is done.
         assert_eq!(
             at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
@@ -1855,12 +1962,13 @@ mod tests {
         // Before the scan `a2` is the scan's before it (T81). Pass 331 of `mechanic-vanish`: in
         // the down row's shape copy, `a2` where a column scan stopped; and anywhere in the row's
         // own code below its loop's top.
+        // `d0` is 0 here: the loop's 22nd shape, 21 copied; past the loop 22, past the last 23.
         assert_eq!(
             edges_cut_at(0x7da, 0x7d8, &[0x944, 0x2da], &regs),
-            cut(1, Some(0))
+            shapes(1, 21 * 16)
         );
-        for pc in [0x844, 0x904, 0x968, 0x988] {
-            assert_eq!(at(pc, &[0x2da], &regs), cut(1, Some(0)), "{pc:#x}");
+        for (pc, n) in [(0x844, 0), (0x904, 0), (0x968, 22 * 16), (0x988, 23 * 16)] {
+            assert_eq!(at(pc, &[0x2da], &regs), shapes(1, n), "{pc:#x}");
         }
         assert_eq!(
             at(0x98a, &[0x2da], &regs),

@@ -238,6 +238,9 @@ pub enum Deferred {
         kind: u16,
         facing: u8,
     },
+    /// The cut redraw's `n`th `collision_map` word, `word` at `at` bytes from the map's first: the
+    /// pass came before `h0_7cc` copied it (T48, `level::EdgesCut::shape_words`).
+    Collision { n: u16, at: u32, word: u16 },
 }
 
 /// N after `cmpi.w #imm, v`.
@@ -653,13 +656,20 @@ pub const IMAGE_END: u32 = SHAPE_MAP + 0x7800;
 /// The level buffers of hunk 0 as the original lays them out, `h0+$bda0` to [`IMAGE_END`]: what a
 /// redraw reads of the level in play. What lies between the buffers (program data) reads 0, which only
 /// positions past the camera's clamps reach. The object map is play state, kept apart ([`PlayIo`]).
+///
+/// Past [`IMAGE_END`] a redraw reads the program itself: with the camera in the map's top two rows
+/// `redraw_edge_b`'s `subi.w #2` takes the shape row to `$ffff` or `$fffe`, 64 KB past the shape
+/// map, in hunk 0's tables (`h0+$38eb7` on), and copies the shapes those bytes name into the band
+/// the row below the view probes (T48, measured on the route at pass 13 942: a creature turned at
+/// the ledge they left).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelImage {
     bytes: Vec<u8>,
+    program: crate::program::Program,
 }
 
 impl LevelImage {
-    pub fn new(level: &fd_assets::Level) -> LevelImage {
+    pub fn new(level: &fd_assets::Level, program: &crate::program::Program) -> LevelImage {
         let mut bytes = vec![0; (IMAGE_END - SHAPES) as usize];
         let mut put = |a: u32, v: &[u8]| {
             let at = (a - SHAPES) as usize;
@@ -683,13 +693,20 @@ impl LevelImage {
             .collect();
         put(TILE_MAP, &tiles);
         put(SHAPE_MAP, &level.collision.cells);
-        LevelImage { bytes }
+        LevelImage {
+            bytes,
+            program: program.clone(),
+        }
     }
 
-    /// The byte at hunk 0 offset `a`; 0 outside the buffers.
+    /// The byte at hunk 0 offset `a`: the level's from [`SHAPES`] to [`IMAGE_END`], the program's
+    /// outside them.
     pub fn byte(&self, a: u32) -> u8 {
         let i = a.wrapping_sub(SHAPES) as usize;
-        self.bytes.get(i).copied().unwrap_or(0)
+        match self.bytes.get(i) {
+            Some(b) => *b,
+            None => self.program.byte(a),
+        }
     }
 }
 
@@ -706,6 +723,14 @@ pub struct PlayIo<'a> {
     /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
     /// higher one.
     pub defer_from: Option<u32>,
+    /// The redraw's `collision_map` words from this one on are kept in `late` for after the next
+    /// pass, which came before `h0_7cc` copied them (T48, `level::EdgesCut::shape_words`); `None`
+    /// writes each at once.
+    pub late_from: Option<u16>,
+    /// The words the redraw running has written or kept so far.
+    pub written: u16,
+    /// (its place in the redraw's order, bytes from the map's first, the word) of each word kept.
+    pub late: Vec<(u16, u32, u16)>,
 }
 
 impl PlayIo<'_> {
@@ -731,7 +756,13 @@ impl Io for PlayIo<'_> {
         self.blits.push(b);
     }
     fn collision_word(&mut self, at: u32, v: u16) {
-        self.collision.set_word(at, v);
+        let n = self.written;
+        self.written = n.saturating_add(1);
+        if self.late_from.is_some_and(|f| n >= f) {
+            self.late.push((n, at, v));
+        } else {
+            self.collision.set_word(at, v);
+        }
     }
     fn defers(&self, cell: u32) -> bool {
         self.defer_from.is_some_and(|f| cell >= f)

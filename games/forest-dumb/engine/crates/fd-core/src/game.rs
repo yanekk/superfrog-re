@@ -122,7 +122,7 @@ impl Game {
                 let mut state = State::level_1();
                 state.object_map = data.level.objects.cells.clone();
                 let mut plane = CollisionPlane::new(&data.program);
-                let image = Arc::new(LevelImage::new(&data.level));
+                let image = Arc::new(LevelImage::new(&data.level, &data.program));
                 let mut blits = Vec::new();
                 level::start::lay_title_song(&mut plane, &data.title_song);
                 // `level_init` (T65): the first view's tiles and shapes, before the first pass.
@@ -132,6 +132,9 @@ impl Game {
                     collision: &mut plane,
                     blits: &mut blits,
                     defer_from: None,
+                    late_from: None,
+                    written: 0,
+                    late: Vec::new(),
                 });
                 // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
                 // takes the first view's tiles as it takes an edge redraw's.
@@ -292,6 +295,13 @@ impl Game {
     /// took, which the engine does not model (DESIGN §2.1; T74, docs/09).
     pub fn cut_foreground(&mut self, at: Option<level::EdgesCut>) {
         self.foreground_cut = Some(at);
+    }
+
+    /// Back to the engine's own rule after [`Game::cut_foreground`]: for a forecast, on the engine
+    /// alone, from the state a conformance case's engine holds (T48: the route planned from the
+    /// original's states, docs/13).
+    pub fn own_cuts(&mut self) {
+        self.foreground_cut = None;
     }
 
     fn restart(&mut self) {

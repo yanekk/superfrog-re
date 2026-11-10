@@ -92,7 +92,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   the sync point, then runs each later pass on the input the original read for it. A step now
   and then ends two passes and shows only the first; the other is counted unseen and not compared.
 - **The input a pass read** (T67, `fd_conform::PassInputs`). Its joystick is the input of the step in
-  which its `read_joystick` (`h0+$8dfc`) ran, counted by `Amiga::watch_pcs`: every pass runs either it
+  which its `read_joystick` read JOY1DAT (`h0+$8e1c`, T48: not the routine's entry, a frame can end between), counted by `Amiga::watch_pcs`: every pass runs either it
   or the paused branch (`h0+$200e`), one pass after another, so the hits in step order are the passes'
   in pass order. While the camera scrolls a pass usually reads in the step after its start (57 of 76
   slide passes), so the start step's joystick is wrong there. Its keys are the step it started in
