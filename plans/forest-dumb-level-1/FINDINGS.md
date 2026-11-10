@@ -7,7 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-10 | 📌 | T80, measured: a long pass cuts creatures at lines 31 to 110, behind the beam near the view's top, whole or a top part. The runner hands the rows (`creature_cuts`, `Engine::creatures_uncut`); frames left differ by 48 pixels at most. |
-| 2026-11-10 | 🐞 | T80: `mechanic-vanish` keeps `rows 0..194` excluded, naming T81: its creature is drawn on another animation frame while its phase differs (frame 6683). `ExclusionUnused` fails the case once T81's fix leaves it hiding nothing. |
+| 2026-11-10 | 🔄 | Owner, T80 review: T80 closes with `mechanic-vanish` keeping `rows 0..194` excluded, naming T81. Unexcluded it fails at frame 6683, T81's creature on another animation frame. `ExclusionUnused` fails the case once T81's fix hides nothing. |
 | 2026-11-10 | 🐞 | T80: `cargo clippy -p fd-conform` stops on `bug.rs:196` (`while_immutable_condition`). Left. |
 | 2026-11-10 | 🔄 | Owner, T79 review: T81 `creature-start-pass-early` added (T79; blocks T27, T48); its fix carries `Escape: forest-dumb-level-1 T75`, and it lists every live case not comparing creature slots. |
 | 2026-11-10 | 🐞 | T79 review: `mechanic-vanish` starts the creature at `$429,$482` a pass before the original (pass 330, docs/10); five slot variables excluded for T81. `death-water` and `mechanic-spring` compare all fifteen and agree. |

@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T80; T81 removes `mechanic-vanish`'s exclusions, the play area's among them; then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T81, which removes `mechanic-vanish`'s exclusions, the play area's among them; then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -100,10 +100,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ✅ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
-| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | 🔍 | Runner reads each creature cut's beam position (`creature_cuts`, data the oracle always keeps) and compares those frames with `Engine::creatures_uncut`. 5 new tests, 4 changed. Deviations: `mechanic-vanish` keeps `rows 0..194`, naming T81 (its creature's animation frame differs; first 329 frames compared unexcluded); rows are counted, not whole creatures (partial cuts measured); `bug.rs` `Owners` forwards it. |
+| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | ✅, one fix: `bug.rs` `Owners`' forward had no test, added to `recording_compare.rs`. Owner (2026-11-10): `mechanic-vanish` keeps `rows 0..194` for T81; unexcluded it fails at frame 6683 on T81's creature, probed. Mutated `rows_behind_beam`, `uncut`, the forward: red. Probed: zero rows equals the picture on `mechanic-spring`. `read-only`: the oracle getters only read. |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ⬜ | |
 
-**Review queue:** T80
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
