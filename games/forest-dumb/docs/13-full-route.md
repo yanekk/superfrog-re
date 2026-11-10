@@ -66,14 +66,14 @@ that moves the route, run it again from this route's inputs or from the route ab
 
 Three differences stopped the first runs, each fixed where it lay:
 
-- **A row cut before its shapes** (pass 4 977). A pass that interrupts a row or column redraw
+- **A row cut before its shapes** (pass 4 976). A pass that interrupts a row or column redraw
   before `h0_7cc` has copied all its shapes probes `collision_map` as it was. The runner measures
   how many words were copied (`EdgesCut::shape_words`, from the PC and the loop counters) and the
   engine copies the rest after the pass. Twice in a row on one redraw is modelled and unmeasured.
 - **The joystick read** (pass 12 294). A frame can end between `read_joystick`'s entry and its
   `move.w $dff00c.l, d0` (`h0+$8e1c`); the pass then reads the next step's joystick. `PassInputs`
   counts at the read. `input_log_index` stops at 12 000, so nothing checks the count after that.
-- **The map's top two rows** (pass 13 942). `redraw_edge_b`'s shape row is the camera's row less 2
+- **The map's top two rows** (pass 13 941). `redraw_edge_b`'s shape row is the camera's row less 2
   as a word: `$ffff` or `$fffe` there, 64 KB past the shape map, in hunk 0's tables from
   `h0+$38eb7`. The shapes those bytes name land in the band of the row below the view.
   `LevelImage` reads the program outside the level's buffers.

@@ -660,7 +660,7 @@ pub const IMAGE_END: u32 = SHAPE_MAP + 0x7800;
 /// Past [`IMAGE_END`] a redraw reads the program itself: with the camera in the map's top two rows
 /// `redraw_edge_b`'s `subi.w #2` takes the shape row to `$ffff` or `$fffe`, 64 KB past the shape
 /// map, in hunk 0's tables (`h0+$38eb7` on), and copies the shapes those bytes name into the band
-/// the row below the view probes (T48, measured on the route at pass 13 942: a creature turned at
+/// the row below the view probes (T48, measured on the route at pass 13 941: a creature turned at
 /// the ledge they left).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelImage {
