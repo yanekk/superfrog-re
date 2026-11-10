@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** review T79, then T77 and T80 (each blocks T27, T48). Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -99,9 +99,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T75 | enemy-redraw-race | T74, T46; blocks T27, T48 | ✅ | |
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ⬜ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
-| T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ⬜ | |
+| T79 | unfreeze-creature-starts | T75; blocks T27, T48 | 🔍 | `death-water`, `mechanic-vanish`, `mechanic-spring` live on new inputs; planner confirm live (`GoalMissed` from 120 steps); edge rows re-measured; freeze deleted, 5 tests with it. Deviations: goals restated (vanish stands on block 82,83; spring pinned by `irq_count`); play area's picture excluded for T80 (owner); `object_claims.rs` clears the map's creatures; game `CLAUDE.md`, docs/06 touched; sampling full test run in release only. |
+| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T79
 
 ## Blocked on the user
 

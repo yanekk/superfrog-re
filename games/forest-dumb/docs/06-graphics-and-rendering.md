@@ -113,8 +113,7 @@ across and 2 down from its cell (the second row the map's 16 rows higher when th
 its kind's table at `h0+$3a18` by phase bits 2-4 and facing (`$20` on when the sign is clear). A creature
 reaching past line 256 is cut in two, the rest from the screen's top; at `y & $ff = $e0` the first part is
 31 lines and there is no second, so its last line is never drawn. Then `creature_active+$c` takes the
-live flags. A case with `freeze = true` starts no creature in the original, while the engine's redraws
-still do, so its engine skips this drawing (owner, 2026-11-06; T24 lifts it with `h0_681c`'s freeze).
+live flags.
 Measured over 520 passes (`creature_drawing_routines.rs`): every screen byte the drawing writes equals the
 original's where the pass ends (`watch_write`), not where the step ends, which falls before the cuts on
 most moving frames.
