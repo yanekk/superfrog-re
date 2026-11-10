@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 78 of 82 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 79 of 82 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T27, then T48 (the route on the original), T28 and T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** build T48 (the route on the original), then T28 and T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -66,7 +66,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ✅ | |
-| T27 | full-route | T20, T26, T45, T46, T47 | 🔍 | Seed 1 reaches the level end in round 2 095, no guide, no owner play: 22 528 steps, 32 lives, committed as `fd-plan/tests/routes/W1-1.txt`. `full_route.rs`: 3 smoke tests, 1 full (the planner finds it again). Deviations: no `handover.py`, `recording_guide.py` or guide, never needed; route is `.txt` under `tests/routes/`, not `.route`; milestones are the engine's own track. On the original: T48. |
+| T27 | full-route | T20, T26, T45, T46, T47 | ✅ | Review: clean, no fix commit. Ran: 3 smoke tests (1.3 s), the full planner test (186 s, same route), the command on 5 threads (same route, exit 0), 400 rounds (stalls, exit 1), docs/13's contact, score, countdown. Mutated: `HITS_PER_LIFE` 2 and one route input, both red. Milestones are the engine's own track; the original is T48's. `--budget-mins 30` read-only. |
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
@@ -103,7 +103,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 
-**Review queue:** T27
+**Review queue:** empty
 
 ## Blocked on the user
 
