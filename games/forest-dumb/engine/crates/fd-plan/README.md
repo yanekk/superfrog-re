@@ -73,14 +73,16 @@ Gotcha: creatures run on both sides (T79). The engine alone does not know which 
 original read or which pass cut a redraw, so it can meet a creature a pass apart: the verdict is then
 `Outcome::GoalMissed`, every pass agreeing and the route ending elsewhere than planned, which the
 command prints as "agrees on all N passes but ends elsewhere than the engine alone". The 100-round
-route does so from 120 steps on (`tests/route.rs`). The whole level's route on the original is
-another route, planned from the original's states (T48, `games/forest-dumb/docs/13-full-route.md`).
+route does so from 120 steps on (`tests/route.rs`). So does the whole level's route as the planner
+finds it (`tests/routes/W1-1-planned.txt`). The one route both sides finish, `tests/routes/W1-1.txt`,
+is that route searched again with both sides in the loop (T84,
+`games/forest-dumb/docs/13-full-route.md`, "The one route").
 
 ## Where the details are
 
 - `src/lib.rs`, `game.rs`, `facts.rs`, `confirm.rs`, `main.rs` as above.
 - `tests/route.rs`: the measured end, frames and coins of the 100-round search, kept current.
-- `tests/full_route.rs` and `tests/routes/W1-1.txt`: the whole level's route, committed, replayed to the level's end with no life lost (T27; `games/forest-dumb/docs/13-full-route.md`).
+- `tests/full_route.rs`, `tests/routes/W1-1.txt` and `W1-1-planned.txt`: the one route for both sides (T84) and the planner's own (T27), each replayed on the engine alone to the level's end with no life lost (`games/forest-dumb/docs/13-full-route.md`).
 - `toolkit/crates/amiga-plan` (`src/run.rs` `RunOptions`, `plan_engine`; `src/guide_file.rs`).
 - `plans/forest-dumb-level-1/DESIGN.md` §2.11; `games/forest-dumb/CLAUDE.md` "Planning a route"; `games/forest-dumb/docs/09-play-measured.md`, `10-object-system.md`.
 - A stall goes to the owner to play: `games/superfrog/docs/planner-stall-ask-owner.md`.

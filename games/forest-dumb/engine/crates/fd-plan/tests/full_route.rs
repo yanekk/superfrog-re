@@ -1,11 +1,12 @@
-//! The whole of W1-1 (T27, DESIGN §2.11, §1): the committed route `routes/W1-1.txt`, planned by
-//! `fd-plan`, replayed on the engine alone from the level's start to the level's end with no life
-//! lost, past every milestone below; and, in full, the planner finding that route again. Needs the
-//! disks: absent, it fails naming where it looked. The route on the original is T48's.
+//! The whole of W1-1 (DESIGN §2.11, §1). `routes/W1-1.txt` is the one route (T84): replayed here
+//! on the engine alone from the level's start to the level's end with no life lost, past every
+//! milestone below, and played on the original by `fd-conform`'s case `route-both-W1-1`, whose
+//! guard also holds that the two play the same inputs. `routes/W1-1-planned.txt` is what the
+//! planner finds (T27), the route the one route was searched from; in full, the planner finds it
+//! again. Needs the disks: absent, it fails naming where it looked.
 //!
-//! The route is inputs only. A change to the engine that moves the character by a pixel anywhere
-//! on it breaks this file: plan again with the command in the route's header (about 4 minutes on
-//! 10 threads), replace the route, and set `MILESTONES` from the failure's printed track.
+//! The routes are inputs only. A change to the engine that moves the character by a pixel anywhere
+//! on them breaks this file: docs/13-full-route.md, "After an engine change", says what to run.
 
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
@@ -18,8 +19,12 @@ use fd_core::{Event, Game, GameData, Scene, Start};
 use fd_plan::{PlanState, plan, script_text};
 
 const ROUTE: &str = include_str!("routes/W1-1.txt");
-/// The route's steps; `main_loop` finds the level's end in the last.
-const FRAMES: usize = 22528;
+/// The planner's own route (T27), which the engine alone finishes and the original does not.
+const PLANNED: &str = include_str!("routes/W1-1-planned.txt");
+/// The one route's steps; `main_loop` finds the level's end in the last.
+const FRAMES: usize = 22464;
+/// The planner's route's steps.
+const PLANNED_FRAMES: usize = 22528;
 /// The rounds the search is given; the exit comes in round 2 095 (seed 1, the walk compass).
 const ROUNDS: u64 = 2100;
 /// Lives at the level's start (docs/09).
@@ -27,23 +32,22 @@ const LIVES: i16 = 32;
 
 /// Where the engine alone is on the route, every 1 500 steps and at its end (measured 2026-11-10):
 /// the step, the character's cell and the items still to take.
-const MILESTONES: [(usize, (u16, u16), u16); 16] = [
-    (1499, (114, 92), 251),
-    (2999, (87, 72), 223),
-    (4499, (26, 79), 190),
-    (5999, (172, 90), 159),
-    (7499, (36, 70), 144),
-    (8999, (174, 59), 140),
-    (10499, (201, 31), 116),
-    (11999, (189, 7), 98),
+const MILESTONES: [(usize, (u16, u16), u16); 15] = [
+    (1499, (113, 92), 250),
+    (2999, (88, 72), 221),
+    (4499, (26, 80), 188),
+    (5999, (172, 90), 157),
+    (7499, (36, 70), 141),
+    (8999, (174, 59), 136),
+    (10499, (201, 31), 113),
+    (11999, (189, 6), 98),
     (13499, (103, 38), 68),
-    (14999, (92, 4), 43),
-    (16499, (122, 17), 34),
-    (17999, (143, 21), 27),
-    (19499, (63, 22), 22),
-    (20999, (230, 81), 20),
-    (22499, (209, 92), 0),
-    (22527, (208, 92), 0),
+    (14999, (94, 3), 36),
+    (16499, (118, 18), 34),
+    (17999, (136, 16), 26),
+    (19499, (56, 25), 20),
+    (20999, (224, 74), 20),
+    (22463, (208, 92), 0),
 ];
 /// A milestone is met within this many steps of its own and within a cell of its cell.
 const WITHIN_STEPS: usize = 50;
@@ -54,11 +58,16 @@ fn data() -> Arc<GameData> {
         .clone()
 }
 
-/// The committed route's inputs, a step each.
-fn route() -> Vec<FrameInput> {
-    let s = script::parse(ROUTE).unwrap_or_else(|e| panic!("routes/W1-1.txt: {e}"));
+/// A route file's inputs, a step each.
+fn steps(text: &str) -> Vec<FrameInput> {
+    let s = script::parse(text).unwrap_or_else(|e| panic!("a route: {e}"));
     let n = s.lines.last().expect("an empty route").0;
     (0..n).map(|k| s.input_at(k)).collect()
+}
+
+/// The one route's inputs.
+fn route() -> Vec<FrameInput> {
+    steps(ROUTE)
 }
 
 /// What one step of the replay left: the cell, the items left, the lives and whether play goes on.
@@ -147,25 +156,41 @@ fn the_engine_alone_meets_every_milestone_within_tolerance() {
     assert_eq!(MILESTONES.last().unwrap().0, FRAMES - 1);
 }
 
-/// The route as the planner writes it reads back as the committed one, so the fixture is a route
-/// `fd-routeview --script` and a case can play.
+/// Each route as the planner writes it reads back as the committed one, so the fixtures are
+/// routes `fd-routeview --script` and a case can play.
 #[test]
-fn the_committed_route_is_a_route_script() {
-    let inputs = route();
-    let text = script_text(&[], &inputs);
-    let body: String = ROUTE
-        .lines()
-        .filter(|l| !l.starts_with('#'))
-        .map(|l| format!("{l}\n"))
-        .collect();
-    assert_eq!(text, body);
+fn the_committed_routes_are_route_scripts() {
+    for (text, frames) in [(ROUTE, FRAMES), (PLANNED, PLANNED_FRAMES)] {
+        let inputs = steps(text);
+        assert_eq!(inputs.len(), frames);
+        let body: String = text
+            .lines()
+            .filter(|l| !l.starts_with('#'))
+            .map(|l| format!("{l}\n"))
+            .collect();
+        assert_eq!(script_text(&[], &inputs), body);
+    }
 }
 
-/// The planner finds the whole level (DESIGN §2.11): the same route as the committed one, to the
-/// exit, the rounds ending the search and never the clock.
+/// The planner's route still finishes the level on the engine alone with no life lost: it is
+/// where the search for the one route starts (docs/13).
+#[test]
+fn the_planners_route_finishes_on_the_engine_alone() {
+    let mut g = PlanState(Game::new(data(), Start::Level1));
+    let mut events = Vec::new();
+    for (k, &i) in steps(PLANNED).iter().enumerate() {
+        g.0.step(i);
+        events.extend(g.0.take_events().into_iter().map(|e| (k, e)));
+        assert!(g.lives() == LIVES && !g.dying(), "a life lost at step {k}");
+    }
+    assert_eq!(events, vec![(PLANNED_FRAMES - 1, Event::LevelEnd)]);
+}
+
+/// The planner finds the whole level (DESIGN §2.11): the same route as the committed planner's
+/// route, to the exit, the rounds ending the search and never the clock.
 #[test]
 #[ignore = "full: a 2 095-round search, 20 million engine frames, 2.5 to 4 minutes on 10 threads"]
-fn the_planner_finds_the_committed_route() {
+fn the_planner_finds_its_committed_route() {
     let run = RunOptions {
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
         budget: Duration::from_secs(3600),
@@ -181,7 +206,7 @@ fn the_planner_finds_the_committed_route() {
     assert_eq!(p.end.to_string(), "W1-1:208,92");
     assert_eq!(p.route.hearts_lost, 0);
     assert!(
-        p.route.inputs == route(),
+        p.route.inputs == steps(PLANNED),
         "another route: {} steps",
         p.route.inputs.len()
     );
