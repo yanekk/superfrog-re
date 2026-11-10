@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T83; then T82, T84, T28 and T29 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T82, then T84, T28 and T29 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -103,10 +103,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 | T82 | route-picture | T48; blocks T29 | ⬜ | |
-| T83 | red-cut-tests | —; blocks T29 | 🔍 | `contact.rs` `Copies` forwards `creatures_uncut`; `edge_latch.rs` leaves the play area out of its dropped-cut run (rows 0..194, as the case did until T81), so it ends on `edge_latch_right`, pass 340. No new test; 9 wrapper files green. Deviation: the wrapper list is in the commit message, not a file. |
+| T83 | red-cut-tests | —; blocks T29 | ✅ | Review: clean, no fix commit. Both tests green in debug; smoke label check clean. Mutations red: `Copies` unforwarding (picture, pass 1004), the dropped cut forwarded (`Same`). Probed: exclusion removed gives picture pass 313, creature variables kept give `creature_active+$0` pass 304; no unforwarding wrapper is asked for `creatures_uncut` in six files. Their `#[ignore]`d tests read-only. Wrapper list in the commit message. |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 
-**Review queue:** T83
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
