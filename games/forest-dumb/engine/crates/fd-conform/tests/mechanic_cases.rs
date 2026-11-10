@@ -21,23 +21,10 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only task an exclusion of these cases may name: T81, a creature `mechanic-vanish`'s engine
-/// starts a pass before the original (owner, 2026-11-10, T79 review). The redraw race of a long pass
-/// is handed to the engine by the runner (T74), and so is a creature the original cuts behind the
-/// beam (T80).
-const EXCLUDED_FOR: [&str; 1] = ["T81"];
-
-/// What `mechanic-vanish` excludes for T81: the slot variables that differ from pass 330 on, and
-/// the play area's picture, where that creature is drawn on another frame of its animation (first
-/// at frame 6675).
-const T81_SLOTS: [&str; 6] = [
-    "rows 0..194",
-    "var creature_active+$0",
-    "var creature_slots+$0",
-    "var creature_slots+$4",
-    "var creature_slots+$8",
-    "var creature_slots+$c",
-];
+/// No exclusion of these cases names a task: none is left. The redraw race of a long pass is handed
+/// to the engine by the runner (T74), its scan's place included (T75, T81), and so is a creature the
+/// original cuts behind the beam (T80).
+const EXCLUDED_FOR: [&str; 0] = [];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -127,28 +114,17 @@ fn the_mechanics_match_the_original_on_every_pass() {
         }
     }
     // Every edge latch is compared (T74): the passes that came during main_loop's edge redraws
-    // were handed to the engine (docs/09). Excluded: nothing in `mechanic-spring`; in
-    // `mechanic-vanish` T81's five slot variables and the play area, where its creature is drawn.
-    // Each of the fifteen creature slot variables is compared or excluded by name, never left out.
+    // were handed to the engine (docs/09). Nothing is excluded: the play area is compared on every
+    // frame (T80, and T81 for `mechanic-vanish`, whose creature started a pass early drew another
+    // frame of its animation). Each of the fifteen creature slot variables is compared.
     for (case, v) in &verdicts {
         let what: Vec<&str> = case.exclude.iter().map(|e| e.what.as_str()).collect();
-        let want: &[&str] = if case.name == "mechanic-vanish" {
-            &T81_SLOTS
-        } else {
-            &[]
-        };
-        assert_eq!(what, want, "{}", case.name);
+        assert_eq!(what, [""; 0], "{}", case.name);
         // Measured 2026-11-10: 47 frames of `mechanic-spring` and 51 of `mechanic-vanish` show a
         // creature the original cut behind the beam, drawn so by the engine (T80).
         assert!(v.creature_cuts >= 40, "{}: {v}", case.name);
         let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
-        assert_eq!(
-            slots.count() + want.len().saturating_sub(1),
-            15,
-            "{}: {:?}",
-            case.name,
-            case.vars
-        );
+        assert_eq!(slots.count(), 15, "{}: {:?}", case.name, case.vars);
         for latch in [
             "edge_latch_down",
             "edge_latch_up",

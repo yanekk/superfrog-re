@@ -52,7 +52,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `PassInputs::{anchor, pcs, step, drop_through, next_read, next_start, take}`: a pass's input is not its step's (T67).
 - `sync::reach_level_1(frames)`, `sync::reach_level_1_in(kickstart, disk_dir, cache, frames)`, `sync::LEVEL_1_SYNC` (6301), `LEVEL_1_SCRIPT`, `cache_dir()`, `level_1_key`, `level_1_script()`.
 - `OracleMem(&AmigaMemory)` and `Live(&Amiga)` implement `fd_core::Mem`, so `.value(var)` reads a `LAYOUT` variable.
-- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws), `records_edge_cuts`, `Sampler` (which cases and steps the runner samples for it).
+- `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws; T81: the scan's start is the PC's place, not `a2`), `records_edge_cuts`, `Sampler` (which cases and steps the runner samples for it).
 - `creature_cuts(&Amiga) -> Option<Vec<CutSeen>>`, `rows_behind_beam(&[CutSeen], camera) -> Vec<u16>` (T80: the creature cuts a frame saw before line 233 and the blit rows of each the beam had passed, handed to `Engine::creatures_uncut`).
 - Constants: `HUNK_BASES`, `PLAY_WINDOW`, `STATUS_ROWS`, `PASS_END` (for `am.watch_write`), `GAME_OVER_SCREEN`, `HIGH_SCORES`, `NEXT_WORLD`, `READ_JOYSTICK`, `PAUSED_BRANCH`, `AFTER_NEXT_WORLD`.
 

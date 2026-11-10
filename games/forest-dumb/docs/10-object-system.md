@@ -249,7 +249,8 @@ than an engine that runs the redraw whole, and it stays a pass behind.
 
 The engine models no sub-frame timing (DESIGN §2.1), so the runner hands it the cut, as for the
 latches and the animated cells (T74; docs/09, "Every cut, measured"). `fd_conform::edges_cut` reads
-where the pass took the foreground; inside a redraw's scan the cell it stood at is `a2`, and a start
+where the pass took the foreground; inside a redraw's scan, once it has started (the PC decides,
+T81 below), the cell it stood at is `a2`, and a start
 still in the scan's creature branch (`h0+$abc`, `$d98`, `$10fc`, `$1444` to each `bsr.w h0_681c`) or
 in `h0_681c` and `h0_6852` short of the slot's `st.b` (`h0+$687a`) counts as not made. The engine
 (`level::main_loop_redraws`, `Cut::At`) draws the cut redraw whole but holds the scan's creature
@@ -277,15 +278,41 @@ lost; `mechanic-spring` from `camera-bottom-right`'s live opening. The planner's
 (`fd_plan::confirm`) runs live too: the 100-round route agrees on every pass but ends elsewhere than
 the engine alone from 120 steps on, the engine alone not knowing the original's cuts.
 
-### A creature the engine starts a pass early (T79 review, measured 2026-11-10; T81 fixes it)
+### A creature the engine starts a pass early (T79 review, measured 2026-11-10; fixed by T81, 2026-11-10)
 
-`mechanic-vanish`, pass 330 (oracle frame 6632): the runner hands the cut `next: 1`, `defer_from`
-59008, the engine's row redraw starts the kind 0 creature at `$429,$482` before the pass, and the
-original has not started it when the pass ends (slot 0 still the creature freed at `$3bb,$3a2`, its
-flag 0). A pass later flags and places agree; the kind, facing and phase longs stay apart
-(`creature_slots+$4` 28 passes, `+$c` 544). The character never meets it, so every other variable
-agrees. The case excludes those five slot variables naming T81; `death-water` and
-`mechanic-spring` compare all fifteen and agree.
+`mechanic-vanish`, the case's pass 330 (oracle frame 6632, `irq_count` 331): the engine started the
+kind 0 creature of W1-1:66,72 at `$429,$482` before the pass, and the original had not started it
+when the pass ended (slot 0 still the creature freed at `$3bb,$3a2`, its flag 0).
+
+The cause, measured on the original line by line (T81): the pass came at `h0+$7da`, in
+`redraw_edge_a`'s shape copy (`h0_7cc`), 20 scan loops (`h0+$98a`) and the one `h0_681c` running
+only in the step after. The row redraws' tile and shape loops use `a3` to `a5` and leave `a2`
+alone, so `a2` still held where the column scan before it had stopped, column 72, row 71, inside
+the object map. `fd_conform::edges_cut` took any `a2` inside the object map as this scan's place
+(T75 took the tile and shape loops to keep a table pointer there, true of the columns only), so it
+handed `defer_from` 59008, past the creature's cell, and the engine started it at once. All five
+slots were in use until pass 330 freed slot 0, so the same misreading three passes earlier (pass
+327, `h0+$82a`) started nothing on either side and went unseen.
+
+How it is handled: whether the scan has started is read off the PC, never `a2`
+(`edges_cut_at`, `REDRAWS`). It has not in the redraw's own code below its loop's top, nor in the
+tile blit and the shape copy (`h0+$774` to `$83a`), which only those loops call. The raster wait
+`h0_3ac2` is called by a tile's blit and by a bob's: there the line sample before the interrupt
+decides, a place at the tiles meaning a tile's wait, since the 23 shapes after them take 23 lines.
+A scan not started hands `defer_from` 0, and the engine holds every creature and animated cell of
+it until the pass has ended. A PC in a redraw's own code also names the redraw, where before only
+the stack a line earlier did. `mechanic-vanish` compares all fifteen slot variables;
+`enemy_cases.rs`, `a_scan_not_started_starts_no_creature_before_the_pass`, hands the old reading
+back and differs at pass 330 on `creature_active+$0`, engine `$ff`, original 0.
+
+Every live case compares the slots (T81, 2026-11-10). 26 level cases named no slot variable; on
+the original 11 of them fill a slot: `character-edge-slope`, `character-run-right-jump`,
+`character-run-slide`, `character-run-slide-buttons`, `death-pit`, `death-spikes`,
+`picture-scroll`, `stretch-pit`, `stretch-scroll`, `stretch-slope` and `stub-level`. With the
+fifteen variables added all 26 agreed on every pass, so the 11 now compare them. The other 15
+never fill a slot. `enemy_cases.rs`, `no_level_case_runs_creatures_live_without_naming_their_slots`,
+fails on a case that fills a slot and names none (`death-countdown`, 62 983 steps, in the nightly
+twin).
 
 ### A creature cut behind the beam (T79, T80, measured 2026-11-10)
 
@@ -323,10 +350,10 @@ the frame with those rows as they were before the cut (the engine keeps each cut
 a pass, `render::objects::CutsDrawn`), and the runner compares that picture on that frame alone. The
 row at the edge can be half shown: with the count handed as measured the frames left differing hold
 at most 48 pixels, inside the tolerance's few (64). `mechanic-spring` and `death-water` compare the
-play area with nothing excluded. `mechanic-vanish` keeps `rows 0..194` excluded for T81, whose
-creature is drawn on another frame of its animation while its phase differs (past the tolerance at
-frame 6683); its first 329 frames compare the play area with nothing excluded
-(`tests/creature_cuts.rs`).
+play area with nothing excluded. `mechanic-vanish` kept `rows 0..194` excluded until T81 was fixed
+(its creature, started a pass early, was drawn on another frame of its animation, past the
+tolerance at frame 6683); since both merged it excludes nothing either (2026-11-10,
+`mechanic_cases.rs`).
 
 In play the engine shows every creature on every frame. To blink as the original does it would need
 the cycles each pass takes up to each cut: the CPU's instruction timings along the pass's path and

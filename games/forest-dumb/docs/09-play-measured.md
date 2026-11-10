@@ -425,7 +425,9 @@ mode (the exception frame is on the supervisor stack). `fd_conform::edges_cut` r
   list: pass 495 of `mechanic-spring` came as `h0_6882` returned (`$69a4`) in the right column, whose
   later coins joined other lists than with the scan whole, and from frame 6845 spun out of step. The
   scan's cell is `a2` (`h0+$cb38` plus `d5` and `d6`), which no routine the scan calls writes; it is
-  read from `level3_handler`'s `movem.l` of the foreground's registers.
+  read from `level3_handler`'s `movem.l` of the foreground's registers. Before the scan's first
+  loop `a2` is still the scan's before it: whether the scan has started is the PC's place (T81,
+  docs/10, "A creature the engine starts a pass early").
 - **What the runner and the engine do.** The runner samples a step's lines only where its pass may find
   the foreground in the redraws (`frame_flag` or a latch set at the step's start, or the last pass still
   running and short of `camera_update`), hands the cut to the engine before it runs that pass

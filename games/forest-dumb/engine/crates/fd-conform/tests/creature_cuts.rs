@@ -166,9 +166,9 @@ fn a_creature_left_out_where_no_cut_was_measured_fails() {
     );
 }
 
-/// `mechanic-vanish` keeps its play area excluded for T81, whose creature is drawn on another frame
-/// of its animation from pass 330 on. Before that the play area is the original's with nothing
-/// excluded, six of its frames by the hand-over (measured 2026-11-10).
+/// `mechanic-vanish`'s first 329 steps: the play area is the original's with nothing excluded, six
+/// of its frames by the hand-over (measured 2026-11-10). Until T81's fix the case excluded the play
+/// area from pass 330 on; the whole case now compares it (`mechanic_cases.rs`).
 #[test]
 fn mechanic_vanish_compares_the_play_area_until_the_early_creature() {
     let case = stretch("mechanic-vanish", 329);

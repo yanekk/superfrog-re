@@ -199,45 +199,69 @@ const CREATURE_BRANCH: [RangeInclusive<u32>; 4] = [
 const START_CREATURE: RangeInclusive<u32> = 0x681c..=0x687a;
 const STARTED: RangeInclusive<u32> = 0x6836..=0x6838;
 
+/// Each redraw's own code (`redraw_edge_a` to `_d`, with its bob routine and creature branch), and
+/// where its last tile blit returns: up to there it draws tiles, then shapes, then scans from
+/// [`SCANS`]' top to its end.
+const REDRAWS: [(Range<u32>, u32); 4] = [
+    (0x844..0xb20, 0x904),
+    (0xb20..0xdf6, 0xbe0),
+    (0xdf6..0x114a, 0xee2),
+    (0x114a..0x1496, 0x1226),
+];
+
+/// `h0_774` and `h0_7cc`, the tile blit and the shape copy: only the redraws' tile and shape loops
+/// call them in play, so a PC in them is before the scan.
+const TILE_AND_SHAPE: Range<u32> = 0x774..0x83c;
+
+/// `h0_3ac2`, the raster and blitter wait: a tile's blit calls it before the scan and a bob's in it.
+const WAIT: RangeInclusive<u32> = 0x3ac2..=0x3ada;
+
 /// Where the last step's pass cut `main_loop`'s redraw half (`h0+$2b2` to `$358`), as
 /// [`fd_core::level::Cut::At`] takes it; `None` when the interrupt found the foreground elsewhere
 /// (T74). Needs [`Amiga::set_profile`] on for the step.
 ///
-/// The interrupted PC decides inside `main_loop`. Inside a redraw it is often in a routine many
-/// callers share, and the exception frame is on the supervisor stack while the foreground runs on
-/// the user stack, so the redraw is named by `main_loop`'s return address on the user stack of the
-/// last line sample before the interrupt taken in user mode. Its scan's position is the foreground's
-/// `a2`, which no routine the scan calls writes ([`edges_cut_at`]).
+/// The interrupted PC decides inside `main_loop` and inside a redraw's own code. Elsewhere it is in
+/// a routine many callers share, and the exception frame is on the supervisor stack while the
+/// foreground runs on the user stack, so the redraw is named by `main_loop`'s return address on the
+/// user stack of the last line sample before the interrupt taken in user mode, at most a line old.
+/// Its scan's position is the foreground's `a2`, once the scan has started ([`edges_cut_at`]).
 pub fn edges_cut(am: &Amiga) -> Option<EdgesCut> {
     let samples = am.line_samples();
     let (k, pc, regs) = interrupt(&samples)?;
-    let returns: Vec<u32> = samples[..k]
+    let (seen, returns): (u32, Vec<u32>) = samples[..k]
         .iter()
         .rev()
         .find(|s| s.sr & 0x2000 == 0)
         .map(|s| {
-            s.stack
+            let returns = s
+                .stack
                 .iter()
                 .map(|l| l.wrapping_sub(HUNK_BASES[0]))
-                .collect()
+                .collect();
+            (s.pc.wrapping_sub(HUNK_BASES[0]), returns)
         })
         .unwrap_or_default();
-    edges_cut_at(pc, &returns, &regs)
+    edges_cut_at(pc, seen, &returns, &regs)
 }
 
-/// [`edges_cut`] from the interrupted PC, the foreground's stack (longs, as hunk 0 offsets) and its
-/// registers d0-d7/a0-a6. `main_loop`'s `clr.w` of each latch (`h0+$2d0`, `$2f8`, `$320`, `$348`)
-/// and of `frame_flag` (`$352`) mark the bounds: a PC at one has not run it yet. Below `$2b2` the
-/// loop may be spinning with `frame_flag` clear, or in `h0_6a96`'s status redraw before the redraw
-/// half, which this does not tell apart: not a cut (the redraw half then runs whole after the pass,
-/// never measured to change a latch).
+/// [`edges_cut`] from the interrupted PC, the foreground's PC and stack (longs, as hunk 0 offsets)
+/// at the line sample before it, and its registers d0-d7/a0-a6 at the interrupt. `main_loop`'s
+/// `clr.w` of each latch (`h0+$2d0`, `$2f8`, `$320`, `$348`) and of `frame_flag` (`$352`) mark the
+/// bounds: a PC at one has not run it yet. Below `$2b2` the loop may be spinning with `frame_flag`
+/// clear, or in `h0_6a96`'s status redraw before the redraw half, which this does not tell apart:
+/// not a cut (the redraw half then runs whole after the pass, never measured to change a latch).
 ///
-/// In a redraw, its scan has not started while `a2` is outside the object map (the tile and shape
-/// loops keep table pointers there); at the loop's top the cell is `h0+$cb38 + d5 + d6`, not yet
-/// looked at; elsewhere it is `a2`, its add or creature start made unless the PC is between its
-/// compares and the return from `h0_6882`'s `st.b`, or in its creature branch short of
-/// `h0_6852`'s `st.b` (T75).
-pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesCut> {
+/// In a redraw, whether its scan has started is the PC's place, never `a2`: the row redraws' tile
+/// and shape loops leave `a2` alone, so until the scan's first `lea.l` it still points into the
+/// object map where the scan before it stopped (T81: `mechanic-vanish`, pass 331, cut in
+/// `redraw_edge_a`'s shapes with the last column scan's `a2`). The scan has not started in the
+/// redraw's own code below its loop's top, nor in the tile blit or the shape copy; in the raster
+/// wait, which a tile's blit and a bob's both call, it has unless the sample a line before was
+/// still at the tiles (the shapes after them take 23 lines). Started, at the loop's top the cell
+/// is `h0+$cb38 + d5 + d6`, not yet looked at; elsewhere it is `a2`, its add or creature start made
+/// unless the PC is between its compares and the return from `h0_6882`'s `st.b`, or in its
+/// creature branch short of `h0_6852`'s `st.b` (T75).
+pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesCut> {
     let next = match pc {
         0x2b2..=0x2d0 => 0,
         0x2d2..=0x2f8 => 1,
@@ -247,12 +271,32 @@ pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesC
         // The rest of `main_loop`, and the status bar's redraw and draw routines (T71).
         0x252..0x35c | 0x6a96..0x6da0 => return None,
         _ => {
-            let r = returns
+            // In a redraw's own code the PC names it, whatever the sample a line before held.
+            let r = REDRAWS
                 .iter()
-                .find_map(|r| AFTER_REDRAW.iter().position(|a| a == r))?;
+                .position(|(own, _)| own.contains(&pc))
+                .or_else(|| {
+                    returns
+                        .iter()
+                        .find_map(|r| AFTER_REDRAW.iter().position(|a| a == r))
+                })?;
             let (top, compares, added) = SCANS[r];
+            let (own, tiles_end) = &REDRAWS[r];
+            let scanning = if own.contains(&pc) {
+                pc >= top
+            } else if WAIT.contains(&pc) {
+                // Where the redraw's own code was a line before: in it, or called from it.
+                let was = Some(seen)
+                    .filter(|p| own.contains(p))
+                    .or_else(|| returns.iter().copied().find(|p| own.contains(p)));
+                was.is_some_and(|p| p > *tiles_end)
+            } else {
+                !TILE_AND_SHAPE.contains(&pc)
+            };
             let (d5, d6, a2) = (regs[5], regs[6], regs[10].wrapping_sub(HUNK_BASES[0]));
-            let defer_from = if (top..top + 0xc).contains(&pc) {
+            let defer_from = if !scanning {
+                0
+            } else if (top..top + 0xc).contains(&pc) {
                 OBJECT_MAP.wrapping_add(d5).wrapping_add(d6)
             } else if (OBJECT_MAP..TILE_MAP).contains(&a2) {
                 let pending = (compares..added).contains(&pc)
@@ -1738,13 +1782,15 @@ mod tests {
     }
 
     /// Where `main_loop`'s redraw half was when the pass came, read as T74 measured it: the PC
-    /// within `main_loop` itself, else the redraw named by its return address on the foreground's
-    /// stack and the scan's cell from `a2` (or `d5 + d6` at the loop's top).
+    /// within `main_loop` itself, else the redraw named by the PC or by its return address on the
+    /// foreground's stack and, once its scan has started (T81), the scan's cell from `a2` (or
+    /// `d5 + d6` at the loop's top).
     #[test]
     fn a_pass_inside_the_edge_redraws_names_the_next_latch_and_the_scans_cell() {
         let h = |o: u32| HUNK_BASES[0] + o;
         let mut regs = [0u32; 15];
-        let at = |pc, returns: &[u32], regs: &[u32; 15]| edges_cut_at(pc, returns, regs);
+        // The sample a line before: the same place, unless a check says otherwise.
+        let at = |pc, returns: &[u32], regs: &[u32; 15]| edges_cut_at(pc, pc, returns, regs);
         let cut = |next, defer_from| Some(EdgesCut { next, defer_from });
         // Spinning, or in the status bar's redraw before the redraw half: no cut.
         assert_eq!(at(0x2a6, &[0x352], &regs), None);
@@ -1795,13 +1841,40 @@ mod tests {
                 "{pc:#x}"
             );
         }
-        // Each scan has its own creature branch: the left column's is not the down row's.
+        // Each scan has its own creature branch, and a PC in a redraw's own code names the redraw
+        // whatever the stack a line before held.
         assert_eq!(
             at(0x113a, &[0x32a], &regs),
             cut(3, Some(OBJECT_MAP + 0x3005))
         );
         assert_eq!(
             at(0x113a, &[0x2da], &regs),
+            cut(3, Some(OBJECT_MAP + 0x3005))
+        );
+        assert_eq!(edges_cut_at(0x852, 0x2d6, &[], &regs), cut(1, Some(0)));
+        // Before the scan `a2` is the scan's before it (T81). Pass 331 of `mechanic-vanish`: in
+        // the down row's shape copy, `a2` where a column scan stopped; and anywhere in the row's
+        // own code below its loop's top.
+        assert_eq!(
+            edges_cut_at(0x7da, 0x7d8, &[0x944, 0x2da], &regs),
+            cut(1, Some(0))
+        );
+        for pc in [0x844, 0x904, 0x968, 0x988] {
+            assert_eq!(at(pc, &[0x2da], &regs), cut(1, Some(0)), "{pc:#x}");
+        }
+        assert_eq!(
+            at(0x98a, &[0x2da], &regs),
+            cut(1, Some(OBJECT_MAP + regs[5] + regs[6]))
+        );
+        // The raster wait is a tile's, before the scan, while the sample a line before was at the
+        // tiles; from the shapes on it is a bob's, in the scan.
+        assert_eq!(at(0x3aca, &[0x788, 0x8e2, 0x2da], &regs), cut(1, Some(0)));
+        assert_eq!(
+            edges_cut_at(0x3aca, 0x8e8, &[0x2da], &regs),
+            cut(1, Some(0))
+        );
+        assert_eq!(
+            edges_cut_at(0x3aca, 0x7dc, &[0x96c, 0x2da], &regs),
             cut(1, Some(OBJECT_MAP + 0x3006))
         );
         // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.
