@@ -103,7 +103,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 | T82 | route-picture | T48; blocks T29 | ⬜ | |
-| T83 | red-cut-tests | —; blocks T29 | ⬜ | |
+| T83 | red-cut-tests | —; blocks T29 | ✅ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 
 **Review queue:** *(empty)*
