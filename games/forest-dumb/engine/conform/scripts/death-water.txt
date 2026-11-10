@@ -1,24 +1,74 @@
-# T72: from the level sync point, contact-route's start down the first slope, then a path found on the
-# engine (a beam search toward W1-1:166,71, then 152,61) over the water's pillars from the right; left
-# let go at frame 741 drops the character into the pool at W1-1:148,66 to 149,66, where it stays.
-0: L
-4: R
-76: U R
-116: U L
-136: R
-220: -
-228: U R
-260: R
-276: U
-280: U R
-296: R
-356: U R
-396: R
-636: U R
-652: R
-660: U
-668: U L
-692: L
-708: U L
-724: L
-741: -
+# T79 (was T72's, made with creatures frozen): from the level sync point to the pool at W1-1:148,66
+# with creatures live. fd-plan's explorer to 166,71 and then 152,61, each leg planned on the engine
+# from the state the case's engine held on the original and planned again from the pass where the
+# original's run left it (plans/forest-dumb-level-1/prototype/t79-route-repair/goto.rs), no life lost
+# on the way. Then a jump left off the pillar (14 steps up and left, 9 left) drops the character into
+# the pool at 149,66 (char_x $951, char_y $418) by step 2190, where it stays. Checked on the original
+# 2026-11-10.
+0: D
+32: R
+40: U R
+120: R
+132: U R
+151: -
+162: U
+178: R
+193: L
+209: U R
+229: L
+261: U
+293: U R
+333: L
+353: D
+369: L
+373: R
+377: L
+441: U
+517: -
+521: U R
+669: U
+749: U R
+861: U L
+893: D
+909: U R
+925: D
+957: L
+973: D
+989: U R
+1017: -
+1033: L
+1041: -
+1045: U R
+1061: L
+1069: R
+1085: D
+1121: R
+1173: D
+1201: U R
+1241: L
+1249: R
+1269: -
+1301: R
+1317: D
+1325: R
+1369: U L
+1413: D
+1421: U L
+1485: R
+1489: U
+1509: D
+1529: U L
+1569: U R
+1745: R
+1753: L
+1769: U L
+1801: R
+1853: U R
+1897: R
+2016: U L
+2032: U
+2068: U L
+2104: R
+2120: U L
+2155: L
+2164: -

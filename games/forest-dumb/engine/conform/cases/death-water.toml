@@ -1,17 +1,17 @@
-# T72: lives lost in W1-1's water (scripts/death-water.txt): frozen as freeze.rs says, which since T47
-# leaves h0_6882 running, so the original adds the water to h0_62b6's animated cells and draws it, and
-# the engine does the same (T25's port). The character drops into the pool at W1-1:148,66 to 149,66 (frame
-# 7042); contact comes and goes with the water's frames, the third pass in a row costs a life (frame
-# 7062), and after the hurt frame, the hold and the blink the next one (frame 7204). Creatures stay
-# frozen. The original's pass grows with the animated cells' blits, so some passes cut main_loop's
-# redraws and its frame_flag clear swallows their latches: the runner hands the engine where (T74).
-# Creatures frozen on both sides (freeze.rs h0_681c, T79): live, these inputs lose a life to a creature at
-# pass 200 and meet another before the pool, so T79 gives the case inputs that reach it (the late creature
-# start at pass 571 is handed over since T75).
+# T72: lives lost in W1-1's water (scripts/death-water.txt), creatures live since T79: the character
+# reaches the pool with no life lost and drops into it at W1-1:149,66 (step 2190); contact comes and
+# goes with the water's frames (h0_62b6 draws it on both sides, T25's port), the third pass in a row
+# costs a life (pass 2211), and after the hurt frame, the hold and the blink the next one (frame 8652).
+# The original's pass grows with the animated cells' blits and the creatures, so some passes cut
+# main_loop's redraws and its frame_flag clear swallows their latches: the runner hands the engine
+# where (T74, T75).
+# Excluded: the play area's picture (T80). A creature the original cuts after the beam has passed it
+# is missing from that frame; the engine shows it (30 frames here). The status bar's rows and every
+# variable stay compared.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
-frames = 920
+frames = 2380
 compare = ["vars", "picture"]
 vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down"]
-goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 7221 }
-freeze = true
+goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 8669 }
+exclude = [{ what = "rows 0..194", task = "T80" }]

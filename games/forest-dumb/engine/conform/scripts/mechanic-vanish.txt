@@ -1,52 +1,60 @@
-# T47: the vanishing blocks ($30 to $33, h0_62b6) of the column at W1-1:82,77, 82,80 and 82,83, from the
-# level sync point. contact-route's start to frame 300, then a path found on the engine (fd-plan's
-# explorer from that frame, target 82,76) over the column to the floor under it at 82,86. Eight jumps
-# 50 frames apart meet the block at 82,83 in each phase of its cycle: shown, the head stops on it
-# (char_y $50a); gone, the jump rises through (char_y $4d9). Then right along the corridor to column 108,
-# the column out of view, and back (a path found the same way from frame 1010), four more jumps, the
-# last landing on the top block (char_y $4a8), which then vanishes under the character, then the next
-# two, one by one, to the floor (char_y $552). Measured on the engine 2026-11-09.
+# T79 (was T47's, made with creatures frozen): the vanishing blocks ($30 to $33, h0_62b6) of the
+# column at W1-1:82,77, 82,80 and 82,83, from the level sync point with creatures live. fd-plan's
+# explorer to the floor under the column (82,86, char_x $516, step 448), each leg planned on the
+# engine from the state the case's engine held on the original
+# (plans/forest-dumb-level-1/prototype/t79-route-repair/goto.rs), no life lost. Eight jumps 50 steps
+# apart meet the blocks in each phase: shown, the head stops on one (char_y $501) or the character
+# stands on it (char_y $508); gone, the jump rises through to char_y $4c1 above the column. Then the
+# explorer right along the corridor to column 108, the column out of view, and back under it at
+# char_x $531 (step 1106); six more jumps, the character standing on the block at 82,83 (char_y $508)
+# from step 1200 to 1270, then through the column and down to the floor (char_y $552). Checked on the
+# original 2026-11-10.
 0: L
 4: R
 76: U R
-116: U L
-136: R
-220: -
-228: U R
-260: R
-276: U
-280: U R
-296: R
-360: U
-392: -
-450: U
-474: -
-500: U
-524: -
-550: U
-574: -
-600: U
-624: -
-650: U
-674: -
-700: U
-724: -
-750: U
-774: -
-800: U
-824: -
-860: R
-1000: -
-1010: L
-1078: U
-1086: U L
-1094: -
-1120: U
-1144: -
-1170: U
-1194: -
-1220: U
-1244: -
-1270: U
-1294: -
-1600: -
+118: D
+126: U
+146: -
+182: R
+354: U
+394: R
+448: -
+478: U
+490: -
+528: U
+540: -
+578: U
+590: -
+628: U
+640: -
+678: U
+690: -
+728: U
+740: -
+778: U
+790: -
+828: U
+840: -
+878: U R
+882: D
+898: U L
+902: R
+958: U
+962: R
+1010: U R
+1015: L
+1031: U L
+1095: L
+1106: -
+1126: U
+1138: -
+1176: U
+1188: -
+1226: U
+1238: -
+1276: U
+1288: -
+1326: U
+1338: -
+1376: U
+1388: -

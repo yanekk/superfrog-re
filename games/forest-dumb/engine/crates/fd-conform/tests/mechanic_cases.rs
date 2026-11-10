@@ -3,7 +3,7 @@
 //! proved each on the rig; these cases run fd-core's `Game` from the level sync point through each
 //! mechanic's spot, its timing cycle and back after scrolling away, comparing every character, camera,
 //! edge, status, spring and animation variable on every pass and the picture on every frame. Nothing
-//! is frozen in the original but the creatures (T24). Needs the disks and the Kickstart: absent, it
+//! is frozen: creatures run on both sides since T79. Needs the disks and the Kickstart: absent, it
 //! fails naming where it looked.
 
 use std::path::Path;
@@ -21,9 +21,10 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only task an exclusion of these cases may name: the creatures (T24, through `freeze.rs`). The
-/// redraw race of a long pass is handed to the engine by the runner (T74).
-const EXCLUDED_FOR: [&str; 1] = ["T24"];
+/// The only task an exclusion of these cases may name: T80, a creature the original cuts behind the
+/// beam and so shows a frame late (owner, 2026-11-10). The redraw race of a long pass is handed to
+/// the engine by the runner (T74).
+const EXCLUDED_FOR: [&str; 1] = ["T80"];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -71,8 +72,6 @@ fn the_mechanics_match_the_original_on_every_pass() {
         );
         assert!(v.goal_met.is_some(), "{name}: {v}");
         assert!(v.events.is_empty(), "{name}: {v}");
-        // Frozen for the creatures alone: freeze.rs holds no other entry (mechanic_routines.rs).
-        assert!(case.freeze && case.thaw.is_empty(), "{name}");
         // Nearly every pass compared, and every frame's picture but those showing a pass whose end
         // the original hid (README, "How a level case compares").
         assert!(v.passes + v.unseen + 1 >= case.frames - 5, "{name}: {v}");
@@ -114,11 +113,12 @@ fn the_mechanics_match_the_original_on_every_pass() {
             assert!(hits(v, r) > 0, "{name}: {r} never ran: {v}");
         }
     }
-    // Both pictures and every edge latch are compared whole, with no exclusion (T74): the passes
-    // that came during main_loop's edge redraws were handed to the engine, pass 293 of the
-    // vanishing blocks and pass 495 of the springs among them (docs/09).
+    // Every edge latch is compared (T74): the passes that came during main_loop's edge redraws
+    // were handed to the engine (docs/09). The one exclusion is the play area's picture, T80's:
+    // the status bar's rows stay compared on every frame.
     for (case, v) in &verdicts {
-        assert!(case.exclude.is_empty(), "{}: {:?}", case.name, case.exclude);
+        let what: Vec<&str> = case.exclude.iter().map(|e| e.what.as_str()).collect();
+        assert_eq!(what, ["rows 0..194"], "{}", case.name);
         for latch in [
             "edge_latch_down",
             "edge_latch_up",
@@ -152,7 +152,7 @@ fn alone(name: &str) -> (Option<u32>, Vec<Game>) {
     let case = load(name);
     let (all, by_frame) = goal(&case);
     let input = input(&case);
-    let mut game = fd_conform::engine_for(&case, data);
+    let mut game = Game::new(data, fd_core::Start::Level1);
     let (mut met, mut states) = (None, Vec::new());
     for f in 0..case.frames {
         game.step(input.input_at(f));
@@ -163,6 +163,7 @@ fn alone(name: &str) -> (Option<u32>, Vec<Game>) {
             "char_y" => s.char_y,
             "spring_x" => s.spring.x,
             "spring_timer" => s.spring.timer as u32,
+            "irq_count" => s.irq_count as u32,
             other => panic!("{other}"),
         };
         if met.is_none()
@@ -184,19 +185,71 @@ fn in_view(g: &Game, (c, r): (u32, u32)) -> bool {
     (x / 16..=(x + 320) / 16).contains(&c) && (y / 16..=(y + 192) / 16).contains(&r)
 }
 
-/// The vanishing blocks on the engine alone: jumps under the column meet the block at 82,83 shown
-/// (the head stops at `char_y` `$50a` or so) and gone (rising through to `$4d9`); the column leaves the
-/// view and comes back; then the character stands on the top block and drops onto the next as each
-/// vanishes in turn, to the floor, and the goal (on the middle block) is met.
+/// fd-core's game keeping its state after every pass of a case.
+struct Seen {
+    game: Game,
+    states: Vec<Game>,
+}
+
+impl fd_core::Transplant for Seen {
+    fn transplant(&mut self, mem: &dyn fd_core::Mem) {
+        self.game.transplant(mem)
+    }
+    fn probe(&self, v: &fd_core::Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl fd_conform::Engine for Seen {
+    fn pass(&mut self, input: amiga_oracle::FrameInput) {
+        fd_conform::Engine::pass(&mut self.game, input);
+        self.states.push(self.game.clone());
+    }
+    fn picture(&self) -> Option<amiga_chips::Picture> {
+        fd_conform::Engine::picture(&self.game)
+    }
+    fn events(&mut self) -> Vec<fd_core::Event> {
+        fd_conform::Engine::events(&mut self.game)
+    }
+    fn off_play(&mut self, input: amiga_oracle::FrameInput) {
+        fd_conform::Engine::off_play(&mut self.game, input)
+    }
+    fn game_over(&self) -> bool {
+        fd_conform::Engine::game_over(&self.game)
+    }
+    fn level_end(&self) -> bool {
+        fd_conform::Engine::level_end(&self.game)
+    }
+    fn cut_redraw(&self, cut: u8) -> Option<amiga_chips::Picture> {
+        fd_conform::Engine::cut_redraw(&self.game, cut)
+    }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        fd_conform::Engine::foreground_cut(&mut self.game, at)
+    }
+}
+
+/// The vanishing blocks as the case's engine runs them on the original's inputs and cuts (the
+/// engine alone leaves this script's path: its legs were planned from the original's states, T79):
+/// jumps under the column meet a block shown (the head stops at `char_y` `$501`) and gone (rising
+/// through to `$4c1`, above the column); the column leaves the view and comes back; then the
+/// character stands on the block at 82,83 (`char_y` `$508`, the goal) and ends on the floor.
 #[test]
-fn the_engine_alone_rides_the_vanishing_blocks_down() {
-    let (met, states) = alone("mechanic-vanish");
-    assert!(met.is_some(), "goal missed");
+fn the_case_meets_the_vanishing_blocks_shown_and_gone_and_stands_on_one() {
+    let case = load("mechanic-vanish");
+    let data = game_data().unwrap_or_else(|e| panic!("{e}"));
+    let mut seen = Seen {
+        game: Game::new(data, fd_core::Start::Level1),
+        states: Vec::new(),
+    };
+    let v = fd_conform::run_with(&case, &mut seen, &fd_conform::Options::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    let states = &seen.states;
     let y = |f: usize| states[f].state().char_y;
     let x = |f: usize| states[f].state().char_x;
-    // The jumps' highest points under the column (frames 450 to 850): both kinds.
+    // The jumps' highest points under the column (passes 450 to 850): both kinds.
     let peaks: Vec<u32> = (451..849)
-        .filter(|&f| y(f) <= y(f - 1) && y(f) < y(f + 1))
+        .filter(|&f| x(f) == 0x516 && y(f) <= y(f - 1) && y(f) < y(f + 1))
         .map(y)
         .collect();
     assert!(peaks.iter().any(|&p| p < 0x4e0), "{peaks:x?}");
@@ -205,15 +258,14 @@ fn the_engine_alone_rides_the_vanishing_blocks_down() {
     let column = (82, 80);
     let away = (860..1100).find(|&f| !in_view(&states[f], column));
     assert!(away.is_some(), "the column never left the view");
-    assert!(in_view(&states[1300], column));
-    // Standing still on each block in turn, top to bottom, then the floor: no input from 1294 on.
-    let mut stands = Vec::new();
-    for f in 1300..states.len() {
-        if x(f) == 0x531 && y(f) == y(f - 1) && stands.last() != Some(&y(f)) {
-            stands.push(y(f));
-        }
-    }
-    assert_eq!(stands, [0x4a8, 0x4d8, 0x508, 0x552]);
+    assert!(in_view(&states[1150], column));
+    // Back under it, standing still on the block for 40 passes and more, then on the floor.
+    let on_block = (1106..states.len())
+        .filter(|&f| (x(f), y(f)) == (0x531, 0x508) && y(f) == y(f - 1))
+        .count();
+    assert!(on_block >= 40, "{on_block} passes on the block");
+    let last = states.len() - 1;
+    assert_eq!((x(last), y(last)), (0x531, 0x552));
 }
 
 /// The springs on the engine alone: the spring fires on each landing (its timer runs 1 to 6, the

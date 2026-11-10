@@ -70,6 +70,10 @@ impl Engine for Copies {
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         self.game.cut_foreground(at);
     }
+    // `death-water` takes items since T79, so its status bar is redrawn and a pass cuts it (T71).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        Engine::cut_redraw(&self.game, cut)
+    }
 }
 
 /// Every pass of the route to the exit's cells: CLXDAT and what contact counts, equal; and the
@@ -108,7 +112,8 @@ fn the_status_bar_alone_sets_the_playfield_bit() {
 /// The pool at `W1-1:148,66` (`death-water`), the water drawn on both sides. Measured (T72) with
 /// the water undrawn as well, which the `h0_6882` freeze allowed until T47: the pool's tiles carry
 /// colour 29 themselves, and the water's frames change CLXDAT on a few passes (docs/10). Here every
-/// pass's CLXDAT agrees with the original's through the drop and the two lives it costs.
+/// pass's CLXDAT agrees with the original's through the route there, creatures live (T79), the drop
+/// and the two lives it costs.
 #[test]
 fn the_waters_frames_change_contact_in_the_pool_as_the_originals() {
     let case = Case::load(Path::new("cases/death-water.toml")).unwrap_or_else(|e| panic!("{e}"));
@@ -118,13 +123,14 @@ fn the_waters_frames_change_contact_in_the_pool_as_the_originals() {
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(case.vars.iter().any(|n| n == "clxdat_copy"));
     let touch = |c: u16| c & CONTACT != 0;
-    let first = wet.seen.iter().position(|&c| touch(c)).unwrap();
-    // Nothing touched before the drop, then contact comes and goes with the water's frames.
-    assert!(first > 600, "{first}");
-    assert!(wet.seen[first..].iter().any(|&c| !touch(c)));
+    // Creatures are brushed on the way (first at pass 137, no life lost, measured 2026-11-10); in
+    // the pool contact comes and goes with the water's frames.
     let lost: Vec<usize> = (1..wet.lives.len())
         .filter(|&k| wet.lives[k] < wet.lives[k - 1])
         .collect();
     assert_eq!(lost.len(), 2, "{lost:?}");
+    assert!(lost[0] > 2180, "{lost:?}: a life lost before the pool");
+    let pool = &wet.seen[lost[0]..];
+    assert!(pool.iter().any(|&c| touch(c)) && pool.iter().any(|&c| !touch(c)));
     assert_eq!(wet.lives.last(), Some(&0x30));
 }

@@ -503,16 +503,20 @@ impl Engine for Thawed {
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         self.0.foreground_cut(at);
     }
+    // The route takes items since T79, so the status bar is redrawn and a pass cuts it (T71).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        Engine::cut_redraw(&self.0.game, cut)
+    }
 }
 
-/// The character drops into the pool at `W1-1:148,66` to `149,66`; since T47 no case freezes `h0_6882`,
-/// so both sides draw the water (T25's `h0_62b6`): three contact passes in a row cost a life at frame 7062 and the next one
-/// after the hold at 7204, every pass's variables and every frame's picture equal to the original's.
-/// The character stays where the water hurt it.
+/// The character reaches the pool with creatures live (T79, no life lost on the way) and drops into
+/// it at `W1-1:149,66`; both sides draw the water (T25's `h0_62b6`): three contact passes in a row
+/// cost a life and the next one after the hold, at frame 8652, every pass's variables and every
+/// frame's status bar equal to the original's (the play area's picture is T80's). The character
+/// stays where the water hurt it.
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
-    assert!(case.freeze && case.thaw.is_empty());
     let mut w = Thawed(Watched {
         game: game(),
         seen: Vec::new(),
@@ -520,8 +524,8 @@ fn falling_into_the_water_loses_a_life_as_the_originals() {
     let v = run(&case, &mut w);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert!(v.events.is_empty(), "{v}");
-    assert_eq!(v.goal_met, Some(7204), "the second life lost");
-    assert!(v.passes > 860 && v.pictures > 900, "{v}");
+    assert_eq!(v.goal_met, Some(8652), "the second life lost");
+    assert!(v.passes > 2300 && v.pictures > 2300, "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
     // The original adds the cells in view, the water among them, to the animated cells.
     assert!(hits(&v, "h0_6882") > 0, "{v}");
