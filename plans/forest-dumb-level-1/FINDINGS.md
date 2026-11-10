@@ -6,13 +6,14 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-10 | 📌 | T27: the full route on the original (`fd_plan::confirm`) agrees on all 13 459 passes compared and ends elsewhere (`GoalMissed`), as T79 saw from 120 steps. T48 needs it planned from the original's states (`prototype/t79-route-repair/goto.rs`). |
+| 2026-11-10 | 📌 | T27, measured: an engine step costs 50 µs in release, six times T20's figure, so `route.rs` takes 52 s loaded. The route meets contact on 106 passes, never three in a row: no margin for T48. |
 | 2026-11-10 | 📌 | T80, measured: a long pass cuts creatures at lines 31 to 110, behind the beam near the view's top, whole or a top part. The runner hands the rows (`creature_cuts`, `Engine::creatures_uncut`); frames left differ by 48 pixels at most. |
 | 2026-11-10 | 🐞 | T80: `cargo clippy -p fd-conform` stops on `bug.rs:196` (`while_immutable_condition`). Left. |
 | 2026-11-10 | 📌 | T81, left: in a shared routine `edges_cut` names the redraw from a stack a line old, so a pass within a line of `main_loop`'s `bsr` reads as no cut. Unmeasured; no case differs. |
 | 2026-11-10 | 🐞 | T81: `edges_cut` took a stale `a2` as the row scan's place when a pass cut `redraw_edge_a` before its scan (`h0+$7da`); the PC decides now. Eleven cases filled creature slots uncompared; all agreed, variables added (docs/10). |
 | 2026-11-10 | 📌 | T79 review: the engine alone misses `mechanic-vanish`'s goal on the new script (ends `$534,$5b8`), so the milestone layer (DESIGN §4) is not held there; `death-water` and `mechanic-spring` meet theirs. Left. |
 | 2026-11-10 | 🐞 | T79: two searched inputs make engine and original differ: Up and Down held together (`char_y`, pass 2035), and `char_anim_ptr` at pass 1280. Scripts: `prototype/t79-route-repair/differs-*.txt`. Left. |
-| 2026-11-10 | 📌 | T79: `fd_plan::confirm` live agrees every pass but ends elsewhere than the engine alone from 120 steps (`GoalMissed`). T27, T48 need routes planned from the original's states, as `prototype/t79-route-repair/goto.rs` does. |
 | 2026-11-10 | 📌 | T79, measured live: T73's rows of 8 and 9 bobs were creature cells the frozen `h0_681c` left in the map. No live row reaches `ROW_BOBS_CUT` (docs/09). `mechanic_cases.rs` 15 s, `death.rs` 16 s. |
 | 2026-11-10 | 📌 | T77: `enemy-kind4` meets `W1-1:45,92`'s kind 4, left along the bottom corridor from `camera-bottom-right`'s step 700. State only: its picture differs at frame 6779 (T80's cut behind the beam), so no case compares kind 4 drawn. |
 | 2026-11-09 | 🐞 | T75 review: `bug.rs` `Owners` never forwarded `foreground_cut`, so a bug compare differed at the first late creature start; fixed, `recording_compare.rs` holds it. |

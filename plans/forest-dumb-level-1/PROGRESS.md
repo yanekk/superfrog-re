@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Status:** Building; 78 of 82 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** review T27, then T48 (the route on the original), T28 and T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -66,7 +66,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T25 | mechanics | T11, T20, T21, T22 | ✅ | |
 | T26 | level-end | T11, T13, T14, T23 | ✅ | |
 | T47 | case-mechanics | T25, T45 | ✅ | |
-| T27 | full-route | T20, T26, T45, T46, T47 | ⬜ | |
+| T27 | full-route | T20, T26, T45, T46, T47 | 🔍 | Seed 1 reaches the level end in round 2 095, no guide, no owner play: 22 528 steps, 32 lives, committed as `fd-plan/tests/routes/W1-1.txt`. `full_route.rs`: 3 smoke tests, 1 full (the planner finds it again). Deviations: no `handover.py`, `recording_guide.py` or guide, never needed; route is `.txt` under `tests/routes/`, not `.route`; milestones are the engine's own track. On the original: T48. |
 | T48 | route-on-original | T27 | ⬜ | |
 | T28 | finish-end-to-end | T16, T48 | ⬜ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
@@ -103,7 +103,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T27
 
 ## Blocked on the user
 
