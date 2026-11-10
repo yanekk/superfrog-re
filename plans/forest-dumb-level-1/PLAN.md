@@ -165,6 +165,7 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T82](tasks/T82-route-picture.md) | route-picture | T48; blocks T29 |
 | [T83](tasks/T83-red-cut-tests.md) | red-cut-tests | —; blocks T29 |
 | [T84](tasks/T84-one-route-both-sides.md) | one-route-both-sides | T48, T82; blocks T28, T29 |
+| [T85](tasks/T85-observes-only-flake.md) | observes-only-flake | —; blocks T29 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

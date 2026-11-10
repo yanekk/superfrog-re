@@ -113,7 +113,9 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   `irq_count` at the step's end less one (T44, measured). Not the frame of the step a pass's end was
   seen in: once passes end after the frame does (from frame 6334 at the level sync point) that frame
   shows the pass before, a scroll apart (`tests/picture_cases.rs`). A frame showing a pass the original
-  has not ended yet, or a pass no frame shows, is not compared. A
+  has not ended yet, or a pass no frame shows, is not compared. The judge is told of every compared
+  frame, as the toolkit counts (T82, owner 2026-11-10): an identical frame ends a run of glitch
+  frames, so "in a row" means frames next to each other (`tests/runner.rs`). A
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
   under `build/`, never into git.
@@ -127,6 +129,21 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
   a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
   it off clears the frame just drawn, so the runner turns it on or off before a step, never after.
+- **A status bar redraw never reached** (T82, the coordinator agent's decision under DESIGN §2.1,
+  2026-11-10). `main_loop` reads `irq_count` once a turn and calls its redraw (`bsr.w h0_6a96`,
+  `h0+$29c`) only on a turn that read a multiple of 32. A turn still in its edge redraws when pass
+  `32k + 1` comes read the count before pass `32k` and reads it next after pass `32k + 1`, so the
+  bar keeps its numbers for the whole period. Measured on `route-W1-1`: nine calls between the
+  starts of passes 12 032 and 12 033, none between 12 064 and 12 065, and frames 18 365 to 18 396
+  show the countdown and score of the period before. The runner counts the calls with T31's counter
+  (`Amiga::watch_pcs`, proven to observe only; `tests/edge_latch.rs` holds this count with the
+  sampling). On a period with no call, whose pass `32k + 1` did not come between the turn's read
+  and the call (`redraw_cut`'s first arm), it compares the frames of passes `32k` to `32k + 31`
+  with `Engine::redraw_skipped` (`Game::redraw_skipped`): the bar as it stood before that redraw,
+  the play area the engine's own. Only on those frames, never listed per case; a bar left
+  unredrawn in a period the original redrew fails (`tests/full_route.rs`).
+  `Verdict::skipped_redraws` counts them: seven periods of the route, 220 frames. A wrapper of
+  `Game` that does not forward it fails a case that meets such a period.
 - **Edge redraws cut by the next pass** (T74, 2026-11-09). A pass can come while `main_loop` is still
   in its edge redraws, as the cycles each pass took decide; the latches it had not yet tested stay set
   through that pass, and its `frame_flag` clear afterwards swallows that pass's latches (docs/09,
@@ -143,7 +160,12 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   since T78. A pass that came before the cut redraw's scan also carries how many `collision_map`
   words its shapes had copied (`EdgesCut::shape_words`, `shapes_copied`: the PC's place in the
   shape loops and their counters, T48); the engine copies the rest after the pass, which probes
-  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`).
+  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`). Two more parts of a cut
+  scan are read off the same interrupt (T82). A pass inside `h0_6882` past its four counts
+  (`h0+$691e`) leaves the animated cell's list chosen, and past its search (`h0+$6984`) its entry
+  too (`EdgesCut::add`, `AddCut`; pass 12 569 came at `h0+$693e`). A bob not yet started, in its
+  routine up to its BLTSIZE write or in the blitter wait, counts as after the cut, and the engine
+  starts the bobs from the cut cell on after the pass, a frame later (passes 13 153 to 13 162).
 - **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
   the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
   missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After

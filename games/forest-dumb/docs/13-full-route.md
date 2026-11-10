@@ -80,20 +80,32 @@ Three differences stopped the first runs, each fixed where it lay:
 
 ## The picture on the route
 
-Compared on all 22 152 frames. On 40 it is past the owner's tolerance as the runner counts it, and
-the case sets those aside in ten boxes naming T82, each the smallest that holds one frame's
-difference and each on its own frames (`"rows A..B cols C..D frames F..G"`). Three kinds:
+Compared on all 22 152 frames with nothing set aside (T82, 2026-11-10). T48 had set 40 frames
+aside in ten boxes, of three kinds as it read them. What each was, measured:
 
-- **A taken item erased behind the beam** (frames 15 813, 20 693). `h0_29ca`'s blit comes mid-frame
-  (at 15 813, beam lines 142 and 152 for a cell on lines 135 to 150), so the frame still shows the
-  item's top rows; the engine erases the cell whole.
-- **The countdown's and the score's last digits** through one status period (frames 18 364 to
-  18 395, passes `32k + 1` to `32k + 31` from 12 065). The original shows 809 and the old score
-  digit, the engine 808 and the new, and no cut redraw the engine draws (`Game::cut_redraw`) matches.
-- **The first rows of the view at the map's top** (frames 17 196, 18 896, 19 454, 19 456, 19 459,
-  19 463). The engine shows an object or two oranges in the top row that the original does not show
-  yet; once a sliver of a fruit differs.
-
-The count is the runner's: it tells `PictureJudge` of a frame only when it is not `Same`, so "three
-frames in a row" is three glitch frames since the last few-pixel frame, however far apart. Eight of
-the 40 are single frames. Whether an identical frame should end a run is T82's first question.
+- **How frames in a row are counted.** The runner told the picture judge only of frames that
+  differed, so glitch frames thousands of frames apart read as a run. It now tells it of every
+  frame, as the toolkit counts (owner, 2026-11-10). With nothing set aside 53 frames were past a
+  few pixels; two stretches were three or more in a row.
+- **The countdown's and the score's last digits** (frames 18 365 to 18 396). The original never
+  ran its status bar redraw after pass 12 064: `main_loop` was still in its edge redraws when
+  pass 12 065 came. The runner counts the redraw's calls and compares such a period with the bar
+  as it stood (`engine/conform/README.md`, "A status bar redraw never reached"). Seven periods of
+  the route are like it, from passes 576, 2 528, 4 448, 7 008, 7 456, 12 064 and 17 600; six
+  differed by one countdown digit inside the few-pixel tolerance before and are exact now.
+- **Two coins a phase apart** (frames 18 894 to 18 896, read by T48 as the view's first rows).
+  Pass 12 569 cut `h0_6882` at `h0+$693e`, after its four counts: the original put the cell at x
+  `$720` in the list chosen before the pass. The engine chose again after it, so the animated
+  cell lists differed through passes 12 570 to 12 625, the only such stretch of the route. Fixed
+  in the engine (`AddCut`).
+- **The view's first rows** (frames 17 196, 17 907, 19 440, 19 442, 19 454, 19 456, 19 459,
+  19 463). A row redraw's bobs land in a row whose first lines are in view. A pass that cuts the
+  scan leaves the later bobs for after it: of ten, eight at beam lines 197 to 231 and two at lines
+  103 to 108 of the next frame, so those two show a frame later. The engine drew all ten before
+  the pass. Fixed in the engine: the bobs from the cut cell on start after the pass.
+- **A taken item erased behind the beam**: left, inside the tolerance. `h0_29ca`'s blit comes
+  mid-frame (at 15 813, beam lines 142 and 152 for a cell on lines 135 to 150), so the frame
+  still shows the item, whole or its top rows; the engine erases the cell at once. Nine frames,
+  never three in a row: 10 358 (105 pixels), 11 699 (166), 11 704 (147), 13 438 (197), 13 439
+  (110), 15 761 (82), 15 809 (244), 15 813 (78), 20 693 (100). `full_route.rs` pins the count. A
+  rule for it would follow T80's (the blit's rows the beam had passed); none is built.

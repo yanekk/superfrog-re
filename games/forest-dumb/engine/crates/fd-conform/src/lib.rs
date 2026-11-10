@@ -1992,13 +1992,33 @@ mod tests {
             cut(4, Some(OBJECT_MAP + 0x3006))
         );
         // Inside `h0_6882` before it, or at the cell's compares: the cell's add comes after.
+        let adding = |pc, add| {
+            let c = at(pc, &[0x352], &regs).unwrap();
+            assert_eq!((c.next, c.defer_from), (4, Some(OBJECT_MAP + 0x3005)));
+            assert_eq!(c.add, add, "h0+${pc:x}");
+        };
+        adding(0x1356, AddCut::Whole);
+        // T82: still counting, the add is whole after the pass; past the four counts (pass
+        // 12 569 of the route, in the sort) its list is chosen; past its search, its entry too.
+        adding(0x6882, AddCut::Whole);
+        adding(0x691a, AddCut::Whole);
+        adding(0x691e, AddCut::List);
+        adding(0x693e, AddCut::List);
+        adding(0x697a, AddCut::List);
+        adding(0x6984, AddCut::Entry);
+        adding(0x699e, AddCut::Entry);
+        // T82: a bob not yet started (in its routine up to its BLTSIZE write, or in the blitter
+        // wait) is still to come for the scan's cell; past the write it is made.
+        for pc in [0x1390, 0x143a] {
+            let c = at(pc, &[0x352], &regs).unwrap();
+            assert_eq!(c.defer_from, Some(OBJECT_MAP + 0x3005), "h0+${pc:x}");
+        }
+        // The wait, called from the bob (`h0+$13e4`).
+        let c = at(0x3ac2, &[0x13e8, 0x352], &regs).unwrap();
+        assert_eq!(c.defer_from, Some(OBJECT_MAP + 0x3005));
         assert_eq!(
-            at(0x693e, &[0x352], &regs),
-            cut(4, Some(OBJECT_MAP + 0x3005))
-        );
-        assert_eq!(
-            at(0x1356, &[0x352], &regs),
-            cut(4, Some(OBJECT_MAP + 0x3005))
+            at(0x1442, &[0x352], &regs),
+            cut(4, Some(OBJECT_MAP + 0x3006))
         );
         // In the shapes (T48): 16 words a shape copied, and the words of the one being copied.
         let shapes = |next, n| {
@@ -2033,10 +2053,11 @@ mod tests {
         r[2] = 0x2c0 + 4 * 15;
         assert_eq!(at(0xfb2, &[0x32a], &r), shapes(3, 15 * 16));
         assert_eq!(at(0xfb6, &[0x32a], &r), shapes(3, 16 * 16));
-        // A bob's blit in the down row: the row's cell is done.
+        // In the down row's bob, waiting for the blitter: its blit has not started, so the bob
+        // is the scan's still (T82: the bobs from the cut cell on start after the pass).
         assert_eq!(
             at(0x3aca, &[0xa5e, 0x9c6, 0x2da], &regs),
-            cut(1, Some(OBJECT_MAP + 0x3006))
+            cut(1, Some(OBJECT_MAP + 0x3005))
         );
         // In the down row's creature branch, or in `h0_681c` and `h0_6852` short of the slot's
         // `st.b`: the creature starts after the pass (T75). Back from it, it has started.
@@ -2089,7 +2110,7 @@ mod tests {
         );
         assert_eq!(
             edges_cut_at(0x3aca, 0x7dc, &[0x96c, 0x2da], &regs),
-            cut(1, Some(OBJECT_MAP + 0x3006))
+            cut(1, Some(OBJECT_MAP + 0x3005))
         );
         // At the up row's loop top `a2` is being rebuilt: the next cell is `h0+$cb38 + d5 + d6`.
         (regs[5], regs[6]) = (0x60 * 7, 0x21);

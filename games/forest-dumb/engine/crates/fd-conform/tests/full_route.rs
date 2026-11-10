@@ -279,8 +279,8 @@ fn without_the_skipped_redraw_or_the_cut_add_the_route_fails_on_the_frames_named
 const OPENING_ITEMS: u32 = 0x272;
 
 /// The whole route: the case passes with the level's end as its goal, no life is lost on any pass,
-/// nothing but the level's end is raised, only T82's boxes are left out of the picture, and the ported
-/// routines the route never runs are exactly the named ones (DESIGN §4.1).
+/// nothing but the level's end is raised, the whole picture is compared with nothing set aside
+/// (T82), and the ported routines the route never runs are exactly the named ones (DESIGN §4.1).
 #[test]
 #[ignore = "full: 22 536 frames on the original with the picture, about 80 s"]
 fn the_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {

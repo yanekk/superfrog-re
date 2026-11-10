@@ -455,8 +455,8 @@ impl Game {
     /// `main_loop` reads `irq_count` once a turn and redraws the bar only on a turn that reads a
     /// multiple of 32. A turn still in its edge redraws when pass `32k + 1` comes read the count
     /// before pass `32k` and reads it next after pass `32k + 1`, so that redraw never runs and the
-    /// numbers wait for the next (measured, T82: pass 12 064 of the route, docs/09 "A status bar
-    /// redraw never reached"). How long the edge redraws take is the cycles they cost, which
+    /// numbers wait for the next (measured, T82: pass 12 064 of the route,
+    /// `engine/conform/README.md`, "A status bar redraw never reached"). How long the edge redraws take is the cycles they cost, which
     /// nothing here counts. A case counts the redraw's calls on the original and takes this
     /// picture for that period (`fd-conform`). With `uncut`, the play area is
     /// [`Game::creatures_uncut`]'s for those rows, where the same frame saw a creature cut behind
