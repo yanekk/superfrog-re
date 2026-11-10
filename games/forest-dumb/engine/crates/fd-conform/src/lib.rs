@@ -1645,11 +1645,14 @@ pub fn run_inputs(
         if cut_shows {
             verdict.cut_redraws += 1;
         }
-        let failed = match (opts.mode, class) {
-            (_, PictureClass::Same) => None,
-            _ if cut_shows => None,
-            (Mode::Strict, other) => Some(format!("{other:?}, strict")),
-            (Mode::Faithful, other) => judge.frame(frame, other).err(),
+        // The judge hears of every compared frame, as the toolkit counts (T82, owner 2026-11-10):
+        // an identical frame, or one accepted as the measured cut redraw, ends a run of glitches.
+        // Told only of differing frames it counted glitches thousands of frames apart as a run.
+        let accepted = class == PictureClass::Same || cut_shows;
+        let failed = match opts.mode {
+            _ if accepted => judge.frame(frame, PictureClass::Same).err(),
+            Mode::Strict => Some(format!("{class:?}, strict")),
+            Mode::Faithful => judge.frame(frame, class).err(),
         };
         verdict.pictures += 1;
         verdict.tolerated = [
