@@ -6,10 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-10 | 🔄 | T82: frames in a row are counted as the toolkit counts (owner; `Escape: forest-dumb-level-1 T06`). A status period whose redraw the original never called shows the old bar (coordinator, DESIGN §2.1; README, `Engine::redraw_skipped`, `Verdict::skipped_redraws`). |
+| 2026-11-10 | 🔄 | T82: frames in a row are counted as the toolkit counts (coordinator; `Escape: forest-dumb-level-1 T06`). A status period whose redraw the original never called shows the old bar (coordinator, DESIGN §2.1; README, `Engine::redraw_skipped`, `Verdict::skipped_redraws`). |
 | 2026-11-10 | 📌 | T82, measured: `route-W1-1` compares its whole picture. Nine frames stay past a few pixels, never three in a row, each a taken item `h0_29ca` erased behind the beam (docs/13 lists them). No rule built; T80's would fit. |
 | 2026-11-10 | 📌 | T82, unmeasured: a pass between two of `h0_6882`'s counts, or at its search's `beq` (`h0+$696e`), is read as `AddCut::Whole` or `List`. `anim_cells` is no compared variable: only the picture shows a wrong list. |
-| 2026-11-10 | 🐞 | T82: `edge_latch.rs` `sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame` failed 2 of 4 whole-file runs ("sampling changed the original", `death-spikes`, `stretch-pit`), passed alone and whole at `16178f85`. T85 added (coordinator; blocks T29): unreliable test, or a measurement that disturbs. |
+| 2026-11-10 | 🐞 | T82: `edge_latch.rs` `sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame` failed 2 of 4 whole-file runs. Review: reproduced with T82's count off, `stretch-pit` differs at step 0, 1 of 780 short-case runs; three whole-file runs passed. T85 (coordinator; blocks T29). |
 | 2026-11-10 | 🔄 | Owner, T48 review: one route must finish on both sides. T84 added (after T48, T82; blocks T28, T29). `route-W1-1` holds on the original only, 21 764 passes, no life lost; the app keeps T27's (docs/13). |
 | 2026-11-10 | 🔄 | Owner, T48: T83 added (two tests red at `53638b37`, `Escape: forest-dumb-level-1 T80`), blocking T29. A new comparison rule is asked first and follows T71: only what the original could show, proven per frame. |
 | 2026-11-10 | 📌 | T48, unmeasured: a redraw cut twice before its scan (`main_loop_redraws`, `again`), which the route never meets (probed in review); the read count past `input_log_index` 12 000, which nothing checks. |

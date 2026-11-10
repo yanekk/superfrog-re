@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 81 of 86 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T82; then T83, T84 and T85. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T83, T84 and T85; then T28 and T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -102,12 +102,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
-| T82 | route-picture | T48; blocks T29 | 🔍 | Whole picture compared, no exclusion. Runner counts frames as the toolkit (Escape T06). Engine: a cut add keeps its list, a cut scan's bobs wait. Rule: skipped status redraw (coordinator). 6 tests, 5 smoke, 1 full. Deviations: kind 1 left inside tolerance, untested (owner); kind 3 was two engine fixes; `edge_latch.rs`, `runner.rs`, `common/mod.rs` touched. `sampling_…unchanged` flaky, see FINDINGS. |
+| T82 | route-picture | T48; blocks T29 | ✅ | Reviewed: holds. Added a unit test for the late bobs (mutation caught only by the full route's count); the count rule's yes was the coordinator's, texts corrected. Probed: route through the CLI, two mutations red. Flake reproduced with T82's count off, T85's. `contact.rs` and `edge_latch.rs` reds are T83's. Read-only: `redraw_skipped` with a creature cut; `AddCut::Entry` on the route. |
 | T83 | red-cut-tests | —; blocks T29 | ⬜ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 | T85 | observes-only-flake | —; blocks T29 | ⬜ | |
 
-**Review queue:** T82
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
