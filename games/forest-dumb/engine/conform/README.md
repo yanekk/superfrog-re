@@ -140,6 +140,18 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
   the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
   since T78.
+- **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
+  the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
+  missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After
+  each step of a case that compares the picture the runner reads the creature cuts made before line
+  233 with the beam at each blit's begin and end (`creature_cuts`, from `cpu_writes` and
+  `blit_events`, which the oracle keeps of every step, so nothing is switched on), works out how
+  many of each cut's blit rows the beam had passed (`rows_behind_beam`), and where any had compares
+  the frame with `Engine::creatures_uncut` (`Game::creatures_uncut`) in place of the engine's
+  picture: those rows as they were before the cut. Only on those frames, never listed per case; a
+  frame differing with no such cut measured fails as any other. `Verdict::creature_cuts` counts
+  them. A wrapper of `Game` that does not forward it fails a case that meets a run of such frames
+  (`tests/creature_cuts.rs`).
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
   (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.

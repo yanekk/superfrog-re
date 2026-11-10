@@ -21,10 +21,10 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only task an exclusion of these cases may name: T80, a creature the original cuts behind the
-/// beam and so shows a frame late (owner, 2026-11-10). The redraw race of a long pass is handed to
-/// the engine by the runner (T74), its scan's place included (T75, T81).
-const EXCLUDED_FOR: [&str; 1] = ["T80"];
+/// No exclusion of these cases names a task: none is left. The redraw race of a long pass is handed
+/// to the engine by the runner (T74), its scan's place included (T75, T81), and so is a creature the
+/// original cuts behind the beam (T80).
+const EXCLUDED_FOR: [&str; 0] = [];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -114,12 +114,15 @@ fn the_mechanics_match_the_original_on_every_pass() {
         }
     }
     // Every edge latch is compared (T74): the passes that came during main_loop's edge redraws
-    // were handed to the engine (docs/09). Excluded: the play area's picture, T80's (the status
-    // bar's rows stay compared on every frame). Each of the fifteen creature slot variables is
-    // compared (T81: `mechanic-vanish` excluded five until the runner told a scan not yet started).
+    // were handed to the engine (docs/09). Nothing is excluded: the play area is compared on every
+    // frame (T80, and T81 for `mechanic-vanish`, whose creature started a pass early drew another
+    // frame of its animation). Each of the fifteen creature slot variables is compared.
     for (case, v) in &verdicts {
         let what: Vec<&str> = case.exclude.iter().map(|e| e.what.as_str()).collect();
-        assert_eq!(what, ["rows 0..194"], "{}", case.name);
+        assert_eq!(what, [""; 0], "{}", case.name);
+        // Measured 2026-11-10: 47 frames of `mechanic-spring` and 51 of `mechanic-vanish` show a
+        // creature the original cut behind the beam, drawn so by the engine (T80).
+        assert!(v.creature_cuts >= 40, "{}: {v}", case.name);
         let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
         assert_eq!(slots.count(), 15, "{}: {:?}", case.name, case.vars);
         for latch in [
@@ -228,6 +231,9 @@ impl fd_conform::Engine for Seen {
     }
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         fd_conform::Engine::foreground_cut(&mut self.game, at)
+    }
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<amiga_chips::Picture> {
+        fd_conform::Engine::creatures_uncut(&self.game, rows)
     }
 }
 

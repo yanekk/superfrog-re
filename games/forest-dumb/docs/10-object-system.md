@@ -314,16 +314,50 @@ never fill a slot. `enemy_cases.rs`, `no_level_case_runs_creatures_live_without_
 fails on a case that fills a slot and names none (`death-countdown`, 62 983 steps, in the nightly
 twin).
 
-### A creature cut behind the beam (T79, measured 2026-11-10; T80 models it)
+### A creature cut behind the beam (T79, T80, measured 2026-11-10)
 
-With several creatures drawn a pass runs long, and `h0_5820` cuts a creature after the beam has
-passed its lines: that frame shows it restored and not yet cut, so it is missing, where the engine,
-drawing a pass whole, shows it. Measured on `mechanic-spring` from pass 475, five creatures in view:
-the play screen's bytes equal the engine's where each pass ends, the frame differs (445 pixels at
-frame 6779, a creature at the top of the view), 3 frames and more in a row, past the tolerance's 2.
-Frames differing so: 41 of `mechanic-spring`'s 3 609, 59 of `mechanic-vanish`'s 1 469, 30 of
-`death-water`'s 2 364, at any height of the play area. Those three cases exclude the play area's
-picture (`rows 0..194`), naming T80 (owner, 2026-11-10); their variables and status bar stay compared.
+`game_frame` restores the creatures and then cuts them with no beam wait. A pass starts at line 233.
+Its restores (`h0_5e44`) run from about line 252 to line 10 of the next frame, always outside the
+play area's lines (47 to 225). Its cuts (`h0_5820`) follow: one creature at about line 3, five from
+line 31 to 110 (`mechanic-spring`, frame 6779: cuts begun at lines 31, 42, 56, 75 and 94, the pass
+ending at line 160). The beam fetches the play area from line 47, so a creature near the view's top
+is cut after the beam has passed some or all of its lines, and that frame shows those lines as the
+restore left them: the creature missing, or missing from its top down to where the blitter overtook
+the beam. Inside the play area a cut takes about 16 lines for the creature's 32, so the blitter gains
+a line on the beam each line and the part missing is always a top part. The next pass restores and
+cuts again, so the same creature stays missing for as long as the passes stay long: 3 frames and
+more in a row, past the tolerance's 2.
+
+Measured on every frame of the three cases: 47 frames of `mechanic-spring`'s 3 609 show a cut behind
+the beam, 51 of `mechanic-vanish`'s 1 469, 36 of `death-water`'s 2 364. A cut is whole behind the
+beam on most of them and partial on the rest (counts of blit rows from 10 to 150 of 160). The two
+differences T79 left unlooked at are this: `mechanic-spring` frame 6824 (268 pixels at (108, 58)) is
+a creature cut behind the beam lower in the view, and `mechanic-vanish` frame 6675 (137 pixels at
+(112, 171)) is where T81's creature is, the one drawn on another frame of its animation at frame
+6683. Not seen: a restore inside the play area (a creature shown twice), or an animated cell or bob
+blinking so; no frame of `mechanic-spring` or `death-water` is left differing past the tolerance
+once the cuts are handed over.
+
+The engine draws a pass whole and counts no cycles (DESIGN §2.1), so it cannot know which frames
+these are. A case's runner measures them: after each step it reads the creature cuts made before
+line 233 and the beam at each blit's begin and end (`fd_conform::creature_cuts`, from the oracle's
+record of every step's register writes and blits, which is kept whether read or not, so the
+measurement switches nothing on; `edge_latch.rs` holds that the original is the same every frame of
+every level case with it read). `rows_behind_beam` takes a blit's rows as written evenly between
+begin and end and fetched at the cycle the display reaches their word (`DDFSTRT=$30`, 8 cycles a
+word, 227 a line), and counts the rows written after their fetch. `Game::creatures_uncut` then draws
+the frame with those rows as they were before the cut (the engine keeps each cut's words under it for
+a pass, `render::objects::CutsDrawn`), and the runner compares that picture on that frame alone. The
+row at the edge can be half shown: with the count handed as measured the frames left differing hold
+at most 48 pixels, inside the tolerance's few (64). `mechanic-spring` and `death-water` compare the
+play area with nothing excluded. `mechanic-vanish` kept `rows 0..194` excluded until T81 was fixed
+(its creature, started a pass early, was drawn on another frame of its animation, past the
+tolerance at frame 6683); since both merged it excludes nothing either (2026-11-10,
+`mechanic_cases.rs`).
+
+In play the engine shows every creature on every frame. To blink as the original does it would need
+the cycles each pass takes up to each cut: the CPU's instruction timings along the pass's path and
+the blitter's and display's bus use, which is the sub-frame timing DESIGN §2.1 leaves out.
 
 ### Kind 4 in play (T77, measured 2026-11-10)
 

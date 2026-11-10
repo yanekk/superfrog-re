@@ -187,6 +187,8 @@ impl Game {
     /// DESIGN §2.5).
     pub fn step(&mut self, i: FrameInput) {
         self.blits.clear();
+        // A step that cuts no creature leaves none for `creatures_uncut`.
+        self.display.cuts.clear();
         // `level2_handler` takes key events whatever the scene.
         self.state.keys.feed(i.keys);
         match self.scene {
@@ -463,6 +465,30 @@ impl Game {
             status,
             ..self.display.clone()
         })
+    }
+
+    /// For a conformance case (`fd-conform`'s `Engine::creatures_uncut`, and nothing else):
+    /// [`Game::picture`] as the original shows it when the beam had passed the first `rows[k]` blit
+    /// rows of the `k`th creature the last pass cut before the blitter wrote them (a row is one
+    /// plane of one line, from the creature's top): there the frame still shows what the cut drew
+    /// over. `None` out of play, or unless `rows` has one count for each creature cut.
+    ///
+    /// The engine cannot know `rows`: a pass with several creatures runs past the play area's first
+    /// lines, and how far depends on the cycles it took, which nothing here counts (measured, T80:
+    /// docs/10, "A creature cut behind the beam"). A case reads the cuts' beam positions off the
+    /// original and accepts this picture for that frame.
+    pub fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        if self.scene != Scene::Level {
+            return None;
+        }
+        let data = &self.data.display;
+        let screen = self
+            .display
+            .cuts
+            .uncut(&self.display.screen, &|a| data.byte(a), rows)?;
+        let mut shown = self.clone();
+        shown.display.screen = screen;
+        Some(shown.picture())
     }
 
     /// CLXDAT as the frame [`Game::picture`] draws in play sets it: the character's sprites against

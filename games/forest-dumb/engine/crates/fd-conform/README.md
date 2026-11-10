@@ -41,9 +41,9 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `run_with(&Case, &mut dyn Engine, &Options) -> Result<Verdict, String>`: level cases only.
 - `run_inputs(&Case, &Inputs, &mut dyn Engine, &Options)`: the same on inputs held in memory (bug zips).
 - `Options { mode, register, diff_dir }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
-- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, edge_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
+- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, edge_cuts, creature_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
 - `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers}`. An unused exclusion fails the case.
-- `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`); `Game` implements it.
+- `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`, `creatures_uncut`); `Game` implements it. A wrapper of `Game` forwards the last three, or fails the cases that meet them.
 
 **Reaching the original** (`src/lib.rs`, `src/sync.rs`)
 - `reach_case(&Case, slack) -> Result<Amiga, String>`: at the case's sync frame, `set` applied.
@@ -53,6 +53,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `sync::reach_level_1(frames)`, `sync::reach_level_1_in(kickstart, disk_dir, cache, frames)`, `sync::LEVEL_1_SYNC` (6301), `LEVEL_1_SCRIPT`, `cache_dir()`, `level_1_key`, `level_1_script()`.
 - `OracleMem(&AmigaMemory)` and `Live(&Amiga)` implement `fd_core::Mem`, so `.value(var)` reads a `LAYOUT` variable.
 - `address(name) -> Result<u32, String>`, `conform_dir()`, `interrupted_pc`, `redraw_cut`, `edges_cut`, `edges_cut_at` (T74: where a pass cut `main_loop`'s edge redraws; T81: the scan's start is the PC's place, not `a2`), `records_edge_cuts`, `Sampler` (which cases and steps the runner samples for it).
+- `creature_cuts(&Amiga) -> Option<Vec<CutSeen>>`, `rows_behind_beam(&[CutSeen], camera) -> Vec<u16>` (T80: the creature cuts a frame saw before line 233 and the blit rows of each the beam had passed, handed to `Engine::creatures_uncut`).
 - Constants: `HUNK_BASES`, `PLAY_WINDOW`, `STATUS_ROWS`, `PASS_END` (for `am.watch_write`), `GAME_OVER_SCREEN`, `HIGH_SCORES`, `NEXT_WORLD`, `READ_JOYSTICK`, `PAUSED_BRANCH`, `AFTER_NEXT_WORLD`.
 
 **Data** (`src/lib.rs`, `src/disks.rs`)
