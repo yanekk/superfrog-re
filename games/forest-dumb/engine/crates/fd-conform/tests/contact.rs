@@ -68,6 +68,11 @@ impl Engine for Copies {
     fn cut_redraw(&self, cut: u8) -> Option<Picture> {
         Engine::cut_redraw(&self.game, cut)
     }
+    // And a long pass cuts a creature behind the beam (T80): unforwarded, `death-water`'s picture
+    // differed at pass 1004 (T83).
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
 }
 
 /// Every pass of the route to the exit's cells: CLXDAT and what contact counts, equal; and the

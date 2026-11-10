@@ -17,6 +17,7 @@ use std::path::Path;
 
 use amiga_chips::Picture;
 use amiga_oracle::FrameInput;
+use fd_conform::case::Exclusion;
 use fd_conform::{
     Case, Engine, Inputs, Live, Options, Outcome, PASS_END, STATUS_REDRAW, Sampler, Verdict,
     edges_cut, game_data, interrupted_pc, reach_case, records_edge_cuts, run, run_with,
@@ -203,6 +204,19 @@ fn handed(name: &str, how: Hand) -> Verdict {
     case.vars.retain(|n| !n.starts_with("creature_"));
     // `mechanic-spring` compares the play area: among what remains the scan's place shows in the
     // picture alone.
+    if how == Hand::Dropped {
+        // The same creature drawn: started at another pass it shows in the play area before the
+        // latch differs (picture, pass 313), since `mechanic-vanish` excludes nothing (T81). The
+        // play area is left out as the case left it out until then; the status bar stays compared.
+        case.exclude.push(Exclusion {
+            rows: 0..194,
+            cols: None,
+            frames: None,
+            var: None,
+            what: "rows 0..194".into(),
+            task: "T83".into(),
+        });
+    }
     let game = Game::new(
         game_data().unwrap_or_else(|e| panic!("{e}")),
         fd_core::Start::Level1,
