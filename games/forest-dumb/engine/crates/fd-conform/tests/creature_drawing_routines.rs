@@ -396,7 +396,7 @@ fn drawn(
     use fd_core::level::redraw::LevelImage;
     use fd_core::render::objects::PlayDraw;
     let data = g.data();
-    let image = LevelImage::new(&data.level);
+    let image = LevelImage::new(&data.level, &data.program);
     let mut screen = g.display().screen.clone();
     let mut draw = g.state().creature_draw;
     let camera_y = g.state().camera.y;

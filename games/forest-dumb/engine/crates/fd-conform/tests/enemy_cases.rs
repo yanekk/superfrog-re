@@ -491,7 +491,7 @@ impl Engine for Cuts {
             .iter()
             .filter_map(|d| match d {
                 Deferred::Creature { cell, .. } => Some((cell - OBJECT_MAP) as usize),
-                Deferred::Cell(_) => None,
+                Deferred::Cell(_) | Deferred::Collision { .. } => None,
             })
             .take(free)
             .collect();
@@ -522,9 +522,11 @@ impl Engine for Cuts {
                 EdgesCut {
                     next: 1,
                     defer_from: Some(0),
+                    ..
                 } => EdgesCut {
                     next: 1,
                     defer_from: Some(cell),
+                    shape_words: None,
                 },
                 c => c,
             }),
@@ -537,6 +539,7 @@ impl Engine for Cuts {
                     Some(EdgesCut {
                         next: 4,
                         defer_from: Some(0),
+                        shape_words: None,
                     })
                 } else {
                     at

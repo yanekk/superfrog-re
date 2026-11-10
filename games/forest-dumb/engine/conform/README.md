@@ -70,7 +70,8 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
   task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
   countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
-  needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
+  needs `compare = ["vars"]` and is not also in `vars`. A box may name the oracle frames it is left out
+  on (`"rows A..B cols C..D frames F..G"`, T48): on every other frame it is compared. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
 - **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
   the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
@@ -92,7 +93,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   the sync point, then runs each later pass on the input the original read for it. A step now
   and then ends two passes and shows only the first; the other is counted unseen and not compared.
 - **The input a pass read** (T67, `fd_conform::PassInputs`). Its joystick is the input of the step in
-  which its `read_joystick` (`h0+$8dfc`) ran, counted by `Amiga::watch_pcs`: every pass runs either it
+  which its `read_joystick` read JOY1DAT (`h0+$8e1c`, T48: not the routine's entry, a frame can end between), counted by `Amiga::watch_pcs`: every pass runs either it
   or the paused branch (`h0+$200e`), one pass after another, so the hits in step order are the passes'
   in pass order. While the camera scrolls a pass usually reads in the step after its start (57 of 76
   slide passes), so the start step's joystick is wrong there. Its keys are the step it started in
@@ -139,7 +140,10 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
   (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
   the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
-  since T78.
+  since T78. A pass that came before the cut redraw's scan also carries how many `collision_map`
+  words its shapes had copied (`EdgesCut::shape_words`, `shapes_copied`: the PC's place in the
+  shape loops and their counters, T48); the engine copies the rest after the pass, which probes
+  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`).
 - **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
   the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
   missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After

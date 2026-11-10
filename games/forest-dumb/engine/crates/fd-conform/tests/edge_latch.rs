@@ -248,7 +248,7 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
         g.step(inputs.at(f));
         g.take_events();
     }
-    let image = LevelImage::new(&data.level);
+    let image = LevelImage::new(&data.level, &data.program);
     let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
     // The cut after an up row, then as a cut down row would leave it.
     for from in [2, 1] {

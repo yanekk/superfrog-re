@@ -378,6 +378,12 @@ pub struct EdgesCut {
     /// offset) from which its scan's animated cells were added after the pass, 0 when its scan had
     /// not started ([`redraw::PlayIo::defer_from`]); `None` when it had returned.
     pub defer_from: Option<u32>,
+    /// How many `collision_map` words the interrupted redraw had copied when the pass came before
+    /// its scan, in the order it copies them (16 a shape, a row's 23 shapes or a column's 16): the
+    /// rest land after the pass, which still probes the band as it was (T48, measured on the route:
+    /// a creature on the row below the view turned at a ledge the row's shapes then filled).
+    /// `None` once they were all copied.
+    pub shape_words: Option<u16>,
 }
 
 /// Where the next pass cuts `main_loop`'s redraw half.
@@ -410,9 +416,20 @@ pub fn main_loop_redraws(
     cut: Cut,
 ) {
     use camera::Dir;
-    // The cut redraw's scan, finished after the pass.
+    // The pass came again inside the redraw the last one cut, still short of its scan: only the
+    // shapes it has copied since land now, and its scan is still to come.
+    let again = match cut {
+        Cut::At(Some(c)) if Some(c.next) == s.edges_resume => c.shape_words,
+        _ => None,
+    };
+    // The cut redraw's shapes and scan, finished after the pass.
     for d in std::mem::take(&mut s.edges.deferred) {
         match d {
+            redraw::Deferred::Collision { n, .. } if again.is_some_and(|m| n >= m) => {
+                s.edges.deferred.push(d)
+            }
+            redraw::Deferred::Collision { at, word, .. } => plane.set_word(at, word),
+            _ if again.is_some() => s.edges.deferred.push(d),
             redraw::Deferred::Cell(c) => s.edges.cells.add(c.x, c.y, c.code),
             redraw::Deferred::Creature {
                 cell,
@@ -438,10 +455,12 @@ pub fn main_loop_redraws(
     };
     // A measured cut before where a resumed half picks up: the pass came while `main_loop` was
     // still finishing the redraw it resumed into, which the engine drew whole before.
-    let (stop, defer_from) = match cut {
-        Cut::At(Some(c)) if c.next as usize > from => (Some(c.next as usize), c.defer_from),
-        Cut::At(Some(_)) => (Some(from), None),
-        _ => (None, None),
+    let (stop, defer_from, shape_words) = match cut {
+        Cut::At(Some(c)) if c.next as usize > from => {
+            (Some(c.next as usize), c.defer_from, c.shape_words)
+        }
+        Cut::At(Some(_)) => (Some(from), None, None),
+        _ => (None, None, None),
     };
     let mut io = redraw::PlayIo {
         image,
@@ -449,6 +468,9 @@ pub fn main_loop_redraws(
         collision: plane,
         blits,
         defer_from: None,
+        late_from: None,
+        written: 0,
+        late: Vec::new(),
     };
     let order = [Dir::Down, Dir::Up, Dir::Left, Dir::Right];
     for (k, &dir) in order.iter().enumerate().skip(from) {
@@ -461,6 +483,8 @@ pub fn main_loop_redraws(
             continue;
         }
         io.defer_from = defer_from.filter(|_| stop == Some(k + 1));
+        io.late_from = shape_words.filter(|_| stop == Some(k + 1));
+        io.written = 0;
         s.edges.pos = s.camera.edges.at[i];
         s.camera.edges.latch[i] = 0;
         let before = io.blits.len();
@@ -470,6 +494,11 @@ pub fn main_loop_redraws(
             Dir::Left => s.edges.redraw_left(&mut io),
             Dir::Right => s.edges.redraw_right(&mut io),
         }
+        s.edges.deferred.extend(
+            io.late
+                .drain(..)
+                .map(|(n, at, word)| redraw::Deferred::Collision { n, at, word }),
+        );
         let bobs = io.blits[before..]
             .iter()
             .filter(|b| matches!(b, redraw::Blit::Bob { .. }))
