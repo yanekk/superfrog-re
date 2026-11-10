@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-10 | 🐞 | T83: an `Engine` wrapper forwards `foreground_cut` (else `ROW_BOBS_CUT`), `cut_redraw`, `creatures_uncut` (README). Green without the last: `death.rs` `Changed`, `Cut`; `level_end.rs` `Changed`; `picture_cases.rs` `Watched`; `enemy_cases.rs` `Watched`, `Slots`. `bug.rs` `Owners` lacks `cut_redraw`. Left. |
 | 2026-11-10 | 🔄 | Owner, T48 review: one route must finish on both sides. T84 added (after T48, T82; blocks T28, T29). `route-W1-1` holds on the original only, 21 764 passes, no life lost; the app keeps T27's (docs/13). |
 | 2026-11-10 | 🔄 | Owner, T48: T82 (the route's picture) and T83 (two tests red at `53638b37`, `Escape: forest-dumb-level-1 T80`) added, blocking T29. A new comparison rule is asked first and follows T71: only what the original could show, proven per frame. |
 | 2026-11-10 | 🐞 | T48: the runner never tells `PictureJudge` of a `Same` frame, so "in a row" counts glitch frames since the last few-pixel frame. T82's; `route-W1-1` sets 40 frames aside in boxes (`frames F..G`). |
@@ -21,7 +22,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-10 | 📌 | T77: `enemy-kind4` meets `W1-1:45,92`'s kind 4, left along the bottom corridor from `camera-bottom-right`'s step 700. State only: its picture differs at frame 6779 (T80's cut behind the beam), so no case compares kind 4 drawn. |
 | 2026-11-09 | 📌 | T75 review, read-only: a pass landing in `h0_681c`'s slot search or `h0_6852` (`h0+$681e` to `$6878`) has its slot chosen; the engine chooses again after the pass, so a slot freed in between would differ. Unmeasured. Left. |
 | 2026-11-09 | 📌 | T75: `h0_3222` runs 235 times in the whole enemy cases, so T77's kind 2 half is met; kind 4 still unseen. Every measured cut came before its scan's creature cell: the place inside a scan is unproven for creatures. |
-| 2026-11-09 | 🐞 | T74 review: an `Engine` wrapper not forwarding `foreground_cut` silently keeps `ROW_BOBS_CUT`; `death.rs` `Watched`, `Thawed` broke `death-water`, fixed. Left, green, `creatures_uncut` (T80) unforwarded too: `death.rs` `Changed`, `Cut`; `level_end.rs` `Changed`; `picture_cases.rs` `Watched`; `common/mod.rs` `StandIn`; `enemy_cases.rs`'s three. |
 | 2026-11-09 | 🐞 | T63 review: T39's `game_frame` generator keeps the character near the start, so `char_object_cells` moved before `char_update` passed 10 000 states; `over_a_coin` now catches it. Stomp and creature order unprobed. Left. |
 | 2026-11-09 | 📌 | T73 review: `edge-latch-route` with the picture compared differs at pass 1208 (oracle frame 7510, 133 pixels from (200, 0)) the same with T73's cut switched off, so not T73's. Left; the case compares variables only. |
 | 2026-11-06 | 🔄 | Owner, T24 review: T24's "planner's danger avoids them" test is carried by T27's and T48's requirement, a full route with no life lost, creatures live, on both sides (DESIGN §2.11). No such test in T24. |

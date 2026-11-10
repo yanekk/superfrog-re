@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** review T83; then T82, T84, T28 and T29 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -103,10 +103,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 | T82 | route-picture | T48; blocks T29 | ⬜ | |
-| T83 | red-cut-tests | —; blocks T29 | ⬜ | |
+| T83 | red-cut-tests | —; blocks T29 | 🔍 | `contact.rs` `Copies` forwards `creatures_uncut`; `edge_latch.rs` leaves the play area out of its dropped-cut run (rows 0..194, as the case did until T81), so it ends on `edge_latch_right`, pass 340. No new test; 9 wrapper files green. Deviation: the wrapper list is in the commit message, not a file. |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T83
 
 ## Blocked on the user
 
