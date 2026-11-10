@@ -183,6 +183,8 @@ pub struct Display {
     pub sprite: CharSprite,
     pub status: Status,
     pub screen: Screen,
+    /// The last pass's creature cuts and what they drew over (T80).
+    pub cuts: objects::CutsDrawn,
 }
 
 impl Display {
@@ -221,6 +223,7 @@ impl Display {
             },
             status,
             screen: Screen::default(),
+            cuts: objects::CutsDrawn::default(),
         }
     }
 }

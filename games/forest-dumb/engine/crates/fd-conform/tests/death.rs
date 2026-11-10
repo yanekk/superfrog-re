@@ -284,6 +284,10 @@ impl Engine for Watched {
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         self.game.cut_foreground(at);
     }
+    // `death-water` meets creatures the original cut behind the beam (T80).
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
 }
 
 /// The slide drops into the spike pit; three passes of contact cost a life at frame 6524, then the
@@ -483,13 +487,17 @@ impl Engine for Barred {
     fn cut_redraw(&self, cut: u8) -> Option<Picture> {
         Engine::cut_redraw(&self.0.game, cut)
     }
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.0.creatures_uncut(rows)
+    }
 }
 
 /// The character reaches the pool with creatures live (T79, no life lost on the way) and drops into
 /// it at `W1-1:149,66`; both sides draw the water (T25's `h0_62b6`): three contact passes in a row
 /// cost a life and the next one after the hold, at frame 8652, every pass's variables and every
-/// frame's status bar equal to the original's (the play area's picture is T80's). The character
-/// stays where the water hurt it.
+/// frame's picture equal to the original's, the play area with each creature the original cut
+/// behind the beam drawn as the runner measured it (T80). The character stays where the water hurt
+/// it.
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
@@ -505,6 +513,9 @@ fn falling_into_the_water_loses_a_life_as_the_originals() {
     assert!(v.events.is_empty(), "{v}");
     assert_eq!(v.goal_met, Some(8652), "the second life lost");
     assert!(v.passes > 2300 && v.pictures > 2300, "{v}");
+    assert!(case.exclude.is_empty(), "{:?}", case.exclude);
+    // Measured 2026-11-10: 36 frames show a creature cut behind the beam.
+    assert!(v.creature_cuts >= 30, "{v}");
     assert_eq!(hits(&v, "lives_minus_one"), 2, "{v}");
     // The original adds the cells in view, the water among them, to the animated cells.
     assert!(hits(&v, "h0_6882") > 0, "{v}");

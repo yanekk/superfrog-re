@@ -431,6 +431,99 @@ pub struct PlayDraw<'a> {
     pub program: &'a Program,
     pub screen: &'a mut Screen,
     pub data: &'a DisplayData,
+    /// The pass's cuts and what each drew over (T80).
+    pub cuts: &'a mut CutsDrawn,
+}
+
+/// A creature's cut in blit rows: `$20` lines of five planes.
+pub const CUT_ROWS: u16 = (CREATURE_LINES * 5) as u16;
+
+/// The cuts the last pass drew, in order, and the screen's words each drew over: what
+/// [`CutsDrawn::uncut`] needs to draw a frame the original showed with a cut not yet made (T80).
+/// Picture state that no drawing reads back, so it compares equal whatever it holds.
+#[derive(Debug, Clone, Default)]
+pub struct CutsDrawn {
+    /// Each cut's mask, picture and destination, BLTCON0, BLTCON1 and BLTSIZE, and where its
+    /// words start in `under`.
+    blits: Vec<([u32; 3], [u16; 3], usize)>,
+    under: Vec<u8>,
+}
+
+impl PartialEq for CutsDrawn {
+    fn eq(&self, _: &CutsDrawn) -> bool {
+        true
+    }
+}
+
+impl Eq for CutsDrawn {}
+
+impl std::hash::Hash for CutsDrawn {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+impl CutsDrawn {
+    /// Forget the last pass's cuts: a pass that cuts nothing leaves none.
+    pub fn clear(&mut self) {
+        self.blits.clear();
+        self.under.clear();
+    }
+
+    /// Make a cut on `screen` and keep it: `at` its mask, picture and destination, `con` its
+    /// BLTCON0, BLTCON1 and BLTSIZE.
+    fn draw(
+        &mut self,
+        screen: &mut Screen,
+        chip: &impl Fn(u32) -> u8,
+        at: [u32; 3],
+        con: [u16; 3],
+    ) {
+        self.blits.push((at, con, self.under.len()));
+        let under = Some(&mut self.under);
+        cut_screen(screen, chip, at, con[0], con[1], con[2], 0, under);
+    }
+
+    /// How many creatures the pass cut. One wrapping past the screen's last line is two blits.
+    pub fn creatures(&self) -> usize {
+        let rows: u32 = self.blits.iter().map(|b| (b.1[2] >> 6) as u32).sum();
+        (rows / CUT_ROWS as u32) as usize
+    }
+
+    /// `screen` as it was with the first `rows[k]` blit rows of the `k`th creature's cut not yet
+    /// written: a row is one plane of one line, a line's five planes in turn from the creature's
+    /// top. Every cut is taken back, last first, and made again without those rows, so a creature
+    /// cut over another keeps what it covers. `None` unless `rows` has one count a creature.
+    pub fn uncut(
+        &self,
+        screen: &Screen,
+        chip: &impl Fn(u32) -> u8,
+        rows: &[u16],
+    ) -> Option<Screen> {
+        if rows.len() != self.creatures() {
+            return None;
+        }
+        let mut screen = screen.clone();
+        for (at, con, from) in self.blits.iter().rev() {
+            let mut under = self.under[*from..].chunks_exact(2);
+            cut_words(at[2], con[2], |_, i| {
+                if let (Some(i), Some(w)) = (i, under.next()) {
+                    screen.bytes[i..i + 2].copy_from_slice(w);
+                }
+            });
+        }
+        // The rows of the creature's `CUT_ROWS` made so far, and those still to leave out.
+        let (mut creature, mut made, mut left) = (0, 0u32, rows.first().copied()? as u32);
+        for (at, con, _) in &self.blits {
+            let n = (con[2] >> 6) as u32;
+            let skip = left.min(n);
+            cut_screen(&mut screen, chip, *at, con[0], con[1], con[2], skip, None);
+            (made, left) = (made + n, left - skip);
+            if made >= CUT_ROWS as u32 {
+                creature += 1;
+                (made, left) = (0, rows.get(creature).copied().unwrap_or(0) as u32);
+            }
+        }
+        Some(screen)
+    }
 }
 
 impl DrawIo for PlayDraw<'_> {
@@ -445,8 +538,8 @@ impl DrawIo for PlayDraw<'_> {
     fn blit(&mut self, b: CreatureBlit) {
         let chip = |a: u32| self.data.byte(a);
         match b {
-            // The modulos and masks `cut_screen` assumes.
-            CreatureBlit::CutSetup => {}
+            // The modulos and masks `cut_screen` assumes. It comes once a pass, before the cuts.
+            CreatureBlit::CutSetup => self.cuts.clear(),
             // `h0_774`'s blit, which `Blit::Cell` draws.
             CreatureBlit::Restore { src, dst, .. } => self.screen.apply(
                 &Blit::Cell {
@@ -462,29 +555,15 @@ impl DrawIo for PlayDraw<'_> {
                 con0,
                 con1,
                 size,
-            } => cut_screen(self.screen, &chip, [mask, picture, dst], con0, con1, size),
+            } => self
+                .cuts
+                .draw(self.screen, &chip, [mask, picture, dst], [con0, con1, size]),
         }
     }
 }
 
-/// A cut as the blitter runs it after `h0_2d4c`'s set-up: ascending, A (`mask`) and B (`picture`)
-/// shifted by BLTCON0's and BLTCON1's top nibbles, each carrying the bits it shifts out into its next
-/// word, rows and lines included; A's last word masked to 0; D = A·B + ¬A·C, C and D the screen. A
-/// word outside the kept screen reads 0 and is dropped, as `Screen::apply`'s.
-fn cut_screen(
-    screen: &mut Screen,
-    chip: &impl Fn(u32) -> u8,
-    [mut a, mut b, mut d]: [u32; 3],
-    con0: u16,
-    con1: u16,
-    size: u16,
-) {
-    const CHIP: u32 = 0x7_fffe;
-    let index = |a: u32| {
-        let i = (a & CHIP).wrapping_sub(SCREEN_START);
-        (i + 1 < SCREEN_BYTES).then_some(i as usize)
-    };
-    let word = |a: u32| u16::from_be_bytes([chip(a & CHIP), chip((a & CHIP) + 1)]);
+/// A cut's size as the blitter counts it: rows, and words a row.
+fn cut_size(size: u16) -> (u32, u32) {
     let rows = match size >> 6 {
         0 => 1024,
         r => r as u32,
@@ -493,26 +572,70 @@ fn cut_screen(
         0 => 64,
         w => w as u32,
     };
+    (rows, words)
+}
+
+/// Each word a cut of `size` at `dst` writes, in the blitter's order: its row and its index in the
+/// kept screen, `None` outside it.
+fn cut_words(mut d: u32, size: u16, mut f: impl FnMut(u32, Option<usize>)) {
+    const CHIP: u32 = 0x7_fffe;
+    let (rows, words) = cut_size(size);
+    for row in 0..rows {
+        for _ in 0..words {
+            let i = (d & CHIP).wrapping_sub(SCREEN_START);
+            f(row, (i + 1 < SCREEN_BYTES).then_some(i as usize));
+            d = d.wrapping_add(2);
+        }
+        d = d.wrapping_add(0x28);
+    }
+}
+
+/// A cut as the blitter runs it after `h0_2d4c`'s set-up: ascending, A (`mask`) and B (`picture`)
+/// shifted by BLTCON0's and BLTCON1's top nibbles, each carrying the bits it shifts out into its next
+/// word, rows and lines included; A's last word masked to 0; D = A·B + ¬A·C, C and D the screen. A
+/// word outside the kept screen reads 0 and is dropped, as `Screen::apply`'s. The first `skip` rows
+/// are left unwritten, and `under` takes each kept word as it was before the cut (T80).
+#[allow(clippy::too_many_arguments)]
+fn cut_screen(
+    screen: &mut Screen,
+    chip: &impl Fn(u32) -> u8,
+    [mut a, mut b, d]: [u32; 3],
+    con0: u16,
+    con1: u16,
+    size: u16,
+    skip: u32,
+    mut under: Option<&mut Vec<u8>>,
+) {
+    const CHIP: u32 = 0x7_fffe;
+    let word = |a: u32| u16::from_be_bytes([chip(a & CHIP), chip((a & CHIP) + 1)]);
+    let (_, words) = cut_size(size);
     let (ash, bsh) = (con0 >> 12, con1 >> 12);
     let (mut a_old, mut b_old) = (0u16, 0u16);
-    for _ in 0..rows {
-        for x in 0..words {
-            let aw = if x == words - 1 { 0 } else { word(a) };
-            let bw = word(b);
-            let sa = ((a_old as u32) << 16 | aw as u32) >> ash;
-            let sb = ((b_old as u32) << 16 | bw as u32) >> bsh;
-            (a_old, b_old) = (aw, bw);
-            if let Some(i) = index(d) {
+    let mut x = 0;
+    cut_words(d, size, |row, i| {
+        let aw = if x == words - 1 { 0 } else { word(a) };
+        let bw = word(b);
+        let sa = ((a_old as u32) << 16 | aw as u32) >> ash;
+        let sb = ((b_old as u32) << 16 | bw as u32) >> bsh;
+        (a_old, b_old) = (aw, bw);
+        if let Some(i) = i {
+            if let Some(u) = under.as_mut() {
+                u.extend_from_slice(&screen.bytes[i..i + 2]);
+            }
+            if row >= skip {
                 let c = u16::from_be_bytes([screen.bytes[i], screen.bytes[i + 1]]);
                 let v = (sa as u16 & sb as u16) | (!sa as u16 & c);
                 screen.bytes[i..i + 2].copy_from_slice(&v.to_be_bytes());
             }
-            (a, b, d) = (a.wrapping_add(2), b.wrapping_add(2), d.wrapping_add(2));
         }
-        a = a.wrapping_add(0x22);
-        b = b.wrapping_add(0x22);
-        d = d.wrapping_add(0x28);
-    }
+        (a, b) = (a.wrapping_add(2), b.wrapping_add(2));
+        x += 1;
+        if x == words {
+            x = 0;
+            a = a.wrapping_add(0x22);
+            b = b.wrapping_add(0x22);
+        }
+    });
 }
 
 /// Run `f` on the creature drawing in play: the play screen drawn into as it goes.
@@ -523,6 +646,7 @@ pub fn in_play(l: &mut LevelCtx, f: impl FnOnce(&mut Creatures)) {
         program: l.program,
         screen: &mut l.display.screen,
         data: l.display_data,
+        cuts: &mut l.display.cuts,
     };
     f(&mut Creatures {
         draw: &mut s.creature_draw,
@@ -547,6 +671,54 @@ mod tests {
         );
         // An odd x sets HSTART's low bit; a low view sets the ninth bits.
         assert_eq!(control(0x11, 0xe0, 0x10, 0x10) & 0x7, 0x7);
+    }
+
+    /// Two creatures cut one over the other, then drawn as a frame that caught some rows uncut.
+    #[test]
+    fn an_uncut_row_shows_what_the_cut_drew_over_and_a_later_cut_stays() {
+        // Masks and pictures all ones: a cut writes ones over two words a row.
+        let chip = |a: u32| if a < 0x1_0000 { 0xff } else { 0 };
+        let mut before = Screen::default();
+        before.bytes.fill(0x11);
+        let dst = SCREEN_START + 0x10 * SCREEN_LINE;
+        let con = |lines: u32| [CUT_MINTERM, 0, (lines * SIZE_LINE + CUT_WORDS) as u16];
+        let (mut after, mut cuts) = (before.clone(), CutsDrawn::default());
+        // The first in two blits, as one wrapping past the screen's end; the second 8 lines lower,
+        // over the first's last 24 lines and 8 lines more.
+        let lower = dst + 0x8 * SCREEN_LINE;
+        cuts.draw(&mut after, &chip, [0, 0, dst], con(0x8));
+        cuts.draw(&mut after, &chip, [0, 0, lower], con(0x18));
+        cuts.draw(&mut after, &chip, [0, 0, lower], con(0x20));
+        assert_eq!(cuts.creatures(), 2);
+        assert_ne!(after, before);
+        // One count a creature, or nothing.
+        assert_eq!(cuts.uncut(&after, &chip, &[0]), None);
+        assert_eq!(cuts.uncut(&after, &chip, &[0, 0]), Some(after.clone()));
+        let all = [CUT_ROWS, CUT_ROWS];
+        assert_eq!(cuts.uncut(&after, &chip, &all), Some(before.clone()));
+        // The first creature's first 9 lines and 2 planes uncut, its first blit whole and 7 rows
+        // of its second: the second creature, cut over it from line 8 on, hides all but line 0 to 7.
+        let part = cuts.uncut(&after, &chip, &[47, 0]).unwrap();
+        let (mut second, mut alone) = (before.clone(), CutsDrawn::default());
+        alone.draw(&mut second, &chip, [0, 0, lower], con(0x20));
+        assert_eq!(part, second);
+        // The second's first line uncut shows the first creature there, not the screen before it.
+        let part = cuts.uncut(&after, &chip, &[0, 5]).unwrap();
+        let (mut first, mut alone) = (before.clone(), CutsDrawn::default());
+        alone.draw(&mut first, &chip, [0, 0, dst], con(0x20));
+        let line = |s: &Screen, l: u32| {
+            let at = ((0x10 + l) * SCREEN_LINE) as usize;
+            s.bytes[at..at + SCREEN_LINE as usize].to_vec()
+        };
+        assert_eq!(line(&part, 8), line(&first, 8));
+        assert_eq!(line(&part, 9), line(&after, 9));
+        assert_eq!(line(&part, 0x27), line(&after, 0x27));
+        // A pass that cuts nothing leaves no creature to draw uncut.
+        cuts.clear();
+        assert_eq!(
+            (cuts.creatures(), cuts.uncut(&after, &chip, &[1])),
+            (0, None)
+        );
     }
 
     #[test]

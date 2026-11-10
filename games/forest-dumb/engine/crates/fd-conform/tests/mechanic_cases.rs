@@ -21,14 +21,17 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only tasks an exclusion of these cases may name: T80, a creature the original cuts behind the
-/// beam and so shows a frame late (owner, 2026-11-10), and T81, a creature `mechanic-vanish`'s engine
+/// The only task an exclusion of these cases may name: T81, a creature `mechanic-vanish`'s engine
 /// starts a pass before the original (owner, 2026-11-10, T79 review). The redraw race of a long pass
-/// is handed to the engine by the runner (T74).
-const EXCLUDED_FOR: [&str; 2] = ["T80", "T81"];
+/// is handed to the engine by the runner (T74), and so is a creature the original cuts behind the
+/// beam (T80).
+const EXCLUDED_FOR: [&str; 1] = ["T81"];
 
-/// What `mechanic-vanish` excludes for T81: the slot variables that differ from pass 330 on.
-const T81_SLOTS: [&str; 5] = [
+/// What `mechanic-vanish` excludes for T81: the slot variables that differ from pass 330 on, and
+/// the play area's picture, where that creature is drawn on another frame of its animation (first
+/// at frame 6675).
+const T81_SLOTS: [&str; 6] = [
+    "rows 0..194",
     "var creature_active+$0",
     "var creature_slots+$0",
     "var creature_slots+$4",
@@ -124,19 +127,23 @@ fn the_mechanics_match_the_original_on_every_pass() {
         }
     }
     // Every edge latch is compared (T74): the passes that came during main_loop's edge redraws
-    // were handed to the engine (docs/09). Excluded: the play area's picture, T80's (the status
-    // bar's rows stay compared on every frame), and in `mechanic-vanish` T81's five slot variables.
+    // were handed to the engine (docs/09). Excluded: nothing in `mechanic-spring`; in
+    // `mechanic-vanish` T81's five slot variables and the play area, where its creature is drawn.
     // Each of the fifteen creature slot variables is compared or excluded by name, never left out.
     for (case, v) in &verdicts {
         let what: Vec<&str> = case.exclude.iter().map(|e| e.what.as_str()).collect();
-        let mut want = vec!["rows 0..194"];
-        if case.name == "mechanic-vanish" {
-            want.extend(T81_SLOTS);
-        }
+        let want: &[&str] = if case.name == "mechanic-vanish" {
+            &T81_SLOTS
+        } else {
+            &[]
+        };
         assert_eq!(what, want, "{}", case.name);
+        // Measured 2026-11-10: 47 frames of `mechanic-spring` and 51 of `mechanic-vanish` show a
+        // creature the original cut behind the beam, drawn so by the engine (T80).
+        assert!(v.creature_cuts >= 40, "{}: {v}", case.name);
         let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
         assert_eq!(
-            slots.count() + want.len() - 1,
+            slots.count() + want.len().saturating_sub(1),
             15,
             "{}: {:?}",
             case.name,
@@ -248,6 +255,9 @@ impl fd_conform::Engine for Seen {
     }
     fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
         fd_conform::Engine::foreground_cut(&mut self.game, at)
+    }
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<amiga_chips::Picture> {
+        fd_conform::Engine::creatures_uncut(&self.game, rows)
     }
 }
 

@@ -401,11 +401,13 @@ fn drawn(
     let mut draw = g.state().creature_draw;
     let camera_y = g.state().camera.y;
     let mut cuts = 0;
+    let mut drawn = fd_core::render::objects::CutsDrawn::default();
     let mut io = PlayDraw {
         image: &image,
         program: &data.program,
         screen: &mut screen,
         data: &data.display,
+        cuts: &mut drawn,
     };
     let mut slots = then.clone();
     draw.saved = slots.active;

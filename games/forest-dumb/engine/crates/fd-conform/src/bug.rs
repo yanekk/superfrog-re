@@ -350,6 +350,12 @@ impl Engine for Owners<'_> {
     fn foreground_cut(&mut self, at: Option<EdgesCut>) {
         self.game.cut_foreground(at);
     }
+
+    /// Without it a recording differs at the first run of frames showing a creature the original
+    /// cut behind the beam (T80).
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
 }
 
 /// A recording compared with the original ([`compare`]).
