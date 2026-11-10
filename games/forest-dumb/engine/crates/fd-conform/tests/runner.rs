@@ -146,6 +146,64 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     );
 }
 
+/// T48 review: a box naming frames hides its area on those frames alone. The same box a frame
+/// short, or on frames the difference never shows on, leaves the difference to fail the case.
+#[test]
+fn a_box_naming_frames_hides_nothing_on_any_other_frame() {
+    let paint = || Some((10..15, 200, 320));
+    let case = short(30);
+    let mut e = honest(&case);
+    e.paint = paint();
+    let v = run_on(&case, &mut e, &Options::default());
+    let Outcome::PictureDiffers {
+        pass: 10, frame, ..
+    } = v.outcome
+    else {
+        panic!("{v}")
+    };
+    let boxed = |frames: std::ops::Range<u32>| {
+        let bar = Exclusion {
+            rows: 194..250,
+            cols: Some(0..320),
+            frames: Some(frames.clone()),
+            var: None,
+            what: format!(
+                "rows 194..250 cols 0..320 frames {}..{}",
+                frames.start, frames.end
+            ),
+            task: "T82".into(),
+        };
+        let case = Case {
+            exclude: vec![bar],
+            ..short(30)
+        };
+        let mut e = honest(&case);
+        e.paint = paint();
+        run_on(&case, &mut e, &Options::default())
+    };
+    // Named on the five frames that differ: hidden, and counted on those five.
+    let v = boxed(frame..frame + 5);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert_eq!(v.excluded[0].1, 5, "{v}");
+    // One frame short at either end: that frame is compared and fails.
+    let v = boxed(frame + 1..frame + 5);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 10, .. }),
+        "{v}"
+    );
+    let v = boxed(frame..frame + 4);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 14, .. }),
+        "{v}"
+    );
+    // Named on other frames only: the difference fails as with no box.
+    let v = boxed(frame + 5..frame + 10);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 10, .. }),
+        "{v}"
+    );
+}
+
 #[test]
 fn a_case_that_compares_nothing_fails() {
     // One frame: the only pass end seen is the transplant's.
