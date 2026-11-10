@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** review T81; T80 is pending, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Status:** Building; 77 of 82 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** T80, then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -101,9 +101,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ⬜ | |
-| T81 | creature-start-pass-early | T79; blocks T27, T48 | 🔍 | Cause: `edges_cut` read a stale `a2` as the scan's place when a pass cut a row redraw before its scan; the PC decides now (docs/10). `mechanic-vanish` compares fifteen slots. Eleven cases filled slots uncompared, now compared, all agree. 3 tests, 1 `#[ignore]`d. Deviations: no engine change; the PC also names the redraw; probe kept in `prototype/t81-scan-start/`. |
+| T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | Review clean, no fix commit. Probed: 424 cuts over 34 level cases on the original, the PC's scan-started reading equal to a line-by-line walk in each; listing confirms callers and `a2`. Mutations caught: scan always started (pass 330), wait always scanning (unit), `stub-level` slots removed. Nightly twin run once, green. Read-only: docs/10's pass 327. |
 
-**Review queue:** T81
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
