@@ -10,6 +10,9 @@
 //! each measured cut (`fd_conform::edges_cut`, T74; with creatures live since T78) and the engine
 //! starts the scan's later creatures after that pass too (T75, `Edges::deferred`), so every case
 //! compares the picture's latches and the slots through those passes.
+//!
+//! T77: `enemy-kind4` meets kind 4, the one creature kind T46's routes never brought into view, and
+//! two tests read the engine's slots for its walk and turn and for a kind 2 turning right.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -20,13 +23,14 @@ use amiga_oracle::FrameInput;
 use fd_conform::{Case, Engine, Goal, Options, Outcome, Verdict, run_with};
 use fd_core::level::EdgesCut;
 use fd_core::level::redraw::{Deferred, OBJECT_MAP};
-use fd_core::objects::creature::{STOMPED, WALK5_LEFT};
+use fd_core::objects::creature::{LEFT, STOMPED, WALK4_RIGHT, WALK5_LEFT};
 use fd_core::program::Program;
 use fd_core::{Event, Game, GameData, LAYOUT, Mem, PORTED, Start, Transplant, Var};
 
 /// The planner's route (kinds 0, 3, 5, stomps, lives lost to contact), the route to the exit's cells
-/// (kinds 0, 1, 2, 5, the picture compared) and T43's run right and back (kind 3 hopping left).
-const CASES: [&str; 3] = ["enemy-route", "enemy-contact", "enemy-hop"];
+/// (kinds 0, 1, 2, 5, the picture compared), T43's run right and back (kind 3 hopping left) and the
+/// bottom corridor's kind 4 (T77).
+const CASES: [&str; 4] = ["enemy-route", "enemy-contact", "enemy-hop", "enemy-kind4"];
 
 /// The routines T24 registered (`fd-core/src/ported.rs`, its section), the stomp's caller, and the
 /// write-back T22 ported that waited for creatures (T45's `NOT_REACHED`).
@@ -251,6 +255,190 @@ fn a_mutated_walk_table_fails_on_a_creature() {
         matches!(&v.outcome, Outcome::Differs { var, .. } if var.starts_with("creature_slots")),
         "{v}"
     );
+}
+
+/// An active slot after a pass: its kind, x, y and facing.
+type Slot = (u16, u16, u16, u8);
+
+/// fd-core's game, keeping after every pass each active slot and how many cells of the object map
+/// hold kind 4's value.
+struct Slots {
+    game: Game,
+    seen: Vec<[Option<Slot>; 5]>,
+    fives: Vec<usize>,
+}
+
+impl Transplant for Slots {
+    fn transplant(&mut self, mem: &dyn Mem) {
+        self.game.transplant(mem);
+    }
+    fn probe(&self, v: &Var) -> u32 {
+        self.game.probe(v)
+    }
+}
+
+impl Engine for Slots {
+    fn pass(&mut self, input: FrameInput) {
+        self.game.step(input);
+        let s = self.game.state();
+        let c = &s.edges.creatures;
+        self.seen.push(std::array::from_fn(|i| {
+            let slot = &c.slots[i];
+            (c.active[i] != 0).then_some((slot.kind, slot.x, slot.y, slot.facing))
+        }));
+        self.fives
+            .push(s.object_map.iter().filter(|&&v| v == 5).count());
+    }
+    fn picture(&self) -> Option<Picture> {
+        Some(self.game.picture())
+    }
+    fn events(&mut self) -> Vec<Event> {
+        self.game.take_events()
+    }
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        Engine::foreground_cut(&mut self.game, at);
+    }
+}
+
+/// The passes after which a creature of `kind` faces the other way than the pass before, with the
+/// x it turned at and whether it now faces left. The sort moves creatures between slots, so one is
+/// followed by its kind, its y and an x within a step's reach.
+fn turns(seen: &[[Option<Slot>; 5]], kind: u16) -> Vec<(usize, u16, bool)> {
+    let of_kind = |p: &[Option<Slot>; 5]| -> Vec<Slot> {
+        p.iter()
+            .flatten()
+            .filter(|s| s.0 == kind)
+            .copied()
+            .collect()
+    };
+    let mut out = Vec::new();
+    for k in 1..seen.len() {
+        for now in of_kind(&seen[k]) {
+            let before = of_kind(&seen[k - 1])
+                .into_iter()
+                .find(|b| b.2 == now.2 && b.1.abs_diff(now.1) <= 4);
+            if let Some(b) = before {
+                if (b.3 == LEFT) != (now.3 == LEFT) {
+                    out.push((k, now.1, now.3 == LEFT));
+                }
+            }
+        }
+    }
+    out
+}
+
+/// `enemy-kind4`, as the original (every slot compared on every pass): W1-1:45,92's kind 4 starts
+/// from the left column's redraw facing right, walks right to the mound at column 52, turns there
+/// once and walks left past where it started until it leaves the view and is written back into
+/// the object map. Kind 4 has no routine of its own (its walk is inline in `h0_2fea`), so no
+/// coverage count shows it: the slots do.
+#[test]
+fn kind_4_walks_right_turns_at_a_wall_and_is_written_back() {
+    let case = load("enemy-kind4");
+    let mut w = Slots {
+        game: Game::new(data(), Start::Level1),
+        seen: Vec::new(),
+        fives: Vec::new(),
+    };
+    let v = run_with(&case, &mut w, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(v.goal_met.is_some(), "{v}");
+
+    // Its (pass, x, facing) while it is in a slot; W1-1 never shows two at once here.
+    let walk: Vec<(usize, u16, u8)> = w
+        .seen
+        .iter()
+        .enumerate()
+        .filter_map(|(k, p)| {
+            let mut four = p.iter().flatten().filter(|s| s.0 == 4);
+            let s = four.next()?;
+            assert!(four.next().is_none(), "pass {k}: two of kind 4");
+            Some((k, s.1, s.3))
+        })
+        .collect();
+    assert!(walk.len() > 400, "kind 4 in view for {} passes", walk.len());
+    let (first, last) = (walk[0], walk[walk.len() - 1]);
+    assert_eq!(last.0 - first.0 + 1, walk.len(), "one stay in a slot");
+    // Column 45 is x 720; the mound's wall stops it at 784.
+    assert!(
+        (720..=726).contains(&first.1) && first.2 != LEFT,
+        "{first:?}"
+    );
+    let turned = turns(&w.seen, 4);
+    assert_eq!(turned.len(), 1, "{turned:?}");
+    let (at, x, left) = turned[0];
+    assert_eq!((x, left), (784, true));
+    for pair in walk.windows(2) {
+        let (k, before, now) = (pair[1].0, pair[0].1, pair[1].1);
+        // It steps, then the probe turns it: the turning pass still steps right.
+        if k <= at {
+            assert!((before..=before + 1).contains(&now), "pass {k}: right");
+        } else {
+            assert!((now..=now + 1).contains(&before), "pass {k}: left");
+        }
+    }
+    assert!(last.1 < first.1 - 100 && last.2 == LEFT, "{last:?}");
+    // The map holds four `$05` cells: three while this one is in its slot, four again after.
+    assert_eq!(
+        (
+            w.fives[first.0 - 1],
+            w.fives[first.0],
+            w.fives[last.0],
+            w.fives[last.0 + 1]
+        ),
+        (4, 3, 3, 4)
+    );
+}
+
+/// Kind 4 walking right a pixel further each step in the program the engine reads: `enemy-kind4`
+/// fails on a creature slot once W1-1:45,92's creature starts (pass 854 on), so the case holds
+/// kind 4's own table and not only the kinds the other cases meet.
+#[test]
+fn a_mutated_kind_4_table_fails_once_kind_4_walks() {
+    let data = data();
+    let mut bytes = data.program.bytes().to_vec();
+    for b in &mut bytes[WALK4_RIGHT as usize..WALK4_RIGHT as usize + 32] {
+        *b = b.wrapping_add(1);
+    }
+    let mutated = Arc::new(GameData {
+        program: Program::hunk0(bytes),
+        ..(*data).clone()
+    });
+    let mut game = Game::new(mutated, Start::Level1);
+    let v = run_with(&load("enemy-kind4"), &mut game, &Options::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(
+        matches!(&v.outcome, Outcome::Differs { pass, var, .. } if var.starts_with("creature_slots") && (854..870).contains(pass)),
+        "{v}"
+    );
+}
+
+/// `enemy-contact`'s first 800 steps, state only, as the original: a kind 2 walking left turns
+/// right at x 1720 (pass 665) and steps on rightwards (`h0_3222`), the half T46's cases missed
+/// while they stopped at the first race.
+#[test]
+fn kind_2_turns_right_and_steps_on() {
+    let mut case = load("enemy-contact");
+    case.frames = 800;
+    case.compare.picture = false;
+    let mut w = Slots {
+        game: Game::new(data(), Start::Level1),
+        seen: Vec::new(),
+        fives: Vec::new(),
+    };
+    let v = run_with(&case, &mut w, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    let turned = turns(&w.seen, 2);
+    let &(at, x, left) = turned.first().expect("a turn");
+    assert_eq!((x, left), (1720, false), "pass {at}");
+    // It is still there 50 passes on, further right.
+    let later = w.seen[at + 50]
+        .iter()
+        .flatten()
+        .find(|s| s.0 == 2)
+        .expect("kind 2 still in a slot");
+    assert!(later.1 > x && later.3 != LEFT, "{later:?}");
+    assert!(hits(&[(case, v)], "h0_3222") > 0);
 }
 
 /// What a test does to the measured cuts on their way to the engine.
