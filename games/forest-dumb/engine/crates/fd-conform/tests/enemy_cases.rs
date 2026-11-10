@@ -491,7 +491,10 @@ impl Engine for Cuts {
             .iter()
             .filter_map(|d| match d {
                 Deferred::Creature { cell, .. } => Some((cell - OBJECT_MAP) as usize),
-                Deferred::Cell(_) | Deferred::CellIn { .. } | Deferred::Collision { .. } => None,
+                Deferred::Cell(_)
+                | Deferred::CellIn { .. }
+                | Deferred::Bob(_)
+                | Deferred::Collision { .. } => None,
             })
             .take(free)
             .collect();

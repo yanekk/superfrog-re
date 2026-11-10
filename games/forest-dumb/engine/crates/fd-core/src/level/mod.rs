@@ -452,6 +452,7 @@ pub fn main_loop_redraws(
             redraw::Deferred::Collision { at, word, .. } => plane.set_word(at, word),
             _ if again.is_some() => s.edges.deferred.push(d),
             redraw::Deferred::Cell(c) => s.edges.cells.add(c.x, c.y, c.code),
+            redraw::Deferred::Bob(b) => blits.push(b),
             redraw::Deferred::CellIn { cell, list, entry } => {
                 s.edges.cells.add_chosen(cell, list, entry)
             }
@@ -493,6 +494,8 @@ pub fn main_loop_redraws(
         blits,
         defer_from: None,
         add_cut: add,
+        bob_late: false,
+        late_bobs: Vec::new(),
         late_from: None,
         written: 0,
         late: Vec::new(),
@@ -524,6 +527,10 @@ pub fn main_loop_redraws(
                 .drain(..)
                 .map(|(n, at, word)| redraw::Deferred::Collision { n, at, word }),
         );
+        s.edges
+            .deferred
+            .extend(io.late_bobs.drain(..).map(redraw::Deferred::Bob));
+        io.bob_late = false;
         let bobs = io.blits[before..]
             .iter()
             .filter(|b| matches!(b, redraw::Blit::Bob { .. }))

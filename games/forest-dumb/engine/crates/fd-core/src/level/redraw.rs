@@ -95,6 +95,9 @@ pub trait Io {
     fn defers(&self, _cell: u32) -> bool {
         false
     }
+    /// The scan is about to cut the bob of object map cell `cell`: a pass that cut the scan
+    /// before it leaves its blit for after that pass (T82, [`PlayIo::bob_late`]).
+    fn bob_cell(&mut self, _cell: u32) {}
     /// How far `h0_6882` had got with `cell` when the next pass cut the scan (T82).
     fn add_cut(&self, _cell: u32) -> AddCut {
         AddCut::Whole
@@ -282,6 +285,9 @@ pub enum Deferred {
         kind: u16,
         facing: u8,
     },
+    /// A bob of the cut scan, from the cell the pass cut it at on: its blit starts after the pass
+    /// (T82).
+    Bob(Blit),
     /// The cut redraw's `n`th `collision_map` word, `word` at `at` bytes from the map's first: the
     /// pass came before `h0_7cc` copied it (T48, `level::EdgesCut::shape_words`).
     Collision { n: u16, at: u32, word: u16 },
@@ -550,7 +556,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_below(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_below(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     d0 = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14)) & 0xfff0;
                     self.add_cell(io, cell, d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
@@ -597,7 +606,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_above(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_above(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     // `andi.w`: the high word stays.
                     let sum = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
@@ -651,7 +663,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_left(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_left(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
                     self.add_cell(io, cell, x & 0xfff0, cy, b);
@@ -696,7 +711,10 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_right(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_right(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
                     self.add_cell(io, cell, xr & 0xfff0, cy, b);
@@ -786,6 +804,12 @@ pub struct PlayIo<'a> {
     pub defer_from: Option<u32>,
     /// Where the pass cut `h0_6882` for the cell at `defer_from` (T82, `level::AddCut`).
     pub add_cut: AddCut,
+    /// The bob being cut belongs to a cell from `defer_from` on: its blit goes to `late_bobs`,
+    /// started after the next pass, a frame later than the row's first bobs (T82, measured on
+    /// the route: a row of ten, eight cut at lines 197 to 231 and two at lines 103 to 108 of the
+    /// next frame, past the view's top lines, so those two show a frame after).
+    pub bob_late: bool,
+    pub late_bobs: Vec<Blit>,
     /// The redraw's `collision_map` words from this one on are kept in `late` for after the next
     /// pass, which came before `h0_7cc` copied them (T48, `level::EdgesCut::shape_words`); `None`
     /// writes each at once.
@@ -816,7 +840,14 @@ impl Io for PlayIo<'_> {
         }
     }
     fn blit(&mut self, b: Blit) {
-        self.blits.push(b);
+        if self.bob_late && matches!(b, Blit::Bob { .. }) {
+            self.late_bobs.push(b);
+        } else {
+            self.blits.push(b);
+        }
+    }
+    fn bob_cell(&mut self, cell: u32) {
+        self.bob_late = self.defers(cell);
     }
     fn collision_word(&mut self, at: u32, v: u16) {
         let n = self.written;
@@ -960,6 +991,8 @@ mod tests {
             blits: &mut blits,
             defer_from: None,
             add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
             late_from: Some(2),
             written: 0,
             late: Vec::new(),

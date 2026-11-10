@@ -3,16 +3,14 @@
 # the camera, the status variables, the collision register's copy and every creature slot and flag
 # on every pass. Goal: the level's end found in the same step on both sides. tests/full_route.rs
 # holds that no life is lost on the way and shows the ported routines' hits.
-# The picture is compared on every frame, 22 152 of them. On 40 it differs past the owner's
-# tolerance as the runner counts it, of three kinds, which T82 removes (docs/13-full-route.md, "The
-# picture on the route"). Each box below is the smallest that holds one frame's difference, on that
-# frame alone: a taken item's top rows (frames 15 813, 20 693); the view's first rows at the map's
-# top (17 196, 18 896, 19 454, 19 456, 19 459, 19 463); and the countdown's and the score's last
-# digits through one status period (18 364 to 18 395).
+# The picture is compared on every frame, 22 152 of them, nothing set aside (T82; docs/13-full-route.md,
+# "The picture on the route"). Seven status periods show the bar as it stood, their redraw never
+# reached on the original (220 frames, engine/conform/README.md); nine frames are past a few pixels,
+# never three in a row, each a taken item the original erased behind the beam (frames 10 358,
+# 11 699, 11 704, 13 438, 13 439, 15 761, 15 809, 15 813, 20 693).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "route-W1-1"
 frames = 22536
 compare = ["vars", "picture"]
 vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "clxdat_copy", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { level_end = true, by_frame = 28837 }
-exclude = [{ what = "rows 88..97 cols 163..176 frames 15813..15814", task = "T82" }, { what = "rows 0..9 cols 131..147 frames 17196..17197", task = "T82" }, { what = "rows 226..228 cols 162..166 frames 18364..18396", task = "T82" }, { what = "rows 236..244 cols 273..288 frames 18364..18396", task = "T82" }, { what = "rows 0..7 cols 92..108 frames 18896..18897", task = "T82" }, { what = "rows 0..11 cols 228..260 frames 19454..19455", task = "T82" }, { what = "rows 0..9 cols 236..268 frames 19456..19457", task = "T82" }, { what = "rows 0..5 cols 241..271 frames 19459..19460", task = "T82" }, { what = "rows 0..5 cols 242..271 frames 19463..19464", task = "T82" }, { what = "rows 31..42 cols 115..130 frames 20693..20694", task = "T82" }]
