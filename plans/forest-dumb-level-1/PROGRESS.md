@@ -102,7 +102,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
-| T82 | route-picture | T48; blocks T29 | 🔍 | Whole picture compared, no exclusion. Runner counts frames as the toolkit (Escape T06). Engine: a cut add keeps its list, a cut scan's bobs wait. Rule: skipped status redraw (coordinator). 6 tests, 3 smoke. Deviations: kind 1 left inside tolerance, untested (owner); kind 3 was two engine fixes; `edge_latch.rs`, `runner.rs`, `common/mod.rs` touched. `sampling_…unchanged` flaky, see FINDINGS. |
+| T82 | route-picture | T48; blocks T29 | 🔍 | Whole picture compared, no exclusion. Runner counts frames as the toolkit (Escape T06). Engine: a cut add keeps its list, a cut scan's bobs wait. Rule: skipped status redraw (coordinator). 6 tests, 5 smoke, 1 full. Deviations: kind 1 left inside tolerance, untested (owner); kind 3 was two engine fixes; `edge_latch.rs`, `runner.rs`, `common/mod.rs` touched. `sampling_…unchanged` flaky, see FINDINGS. |
 | T83 | red-cut-tests | —; blocks T29 | ⬜ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 | T85 | observes-only-flake | —; blocks T29 | ⬜ | |
