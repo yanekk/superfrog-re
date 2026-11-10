@@ -32,8 +32,8 @@ use amiga_oracle::{
 };
 use std::sync::Arc;
 
-use fd_core::level::EdgesCut;
 use fd_core::level::redraw::{OBJECT_MAP, SCREEN_LINE, TILE_MAP};
+use fd_core::level::{AddCut, EdgesCut};
 use fd_core::render::objects::CUT_ROWS;
 use fd_core::render::playfield::{SCREEN, Scroll};
 use fd_core::{
@@ -183,6 +183,11 @@ const SCANS: [(u32, u32, u32); 4] = [
 
 /// `h0_6882`, and its `movem.l` after the `st.b` that marks the new cell used.
 const ADD_CELL: Range<u32> = 0x6882..0x69a0;
+/// In `h0_6882`: the first instruction after its four counts, where it has found the chosen
+/// list's free entry, and its `st.b` (T82, `fd_core::level::AddCut`). A PC at one has not run it.
+const ADD_COUNTED: u32 = 0x691e;
+const ADD_FOUND: u32 = 0x6984;
+const ADD_MARK: u32 = 0x699e;
 
 /// Each scan's creature branch, from its first instruction to its `bsr.w h0_681c`: a PC in it has
 /// not started the cell's creature (T75).
@@ -307,10 +312,18 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
             } else {
                 0
             };
+            // Inside `h0_6882` for the scan's cell: what it had settled before the pass (T82).
+            let add = match pc {
+                _ if !scanning || defer_from != a2 => AddCut::Whole,
+                ADD_COUNTED..ADD_FOUND => AddCut::List,
+                ADD_FOUND..=ADD_MARK => AddCut::Entry,
+                _ => AddCut::Whole,
+            };
             return Some(EdgesCut {
                 next: r as u8 + 1,
                 defer_from: Some(defer_from),
                 shape_words: (!scanning).then(|| shapes_copied(r, pc, regs)),
+                add,
             });
         }
     };
@@ -318,6 +331,7 @@ pub fn edges_cut_at(pc: u32, seen: u32, returns: &[u32], regs: &[u32; 15]) -> Op
         next,
         defer_from: None,
         shape_words: None,
+        add: AddCut::Whole,
     })
 }
 
@@ -1871,6 +1885,7 @@ mod tests {
                 next,
                 defer_from,
                 shape_words: (defer_from == Some(0)).then_some(0),
+                add: AddCut::Whole,
             })
         };
         // Spinning, or in the status bar's redraw before the redraw half: no cut.
@@ -1907,6 +1922,7 @@ mod tests {
                 next,
                 defer_from: Some(0),
                 shape_words: Some(n),
+                add: AddCut::Whole,
             })
         };
         let mut r = [0u32; 15];

@@ -23,8 +23,8 @@ use amiga_oracle::FrameInput;
 use fd_conform::{
     Case, Engine, Goal, Inputs, Live, Options, Outcome, Verdict, conform_dir, reach_case, run_with,
 };
-use fd_core::level::EdgesCut;
 use fd_core::level::redraw::{Deferred, OBJECT_MAP};
+use fd_core::level::{AddCut, EdgesCut};
 use fd_core::objects::creature::{LEFT, STOMPED, WALK4_RIGHT, WALK5_LEFT};
 use fd_core::program::Program;
 use fd_core::{Event, Game, GameData, LAYOUT, Mem, PORTED, Start, Transplant, Var};
@@ -491,7 +491,7 @@ impl Engine for Cuts {
             .iter()
             .filter_map(|d| match d {
                 Deferred::Creature { cell, .. } => Some((cell - OBJECT_MAP) as usize),
-                Deferred::Cell(_) | Deferred::Collision { .. } => None,
+                Deferred::Cell(_) | Deferred::CellIn { .. } | Deferred::Collision { .. } => None,
             })
             .take(free)
             .collect();
@@ -527,6 +527,7 @@ impl Engine for Cuts {
                     next: 1,
                     defer_from: Some(cell),
                     shape_words: None,
+                    add: AddCut::Whole,
                 },
                 c => c,
             }),
@@ -540,6 +541,7 @@ impl Engine for Cuts {
                         next: 4,
                         defer_from: Some(0),
                         shape_words: None,
+                        add: AddCut::Whole,
                     })
                 } else {
                     at

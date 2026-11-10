@@ -132,6 +132,7 @@ impl Game {
                     collision: &mut plane,
                     blits: &mut blits,
                     defer_from: None,
+                    add_cut: level::AddCut::Whole,
                     late_from: None,
                     written: 0,
                     late: Vec::new(),
