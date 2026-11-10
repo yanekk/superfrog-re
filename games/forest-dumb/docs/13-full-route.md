@@ -85,7 +85,7 @@ aside in ten boxes, of three kinds as it read them. What each was, measured:
 
 - **How frames in a row are counted.** The runner told the picture judge only of frames that
   differed, so glitch frames thousands of frames apart read as a run. It now tells it of every
-  frame, as the toolkit counts (owner, 2026-11-10). With nothing set aside 53 frames were past a
+  frame, as the toolkit counts (the coordinator agent for the owner, 2026-11-10). With nothing set aside 53 frames were past a
   few pixels; two stretches were three or more in a row.
 - **The countdown's and the score's last digits** (frames 18 365 to 18 396). The original never
   ran its status bar redraw after pass 12 064: `main_loop` was still in its edge redraws when

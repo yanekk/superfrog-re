@@ -146,7 +146,7 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     );
 }
 
-/// T82 (owner, 2026-11-10): "in a row" is counted as the toolkit's `PictureJudge` counts it, the
+/// T82 (coordinator, 2026-11-10): "in a row" is counted as the toolkit's `PictureJudge` counts it, the
 /// judge told of every compared frame. Two glitch frames, an identical one and a third glitch are
 /// three tolerated frames; three glitch frames with none between fail on the third. Before, the
 /// judge heard only of differing frames, so the identical frame ended no run and the first failed

@@ -1743,7 +1743,7 @@ pub fn run_inputs(
         if cut_shows {
             verdict.cut_redraws += 1;
         }
-        // The judge hears of every compared frame, as the toolkit counts (T82, owner 2026-11-10):
+        // The judge hears of every compared frame, as the toolkit counts (T82, coordinator 2026-11-10):
         // an identical frame, or one accepted as the measured cut redraw, ends a run of glitches.
         // Told only of differing frames it counted glitches thousands of frames apart as a run.
         let accepted = class == PictureClass::Same || cut_shows;

@@ -114,7 +114,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   seen in: once passes end after the frame does (from frame 6334 at the level sync point) that frame
   shows the pass before, a scroll apart (`tests/picture_cases.rs`). A frame showing a pass the original
   has not ended yet, or a pass no frame shows, is not compared. The judge is told of every compared
-  frame, as the toolkit counts (T82, owner 2026-11-10): an identical frame ends a run of glitch
+  frame, as the toolkit counts (T82, the coordinator agent for the owner, 2026-11-10): an identical frame ends a run of glitch
   frames, so "in a row" means frames next to each other (`tests/runner.rs`). A
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
