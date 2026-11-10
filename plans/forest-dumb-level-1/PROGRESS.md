@@ -102,7 +102,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
 | T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ✅ | |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
-| T82 | route-picture | T48; blocks T29 | ✅ | Reviewed: holds. Added a unit test for the late bobs (mutation caught only by the full route's count); the count rule's yes was the coordinator's, texts corrected. Probed: route through the CLI, two mutations red. Flake reproduced with T82's count off, T85's. `contact.rs` and `edge_latch.rs` reds were T83's. Read-only: `redraw_skipped` with a creature cut; `AddCut::Entry` on the route. |
+| T82 | route-picture | T48; blocks T29 | ✅ | Reviewed: holds. Fixes: a unit test for the late bobs; the count rule's yes was the coordinator's; after merging T83, `edge_latch.rs`'s whole-scan half passed under the new count, now judged strict (FINDINGS). Probed: route through the CLI, two mutations red. Flake reproduced with T82's count off, T85's. Read-only: `redraw_skipped` with a creature cut; `AddCut::Entry` on the route. |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
 | T85 | observes-only-flake | —; blocks T29 | ⬜ | |
