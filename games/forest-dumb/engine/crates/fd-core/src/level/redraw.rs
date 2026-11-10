@@ -773,6 +773,53 @@ impl Io for PlayIo<'_> {
 mod tests {
     use super::*;
 
+    /// T48: the up row's shape row is `$ffff` with the camera in the map's second row, far past
+    /// the shape map: the byte there is the program's, not 0.
+    #[test]
+    fn past_the_level_buffers_a_redraw_reads_the_program() {
+        let mut program = vec![0u8; (IMAGE_END + 0x1_0000) as usize];
+        program[(SHAPE_MAP + 0xffff) as usize] = 0x32;
+        program[(SHAPES + 1) as usize] = 0x77;
+        let image = LevelImage {
+            bytes: vec![1, 2, 3],
+            program: crate::program::Program::hunk0(program),
+        };
+        // Inside the buffers the level's bytes win over whatever the program's file holds there.
+        assert_eq!(image.byte(SHAPES + 1), 2);
+        assert_eq!(image.byte(SHAPE_MAP + 0xffff), 0x32);
+        assert_eq!(image.byte(SHAPE_MAP + 0xfffe), 0);
+    }
+
+    /// T48: a redraw the next pass cut after `late_from` collision words writes those and keeps
+    /// the rest, in order, for after the pass.
+    #[test]
+    fn the_words_a_cut_redraw_had_not_copied_are_kept_for_after_the_pass() {
+        let program = crate::program::Program::hunk0(vec![0; 0x3_8000]);
+        let image = LevelImage {
+            bytes: Vec::new(),
+            program: program.clone(),
+        };
+        let mut plane = super::super::collision::CollisionPlane::new(&program);
+        let (mut objects, mut blits) = (Vec::new(), Vec::new());
+        let mut io = PlayIo {
+            image: &image,
+            objects: &mut objects,
+            collision: &mut plane,
+            blits: &mut blits,
+            defer_from: None,
+            late_from: Some(2),
+            written: 0,
+            late: Vec::new(),
+        };
+        for (k, w) in [0x1111u16, 0x2222, 0x3333, 0x4444].into_iter().enumerate() {
+            io.collision_word(2 * k as u32, w);
+        }
+        assert_eq!(io.late, [(2, 4, 0x3333), (3, 6, 0x4444)]);
+        assert_eq!(io.written, 4);
+        let got: Vec<u8> = (0..8).map(|o| plane.byte(o)).collect();
+        assert_eq!(got, [0x11, 0x11, 0x22, 0x22, 0, 0, 0, 0]);
+    }
+
     #[test]
     fn a_tile_row_lands_in_the_band_of_its_row() {
         // Entry j of block b holds band (j - 1 - b) & 15; edge a's entry 13 of block 15 - (r & 15)

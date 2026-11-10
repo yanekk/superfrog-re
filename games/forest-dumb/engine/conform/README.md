@@ -139,7 +139,10 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
   (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
   the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
-  since T78.
+  since T78. A pass that came before the cut redraw's scan also carries how many `collision_map`
+  words its shapes had copied (`EdgesCut::shape_words`, `shapes_copied`: the PC's place in the
+  shape loops and their counters, T48); the engine copies the rest after the pass, which probes
+  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`).
 - **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
   the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
   missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After

@@ -73,7 +73,8 @@ Gotcha: creatures run on both sides (T79). The engine alone does not know which 
 original read or which pass cut a redraw, so it can meet a creature a pass apart: the verdict is then
 `Outcome::GoalMissed`, every pass agreeing and the route ending elsewhere than planned, which the
 command prints as "agrees on all N passes but ends elsewhere than the engine alone". The 100-round
-route does so from 120 steps on (`tests/route.rs`).
+route does so from 120 steps on (`tests/route.rs`). The whole level's route on the original is
+another route, planned from the original's states (T48, `games/forest-dumb/docs/13-full-route.md`).
 
 ## Where the details are
 

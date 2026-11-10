@@ -1,0 +1,14 @@
+# T48: the whole of W1-1 on the original (DESIGN §1, §2.11): the route scripts/route-W1-1.txt from
+# the level sync point to the step the original runs next_world in, nothing frozen. The character,
+# the camera, the status variables, the collision register's copy and every creature slot and flag
+# on every pass. Goal: the level's end found in the same step on both sides. tests/full_route.rs
+# holds that no life is lost on the way and shows the ported routines' hits.
+# The picture is compared and excluded whole: it differs past the owner's tolerance on 15 of its
+# 22 152 frames, of three kinds (docs/13-full-route.md, "The picture on the route"), which T82 removes.
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "route-W1-1"
+frames = 22536
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "clxdat_copy", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { level_end = true, by_frame = 28837 }
+exclude = [{ what = "rows 0..250", task = "T82" }]
