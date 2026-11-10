@@ -118,6 +118,7 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     let bar = Exclusion {
         rows: 194..250,
         cols: None,
+        frames: None,
         var: None,
         what: "rows 194..250".into(),
         task: "T10".into(),

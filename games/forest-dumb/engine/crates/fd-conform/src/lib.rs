@@ -1622,12 +1622,15 @@ pub fn run_inputs(
         let pass = shown - first;
         let pic = am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1);
         let colours = to_rgb12(&ours);
+        // A box naming frames is left out on those frames alone (T48).
+        let on = |e: &Exclusion| e.frames.as_ref().is_none_or(|f| f.contains(&frame));
         for (i, e) in case.exclude.iter().enumerate() {
-            if e.var.is_none() && differs_in(&colours, ours.width, &pic, e) {
+            if e.var.is_none() && on(e) && differs_in(&colours, ours.width, &pic, e) {
                 verdict.excluded[i].1 += 1;
             }
         }
-        let theirs = with_boxes_ours(&pic, &colours, ours.width, &case.exclude);
+        let boxes: Vec<Exclusion> = case.exclude.iter().filter(|e| on(e)).cloned().collect();
+        let theirs = with_boxes_ours(&pic, &colours, ours.width, &boxes);
         let class = classify(&ours, &theirs, &rows, &tol);
         // The original's redraw was cut short: its bar may show what the engine's cut redraw draws,
         // and only the bar may differ (owner, 2026-11-06, T71).

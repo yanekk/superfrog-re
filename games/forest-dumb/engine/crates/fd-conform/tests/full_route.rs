@@ -177,7 +177,7 @@ fn the_routes_first_600_steps_agree_with_the_original() {
 const OPENING_ITEMS: u32 = 0x272;
 
 /// The whole route: the case passes with the level's end as its goal, no life is lost on any pass,
-/// nothing but the level's end is raised, the picture's exclusion is the only one, and the ported
+/// nothing but the level's end is raised, only T82's boxes are left out of the picture, and the ported
 /// routines the route never runs are exactly the named ones (DESIGN §4.1).
 #[test]
 #[ignore = "full: 22 536 frames on the original with the picture, about 80 s"]
@@ -185,13 +185,18 @@ fn the_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {
     let c = case("route-W1-1");
     assert!(c.compare.vars && c.compare.picture);
     assert!(matches!(c.goal, Some(Goal::LevelEnd { .. })));
-    // Sound is not compared (DESIGN §2.1); the picture is T82's until it removes this line.
-    let excluded: Vec<(&str, &str)> = c
-        .exclude
-        .iter()
-        .map(|e| (e.what.as_str(), e.task.as_str()))
-        .collect();
-    assert_eq!(excluded, [("rows 0..250", "T82")]);
+    // Sound is not compared (DESIGN §2.1). The picture is, but for T82's boxes: each on its own
+    // frames, 40 frames in all, and the runner fails one that hides nothing.
+    let mut frames = BTreeSet::new();
+    for e in &c.exclude {
+        assert!(
+            e.task == "T82" && e.var.is_none() && e.cols.is_some(),
+            "{}",
+            e.what
+        );
+        frames.extend(e.frames.clone().expect("a box on named frames"));
+    }
+    assert_eq!((c.exclude.len(), frames.len()), (10, 40));
     for slot in [
         "creature_active+$0",
         "creature_slots+$24",

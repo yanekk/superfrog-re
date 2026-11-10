@@ -34,7 +34,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 **Cases** (`src/case.rs`, re-exported at the root)
 - `Case::load(&Path) -> Result<Case, String>`, `Case::parse(name, text)`, `case.is_level()`.
 - `Case` fields: `sync_frame`, `frames`, `input`, `vars`, `goal`, `exclude`, `set`, `swap`.
-- `Goal::{All { all, by_frame }, Idle, GameOver { by_frame }, LevelEnd { by_frame }}`; `Compare { vars, picture }`; `Exclusion { rows, cols, var, what, task }`.
+- `Goal::{All { all, by_frame }, Idle, GameOver { by_frame }, LevelEnd { by_frame }}`; `Compare { vars, picture }`; `Exclusion { rows, cols, frames, var, what, task }`.
 
 **Running and verdicts** (`src/lib.rs`)
 - `run(&Case) -> Result<Verdict, String>`: title or level; the default options.

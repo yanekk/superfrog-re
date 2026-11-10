@@ -59,6 +59,9 @@ pub struct Exclusion {
     /// Columns of those rows (`"rows A..B cols C..D"`), so the rest of the rows is still compared;
     /// `None` for whole rows (T44: the countdown's digits share rows with the items').
     pub cols: Option<Range<u16>>,
+    /// The oracle frames a box is left out on (`"rows A..B cols C..D frames F..G"`, T48): on every
+    /// other frame it is compared. `None` leaves it out on every frame.
+    pub frames: Option<Range<u32>>,
     /// A `LAYOUT` variable read each pass and counted where it differs (`what = "var NAME"`).
     pub var: Option<String>,
     /// As the case file wrote it.
@@ -613,18 +616,26 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
             .and_then(|(a, b)| Some(a.trim().parse::<u16>().ok()?..b.trim().parse::<u16>().ok()?))
             .filter(|r| r.start < r.end)
     };
-    let (rows, cols) = if var.is_some() {
-        (0..0, None)
+    let frame_range = |r: &str| {
+        r.split_once("..")
+            .and_then(|(a, b)| Some(a.trim().parse::<u32>().ok()?..b.trim().parse::<u32>().ok()?))
+            .filter(|r| r.start < r.end)
+    };
+    let (rows, cols, frames) = if var.is_some() {
+        (0..0, None, None)
     } else {
         what.strip_prefix("rows ")
             .and_then(|r| match r.split_once(" cols ") {
-                Some((r, c)) => Some((range(r)?, Some(range(c)?))),
-                None => Some((range(r)?, None)),
+                Some((r, c)) => match c.split_once(" frames ") {
+                    Some((c, f)) => Some((range(r)?, Some(range(c)?), Some(frame_range(f)?))),
+                    None => Some((range(r)?, Some(range(c)?), None)),
+                },
+                None => Some((range(r)?, None, None)),
             })
             .ok_or_else(|| {
                 format!(
                     "exclude what = \"{what}\": expected \"rows A..B\", \"rows A..B cols C..D\", \
-                     each A below B, or \"var NAME\""
+                     \"rows A..B cols C..D frames F..G\", each A below B, or \"var NAME\""
                 )
             })?
     };
@@ -640,6 +651,7 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
     Ok(Exclusion {
         rows,
         cols,
+        frames,
         var,
         what,
         task,
@@ -706,6 +718,7 @@ mod tests {
             vec![Exclusion {
                 rows: 180..250,
                 cols: None,
+                frames: None,
                 var: None,
                 what: "rows 180..250".into(),
                 task: "T10".into()
@@ -871,11 +884,38 @@ mod tests {
             vec![Exclusion {
                 rows: 223..231,
                 cols: Some(152..176),
+                frames: None,
                 var: None,
                 what: "rows 223..231 cols 152..176".into(),
                 task: "T10".into()
             }]
         );
+    }
+
+    /// T48: a box left out on the frames named only; a frame range needs the box.
+    #[test]
+    fn a_box_is_excluded_on_the_frames_it_names() {
+        let what = "rows 226..228 cols 162..166 frames 18364..18397";
+        let c = Case::parse("l", &LEVEL.replace("rows 180..250", what)).unwrap();
+        assert_eq!(
+            c.exclude,
+            vec![Exclusion {
+                rows: 226..228,
+                cols: Some(162..166),
+                frames: Some(18364..18397),
+                var: None,
+                what: what.into(),
+                task: "T10".into()
+            }]
+        );
+        for bad in [
+            "rows 226..228 frames 18364..18397",
+            "rows 226..228 cols 162..166 frames 18397..18364",
+            "rows 226..228 cols 162..166 frames",
+        ] {
+            let e = Case::parse("l", &LEVEL.replace("rows 180..250", bad)).unwrap_err();
+            assert!(e.contains("frames F..G"), "{bad}: {e}");
+        }
     }
 
     #[test]
@@ -887,6 +927,7 @@ mod tests {
             vec![Exclusion {
                 rows: 0..0,
                 cols: None,
+                frames: None,
                 var: Some("countdown".into()),
                 what: "var countdown".into(),
                 task: "T10".into()

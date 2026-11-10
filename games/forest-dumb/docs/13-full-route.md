@@ -80,17 +80,20 @@ Three differences stopped the first runs, each fixed where it lay:
 
 ## The picture on the route
 
-Compared on 22 152 frames and excluded whole in the case, for T82. Past the owner's tolerance (more
-than two frames in a row) on 15 frames, of three kinds, measured with the judge started again after
-each:
+Compared on all 22 152 frames. On 40 it is past the owner's tolerance as the runner counts it, and
+the case sets those aside in ten boxes naming T82, each the smallest that holds one frame's
+difference and each on its own frames (`"rows A..B cols C..D frames F..G"`). Three kinds:
 
-- **A taken item erased behind the beam** (frame 15 813). `h0_29ca`'s blit comes mid-frame (beam
-  line 142 for a cell at lines 135 to 150), so the frame still shows the item's top rows; the
-  engine erases the cell whole. One such frame after two that differed by a few pixels.
-- **The countdown in the status bar** (frames 18 366 to 18 396, passes `32k + 1` to `32k + 31`
-  from 12 065). The original shows 809, the engine 808, and no cut redraw the engine draws
-  (`Game::cut_redraw`) matches.
-- **The first rows of the view at the map's top** (frames 18 896, 19 454, 19 463). A sliver of a
-  fruit differs, and the engine shows two oranges in the top row the original does not show yet.
+- **A taken item erased behind the beam** (frames 15 813, 20 693). `h0_29ca`'s blit comes mid-frame
+  (at 15 813, beam lines 142 and 152 for a cell on lines 135 to 150), so the frame still shows the
+  item's top rows; the engine erases the cell whole.
+- **The countdown's and the score's last digits** through one status period (frames 18 364 to
+  18 395, passes `32k + 1` to `32k + 31` from 12 065). The original shows 809 and the old score
+  digit, the engine 808 and the new, and no cut redraw the engine draws (`Game::cut_redraw`) matches.
+- **The first rows of the view at the map's top** (frames 17 196, 18 896, 19 454, 19 456, 19 459,
+  19 463). The engine shows an object or two oranges in the top row that the original does not show
+  yet; once a sliver of a fruit differs.
 
-Without the exclusion the case stops at pass 9 511 (frame 15 813).
+The count is the runner's: it tells `PictureJudge` of a frame only when it is not `Same`, so "three
+frames in a row" is three glitch frames since the last few-pixel frame, however far apart. Eight of
+the 40 are single frames. Whether an identical frame should end a run is T82's first question.

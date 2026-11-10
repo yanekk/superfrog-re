@@ -70,7 +70,8 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
   task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
   countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
-  needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
+  needs `compare = ["vars"]` and is not also in `vars`. A box may name the oracle frames it is left out
+  on (`"rows A..B cols C..D frames F..G"`, T48): on every other frame it is compared. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
 - **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
   the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
