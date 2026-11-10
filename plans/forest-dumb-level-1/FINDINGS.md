@@ -6,12 +6,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-10 | 🔄 | Owner, T48: T82 (the route's picture) and T83 (two red tests, `Escape: forest-dumb-level-1 T80`) added, blocking T29. A new comparison rule is asked first and follows T71: only what the original could show, proven per frame. |
-| 2026-11-10 | 📌 | T48: `route-W1-1` holds on the original, 21 764 passes, no life lost. It is not T27's route, which the app keeps (docs/13). Fixes: `EdgesCut::shape_words`, `READ_JOYSTICK` at `h0+$8e1c`, `LevelImage` reading the program. |
+| 2026-11-10 | 🔄 | Owner, T48 review: one route must finish on both sides. T84 added (after T48, T82; blocks T28, T29). `route-W1-1` holds on the original only, 21 764 passes, no life lost; the app keeps T27's (docs/13). |
+| 2026-11-10 | 🔄 | Owner, T48: T82 (the route's picture) and T83 (two tests red at `53638b37`, `Escape: forest-dumb-level-1 T80`) added, blocking T29. A new comparison rule is asked first and follows T71: only what the original could show, proven per frame. |
 | 2026-11-10 | 🐞 | T48: the runner never tells `PictureJudge` of a `Same` frame, so "in a row" counts glitch frames since the last few-pixel frame. T82's; `route-W1-1` sets 40 frames aside in boxes (`frames F..G`). |
-| 2026-11-10 | 🐞 | T48: red at `53638b37`, before T48: `edge_latch.rs` `the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped` (picture, pass 313) and `contact.rs` `the_waters_frames_change_contact_in_the_pool_as_the_originals` (`Copies` lacks `creatures_uncut`). T83. |
-| 2026-11-10 | 📌 | T48: `view_tiles`, `view_tile`, `view_shapes`, `view_shape`, `h0_9a34`, `h0_988a` run only in `level_init`, before the sync point, and `countdown_plus_100` needs `$4c`: no case runs them. `full_route.rs` `NOT_ON_ROUTE` names them. |
-| 2026-11-10 | 📌 | T48, unmeasured: a redraw cut twice before its scan (`main_loop_redraws`, `again`); the read count past `input_log_index` 12 000, which nothing checks. T48's route loses a life on the engine alone at step 1 743. |
+| 2026-11-10 | 🔄 | Owner accepted, T48 review: `view_tiles`, `view_tile`, `view_shapes`, `view_shape`, `h0_9a34`, `h0_988a` (`level_init`) and `countdown_plus_100` run in no case (`NOT_ON_ROUTE`). T65's and T69's start-state checks hold the six's result; the time bonus waits for a level with `$4c`. |
+| 2026-11-10 | 📌 | T48, unmeasured: a redraw cut twice before its scan (`main_loop_redraws`, `again`), which the route never meets (probed in review); the read count past `input_log_index` 12 000, which nothing checks. |
+| 2026-11-10 | 🐞 | T48 review, sweep: a column box (`cols`, T44) has no runner test that the rest of its rows is still compared; `runner.rs` now holds the `frames` half only. Left. |
 | 2026-11-10 | 📌 | T80, measured: a long pass cuts creatures at lines 31 to 110, behind the beam near the view's top, whole or a top part. The runner hands the rows (`creature_cuts`, `Engine::creatures_uncut`); frames left differ by 48 pixels at most. |
 | 2026-11-10 | 🐞 | T80: `cargo clippy -p fd-conform` stops on `bug.rs:196` (`while_immutable_condition`). Left. |
 | 2026-11-10 | 📌 | T81, left: in a shared routine `edges_cut` names the redraw from a stack a line old, so a pass within a line of `main_loop`'s `bsr` reads as no cut. Unmeasured; no case differs. |
