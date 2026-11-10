@@ -181,6 +181,9 @@ impl Engine for Handed {
     fn cut_redraw(&self, cut: u8) -> Option<Picture> {
         Engine::cut_redraw(&self.game, cut)
     }
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
     fn foreground_cut(&mut self, at: Option<EdgesCut>) {
         match self.how {
             Hand::Dropped => {}
@@ -198,10 +201,8 @@ fn handed(name: &str, how: Hand) -> Verdict {
     // the picture does (`mechanic-vanish` pass 304 with no cut, `mechanic-spring` pass 93 with the
     // scan whole), which `enemy_cases.rs` holds. This test is the latches' and the animated cells'.
     case.vars.retain(|n| !n.starts_with("creature_"));
-    if how == Hand::WholeScan {
-        // The play area compared: among what remains the scan's place shows in the picture alone.
-        case.exclude.clear();
-    }
+    // `mechanic-spring` compares the play area: among what remains the scan's place shows in the
+    // picture alone.
     let game = Game::new(
         game_data().unwrap_or_else(|e| panic!("{e}")),
         fd_core::Start::Level1,
@@ -214,8 +215,6 @@ fn handed(name: &str, how: Hand) -> Verdict {
 /// without the measured cut `mechanic-vanish` differs on `edge_latch_right` at pass 340, where a
 /// pass came inside a redraw and the latch stayed set; with the cut but the redraw's scan run whole
 /// `mechanic-spring`'s coins join other animated-cell lists and its picture differs at frame 6606.
-/// That run compares the play area, which the case excludes for T80: handed whole, the engine first
-/// differs there at frame 6779, T80's creature.
 #[test]
 fn the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped() {
     let (dropped, whole) = std::thread::scope(|s| {
@@ -281,7 +280,8 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
 /// `camera_update` and watching pass ends (both proven to change nothing, T31) and sampling the
 /// steps [`Sampler`] picks, or every step when `every`. Steps both a frame at a time, up to `steps`,
 /// and returns the first step whose chip and slow RAM, picture or CPU registers differ, and how
-/// many steps were sampled.
+/// many steps were sampled. The sampled side's creature cuts are read every step as the runner
+/// reads them (T80), from what the oracle keeps of each step whether read or not.
 fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, u32) {
     let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
     let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
@@ -302,6 +302,7 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
         let input = inputs.at(case.sync_frame + step);
         let a = alone.step(input).unwrap_or_else(|e| panic!("{e}"));
         let s = seen.step(input).unwrap_or_else(|e| panic!("{e}"));
+        std::hint::black_box(fd_conform::creature_cuts(&seen));
         if a.picture != s.picture || alone.cpu() != seen.cpu() || alone.memory() != seen.memory() {
             return (Some(step), sampled);
         }
@@ -313,7 +314,8 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
 /// A measurement that changes the original is not one (owner, 2026-11-09): in every case where the
 /// runner samples lines to read the edge cut (`records_edge_cuts`: every level case since T78), the
 /// original sampled as the runner samples it is the original alone, every
-/// frame, in chip and slow RAM, picture and CPU registers.
+/// frame, in chip and slow RAM, picture and CPU registers. The same run reads each step's creature
+/// cuts (`creature_cuts`, T80), which switches nothing on.
 #[test]
 fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
     let dir = fd_conform::conform_dir().join("cases");

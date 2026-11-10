@@ -100,7 +100,7 @@ Interruptible points of the ported routines (porting rule 1), listed before port
 | `h0_3ab4` | callers in `game_frame` | a blitter-busy loop; the engine's blits finish at once |
 | `h0_6a96` and its digit routines | foreground (`main_loop`) | any instruction: a pass can cut a redraw short; picture only, for one frame |
 | `h0_9a34`, `h0_988a` | start-up | none |
-| `h0_2c7e`, `h0_5e44`, `h0_2d4c`, `h0_5820` (T52) | level-3 interrupt (`game_frame`) | a blitter-busy loop before each blit (6 in `h0_5e44`, up to 2 in `h0_5820`); the slot loops keep their index in memory (`h0+$2c7a`, `$2c7c`) but finish in the pass; no beam wait, so a cut behind the beam shows a frame late |
+| `h0_2c7e`, `h0_5e44`, `h0_2d4c`, `h0_5820` (T52) | level-3 interrupt (`game_frame`) | a blitter-busy loop before each blit (6 in `h0_5e44`, up to 2 in `h0_5820`); the slot loops keep their index in memory (`h0+$2c7a`, `$2c7c`) but finish in the pass; no beam wait, so a cut behind the beam shows a frame late: a case's runner measures it and `Game::creatures_uncut` draws that frame (T80, docs/10) |
 
 **Creatures (T52, `render::objects::Creatures`).** Each pass `game_frame` restores, then cuts, the five
 creature slots. `h0_2c7e` runs with the flags of the slots the last pass drew (`creature_active+$c`)

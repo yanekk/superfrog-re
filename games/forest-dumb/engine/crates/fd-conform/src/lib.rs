@@ -27,12 +27,15 @@ use amiga_chips::{Picture, to_rgb12};
 use amiga_conform::compare::{PictureClass, PictureJudge, classify, picture_except};
 use amiga_conform::{Mode, Tolerance, report, script};
 use amiga_oracle::{
-    Amiga, AmigaMemory, FrameInput, LineSample, OracleConfig, Rgb12Frame, SLOW_BASE, kickstart_path,
+    Amiga, AmigaMemory, BlitEventKind, FrameInput, LineSample, OracleConfig, Rgb12Frame, SLOW_BASE,
+    kickstart_path,
 };
 use std::sync::Arc;
 
 use fd_core::level::EdgesCut;
-use fd_core::level::redraw::{OBJECT_MAP, TILE_MAP};
+use fd_core::level::redraw::{OBJECT_MAP, SCREEN_LINE, TILE_MAP};
+use fd_core::render::objects::CUT_ROWS;
+use fd_core::render::playfield::{SCREEN, Scroll};
 use fd_core::{
     Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, Width,
     layout_var,
@@ -272,6 +275,110 @@ pub fn edges_cut_at(pc: u32, returns: &[u32], regs: &[u32; 15]) -> Option<EdgesC
     })
 }
 
+/// One blit of a creature's cut (`h0_5820`) as the original made it (T80).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CutSeen {
+    /// D's first word, as a byte offset from the play screen.
+    pub dst: u32,
+    /// Its rows, each one plane of one line: a creature is [`CUT_ROWS`], in two blits where it
+    /// wraps past the screen's last line.
+    pub rows: u16,
+    /// The beam as the blit began and as it ended, in DMA cycles from the frame's start.
+    pub begin: u32,
+    pub end: u32,
+}
+
+/// A raster line in DMA cycles (PAL), and the level-3 interrupt's line, where a pass starts.
+const LINE_CYCLES: u32 = 227;
+const PASS_LINE: u16 = 233;
+
+/// The cycle in a line at which the play area's first word is fetched (`DDFSTRT=$30`, docs/09
+/// "Display"), the cycles a word of its planes takes, and its lines (47 to 225, `DIWSTOP=$e2a1`).
+const FETCH_START: u32 = 0x30;
+const FETCH_WORD: u32 = 8;
+const PLAY_LINES: u32 = 0xe2 - 0x2f;
+
+/// The creature cuts the last step's frame saw before its pass came at line 233, in order: the cuts
+/// of the pass that started in the step before and ran on into this frame, the one this frame shows
+/// (T80). A short pass cuts in the step it starts in, below the play area, and leaves none here.
+/// Read off what the oracle keeps of every step ([`Amiga::cpu_writes`], [`Amiga::blit_events`]),
+/// so nothing is switched on to take it. A cut is a BLTSIZE write three words wide under
+/// `h0_5820`'s minterm (`BLTCON0 & $fff = $fca`); the bobs' and the animated cells' are one word.
+/// `None` when a cut's begin or end is missing from the step's blits.
+pub fn creature_cuts(am: &Amiga) -> Option<Vec<CutSeen>> {
+    let cycles = |v: u16, h: u16| v as u32 * LINE_CYCLES + h as u32;
+    let events = am.blit_events();
+    let (mut con0, mut dpt) = (0u16, 0u32);
+    let mut cuts = Vec::new();
+    for w in am.cpu_writes() {
+        if w.vpos >= PASS_LINE {
+            break;
+        }
+        match w.reg {
+            0x40 => con0 = w.value,
+            0x54 => dpt = (dpt & 0xffff) | (w.value as u32) << 16,
+            0x56 => dpt = (dpt & 0xffff_0000) | w.value as u32,
+            0x58 if con0 & 0xfff == 0xfca && w.value & 63 == 3 => {
+                let at = cycles(w.vpos, w.hpos);
+                let mut after = events
+                    .iter()
+                    .filter(|e| !e.next)
+                    .map(|e| (e.kind, cycles(e.vpos, e.hpos)))
+                    .skip_while(|&(k, t)| k != BlitEventKind::Begin || t < at);
+                let begin = after.next()?.1;
+                let end = after.find(|&(k, _)| k == BlitEventKind::End)?.1;
+                cuts.push(CutSeen {
+                    dst: (dpt & 0x7_fffe).wrapping_sub(HUNK_BASES[3] + SCREEN),
+                    rows: w.value >> 6,
+                    begin,
+                    end,
+                });
+            }
+            _ => {}
+        }
+    }
+    Some(cuts)
+}
+
+/// For each creature of `cuts`, how many of its cut's first blit rows the beam had passed before
+/// the blitter wrote them, in the frame a camera at `camera` shows: the frame shows those rows as
+/// they were before the cut (T80). A row is one plane of one line. Its words are taken as written
+/// evenly between the blit's begin and its end, and fetched where the display reaches its line
+/// ([`PLAY_WINDOW`]'s top is display row 0) and its place in it, so the count can be a row or two
+/// off and the row at the edge half shown: measured over the three cases that meet it, at most 48
+/// pixels of a frame, inside the tolerance's few (docs/10). Rows outside the play area's lines are
+/// never fetched.
+pub fn rows_behind_beam(cuts: &[CutSeen], camera: (u16, u16)) -> Vec<u16> {
+    let buffer = 0x100 * SCREEN_LINE;
+    let top = Scroll::from_camera(camera.0, camera.1).top % buffer;
+    let first_line = (PLAY_WINDOW.0 >> 8) as u32;
+    let (mut out, mut made, mut behind) = (Vec::new(), 0u32, 0u32);
+    for c in cuts {
+        // From the window's first fetched word; a cut starts at most a word left of it.
+        let from = (c.dst % buffer + buffer + 4 - top) % buffer;
+        let (line, word) = (
+            from / SCREEN_LINE,
+            (from % SCREEN_LINE).saturating_sub(4) / 2,
+        );
+        for r in 0..c.rows as u32 {
+            let shown_line = (line + r / 5) % 0x100;
+            // The middle one of the row's three words.
+            let written = c.begin + (c.end - c.begin) * (2 * r + 1) / (2 * c.rows as u32);
+            let fetched =
+                (first_line + shown_line) * LINE_CYCLES + FETCH_START + FETCH_WORD * (word + 1);
+            if shown_line < PLAY_LINES && written > fetched {
+                behind = made + r + 1;
+            }
+        }
+        made += c.rows as u32;
+        if made >= CUT_ROWS as u32 {
+            out.push(behind as u16);
+            (made, behind) = (0, 0);
+        }
+    }
+    out
+}
+
 /// How many of `h0_6a96`'s four reads (countdown at `h0+$6a96`, lives `$6aaa`, score `$6abe`, items
 /// `$6ad2`) `main_loop`'s redraw made before the interrupt that took the foreground at hunk 0 offset
 /// `pc` (T71). `None` when the redraw was not cut: `main_loop` had not read `irq_count` yet
@@ -381,6 +488,14 @@ pub trait Engine: Transplant {
     /// its own there (`Game::cut_foreground`, T74). A wrapper of [`Game`] forwards it; one that
     /// does not keeps the engine's own rule.
     fn foreground_cut(&mut self, _at: Option<EdgesCut>) {}
+    /// The picture after the last pass as the original shows it where the beam had passed the first
+    /// `rows[k]` blit rows of the `k`th creature the pass cut before they were written
+    /// ([`rows_behind_beam`], `Game::creatures_uncut`, T80); `None` if the engine cannot draw it. A
+    /// wrapper of [`Game`] forwards it; one that does not fails at the first run of such frames
+    /// past the tolerance.
+    fn creatures_uncut(&self, _rows: &[u16]) -> Option<Picture> {
+        None
+    }
 }
 
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
@@ -416,6 +531,10 @@ impl Engine for Game {
 
     fn foreground_cut(&mut self, at: Option<EdgesCut>) {
         self.cut_foreground(at);
+    }
+
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        Game::creatures_uncut(self, rows)
     }
 }
 
@@ -513,6 +632,9 @@ pub struct Verdict {
     /// Passes that came while `main_loop`'s edge redraws were still running on the original, so
     /// handed to the engine as cut there ([`Engine::foreground_cut`], T74).
     pub edge_cuts: u32,
+    /// Frames compared as the engine draws them with the creature cuts the beam had passed left
+    /// out, as measured on the original ([`Engine::creatures_uncut`], T80).
+    pub creature_cuts: u32,
     /// Each exclusion and the frames on which its rows differed, or the passes on which its
     /// variable did.
     pub excluded: Vec<(Exclusion, u32)>,
@@ -540,6 +662,7 @@ impl Verdict {
             tolerated: [0; 3],
             cut_redraws: 0,
             edge_cuts: 0,
+            creature_cuts: 0,
             excluded: Vec::new(),
             events: Vec::new(),
             goal_met: None,
@@ -626,6 +749,13 @@ impl fmt::Display for Verdict {
                 f,
                 "\n{} passes came during main_loop's edge redraws, handed to the engine",
                 self.edge_cuts
+            )?;
+        }
+        if self.creature_cuts > 0 {
+            write!(
+                f,
+                "\n{} frames show a creature the original cut behind the beam, drawn so by the engine",
+                self.creature_cuts
             )?;
         }
         for (e, n) in &self.excluded {
@@ -1111,6 +1241,10 @@ pub fn run_inputs(
     let mut profiling = false;
     // The last pass whose picture was compared.
     let mut shown_last: Option<u32> = None;
+    // A pass and the engine's picture of it with the creature cuts the beam had passed on the
+    // original left out (T80).
+    let mut uncut_drawn: Option<(u32, Picture)> = None;
+    let camera = ["camera_x", "camera_y"].map(|n| layout_var(n).expect("the camera in LAYOUT"));
 
     for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
@@ -1132,6 +1266,12 @@ pub fn run_inputs(
             }
         }
         let frame = am.frame();
+        // The cuts this frame saw of the pass that started in the step before (T80).
+        let late_cuts = if case.compare.picture {
+            creature_cuts(&am).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
         sampler.stepped(&am);
         verdict.coverage.add(opts.register, am.pc_hits());
         read.step(&am, input)?;
@@ -1171,6 +1311,16 @@ pub fn run_inputs(
                         }
                         if case.compare.picture {
                             drawn.push((n, engine.picture().ok_or(NO_PICTURE)?));
+                            // This step's frame shows pass `n` where it started in the step before
+                            // and ends in this one; the engine draws it as the beam found it.
+                            uncut_drawn = None;
+                            if n == started && n == ended && !late_cuts.is_empty() {
+                                let at = camera.map(|v| theirs.value(v) as u16);
+                                let behind = rows_behind_beam(&late_cuts, (at[0], at[1]));
+                                if behind.iter().any(|&b| b > 0) {
+                                    uncut_drawn = engine.creatures_uncut(&behind).map(|p| (n, p));
+                                }
+                            }
                             if let Some((from, r)) = cut.as_ref()
                                 && (*from..from + 31).contains(&n)
                             {
@@ -1344,8 +1494,13 @@ pub fn run_inputs(
             continue;
         };
         shown_last = Some(shown);
-        let ours = drawn.swap_remove(k).1;
+        let whole = drawn.swap_remove(k).1;
         drawn.retain(|(n, _)| *n > shown);
+        // Where the original cut a creature behind the beam, the engine's picture is the one it
+        // draws with the measured rows left out, and nothing else stands in for it.
+        let uncut = uncut_drawn.take_if(|(n, _)| *n == shown).map(|(_, p)| p);
+        verdict.creature_cuts += uncut.is_some() as u32;
+        let ours = uncut.unwrap_or(whole);
         let cut_ours = cut_drawn
             .iter()
             .position(|(n, _)| *n == shown)
@@ -1531,6 +1686,42 @@ mod tests {
         assert_eq!(redraw_cut(0x6ae2), Some(3..5));
         // Inside a draw routine: any.
         assert_eq!(redraw_cut(0x6b82), Some(0..5));
+    }
+
+    /// Frame 6779 of `mechanic-spring` as measured (docs/10): five cuts from line 31 to 110 under a
+    /// camera at `$dc9,$3be`. The two creatures at the view's top are cut as the beam passes them.
+    #[test]
+    fn the_rows_behind_the_beam_are_those_written_after_their_line_was_fetched() {
+        let line = |v: u32, h: u32| v * LINE_CYCLES + h;
+        let top = Scroll::from_camera(0xdc9, 0x3be).top;
+        // A creature whose first line is display row `row`, cut from `begin` to `end`.
+        let cut = |row: u32, begin: u32, end: u32| CutSeen {
+            dst: (top + row * SCREEN_LINE + 20) % (0x100 * SCREEN_LINE),
+            rows: CUT_ROWS,
+            begin,
+            end,
+        };
+        let camera = (0xdc9, 0x3be);
+        // Cut before the play area's first line: all of it shows.
+        let early = cut(100, line(31, 47), line(39, 192));
+        // Cut after the beam left its 32 lines (rows 3 to 34, lines 50 to 81): none of it shows.
+        let late = cut(3, line(94, 76), line(110, 0));
+        // Begun on its ninth line (row 1, line 48, at line 56): the blitter, two lines of the
+        // creature to the beam's one, overtakes the beam a few lines on.
+        let part = cut(1, line(56, 76), line(72, 196));
+        // Below the play area's last line (row 179 on): never fetched.
+        let below = cut(180, line(200, 0), line(216, 0));
+        let got = rows_behind_beam(&[early, late, part, below], camera);
+        assert_eq!((got[0], got[1], got[3]), (0, CUT_ROWS, 0));
+        assert!((60..=100).contains(&got[2]), "{got:?}");
+        // A creature wrapping past the screen's last line is two blits and one count.
+        let first = CutSeen { rows: 50, ..late };
+        let rest = CutSeen {
+            dst: late.dst % SCREEN_LINE,
+            rows: CUT_ROWS - 50,
+            ..late
+        };
+        assert_eq!(rows_behind_beam(&[first, rest], camera).len(), 1);
     }
 
     #[test]

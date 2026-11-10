@@ -94,6 +94,20 @@ fn a_recording_through_a_late_creature_start_stays_in_step() {
     }
 }
 
+/// A recording through creatures the original cuts behind the beam (T80): `mechanic-spring`'s first
+/// 500 steps, five creatures in view from pass 475. The compare hands the owner's game the measured
+/// rows as a case does (`Owners` forwards `creatures_uncut`); without it the picture differs at
+/// frame 6779.
+#[test]
+fn a_recording_through_a_creature_cut_behind_the_beam_stays_in_step() {
+    let rec = recording(&script_steps("mechanic-spring", 500), "spring");
+    let c = compare(&rec);
+    assert!(c.same(), "{}", c.report());
+    let v = c.verdict.as_ref().expect("judged");
+    assert!(v.creature_cuts >= 15, "{}", c.report());
+    assert!(v.pictures > 490, "{}", c.report());
+}
+
 /// 4 000 steps of running, jumping and dying both ways: retimed by pass, the original runs a pass
 /// a frame over the whole of it and two passes read the joystick in the frame of the pass before
 /// (measured 2026-11-06, T15 FINDINGS). The pairing also holds across a read cut by the frame's end
