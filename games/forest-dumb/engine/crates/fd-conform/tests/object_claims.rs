@@ -11,7 +11,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use amiga_oracle::{Amiga, FrameInput, Joy};
-use fd_conform::freeze::{self, FROZEN};
 use fd_conform::{HUNK_BASES, sync};
 
 /// Passes run in each claim: the slide ends against a wall at pass ~135.
@@ -155,30 +154,34 @@ fn watched() -> Vec<u32> {
     v.extend(at::BONUS_DRAW);
     v.extend(at::SPRING);
     v.extend(at::KIND);
-    v.extend(FROZEN.iter().map(|f| f.offset));
     v
 }
 
-/// From the sync point, place `placed` (col, row, value) in the object map, optionally freeze what
-/// `freeze.rs` lists, then hold right for `passes` passes.
-fn slide(placed: &[(u32, u32, u8)], frozen: bool, passes: u32) -> Seen {
-    run(placed, frozen, |_| {}, Joy::RIGHT, passes)
+/// From the sync point, place `placed` (col, row, value) in the object map, then hold right for
+/// `passes` passes.
+fn slide(placed: &[(u32, u32, u8)], passes: u32) -> Seen {
+    run(placed, |_| {}, Joy::RIGHT, passes)
 }
 
-/// [`slide`] with `setup` applied to the machine after the placing and freezing, and `joy` held.
-fn run(
-    placed: &[(u32, u32, u8)],
-    frozen: bool,
-    setup: impl FnOnce(&mut Amiga),
-    joy: Joy,
-    passes: u32,
-) -> Seen {
+/// Every creature value (1 to 6 and `$87` to `$fe`, docs/09) taken out of the object map, so none starts: what isolates a
+/// claim from the level's own creatures since T79 removed the freeze of `h0_681c`. The map is the
+/// level's data, as `placed` changes it; no code of the original is patched.
+fn no_creatures(am: &mut Amiga) {
+    for c in 0..240 {
+        for r in 0..96 {
+            let v = am.peek(cell(c, r), 1)[0];
+            if matches!(v, 1..=6 | 0x87..=0xfe) {
+                am.poke(cell(c, r), &[0]);
+            }
+        }
+    }
+}
+
+/// [`slide`] with `setup` applied to the machine after the placing, and `joy` held.
+fn run(placed: &[(u32, u32, u8)], setup: impl FnOnce(&mut Amiga), joy: Joy, passes: u32) -> Seen {
     let mut am = sync::reach_level_1(passes + 256).unwrap_or_else(|e| panic!("{e}"));
     for &(c, r, v) in placed {
         am.poke(cell(c, r), &[v]);
-    }
-    if frozen {
-        freeze::apply(&mut am, FROZEN).unwrap_or_else(|e| panic!("{e}"));
     }
     setup(&mut am);
     let offsets = watched();
@@ -257,7 +260,7 @@ fn check(
             .into_iter()
             .map(|(v, f, (c, r))| {
                 s.spawn(move || {
-                    let seen = slide(&[(c, r, v)], false, PASSES);
+                    let seen = slide(&[(c, r, v)], PASSES);
                     (v, f(&seen).map_err(|e| format!("{e}\n    seen: {seen:x?}")))
                 })
             })
@@ -314,7 +317,7 @@ fn values_1_to_6_spawn_a_creature_of_kind_value_minus_one() {
 /// spawn as kinds 0 and 5 with nothing placed.
 #[test]
 fn the_creatures_on_the_first_slope_spawn_unplaced() {
-    let s = slide(&[], false, PASSES);
+    let s = slide(&[], PASSES);
     assert!(s.hits(at::SPAWN) >= 2, "{s:x?}");
     assert!(s.kinds.contains(&0) && s.kinds.contains(&5), "{s:x?}");
     assert!(
@@ -456,7 +459,7 @@ fn values_10_to_13_are_springs() {
 /// A spring under the feet while `h0+$4ed0` is clear does nothing (`h0_24ce` returns at once).
 #[test]
 fn a_spring_needs_the_flag_at_4ed0() {
-    let s = slide(&[(24, 21, 0x10)], false, PASSES);
+    let s = slide(&[(24, 21, 0x10)], PASSES);
     assert_eq!(s.hits(at::SPRING[0]), 0, "{s:x?}");
     assert_eq!((s.after.x, s.after.y), (669, 553), "{s:x?}");
 }
@@ -465,7 +468,7 @@ fn a_spring_needs_the_flag_at_4ed0() {
 /// it; nothing else happens while items are left (docs/09-play-measured.md measured the level end).
 #[test]
 fn value_ff_is_the_exit() {
-    let s = slide(&[(BODY.0, BODY.1, 0xff)], false, PASSES);
+    let s = slide(&[(BODY.0, BODY.1, 0xff)], PASSES);
     assert!(
         s.hits(at::EXIT_TOUCHED) >= 1 && s.exit_passes >= 1,
         "{s:x?}"
@@ -474,62 +477,21 @@ fn value_ff_is_the_exit() {
     assert_eq!(s.cells, [0xff], "{s:x?}");
 }
 
-/// With `freeze.rs`'s list patched in (creatures only since T47), the creature value placed above
-/// takes no slot. Taking (T22), the animated cells and the spring (T25) are no longer frozen, so the
-/// item and the bonus are taken and scored, the cells in view are added and drawn, and the spring
-/// under the feet fires and throws the character up, as the engine does.
-#[test]
-fn freezing_stops_the_creatures_alone() {
-    let placed = [
-        (AHEAD.0, AHEAD.1, 0x02),
-        (BODY.0, BODY.1, 0x20),
-        (BODY.0 + 1, BODY.1, 0x40),
-        (BODY.0 + 2, BODY.1 + 1, 0x30),
-        (FEET.0, FEET.1, 0x10),
-    ];
-    let s = slide(&placed, true, PASSES);
-    assert!(s.kinds.is_empty(), "a creature took a slot: {s:x?}");
-    for e in at::KIND {
-        assert_eq!(s.hits(e), 0, "h0+${e:x} ran frozen: {s:x?}");
-    }
-    assert!(
-        s.hits(at::ITEM_TAKEN) > 0 && s.hits(at::BONUS_TAKEN) > 0,
-        "taking is not frozen since T22: {s:x?}"
-    );
-    assert!(s.after.items_left < s.before.items_left, "{s:x?}");
-    for e in [
-        at::ANIM_ADD,
-        at::DRAW_ITEM,
-        at::DRAW_VANISH,
-        at::SPRING_REDRAW,
-    ] {
-        assert!(s.hits(e) > 0, "h0+${e:x} not run since T47: {s:x?}");
-    }
-    assert_eq!(s.hits(at::SPRING[0]), 1, "{s:x?}");
-    assert!(s.after.y < 400, "not thrown up: {s:x?}");
-    // Each frozen entry was still reached (its `rts` ran), so the freeze is not vacuous.
-    for f in FROZEN {
-        assert!(
-            s.hits(f.offset) > 0,
-            "frozen {} never reached: {s:x?}",
-            f.what
-        );
-    }
-}
-
 /// The oracle reports sprite-to-playfield collision (T59): on the slide, `char_hit_check` copies
 /// CLXDAT values with its contact bits (1, 2) set as well as clear. Before T59 it read `$8000` only.
 #[test]
 fn the_oracle_reports_sprite_collision() {
-    let s = slide(&[(AHEAD.0, AHEAD.1, 0x02)], false, PASSES);
+    let s = slide(&[(AHEAD.0, AHEAD.1, 0x02)], PASSES);
     assert!(s.clxdat.contains(&0x8000), "{s:x?}");
     assert!(s.clxdat.iter().any(|c| c & CONTACT_BITS != 0), "{s:x?}");
 }
 
 /// Wait `idle` passes from the sync point with no input, then put a creature of `kind` in slot 0 at
-/// (`dx`, `dy`) from the character, everything else frozen, and run `passes` more with no input.
+/// (`dx`, `dy`) from the character, the map holding no creature of its own, and run `passes` more
+/// with no input.
 fn creature_placed(idle: u32, kind: u16, dx: i32, dy: i32, passes: u32) -> Seen {
     let place = |am: &mut Amiga| {
+        no_creatures(am);
         for _ in 0..idle {
             am.step(FrameInput::NONE).unwrap_or_else(|e| panic!("{e}"));
         }
@@ -543,7 +505,7 @@ fn creature_placed(idle: u32, kind: u16, dx: i32, dy: i32, passes: u32) -> Seen 
         am.poke(h0(CREATURE_SLOTS), &slot);
         am.poke(h0(CREATURE_ACTIVE), &[1]);
     };
-    run(&[], true, place, Joy(0), passes)
+    run(&[], place, Joy(0), passes)
 }
 
 /// At the sync point the character is falling (`h0+$4ed0` set). A creature under its feet (the box
@@ -579,19 +541,19 @@ fn a_creature_against_the_standing_character_costs_a_life_on_the_third_pass() {
 /// costs a life, although `h0+$4ed0` is set (no creature to stomp).
 #[test]
 fn water_under_the_feet_costs_a_life() {
-    let s = slide(&[(FEET.0, FEET.1, 0x28)], false, PASSES);
+    let s = slide(&[(FEET.0, FEET.1, 0x28)], PASSES);
     for pass in 107..=109 {
         assert!(s.contact.contains(&(pass, true)), "pass {pass}: {s:x?}");
     }
     assert_eq!(s.lives_lost, [109], "{s:x?}");
 }
 
-/// Scenery hurts: with every object frozen, the slide ends against the wall at `W1-1:42,35` (pass
+/// Scenery hurts: with no creature in the map, the slide ends against the wall at `W1-1:42,35` (pass
 /// ~133) in contact on every pass, and the third costs a life. Nothing but the level's tiles is
 /// drawn there, so a tile of colour 21, 23, 29 or 31 is under the character's sprites.
 #[test]
 fn the_tiles_at_the_end_of_the_first_slope_cost_a_life() {
-    let s = slide(&[], true, PASSES);
+    let s = run(&[], no_creatures, Joy::RIGHT, PASSES);
     assert!(s.kinds.is_empty(), "{s:x?}");
     assert_eq!(s.contact.first(), Some(&(133, false)), "{s:x?}");
     assert!(

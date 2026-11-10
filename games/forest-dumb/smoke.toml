@@ -223,7 +223,7 @@ workspace = "engine"
 # about 12 s warm from the cached sync point. The check that sampling leaves every level case's
 # original unchanged (about 5 min, death-countdown's 62 900 frames run twice) is full.
 "crates/fd-conform/tests/edge_latch.rs" = [
-    "a_row_of_nine_bobs_is_cut_by_the_next_pass_and_the_engine_cuts_the_same_rows",
+    "live_no_row_reaches_the_bob_rule_and_the_cut_rows_are_the_long_passes",
     "the_routes_first_1300_steps_agree_on_the_right_edge_latch",
     "the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped",
     "a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one",

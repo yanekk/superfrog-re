@@ -83,11 +83,6 @@ pub struct Case {
     pub vars: Vec<String>,
     pub goal: Option<Goal>,
     pub exclude: Vec<Exclusion>,
-    /// Freeze what `freeze.rs` lists in the original at the sync point.
-    pub freeze: bool,
-    /// Entries of `freeze.rs` this frozen case leaves running on both sides, by name
-    /// (`thaw = ["h0_681c"]`, T72). T72 thawed `h0_6882` to draw the water; T47 removed that entry.
-    pub thaw: Vec<String>,
     /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
     /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
     /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
@@ -185,29 +180,6 @@ impl Case {
             Some(v) => var_values(v, "set")?,
             None => Vec::new(),
         };
-        let freeze = match get("freeze") {
-            Some(Value::Bool(b)) => *b,
-            Some(other) => return Err(format!("freeze = {other:?}: expected true or false")),
-            None => false,
-        };
-        let thaw = match get("thaw") {
-            Some(v) => v.strings("thaw")?,
-            None => Vec::new(),
-        };
-        if !thaw.is_empty() && !freeze {
-            return Err(
-                "`thaw` names entries of a freeze, but the case has no `freeze = true`".into(),
-            );
-        }
-        for (k, name) in thaw.iter().enumerate() {
-            if crate::freeze::named(name).is_none() {
-                return Err(format!("thaw `{name}`: not an entry of freeze.rs"));
-            }
-            if thaw[..k].contains(name) {
-                return Err(format!("thaw `{name}` is given twice"));
-            }
-        }
-
         if goal == Some(Goal::Idle) && !compare.vars {
             return Err(
                 "goal `idle = true` is judged on the case's `vars`, but `compare` has \
@@ -265,7 +237,6 @@ impl Case {
             for (taken, key) in [
                 (goal.is_some(), "goal"),
                 (compare.picture, "compare = [\"picture\"]"),
-                (freeze, "freeze"),
                 (!set.is_empty(), "set"),
             ] {
                 if taken {
@@ -292,16 +263,15 @@ impl Case {
             vars,
             goal,
             exclude,
-            freeze,
-            thaw,
             set,
         })
     }
 }
 
-const KEYS: [&str; 11] = [
-    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze", "thaw",
-    "set",
+// No `freeze` or `thaw`: T79 removed the last frozen routine (docs/10, "Freezing objects"), so a
+// case naming either is refused as any unknown key is.
+const KEYS: [&str; 9] = [
+    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "set",
 ];
 
 fn known(var: &str) -> Result<(), String> {
@@ -687,8 +657,7 @@ mod tests {
                          input = \"w1\"\ncompare = [\"vars\", \"picture\"]\n\
                          vars = [\"char_x\", \"camera_x\"]\n\
                          goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }\n\
-                         exclude = [{ what = \"rows 180..250\", task = \"T10\" }]\n\
-                         freeze = false\n";
+                         exclude = [{ what = \"rows 180..250\", task = \"T10\" }]\n";
 
     #[test]
     fn a_whole_title_case_parses() {
@@ -708,8 +677,6 @@ mod tests {
                 vars: vec!["mt_counter".into()],
                 goal: None,
                 exclude: vec![],
-                freeze: false,
-                thaw: Vec::new(),
                 set: vec![],
             }
         );
@@ -813,7 +780,7 @@ mod tests {
             ("frames = 9", "frames = 9\nframes = 8", "twice"),
             ("frame = 3,", "frame = 7,", "before the sync frame"),
             ("frames = 9", "frames = 4294967295", "frame cap"),
-            ("frames = 9", "frames = 9\nfreeze = true", "level cases"),
+            ("frames = 9", "frames = 9\nfreeze = true", "not a case key"),
             (
                 "frames = 9",
                 "frames = 9\ngoal = { idle = true }",
@@ -823,18 +790,6 @@ mod tests {
         ] {
             refused(TITLE, from, to, says);
         }
-    }
-
-    /// A frozen case thaws an entry by name: the original's patch list leaves it out (T72).
-    #[test]
-    fn a_frozen_case_thaws_an_entry_by_name() {
-        let text = LEVEL.replace("freeze = false", "freeze = true\nthaw = [\"h0_681c\"]");
-        let case = Case::parse("l", &text).unwrap();
-        assert_eq!(case.thaw, ["h0_681c"]);
-        let patched = crate::freeze::for_case(&case.thaw);
-        assert_eq!(patched.len(), crate::freeze::FROZEN.len() - 1);
-        assert!(patched.iter().all(|f| f.offset != 0x681c));
-        assert_eq!(crate::freeze::for_case(&[]), crate::freeze::FROZEN);
     }
 
     #[test]
@@ -885,21 +840,16 @@ mod tests {
             ("task = \"T10\"", "task = \"later\"", "name the task"),
             (", task = \"T10\"", "", "no `task`"),
             ("[\"vars\", \"picture\"]", "[\"vars\"]", "no \"picture\""),
-            ("freeze = false", "freeze = 1", "true or false"),
+            // T79: nothing is frozen any more, so the keys are gone.
             (
-                "freeze = false",
-                "freeze = false\nthaw = [\"h0_681c\"]",
-                "no `freeze = true`",
+                "frames = 100",
+                "frames = 100\nfreeze = true",
+                "not a case key",
             ),
             (
-                "freeze = false",
-                "freeze = true\nthaw = [\"h0_1234\"]",
-                "not an entry of freeze.rs",
-            ),
-            (
-                "freeze = false",
-                "freeze = true\nthaw = [\"h0_681c\", \"h0_681c\"]",
-                "given twice",
+                "frames = 100",
+                "frames = 100\nthaw = [\"h0_681c\"]",
+                "not a case key",
             ),
             (
                 "[\"vars\", \"picture\"]\nvars = [\"char_x\", \"camera_x\"]\ngoal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",

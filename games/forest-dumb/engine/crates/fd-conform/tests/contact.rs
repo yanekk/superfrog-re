@@ -1,6 +1,6 @@
 //! The collision model (`fd_core::render::contact`, plans/forest-dumb-level-1 T70) against the
 //! original's CLXDAT, as `char_hit_check` copies it to `clxdat_copy` every pass: over fd-plan's route
-//! across W1-1 (`contact-route`, frozen as `freeze.rs` says), and its parts on the engine alone.
+//! across W1-1 (`contact-route`, nothing frozen), and its parts on the engine alone.
 //!
 //! Measured (T70): a pass's read sees the frame the display showed since the last pass, the one
 //! `Game::picture` draws after it; with that, every pass of `contact-route`, `death-pit` and
@@ -49,12 +49,6 @@ impl Transplant for Copies {
 }
 
 impl Engine for Copies {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();

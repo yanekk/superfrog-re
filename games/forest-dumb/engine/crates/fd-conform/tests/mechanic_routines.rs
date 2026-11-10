@@ -479,9 +479,9 @@ fn new_game() -> fd_core::Game {
     )
 }
 
-/// The vanishing block at (4, 4) as list 2's first animated cell, one pass on a game frozen as a case
-/// or not: its cell's first `collision_map` long after the pass.
-fn vanishing_block_after_a_pass(frozen: bool) -> Vec<u8> {
+/// The vanishing block at (4, 4) as list 2's first animated cell, one pass: its cell's first
+/// `collision_map` long after the pass.
+fn vanishing_block_after_a_pass() -> Vec<u8> {
     use fd_core::Transplant;
     let game = new_game();
     // Cell (4, 4), in the first view, as list 2's first entry: the step after the start runs list 2.
@@ -491,9 +491,6 @@ fn vanishing_block_after_a_pass(frozen: bool) -> Vec<u8> {
     used[24] = 0xff;
     cells[24 * 8..24 * 8 + 5].copy_from_slice(&[0, x as u8, 0, y as u8, 0x30]);
     let mut g = game.clone();
-    if frozen {
-        g.freeze_as_a_case();
-    }
     g.transplant(&Placed {
         game: &game,
         cells: &[(4, 4, 0x30)],
@@ -509,7 +506,6 @@ fn vanishing_block_after_a_pass(frozen: bool) -> Vec<u8> {
     };
     assert_eq!(at(&g), [0, 0, 0, 0]);
     g.step(amiga_oracle::FrameInput::NONE);
-    // The phase steps either way, as the frozen original's `h0_62b6` still does.
     assert_eq!(g.state().animation.phase, 2);
     at(&g)
 }
@@ -518,23 +514,20 @@ fn vanishing_block_after_a_pass(frozen: bool) -> Vec<u8> {
 fn a_vanishing_block_in_view_makes_its_cell_solid_in_play() {
     // Tick 0, block `$30`: the table's first frame, not the empty one.
     assert_eq!(
-        vanishing_block_after_a_pass(false),
+        vanishing_block_after_a_pass(),
         [0xff, 0xff, 0xff, 0xf0],
         "h0_62b6 did not run in game_frame"
     );
 }
 
-/// The character falling with a spring's left half under its feet, one pass on a game frozen as a
-/// case or not: `spring_timer`, `spring_x`, `spring_y` after it.
-fn spring_after_a_pass(frozen: bool) -> (u16, u32, u32) {
+/// The character falling with a spring's left half under its feet, one pass: `spring_timer`,
+/// `spring_x`, `spring_y` after it.
+fn spring_after_a_pass() -> (u16, u32, u32) {
     use fd_core::Transplant;
     let game = new_game();
     let (cx, cy) = (0x70u32, 0x70u32);
     let feet = ((cx + 0xe) >> 4, (cy + 0x23) >> 4);
     let mut g = game.clone();
-    if frozen {
-        g.freeze_as_a_case();
-    }
     g.transplant(&Placed {
         game: &game,
         cells: &[(feet.0 as u16, feet.1 as u16, 0x10)],
@@ -549,81 +542,10 @@ fn spring_after_a_pass(frozen: bool) -> (u16, u32, u32) {
 #[test]
 fn a_spring_under_the_falling_character_fires_in_play() {
     assert_eq!(
-        spring_after_a_pass(false),
+        spring_after_a_pass(),
         (1, 0x70 + 0xe, 0x70 + 0x23),
         "h0_24ce did not run in game_frame"
     );
-}
-
-// ---------------------------------------------------------------------------------------------
-// A case that freezes the original: the engine leaves out the same routines, and nothing else does.
-// ---------------------------------------------------------------------------------------------
-
-/// Since T47 a frozen case's engine runs the spring and the vanishing block (`h0_24ce`, `h0_6882`) as
-/// the game the app and the planner play does, since the original no longer freezes them.
-#[test]
-fn a_frozen_case_runs_springs_and_animated_cells_too() {
-    assert_eq!(
-        vanishing_block_after_a_pass(true),
-        vanishing_block_after_a_pass(false)
-    );
-    assert_eq!(spring_after_a_pass(true), spring_after_a_pass(false));
-    assert_ne!(vanishing_block_after_a_pass(true), [0, 0, 0, 0]);
-    assert_ne!(spring_after_a_pass(true).0, 0);
-}
-
-/// The engine's exclusion is the original's freeze, entry for entry: each routine
-/// `FROZEN_IN_A_CASE` leaves out is frozen in `freeze.rs` for the same task. No entry of either names
-/// T25 since T47 removed them (`tests/mechanic_cases.rs` holds springs and animated cells to the
-/// original with nothing frozen but the creatures).
-#[test]
-fn the_engines_freeze_is_the_originals_entry_for_entry() {
-    use fd_conform::freeze::FROZEN;
-    use fd_core::level::FROZEN_IN_A_CASE;
-    for e in FROZEN_IN_A_CASE {
-        assert!(
-            FROZEN
-                .iter()
-                .any(|f| (f.hunk, f.offset, f.task) == (0, e.offset, e.task)),
-            "{} ({}) is left out of the engine but not frozen in the original",
-            e.name,
-            e.task
-        );
-    }
-    assert!(FROZEN.iter().all(|f| f.task != "T25"), "{FROZEN:?}");
-    assert!(FROZEN_IN_A_CASE.iter().all(|e| e.task != "T25"));
-}
-
-/// Nothing but the case runner sets the engine's freeze: no file of the app, the planner, the map
-/// page, the end-to-end harness or the tools names `freeze_as_a_case` or `Engine::freeze`; the
-/// planner reaches the case's engine only through `fd_conform::engine_for`, which the case's own
-/// `freeze` decides.
-#[test]
-fn the_engines_freeze_is_set_by_the_case_runner_alone() {
-    let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
-    let mut found = Vec::new();
-    for c in ["fd-app", "fd-plan", "fd-routeview", "fd-e2e", "fd-tools"] {
-        let mut dirs = vec![crates.join(c)];
-        while let Some(d) = dirs.pop() {
-            for e in std::fs::read_dir(&d).unwrap_or_else(|e| panic!("{}: {e}", d.display())) {
-                let p = e.unwrap().path();
-                if p.is_dir() {
-                    dirs.push(p);
-                } else if p.extension().is_some_and(|x| x == "rs") {
-                    let text = std::fs::read_to_string(&p).unwrap();
-                    if ["freeze_as_a_case", "Engine::freeze", ".freeze()"]
-                        .iter()
-                        .any(|w| text.contains(w))
-                    {
-                        found.push(p);
-                    }
-                }
-            }
-        }
-    }
-    assert!(found.is_empty(), "{found:?}");
-    let lib = std::fs::read_to_string(crates.join("fd-conform/src/lib.rs")).unwrap();
-    assert_eq!(lib.matches("freeze_as_a_case").count(), 1);
 }
 
 // ---------------------------------------------------------------------------------------------

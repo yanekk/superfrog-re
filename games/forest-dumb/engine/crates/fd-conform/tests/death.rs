@@ -92,12 +92,6 @@ impl Transplant for Changed {
 }
 
 impl Engine for Changed {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -269,12 +263,6 @@ impl Transplant for Watched {
 }
 
 impl Engine for Watched {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -383,12 +371,6 @@ impl Transplant for Cut {
 }
 
 impl Engine for Cut {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input)
     }
@@ -472,10 +454,10 @@ fn a_redraw_cut_short_is_accepted_on_the_bar_only_as_the_engine_draws_it() {
     }
 }
 
-/// fd-core's game as [`Watched`], thawing what the case thaws (T72).
-struct Thawed(Watched);
+/// fd-core's game as [`Watched`], with the status bar's cut redraw (T71) handed on.
+struct Barred(Watched);
 
-impl Transplant for Thawed {
+impl Transplant for Barred {
     fn transplant(&mut self, mem: &dyn Mem) {
         self.0.transplant(mem)
     }
@@ -484,13 +466,7 @@ impl Transplant for Thawed {
     }
 }
 
-impl Engine for Thawed {
-    fn freeze(&mut self) {
-        self.0.freeze();
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.0.game, offset);
-    }
+impl Engine for Barred {
     fn pass(&mut self, input: FrameInput) {
         self.0.pass(input)
     }
@@ -517,7 +493,7 @@ impl Engine for Thawed {
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
-    let mut w = Thawed(Watched {
+    let mut w = Barred(Watched {
         game: game(),
         seen: Vec::new(),
     });

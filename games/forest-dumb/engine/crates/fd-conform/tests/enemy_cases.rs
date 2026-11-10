@@ -93,7 +93,6 @@ fn creatures_match_the_original_on_every_pass() {
     for (case, v) in &verdicts {
         let name = &case.name;
         assert_eq!(v.outcome, Outcome::Same, "{name}: {v}");
-        assert!(!case.freeze, "{name}: nothing frozen");
         assert!(
             matches!(case.goal, Some(Goal::All { .. })),
             "{name}: a goal"

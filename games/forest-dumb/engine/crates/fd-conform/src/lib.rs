@@ -12,7 +12,6 @@ pub mod bug;
 pub mod case;
 pub mod coverage;
 pub mod disks;
-pub mod freeze;
 // `gen` is a reserved word in edition 2024; the files keep the task's folder name.
 #[path = "gen/mod.rs"]
 pub mod generators;
@@ -113,12 +112,11 @@ const FLAG_AND_LATCHES: u32 = HUNK_BASES[0] + 0x5196;
 const CAMERA_UPDATE: u32 = 0x4d7e;
 
 /// Whether the runner reads, on the original, where each pass cut `main_loop`'s edge redraws and
-/// hands it to the engine (T74): in every level case, creatures live or frozen. Reading it samples
+/// hands it to the engine (T74): in every level case. Reading it samples
 /// the lines of a step ([`Amiga::set_profile`]), which leaves the original's run unchanged
 /// (`amiga-oracle`'s `tests/line_samples.rs`; here `tests/edge_latch.rs`, every case the runner
 /// samples, every frame). Before T78 a sampled step could end early where a blit held the CPU across
-/// the frame's end (a pass ended a step later on `enemy-route`), so it was limited to cases freezing
-/// creature starts (`h0_681c`).
+/// the frame's end (a pass ended a step later on `enemy-route`).
 pub fn records_edge_cuts(case: &Case) -> bool {
     case.is_level()
 }
@@ -362,14 +360,6 @@ pub trait Engine: Transplant {
     fn events(&mut self) -> Vec<Event> {
         Vec::new()
     }
-    /// The case freezes the original (`freeze = true`, DESIGN §2.2): the engine leaves out the same
-    /// routines (`fd_core::level::FROZEN_IN_A_CASE`, T25). Called once, before the transplant; the
-    /// only way the engine's freeze is ever set. A wrapper of [`Game`] forwards it.
-    fn freeze(&mut self) {}
-    /// After [`Engine::freeze`], once for each entry the case's `thaw` names, by its hunk 0 offset:
-    /// the engine runs that routine again, as the original does (T72). A wrapper of [`Game`]
-    /// forwards it.
-    fn thaw(&mut self, _offset: u32) {}
     /// A step the original spends on the game over screen, where no pass runs: the engine steps on
     /// the step's input (T23). An engine without the screen does nothing.
     fn off_play(&mut self, _input: FrameInput) {}
@@ -393,33 +383,11 @@ pub trait Engine: Transplant {
     fn foreground_cut(&mut self, _at: Option<EdgesCut>) {}
 }
 
-/// A new game at level 1 as `case` runs it: frozen ([`Engine::freeze`]) when the case freezes the
-/// original, and only then. What a caller that plays the case's inputs ahead of it uses (the planner's
-/// confirmation, for its goal), so the case's `freeze` alone decides.
-pub fn engine_for(case: &Case, data: Arc<GameData>) -> Game {
-    let mut g = Game::new(data, Start::Level1);
-    if case.freeze {
-        Engine::freeze(&mut g);
-        for f in case.thaw.iter().filter_map(|t| freeze::named(t)) {
-            Engine::thaw(&mut g, f.offset);
-        }
-    }
-    g
-}
-
 /// The level engine, fd-core's [`Game`], as a case runs it: one [`Game::step`] a pass, and its
 /// picture ([`Game::picture`], T10) as the pass leaves the display.
 impl Engine for Game {
     fn pass(&mut self, input: FrameInput) {
         self.step(input);
-    }
-
-    fn freeze(&mut self) {
-        self.freeze_as_a_case();
-    }
-
-    fn thaw(&mut self, offset: u32) {
-        self.thaw_in_a_case(offset);
     }
 
     fn picture(&self) -> Option<Picture> {
@@ -815,7 +783,7 @@ fn run_title(case: &Case, opts: &Options) -> Result<Verdict, String> {
     Ok(verdict)
 }
 
-/// The original at a level case's sync frame, frozen as the case asks, with room for its frames
+/// The original at a level case's sync frame, `set` applied, with room for its frames
 /// and `slack` more. From the cached level sync point, then the sync script up to the case's frame.
 pub fn reach_case(case: &Case, slack: u32) -> Result<Amiga, String> {
     reach_case_with(case, slack, |_, _| Ok(()))
@@ -839,9 +807,6 @@ fn reach_case_with(
         let input = inputs.at(frame);
         am.step(input).map_err(|e| e.to_string())?;
         each(&mut am, Some(input))?;
-    }
-    if case.freeze {
-        freeze::apply(&mut am, &freeze::for_case(&case.thaw))?;
     }
     for (name, value) in &case.set {
         let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
@@ -1175,12 +1140,6 @@ pub fn run_inputs(
             let ended = theirs.value(irq);
             match at {
                 None => {
-                    if case.freeze {
-                        engine.freeze();
-                        for f in case.thaw.iter().filter_map(|t| freeze::named(t)) {
-                            engine.thaw(f.offset);
-                        }
-                    }
                     engine.transplant(&theirs);
                     at = Some((ended, ended));
                     read.drop_through(ended);

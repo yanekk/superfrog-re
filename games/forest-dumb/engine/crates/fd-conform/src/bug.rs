@@ -505,7 +505,7 @@ impl Compared {
 }
 
 /// `rec` compared with the original: retimed ([`retime`]), then run as a level case from the sync
-/// point, unfrozen, every play variable at each pass end and the picture each frame within the
+/// point, every play variable at each pass end and the picture each frame within the
 /// owner's tolerance, less the known gaps. A picture difference's PNG goes to `diff_dir`.
 pub fn compare(
     data: Arc<GameData>,
@@ -538,8 +538,6 @@ pub fn compare_with(
         vars: compared_vars(),
         goal: None,
         exclude: known_gaps(),
-        freeze: false,
-        thaw: Vec::new(),
         set: Vec::new(),
     };
     let mut start_differs = Vec::new();
@@ -572,7 +570,7 @@ pub fn compare_with(
 
 impl Compared {
     /// The level case that runs what this compare judged (`conform/cases/<name>.toml`, its
-    /// `input` the script `<name>`, which is [`Retimed::script`]): unfrozen, every compared
+    /// `input` the script `<name>`, which is [`Retimed::script`]): every compared
     /// variable and the picture, the known gaps that differed here excluded (one that hid nothing
     /// would fail the case), its goal the original character's place at the last pass end judged. The engine side is fd-core's `Game` transplanted at the first pass
     /// end, as in the compare, but stepped on the inputs the original read: the same as the
@@ -597,7 +595,7 @@ impl Compared {
         let mut text = format!(
             "# {note}\n\
              # From a bug zip (`fd-conform bug compare`, games/forest-dumb/docs/BUG-FIX.md): the\n\
-             # recording's inputs on the original's frames from the level sync point, unfrozen.\n\
+             # recording's inputs on the original's frames from the level sync point.\n\
              sync = {{ script = \"{}\", frame = {} }}\n\
              input = \"{name}\"\n\
              frames = {}\n\
