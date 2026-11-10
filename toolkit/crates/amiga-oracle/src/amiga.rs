@@ -229,6 +229,14 @@ impl Drop for Amiga {
     }
 }
 
+/// Whether the core's slot table that every machine in the process shares is filled, read without
+/// a lock as a running machine reads it; false before the first machine. Machines may run on
+/// several threads only because setting one up never wipes it (core patch 0007,
+/// `tests/machines_apart.rs`). Test tooling.
+pub fn das_table_whole() -> bool {
+    unsafe { ffi::amiga_das_table_whole() != 0 }
+}
+
 impl Amiga {
     /// Read the ROM (read-only), insert the boot disk ([`OracleConfig::boot`]), if any, and switch
     /// on. Frame 0 is next.

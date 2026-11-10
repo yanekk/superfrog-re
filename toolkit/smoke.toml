@@ -24,6 +24,8 @@ workspace = "."
 "crates/amiga-oracle/tests/kickstart_missing.rs" = "smoke"
 # T78: line sampling switched on and off under blits across the frame's end, 520 frames, about 3 s.
 "crates/amiga-oracle/tests/line_samples.rs" = "smoke"
+# Setting machines up while a thread watches the core's shared slot table, 60 set-ups, about 4 s.
+"crates/amiga-oracle/tests/machines_apart.rs" = "smoke"
 "crates/amiga-oracle/tests/picture_in.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
 "crates/amiga-oracle/tests/routine_branches.rs" = "smoke"
@@ -84,6 +86,12 @@ covers = [
 [[area]]
 name = "line sampling observes only"
 covers = ["crates/amiga-oracle/tests/line_samples.rs"]
+
+# Cases compare runs of the original on many threads: a machine set up on one must not disturb a
+# machine running on another (core patch 0007).
+[[area]]
+name = "machines on several threads leave each other alone"
+covers = ["crates/amiga-oracle/tests/machines_apart.rs"]
 
 # Milliseconds: the planner's explorer solves a made-up grid game with no disk. Every game's levels
 # are routed with it.
