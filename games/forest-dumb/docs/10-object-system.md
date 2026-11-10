@@ -277,6 +277,16 @@ lost; `mechanic-spring` from `camera-bottom-right`'s live opening. The planner's
 (`fd_plan::confirm`) runs live too: the 100-round route agrees on every pass but ends elsewhere than
 the engine alone from 120 steps on, the engine alone not knowing the original's cuts.
 
+### A creature the engine starts a pass early (T79 review, measured 2026-11-10; T81 fixes it)
+
+`mechanic-vanish`, pass 330 (oracle frame 6632): the runner hands the cut `next: 1`, `defer_from`
+59008, the engine's row redraw starts the kind 0 creature at `$429,$482` before the pass, and the
+original has not started it when the pass ends (slot 0 still the creature freed at `$3bb,$3a2`, its
+flag 0). A pass later flags and places agree; the kind, facing and phase longs stay apart
+(`creature_slots+$4` 28 passes, `+$c` 544). The character never meets it, so every other variable
+agrees. The case excludes those five slot variables naming T81; `death-water` and
+`mechanic-spring` compare all fifteen and agree.
+
 ### A creature cut behind the beam (T79, measured 2026-11-10; T80 models it)
 
 With several creatures drawn a pass runs long, and `h0_5820` cuts a creature after the beam has

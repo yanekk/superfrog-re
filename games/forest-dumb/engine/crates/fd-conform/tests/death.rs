@@ -493,6 +493,9 @@ impl Engine for Barred {
 #[test]
 fn falling_into_the_water_loses_a_life_as_the_originals() {
     let case = load("death-water");
+    // Creatures are met on the way to the pool: all five slots and flags are compared (T79 review).
+    let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
+    assert_eq!(slots.count(), 15, "{:?}", case.vars);
     let mut w = Barred(Watched {
         game: game(),
         seen: Vec::new(),

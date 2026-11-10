@@ -194,8 +194,12 @@ impl Engine for Handed {
 
 fn handed(name: &str, how: Hand) -> Verdict {
     let mut case = Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap();
+    // The creature slots left out: a creature started at another pass differs before the latch or
+    // the picture does (`mechanic-vanish` pass 304 with no cut, `mechanic-spring` pass 93 with the
+    // scan whole), which `enemy_cases.rs` holds. This test is the latches' and the animated cells'.
+    case.vars.retain(|n| !n.starts_with("creature_"));
     if how == Hand::WholeScan {
-        // The play area compared: the scan's place shows in the picture alone.
+        // The play area compared: among what remains the scan's place shows in the picture alone.
         case.exclude.clear();
     }
     let game = Game::new(

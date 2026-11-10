@@ -21,10 +21,20 @@ const CASES: [&str; 2] = ["mechanic-vanish", "mechanic-spring"];
 const T25: [&str; 3] = ["h0_21c0", "h0_24ce", "h0_62b6"];
 const ADD_CELL: &str = "h0_6882";
 
-/// The only task an exclusion of these cases may name: T80, a creature the original cuts behind the
-/// beam and so shows a frame late (owner, 2026-11-10). The redraw race of a long pass is handed to
-/// the engine by the runner (T74).
-const EXCLUDED_FOR: [&str; 1] = ["T80"];
+/// The only tasks an exclusion of these cases may name: T80, a creature the original cuts behind the
+/// beam and so shows a frame late (owner, 2026-11-10), and T81, a creature `mechanic-vanish`'s engine
+/// starts a pass before the original (owner, 2026-11-10, T79 review). The redraw race of a long pass
+/// is handed to the engine by the runner (T74).
+const EXCLUDED_FOR: [&str; 2] = ["T80", "T81"];
+
+/// What `mechanic-vanish` excludes for T81: the slot variables that differ from pass 330 on.
+const T81_SLOTS: [&str; 5] = [
+    "var creature_active+$0",
+    "var creature_slots+$0",
+    "var creature_slots+$4",
+    "var creature_slots+$8",
+    "var creature_slots+$c",
+];
 
 fn load(name: &str) -> Case {
     Case::load(Path::new(&format!("cases/{name}.toml"))).unwrap_or_else(|e| panic!("{e}"))
@@ -114,11 +124,24 @@ fn the_mechanics_match_the_original_on_every_pass() {
         }
     }
     // Every edge latch is compared (T74): the passes that came during main_loop's edge redraws
-    // were handed to the engine (docs/09). The one exclusion is the play area's picture, T80's:
-    // the status bar's rows stay compared on every frame.
+    // were handed to the engine (docs/09). Excluded: the play area's picture, T80's (the status
+    // bar's rows stay compared on every frame), and in `mechanic-vanish` T81's five slot variables.
+    // Each of the fifteen creature slot variables is compared or excluded by name, never left out.
     for (case, v) in &verdicts {
         let what: Vec<&str> = case.exclude.iter().map(|e| e.what.as_str()).collect();
-        assert_eq!(what, ["rows 0..194"], "{}", case.name);
+        let mut want = vec!["rows 0..194"];
+        if case.name == "mechanic-vanish" {
+            want.extend(T81_SLOTS);
+        }
+        assert_eq!(what, want, "{}", case.name);
+        let slots = case.vars.iter().filter(|n| n.starts_with("creature_"));
+        assert_eq!(
+            slots.count() + want.len() - 1,
+            15,
+            "{}: {:?}",
+            case.name,
+            case.vars
+        );
         for latch in [
             "edge_latch_down",
             "edge_latch_up",
