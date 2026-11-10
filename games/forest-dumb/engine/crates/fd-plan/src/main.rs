@@ -167,6 +167,12 @@ fn main() -> ExitCode {
                     "the original agrees for {pass} of {} passes, then {var} differs",
                     r.inputs.len()
                 ),
+                // Every pass agreed, but the original's timing (which step a pass read, which
+                // pass cut a redraw) took the character elsewhere than the engine alone.
+                Outcome::GoalMissed { .. } => format!(
+                    "the original agrees on all {} passes but ends elsewhere than the engine alone",
+                    v.passes
+                ),
                 o => format!("on the original: {o:?}"),
             },
             Err(e) => format!("not played on the original: {e}"),

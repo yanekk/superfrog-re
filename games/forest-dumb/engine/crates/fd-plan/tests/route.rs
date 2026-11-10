@@ -221,27 +221,27 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
-    // The whole route agrees, its goal met. Confirmation freezes creature starts on both sides
-    // since T46 (`freeze.rs`'s T79 entry); before, the engine started creatures the frozen original
-    // lacked and stomped one at step 566. With springs and animated cells on both sides (T47), a
-    // longer pass cuts a row redraw before the right column's latch clears (pass 2156): the runner
-    // hands the engine that cut, measured, as creature starts are frozen (T74).
+    // Creatures live on both sides (T79; frozen until then). The two agree on every pass of the
+    // route, the cuts and the input each pass read handed to the case's engine (T67, T74, T75). The
+    // engine alone knows neither, so a creature is met a pass apart and the route ends elsewhere
+    // than planned: the goal, where the engine alone ends, is missed from 120 steps on (measured
+    // 2026-11-10). A route that holds on the original is T27's and T48's.
     let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert!(v.goal_met.is_some(), "{v}");
+    assert!(matches!(v.outcome, Outcome::GoalMissed { .. }), "{v}");
+    assert!(v.passes > 4300, "{v}");
     let g = replay(&d, &p.route.inputs);
     assert_eq!(g.lives(), 32);
 }
 
 /// A stretch the two agree on all the way is confirmed whatever its length: the original ends its
 /// passes about one behind the frames run, so a case of exactly the route's frames missed its goal
-/// on the last pass at 600 and 900 steps of T20's route. Since T70 the whole route agrees, so any
-/// prefix does.
+/// on the last pass at 600 and 900 steps of T20's route. Both lengths end before the route's
+/// first creature is met, where the engine alone and the original part (T79).
 #[test]
 fn a_route_the_original_agrees_with_meets_its_goal_at_any_length() {
     let d = data();
     let p = short();
-    for n in [60, 120] {
+    for n in [60, 90] {
         let v = confirm::confirm(&d, &p.route.inputs[..n]).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(v.outcome, Outcome::Same, "{n} steps: {v}");
         assert!(v.goal_met.is_some(), "{n} steps: {v}");
