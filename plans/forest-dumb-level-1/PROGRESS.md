@@ -11,8 +11,8 @@
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Last updated:** 2026-11-10
+**Next `pir-work` will:** review T80; T81 removes `mechanic-vanish`'s exclusions, the play area's among them; then T27. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -100,10 +100,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T77 | enemy-kind-4 | T46, T75; blocks T27, T48 | ✅ | |
 | T78 | oracle-recording-observes-only | T74; blocks T75 | ✅ | |
 | T79 | unfreeze-creature-starts | T75; blocks T27, T48 | ✅ | |
-| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | ⬜ | |
+| T80 | creature-cut-behind-beam | T79; blocks T27, T48 | 🔍 | Runner reads each creature cut's beam position (`creature_cuts`, data the oracle always keeps) and compares those frames with `Engine::creatures_uncut`. 5 new tests, 4 changed. Deviations: `mechanic-vanish` keeps `rows 0..194`, naming T81 (its creature's animation frame differs; first 329 frames compared unexcluded); rows are counted, not whole creatures (partial cuts measured); `bug.rs` `Owners` forwards it. |
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T80
 
 ## Blocked on the user
 
