@@ -21,7 +21,7 @@ FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fi
 # (export, hints or None, committed translation, extra arguments): a `.rs` is one module, else a directory
 TRANSLATIONS = [(n + '.json', None, n + '.rs', []) for n in (
     'bcd', 'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
-    'relative', 'shared_call', 'unsupported')] + [
+    'relative', 'self_call', 'mutual_call', 'call_loop', 'shared_call', 'unsupported')] + [
     ('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs', []),
     ('shared_call.json', None, 'shared_call', ['--parts', '2'])]
 
