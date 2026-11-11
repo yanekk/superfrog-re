@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T15; T10 and T11 (then T12, T13) lead to T16, the whole-tree judge.
+**Next `pir-work` will:** T10 and T11 (then T12, T13) lead to T16, the whole-tree judge.
 
 ## Tasks
 
@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ✅ | |
-| T15 | code-write-rule | T02, T14 | 🔍 | Rig counts states where the original changes a byte of the tree's `CODE` as `self_modifying`, unjudged; fd-judge and the trial table show it; `code-writes --all`. 85/85, 0 changed. Deviations: classified by `CODE` bytes, not per-state executed ones (same bytes the stop checks); blits count; `docs/14-translator.md` created ahead of T13. 4 tests. |
+| T15 | code-write-rule | T02, T14 | ✅ | Review: a mutation of the code range's first byte survived; fixed with an edge test. Reran code-writes --all (48 runs, 0 changed), code-seen (entries.toml identical), full trial (85/85, six self-modifying routines). Rule off: h0_6852 fails 35 on write-into-code, h0_a06 still passes. Deviations held. |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T15
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
