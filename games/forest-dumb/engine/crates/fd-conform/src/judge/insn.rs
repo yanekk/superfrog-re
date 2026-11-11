@@ -2,11 +2,12 @@
 //! `tools/pcode_rust.py --insn`, against Moira's one-instruction step ([`Cpu68k::step`]) on generated
 //! states, compared in every column:
 //!
-//! - `regs`: d0-d7, a0-a7, the next PC, and SR's system byte (trace, supervisor, interrupt mask);
+//! - `regs`: d0-d7, a0-a7, the stack pointer not in a7 (USP or SSP), the next PC, and SR's system
+//!   byte (trace, supervisor, interrupt mask);
 //! - `ccr`: X N Z V C;
 //! - `mem`: every byte written, and every custom-chip write in order;
 //! - `cycles`: the translated cycle counter against Moira's ([`translated_cycles`]; `not-counted`
-//!   until the generated code counts, T11);
+//!   for a kind the generated code does not count, T12's);
 //!
 //! plus `stop`, a state the translation stopped on (unsupported, write into code, a panic).
 //!
@@ -59,10 +60,12 @@ pub mod tree {
     include!(concat!(env!("OUT_DIR"), "/insn.rs"));
 }
 
-/// The translated cycle count after an instruction, or `None` while the generated code counts none.
-/// T11 gives `pcode_rt::Regs` its counter and returns it here.
-pub fn translated_cycles(_r: &pcode_rt::Regs) -> Option<u64> {
-    None
+/// The translated cycle count after one instruction, from 0, or `None` when it counted none: every
+/// 68000 instruction takes 4 cycles or more, so 0 is a kind the generated code does not count yet
+/// (`pcode_fix.cycles`' data-dependent kinds, T12), reported `not-counted`, never failed, unless
+/// another state of the same site counted: then it is a path that lost its tick, and fails.
+pub fn translated_cycles(r: &pcode_rt::Regs) -> Option<u64> {
+    Some(r.cycles()).filter(|&c| c != 0)
 }
 
 /// One instruction to check: a row of [`tree::SITES`].
@@ -240,6 +243,10 @@ impl InsnRig {
             states,
             ..InsnReport::default()
         };
+        // Each judged state's mismatches, and Moira's cycles where the translation counted none:
+        // tallied after the loop, since a state counting none fails only when another counted
+        // (a path that lost its tick, not a kind left to T12).
+        let mut judged: Vec<(Vec<Mismatch>, Option<(usize, u64)>)> = Vec::new();
         for state in 0..states {
             let s = State::random(&mut g, &seeds, &own);
             for (a, b) in &s.pokes {
@@ -288,6 +295,8 @@ impl InsnRig {
                 r.set(off, 1, (s.regs.sr >> bit) as u64 & 1);
             }
             r.set(SR, 2, s.regs.sr as u64);
+            // Moira's step starts the stack pointer `sr` does not select at a7 (`Cpu68k::step`).
+            r.set(pcode_rt::ops::USP, 4, s.regs.a[7] as u64);
             r.set(PC, 4, at as u64);
             let ran = catch_unwind(AssertUnwindSafe(|| (site.run)(&mut r, &mut mem, &img)));
             let stopped = match ran {
@@ -296,6 +305,7 @@ impl InsnRig {
                 Err(_) => Some("panic".to_string()),
             };
             let mut diffs: Vec<Mismatch> = Vec::new();
+            let mut uncounted = None;
             match stopped {
                 Some(why) => diffs.push(Mismatch {
                     state,
@@ -307,6 +317,9 @@ impl InsnRig {
                 None => {
                     let cyc = translated_cycles(&r);
                     rep.cycles_counted |= cyc.is_some();
+                    if cyc.is_none() {
+                        uncounted = Some((state, moira.cycles as u64));
+                    }
                     let t = Translated {
                         r: &r,
                         writes: mem.changed_since(&before),
@@ -315,6 +328,18 @@ impl InsnRig {
                     };
                     compare(state, &moira, &t, cols, |a| self.name(a), &mut diffs);
                 }
+            }
+            judged.push((diffs, uncounted));
+        }
+        for (mut diffs, uncounted) in judged {
+            if let Some((state, c)) = uncounted.filter(|_| cols.cycles && rep.cycles_counted) {
+                diffs.push(Mismatch {
+                    state,
+                    column: "cycles",
+                    what: "cycles".into(),
+                    moira: c.to_string(),
+                    translated: "0".into(),
+                });
             }
             rep.tally(&diffs);
         }
@@ -526,6 +551,16 @@ fn compare(
         let tpc = t.r.get(PC, 4) as u32 & 0xFF_FFFF;
         if m.pc & 0xFF_FFFF != tpc {
             diff("regs", "pc".into(), name(m.pc & 0xFF_FFFF), name(tpc));
+        }
+        // The stack pointer the new SR does not select: `move usp`, and `rte` or a write to SR
+        // that changes the mode, keep the other in pcode-rt's USP or ISP.
+        let (what, mo, to) = if m.regs.sr & 0x2000 != 0 {
+            ("usp", m.usp, t.r.get(pcode_rt::ops::USP, 4) as u32)
+        } else {
+            ("ssp", m.ssp, t.r.get(pcode_rt::ops::ISP, 4) as u32)
+        };
+        if mo != to {
+            diff("regs", what.into(), hex(mo), hex(to));
         }
         // T, S and the interrupt mask; the low byte is the ccr column's.
         let (ms, ts) = (m.regs.sr >> 8 & 0xa7, (t.r.get(SR, 2) >> 8) as u16 & 0xa7);

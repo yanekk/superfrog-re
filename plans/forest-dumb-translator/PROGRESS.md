@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T10 and T11 (then T12, T13) lead to T16, the whole-tree judge.
+**Next `pir-work` will:** T12, then T13, lead to T16, the whole-tree judge; T22 (machine-core) is unblocked.
 
 ## Tasks
 
@@ -24,8 +24,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ✅ | |
 | T09 | flags-shift-bit | T06 | ✅ | |
-| T10 | flags-move-control | T06 | ⬜ | |
-| T11 | cycles-static | T06 | ⬜ | |
+| T10 | flags-move-control | T06 | ✅ | |
+| T11 | cycles-static | T06 | ✅ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ✅ | |

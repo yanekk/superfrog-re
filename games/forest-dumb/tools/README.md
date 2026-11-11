@@ -143,6 +143,9 @@ adjust, X on compares, `cmpm.b (a7)+`, a `bra.w` marked `CALL_RETURN`, the empty
 proven one instruction at a time on Moira by `fd-conform/tests/insn_defects.rs`, on a made-up program
 Ghidra exports to `tests/fixtures/defects.json` (`python3 -I games/forest-dumb/tools/test_pcode_export_ghidra.py
 --write-defects` rewrites it; `ghidra/SetFlowOverride.java` sets the override first, test only).
+The move and control family (T10: SR and CCR both ways, `rte`, `rtr`, `move usp`, `movem.w -(An)`; SR's
+system byte lives in pcode-rt's `SR`, read and written through `ops::sr_get`, `sr_set`, `ccr_set`) is
+proven the same way by `fd-conform/tests/insn_moves.rs` on `tests/fixtures/moves.json` (`--write-moves`).
 
 ### pcode_census.py (stdlib)
 Every instruction kind `pcode.json` holds, the instruction check's work list (translator DESIGN §2.6).
@@ -159,7 +162,7 @@ hides (movem's `-(An)`/`(An)+`, `jsr`/`jmp`/`pea`) come from the opcode word. Pr
 ### insn_check.py (stdlib)
 The instruction check (translator DESIGN §2.6): every census kind, translated alone (`pcode_rust.py
 --insn`), against Moira's one-instruction step on generated states, in columns `regs` (d0-d7, a0-a7, PC,
-SR's system byte), `ccr` (X N Z V C), `mem` (bytes and custom-chip writes), `cycles`, and `stop`.
+SR's system byte, the stack pointer not in a7), `ccr` (X N Z V C), `mem` (bytes and custom-chip writes), `cycles`, and `stop`.
 ```
 python3 -I games/forest-dumb/tools/insn_check.py [--kinds k,…] [--states 500] [--columns regs,ccr,mem,cycles] [--seed S]
 ```
@@ -168,7 +171,8 @@ python3 -I games/forest-dumb/tools/insn_check.py [--kinds k,…] [--states 500] 
 `fd-judge` optimised with `FD_INSN=build/translator/insn.rs` and runs `fd-judge --insn-all` in four
 shards (the whole census: about 10 s). Writes `build/translator/insn.json` and `insn.md` (by family with
 the task owning it, then one row per kind by fail count) and prints the summary line. `cycles` reads
-`not-counted` until the generated code counts (T11). A state the original takes an exception on (an odd
+`not-counted` for a kind the generated code does not count (T12's, `pcode_fix.cycles.is_dynamic`); a state
+counting none fails when another state of its site counted. A state the original takes an exception on (an odd
 address, a division by zero) is skipped and counted. One kind alone: `fd-judge --insn <word> --at
 'hN+$off'`. Holds `build/translate/judge.lock`; exit 0 when written, 1 when a step failed, 2 on usage.
 

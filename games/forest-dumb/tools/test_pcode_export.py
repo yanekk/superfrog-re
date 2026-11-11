@@ -91,6 +91,37 @@ def defects_program():
             + longs(0x3EA, len(DEFECTS_H1) // 4) + DEFECTS_H1 + longs(0x3F2))
 
 
+# Translator T10: the move and control forms the game's census lacks, one instruction each, for the
+# instruction check (fd-conform/tests/insn_moves.rs, on Moira): SR and CCR in every direction, rte and
+# rtr, move usp, movem with the register itself in the list, byte moves through a7, link and unlk, pea,
+# exg, dbcc, jsr, jmp, bsr. One code hunk, no relocation; each instruction after one that does not fall
+# through is a function of its own.
+MOVES_H0 = bytes.fromhex(
+    '4E73' '4E77'                           # $00 rte; $02 rtr
+    '46C0' '46D0' '46FC2015'                # $04 move.w d0,sr; (a0),sr; #$2015,sr
+    '40C0' '40E7'                           # $0c move.w sr,d0; sr,-(a7)
+    '44C0' '44FC0015'                       # $10 move.w d0,ccr; #$15,ccr
+    '027CF8FF' '007C0700' '0A7C0711'        # $16 andi.w #$f8ff,sr; ori.w #$700,sr; eori.w #$711,sr
+    '023C00F0' '003C0005' '0A3C001F'        # $22 andi.b #$f0,ccr; ori.b #5,ccr; eori.b #$1f,ccr
+    '4E60' '4E69'                           # $2e move.l a0,usp; move.l usp,a1
+    '48E7FFFE' '4CDF7FFF'                   # $32 movem.l d0-a6,-(a7); (a7)+,d0-a6
+    '48A18080' '4C980003'                   # $3a movem.w d0/a0,-(a1); (a0)+,d0-d1
+    '48E0C080' '4CD80101'                   # $42 movem.l d0-d1/a0,-(a0); (a0)+,d0/a0
+    '1F00' '101F' '1F1F' '1ED8'             # $4a move.b d0,-(a7); (a7)+,d0; (a7)+,-(a7); (a0)+,(a7)+
+    '4E56FFF8' '4E5E'                       # $52 link a6,#-8; unlk a6
+    '4850' '48781234' '487A0010'            # $58 pea (a0); $1234.w; 16(pc)
+    'C188' 'C34F'                           # $62 exg d0,a0; exg a1,a7
+    '57C8FFFE' '51C90004' '4E71'            # $66 dbeq d0,$66; dbf d1,$70; nop
+    '4E90' '4EBA0004' '4ED0'                # $70 jsr (a0); jsr $78(pc); jmp (a0)
+    '61000004' '6102' '4E75'                # $78 bsr.w $7e; bsr.b $80; $7e rts
+    '6602' '4E71' '4E75' '4E71')            # $80 bne.b $84; nop; $84 rts; padding
+MOVES_FUNCS = [(0, 0x0, 'rte_'), (0, 0x2, 'rtr_'), (0, 0x4, 'start'), (0, 0x78, 'calls')]
+
+
+def moves_program():
+    return longs(0x3F3, 0, 1, 0, 0, len(MOVES_H0) // 4) + longs(0x3E9, len(MOVES_H0) // 4) + MOVES_H0 + longs(0x3F2)
+
+
 def longs(*xs):
     return b''.join(struct.pack('>I', x) for x in xs)
 

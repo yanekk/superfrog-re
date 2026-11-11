@@ -8,6 +8,7 @@
 use std::fmt;
 
 pub mod bcd;
+pub mod cycles;
 pub mod ops;
 
 /// Blocks a translated run may enter, counted in `Regs::steps` across every call, before it stops as
@@ -65,7 +66,7 @@ pub trait Bus {
     fn wl(&mut self, a: u32, v: u32);
 }
 
-/// Ghidra's 68000 register space, byte for byte, big-endian, and the run's two counters.
+/// Ghidra's 68000 register space, byte for byte, big-endian, the run's two counters and its cycles.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Regs {
     pub space: [u8; REG_SPACE],
@@ -75,6 +76,9 @@ pub struct Regs {
     /// Translated functions entered and not yet returned from; against `DEPTH_CAP`. Left as it was
     /// when a run stops, since a stop ends the run.
     pub depth: u32,
+    /// The 68000 cycles the translated instructions have taken (`cycles`, DESIGN §2.6): the
+    /// machine's beam position comes from it. Outside `space`, which is Ghidra's alone.
+    cycles: u64,
 }
 
 impl Default for Regs {
@@ -83,6 +87,7 @@ impl Default for Regs {
             space: [0; REG_SPACE],
             steps: 0,
             depth: 0,
+            cycles: 0,
         }
     }
 }
@@ -99,6 +104,18 @@ impl fmt::Debug for Regs {
 impl Regs {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// The cycles counted so far.
+    #[inline]
+    pub fn cycles(&self) -> u64 {
+        self.cycles
+    }
+
+    /// Count `n` more cycles: generated code calls it once per instruction (per path of a branch).
+    #[inline]
+    pub fn tick(&mut self, n: u32) {
+        self.cycles = self.cycles.wrapping_add(n as u64);
     }
 
     /// The `size` bytes at `off`, big-endian.
@@ -409,6 +426,24 @@ mod tests {
         r.set(CF, 1, 1);
         assert_eq!(r.get(CF, 1), 1);
         assert_eq!(r.get(NF, 4), 0x0000_0001, "NZVC are 0x44..0x48");
+    }
+
+    #[test]
+    fn tick_adds_to_the_counter_and_new_starts_at_zero() {
+        let mut r = Regs::new();
+        assert_eq!(r.cycles(), 0);
+        r.tick(4);
+        r.tick(
+            const {
+                cycles::of(
+                    cycles::Op::Move,
+                    cycles::Size::L,
+                    cycles::Ea::Dn,
+                    cycles::Ea::AbsL,
+                )
+            },
+        );
+        assert_eq!(r.cycles(), 24);
     }
 
     #[test]
