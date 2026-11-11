@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Export Ghidra's P-code for every routine of re/translate.toml, hunk-relative (translator DESIGN §3.4).
+"""Export Ghidra's P-code for the whole main program, hunk-relative (translator DESIGN §2.1, §2.3, §3.4).
 
-    python3 -I games/forest-dumb/tools/pcode_export.py [--out games/forest-dumb/build/translator] [--reimport]
+    python3 -I games/forest-dumb/tools/pcode_export.py [--out games/forest-dumb/build/translator]
+        [--entries re/entries.toml] [--whole | --routines re/translate.toml] [--reimport]
 
 Imports the main program into a Ghidra project under <out>/ghidra through
-toolkit/tools/ghidra_headless.py with re/symbols.toml, seeds the entries of re/translate.toml and runs
-tools/ghidra/ExportPcode.java, which writes every instruction reached by direct flow with its P-code.
-Writes <out>/pcode.json and prints one JSON summary line. Exit 2, the path on stderr, when Ghidra, its
+toolkit/tools/ghidra_headless.py with re/symbols.toml and runs tools/ghidra/ExportPcode.java, which
+writes every instruction reached by direct flow, by the jump tables Ghidra's analysis resolves and from
+the autovectors the program's own code installs, with its P-code. The whole program (the default) is
+seeded from the program entry h0+$0, every `func` of re/symbols.toml (hunk 4's music player among
+them) and re/entries.toml (T02's oracle trace); `--routines` seeds only the trial's routines instead.
+Each entry keeps one source: program-entry, then symbol, vector, trace (fd-conform's code_seen.rs
+order), or routine under --routines. A computed jump whose targets nobody found is listed by address
+under check.unresolved_computed; a flow Ghidra gives out of every hunk (an OS call through a library
+base, aimed at the loader's stand-in) is listed under check.outside as "hN+$off -> $addr", never walked. Writes <out>/pcode.json and prints one JSON summary line. Exit 2, the path on stderr, when Ghidra, its
 JDK, the program or a symbols file is missing; exit 1 when Ghidra fails.
 
 Ghidra's Amiga loader records no relocations, so the program file's HUNK_RELOC32 entries are read here
@@ -25,6 +32,9 @@ EXE = os.path.join(ROOT, 'build', 'files', 'disk1', 'FOREST_DUMB_FOREVER')
 EXE_ID = 'forest_dumb_forever'
 SYMBOLS = os.path.join(ROOT, 're', 'symbols.toml')
 TRANSLATE = os.path.join(ROOT, 're', 'translate.toml')
+ENTRIES = os.path.join(ROOT, 're', 'entries.toml')
+PROGRAM_ENTRY = (0, 0)
+SOURCES = ('program-entry', 'symbol', 'vector', 'trace', 'routine')   # precedence, first wins
 OUT = os.path.join(ROOT, 'build', 'translator')
 PROJECT = 'translator'
 
@@ -128,22 +138,55 @@ def rel(h, off):
     return f"h{h}+${off:x}"
 
 
+def parse_rel(a):
+    h, off = a[1:].split('+$')
+    return int(h), int(off, 16)
+
+
+def whole_seeds(symbols, entries_path):
+    """(hunk, offset, source) of the whole program: the entry, every func symbol, re/entries.toml.
+
+    One row an address, the source by SOURCES' precedence, sorted by address so the export is stable."""
+    with open(entries_path, 'rb') as f:
+        doc = tomllib.load(f)
+    found = {PROGRAM_ENTRY: 'program-entry'}
+    for s in symbols:
+        if s.kind == 'func':
+            found.setdefault((s.hunk, s.offset), 'symbol')
+    for e in doc.get('entry', []):
+        if e.get('source') not in SOURCES:
+            raise ValueError(f"{entries_path}: {e.get('at')}: unknown source {e.get('source')!r}")
+        a = parse_rel(e['at'])
+        if a not in found or SOURCES.index(e['source']) < SOURCES.index(found[a]):
+            found[a] = e['source']
+    return [(h, off, found[(h, off)]) for h, off in sorted(found)]
+
+
+def routine_seeds(translate_path):
+    return [(h, off, 'routine') for h, off, _ in load_entries(translate_path)]
+
+
+def entry_at(e):
+    """An export's entry: {"at", "source"} since the whole export, a bare address before it."""
+    return e['at'] if isinstance(e, dict) else e
+
+
 def reach_counts(export):
     """Instructions each entry reaches with its callees, following every listed flow target."""
     insns = export['insns']
 
     def succ(a):
         i = insns[a]
-        h, off = a[1:].split('+$')
+        h, off = parse_rel(a)
         nxt = []
         kind = i['flow']['kind']
         if kind not in ('branch', 'computed', 'return'):
-            nxt.append(rel(int(h), int(off, 16) + i['len']))
+            nxt.append(rel(h, off + i['len']))
         nxt += i['flow']['targets']
         return [n for n in nxt if n in insns]
 
     out = {}
-    for e in export['entries']:
+    for e in map(entry_at, export['entries']):
         seen, todo = set(), [e]
         while todo:
             a = todo.pop()
@@ -155,9 +198,9 @@ def reach_counts(export):
     return out
 
 
-def check_inputs(exe, symbols, translate):
+def check_inputs(exe, symbols, seeds):
     """Every input present, before anything starts Java: Usage names the first one missing."""
-    for p in (exe, symbols, translate):
+    for p in (exe, symbols, seeds):
         if not os.path.isfile(p):
             raise Usage(f"missing: {p}")
     try:
@@ -175,8 +218,10 @@ def check_inputs(exe, symbols, translate):
         raise Usage(f"no JDK for Ghidra: no {os.path.join(java, 'bin', 'java')} (JAVA_HOME)")
 
 
-def export(exe_path, symbols, entries, out, reimport=False, name=EXE_ID):
-    """Run the import and the export script; returns the pcode.json document (also written to <out>)."""
+def export(exe_path, symbols, seeds, out, reimport=False, name=EXE_ID):
+    """Run the import and the export script; returns the pcode.json document (also written to <out>).
+
+    seeds: (hunk, offset, source) rows, from whole_seeds or routine_seeds."""
     with open(exe_path, 'rb') as f:
         data = f.read()
     hunks = read_hunks(data)
@@ -187,7 +232,7 @@ def export(exe_path, symbols, entries, out, reimport=False, name=EXE_ID):
     with tempfile.TemporaryDirectory() as tmp:
         etsv, rtsv, raw = (os.path.join(tmp, n) for n in ('entries.tsv', 'relocs.tsv', 'export.json'))
         with open(etsv, 'w') as f:
-            f.writelines(f"{h}\t{off}\n" for h, off, _ in entries)
+            f.writelines(f"{h}\t{off}\n" for h, off, _ in seeds)
         with open(rtsv, 'w') as f:
             f.writelines(f"{h}\t{off}\t{t}\t{v}\n" for h, off, t, v in hunks.relocs)
         ghidra_headless.run_import(name, data, symbols, out, PROJECT, reimport=reimport, complete=False,
@@ -199,9 +244,14 @@ def export(exe_path, symbols, entries, out, reimport=False, name=EXE_ID):
             doc = json.load(f)
     doc['hunks'] = [{'index': i, 'size': s, 'kind': k}
                     for i, (s, k) in enumerate(zip(hunks.sizes, hunks.kinds))]
-    doc['entries'] = [rel(h, off) for h, off, _ in entries]
+    # a vector the code installs at an address no other source names becomes an entry of its own
+    source = {rel(h, off): s for h, off, s in seeds}
+    for v in doc['vectors']:
+        source.setdefault(v, 'vector')
+    doc['entries'] = [{'at': a, 'source': source[a]}
+                      for a in sorted(source, key=parse_rel)]
     doc['check']['relocs_in_file'] = len(hunks.relocs)
-    ordered = {k: doc[k] for k in ('hunks', 'entries', 'insns', 'check', 'ghidra_bases')}
+    ordered = {k: doc[k] for k in ('hunks', 'entries', 'vectors', 'insns', 'check', 'ghidra_bases')}
     path = os.path.join(out, 'pcode.json')
     with open(path + '.tmp', 'w') as f:
         json.dump(ordered, f, separators=(',', ':'))
@@ -211,10 +261,18 @@ def export(exe_path, symbols, entries, out, reimport=False, name=EXE_ID):
 
 def summary(doc):
     c = doc['check']
-    return {'routines': len(doc['entries']), 'instructions': c['instructions'], 'functions': c['functions'],
-            'unresolved': c['unresolved'], 'relocs': c['relocs'], 'relocs_matched': c['relocs_matched'],
+    by_source = {}
+    for e in doc['entries']:
+        by_source[e['source']] = by_source.get(e['source'], 0) + 1
+    per_hunk = [0] * len(doc['hunks'])
+    for i in doc['insns'].values():
+        per_hunk[i['hunk']] += 1
+    return {'instructions': c['instructions'], 'entries': len(doc['entries']), 'by_source': by_source,
+            'unresolved_computed': len(c['unresolved_computed']), 'hunks': per_hunk,
+            'functions': c['functions'], 'relocs': c['relocs'], 'relocs_matched': c['relocs_matched'],
             'unmatched': len(c['unmatched']), 'mismatched': len(c['mismatched']),
-            'unexplained': len(c['unexplained']), 'undecoded': len(c['undecoded'])}
+            'unexplained': len(c['unexplained']), 'undecoded': len(c['undecoded']),
+            'outside': len(c.get('outside', []))}
 
 
 def main(argv=None):
@@ -222,20 +280,26 @@ def main(argv=None):
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--exe', default=EXE)
     ap.add_argument('--symbols', default=SYMBOLS)
-    ap.add_argument('--translate', default=TRANSLATE)
+    ap.add_argument('--entries', default=ENTRIES, help="T02's oracle trace, seeded with the whole program")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument('--whole', action='store_true', help='the whole program (the default)')
+    mode.add_argument('--routines', metavar='TOML', help="seed only these routines (the trial's translate.toml)")
     ap.add_argument('--reimport', action='store_true', help='discard the Ghidra program and import afresh')
     a = ap.parse_args(argv)
     try:
-        check_inputs(a.exe, a.symbols, a.translate)
-        doc = export(a.exe, load_symbols(a.symbols), load_entries(a.translate), a.out, a.reimport)
+        check_inputs(a.exe, a.symbols, a.routines or a.entries)
+        symbols = load_symbols(a.symbols)
+        seeds = routine_seeds(a.routines) if a.routines else whole_seeds(symbols, a.entries)
+        doc = export(a.exe, symbols, seeds, a.out, a.reimport)
     except Usage as e:
         sys.stderr.write(f"pcode_export: {e}\n")
         return 2
-    # per entry, the reach with callees against call_tree.py's count; over 5% is printed for FINDINGS
-    want = {rel(h, off): n for h, off, n in load_entries(a.translate)}
-    for e, n in reach_counts(doc).items():
-        if want.get(e) and abs(n - want[e]) > 0.05 * want[e]:
-            sys.stderr.write(f"pcode_export: {e} reaches {n} instructions, translate.toml says {want[e]}\n")
+    if a.routines:
+        # per routine, the reach with callees against call_tree.py's count; over 5% is printed for FINDINGS
+        want = {rel(h, off): n for h, off, n in load_entries(a.routines)}
+        for e, n in reach_counts(doc).items():
+            if want.get(e) and abs(n - want[e]) > 0.05 * want[e]:
+                sys.stderr.write(f"pcode_export: {e} reaches {n} instructions, translate.toml says {want[e]}\n")
     print(json.dumps(summary(doc), separators=(',', ':')))
     return 0
 
