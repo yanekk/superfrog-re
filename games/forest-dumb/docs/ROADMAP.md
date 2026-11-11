@@ -22,6 +22,13 @@ The stages below are its order of work; the planner turns them into tasks and ma
 | Enemies | Level 1 with enemies, playable end to end | A test |
 | The rest of the level | Any special mechanics, such as doors or secret passages | A test plays the level from start to end |
 
+## The translator
+
+Owner, 2026-11-06: a static translator of the main program becomes the starting engine for everything
+after level 1, with hand-written Rust where the owner chooses (option B). Plan `forest-dumb-translator`,
+brief [translator-brief.md](translator-brief.md). Proposed order, settled at planning: after level 1
+merges, before level 2.
+
 ## After level 1
 
 One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,

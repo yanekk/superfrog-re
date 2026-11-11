@@ -124,6 +124,7 @@ source; open the source only for what the README lacks.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 done.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
+- [docs/translator-brief.md](docs/translator-brief.md): the brief for the translator plan; owner chose translated-first, hand-written where chosen (2026-11-06).
 - [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## The first case
