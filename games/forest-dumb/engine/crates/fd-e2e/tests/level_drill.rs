@@ -498,8 +498,11 @@ fn keys_held_together_opposite_keys_focus_lost_mid_jump_a_resize_and_a_pad_unplu
         160: up ArrowRight\n\
         170: pad connect 1\n175: pad down 1 DPadLeft\n175: pad down 1 South\n190: pad disconnect 1\n\
         200: pad connect 1\n210: pad press 1 South\n220: shot\n";
+    // 260 paced frames take 7 s idle and over 60 s (the default watchdog) at load 40, as in a
+    // parallel build; sized as drill_sizes.rs for a loaded machine (DESIGN §5).
     let mut app = App::launch(LaunchOpts {
         max_frames: frames,
+        timeout_s: 180,
         scale: Some(1),
         ..Default::default()
     });
