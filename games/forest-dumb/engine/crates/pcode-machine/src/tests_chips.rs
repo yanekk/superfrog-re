@@ -238,7 +238,10 @@ fn a_copper_move_to_intreq_raises_the_copper_interrupt_at_its_line() {
     at(&mut m, FRAME + cyc - 1).unwrap();
     assert_eq!(m.intreq() & crate::copper::INT_COPER, 0);
     at(&mut m, FRAME + cyc).unwrap();
-    assert_eq!(m.intreq() & crate::copper::INT_COPER, crate::copper::INT_COPER);
+    assert_eq!(
+        m.intreq() & crate::copper::INT_COPER,
+        crate::copper::INT_COPER
+    );
     let f = m.end_frame();
     assert_eq!(f.writes, [(FRAME + cyc, custom::INTREQ, 0x8010)]);
 }
