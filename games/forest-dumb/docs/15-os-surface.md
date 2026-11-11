@@ -46,7 +46,7 @@ value.
 | graphics `CloseFont` (-78) | `h0+$b8` | `a1` = that font | nothing |
 | graphics `FreeSprite` (-414) | `h0+$be` | `d0` = whatever `CloseFont` left | nothing. Meant as exec `CloseLibrary` (`a1` is GfxBase), but `a6` still holds GfxBase; graphics.library is never closed |
 | dos `Open` (-30) | `h0+$8eec`, `$8f80`, `$9000` | `d1` = `load_name` (`h0+$90a2`) or `"df0:!EAGLE_SOFT!"` (`h0+$9113`); `d2` = `$3ed` (MODE_OLDFILE) | `d0`: zero sends `load_file`/`load_file_raw` to the insert-disk prompt and `read_marker` to `prompt_disk_2`, then retries; nonzero is stored at `h0+$909e` as the handle |
-| dos `Read` (-42) | `h0+$8f1e`, `$8fb2`, `$9032` | `d1` = handle; `d2` = `load_buffer` (`h0+$437c8`), `load_target` (`h0+$9086`) or `h3+$398`; `d3` = `$6ffff` | the bytes in the buffer, and `d0`, stored at `h0+$908a`: the length `h0+$9060` copies from `load_buffer` to `load_target` for a file without `ESL!`. A `-1` is not checked |
+| dos `Read` (-42) | `h0+$8f1e`, `$8fb2`, `$9032` | `d1` = handle; `d2` = `load_buffer` (`h0+$437c8`), `load_target` (`h0+$9086`) or `h3+$398`; `d3` = `$6ffff` | the bytes in the buffer, and `d0`, stored at `h0+$908a`: the length `h0+$9060` copies from `load_buffer` to `load_target` for a file without `ESL!`, and for an `ESL!` file the packed length `unpack_esl` (`h0+$1d16`) adds to `load_buffer` to find the data's end, which it unpacks backwards from. So `d0` must be the file's exact length. A `-1` is not checked |
 | dos `Close` (-36) | `h0+$8f2e`, `$8fc2`, `$9042` | `d1` = handle | nothing |
 | exec `CloseLibrary` (-414) | `h0+$8f3e`, `$8fd2`, `$9052` | `a1` = dos's base | nothing |
 
