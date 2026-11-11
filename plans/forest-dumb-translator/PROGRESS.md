@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Building; T00 implemented 2026-11-11.
+**Status:** Building; T00 reviewed 2026-11-11.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T00; T02 (code-seen), the head of the critical path; T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T01, T05 and T17 can run beside it.
 
 ## Tasks
 
@@ -14,7 +14,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | seam-spike | — | 🔍 | Spike, scratch deleted. Recommends the frame mount (FINDINGS 2026-11-11): both granularities pass 2 000/2 000 on the routine oracle without registers. Deviations: mounted `game_frame_on`, not `Game::step` (`main_loop`'s foreground and `level3_handler` stay translated); no machine yet, so the round trip replaced the 100-frame run; task doc Notes left alone. |
+| T00 | seam-spike | — | ✅ | Frame mount recommended. Review: frame mount rerun 2 000/2 000, write-back mutation red; byte count corrected to 34.5 (max 59), fixed in FINDINGS. Transplant gaps, overlap, plane size checked in code; per-routine ports pass existing checks; inside-translated-`game_frame` mount and 288/2 000 `crossed` failure read-only (scratch deleted). |
 | T01 | os-surface | — | ⬜ | |
 | T02 | code-seen | — | ⬜ | |
 | T03 | whole-export | T02 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T00
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
