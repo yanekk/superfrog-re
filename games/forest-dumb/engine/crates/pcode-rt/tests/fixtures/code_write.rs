@@ -1,7 +1,7 @@
 // Generated from code_write.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -42,13 +42,10 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x0);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x0) => {
                 // h0+$0 move.l d0,(h1+$4).l
@@ -77,11 +74,16 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0x12);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }

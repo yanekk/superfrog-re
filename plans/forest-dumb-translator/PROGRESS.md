@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T12 (cycles-dynamic), unblocked by T11; T08 and T10 beside it.
+**Next `pir-work` will:** T12 (cycles-dynamic), unblocked by T11; then T13, the instruction gate.
 
 ## Tasks
 
@@ -22,13 +22,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
 | T07 | known-defects | T06 | ✅ | |
-| T08 | flags-arith | T06 | ⬜ | |
+| T08 | flags-arith | T06 | ✅ | |
 | T09 | flags-shift-bit | T06 | ✅ | |
-| T10 | flags-move-control | T06 | ⬜ | |
+| T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ✅ | Review: one defect, the judge passed a zero-count state when its site counted (a bcc's lost untaken tick); reproduced by fixture edit, fixed, test locks it. Bit-op 15/16 edge untested, test added. Probed: census cycles rerun, 0 fail; build times re-measured within limit; bcc and bset mutations caught. Deviations held. |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
-| T14 | run-stops | T04 | ⬜ | |
+| T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |

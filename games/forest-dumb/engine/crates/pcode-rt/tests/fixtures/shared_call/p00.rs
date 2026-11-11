@@ -1,18 +1,15 @@
 // Part 0 of the tree generated from shared_call.json. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
 #[allow(unused_imports)]
 use super::{by_addr, enter};
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x0);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x0) => {
                 // h0+$0 bsr h0+$10
@@ -55,24 +52,26 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0xa);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x10);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x10) => {
                 // h0+$10 bsr h0+$30
@@ -104,11 +103,16 @@ pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0x18);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }

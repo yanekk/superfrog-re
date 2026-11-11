@@ -4,6 +4,7 @@ its steps with a stub build and judge, on the made-up export the Rust rig test u
 (`engine/crates/fd-conform/tests/fixtures/insn.json`). The rig itself, on Moira, is
 `fd-conform/tests/insn_check.rs`. Ghidra 12.0's four known defects and nbcd (T07) on the made-up
 program Ghidra exported to `fixtures/defects.json`, judged on Moira by `fd-conform/tests/insn_defects.rs`.
+The move and control family's corrections (T10) on `fixtures/moves.json`, judged by `insn_moves.rs`.
 No disks, no Ghidra, no cargo."""
 import json, os, re, subprocess, sys, tempfile, textwrap, unittest
 
@@ -20,6 +21,9 @@ BCD = os.path.join(GAME, 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures', 'b
 DEFECTS = os.path.join(os.path.dirname(FIXTURE), 'defects.json')
 DEFECTS_RS = DEFECTS[:-5] + '.rs'
 DEFECTS_TEST = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'insn_defects.rs')
+MOVES = os.path.join(os.path.dirname(FIXTURE), 'moves.json')
+MOVES_RS = MOVES[:-5] + '.rs'
+MOVES_TEST = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'insn_moves.rs')
 
 
 def load(path):
@@ -198,6 +202,94 @@ class KnownDefects(unittest.TestCase):
         self.assertIn('load(bus, img.h(1, 0x4), 1)', '\n'.join(pr.InsnEmit(self.insns).instruction((0, 0x24), nbcd)[0]))
 
 
+class MoveControl(unittest.TestCase):
+    """T10: the move and control corrections on Ghidra's own P-code for the made-up moves program.
+    Each test fails with the correction taken out: the raw P-code has the defect, the corrected none."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.insns = pr.load_export(MOVES)['insns']
+
+    def at(self, off):
+        return self.insns[(0, off)]
+
+    def rust_of(self, off):
+        return '\n'.join(pr.InsnEmit(self.insns).instruction((0, off), self.at(off))[0])
+
+    def test_the_committed_fixture_is_current_and_holds_the_program(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'moves.rs')
+            r = rust([MOVES, '--insn', '--out', out])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout.strip().splitlines()[-1]), {'sites': 44, 'unsupported': 0})
+            self.assertEqual(read(out), read(MOVES_RS), 'fixtures/moves.rs is stale: regenerate it (tests/insn_moves.rs)')
+        from test_pcode_export import MOVES_H0
+        rs = read(MOVES_TEST)
+        h0 = ''.join(re.findall(r'"([0-9a-f]+)"', rs[rs.index('const H0'):rs.index('];', rs.index('const H0'))]))
+        self.assertEqual(h0, MOVES_H0.hex())
+        self.assertEqual({a: i['bytes'][:4] for a, i in load(MOVES)['insns'].items()},
+                         {pr.fmt_addr(a): MOVES_H0[a[1]:a[1] + 2].hex() for a in self.insns})
+
+    def test_rte_pops_sr_then_pc_and_writes_the_whole_sr(self):
+        raw = self.at(0x0)
+        self.assertEqual(raw['ops'], [{'op': 'RETURN', 'out': None, 'in': [['const', 0, 4]]}])
+        ops = pcode_fix.correct(raw)['ops']
+        self.assertEqual([op['op'] for op in ops], ['LOAD', 'INT_ADD', 'LOAD', 'INT_ADD', 'SR_UNPACK', 'RETURN'])
+        self.assertEqual([op['in'][1][1] for op in ops if op['op'] == 'INT_ADD'], [2, 4])
+        text = self.rust_of(0x0)
+        self.assertIn('pcode_rt::ops::sr_set(r, u_fff000);', text)
+        self.assertLess(text.index('r.set(0x3c, 4,'), text.index('sr_set'))   # the popped SSP is kept
+
+    def test_writes_to_sr_go_through_sr_set_and_never_write_sr_themselves(self):
+        for off in (0x4, 0x6, 0x8, 0x16, 0x1a, 0x1e):
+            raw, fixed = self.at(off), pcode_fix.correct(self.at(off))
+            self.assertIn(['register', 0x200, 2], [op.get('out') for op in raw['ops']], hex(off))
+            self.assertNotIn(['register', 0x200, 2], [op.get('out') for op in fixed['ops']], hex(off))
+            self.assertEqual([op['op'] for op in fixed['ops']].count('SR_UNPACK'), 1, hex(off))
+            self.assertIn('pcode_rt::ops::sr_set(r, ', self.rust_of(off))
+
+    def test_reads_of_sr_take_the_system_byte_through_sr_get(self):
+        # The sinc packs T, S and the mask into a byte: `move sr,d0` would read 0 above bit 7.
+        for off in (0xc, 0xe, 0x16, 0x22):
+            raw, fixed = self.at(off), pcode_fix.correct(self.at(off))
+            self.assertIn(['unique', 54784, 1], [op['out'] for op in raw['ops'] if op['op'] == 'INT_LEFT'], hex(off))
+            self.assertNotIn('INT_LEFT', [op['op'] for op in fixed['ops']], hex(off))
+            self.assertIn('pcode_rt::ops::sr_get(r)', self.rust_of(off))
+
+    def test_writes_to_ccr_and_rtr_change_only_the_condition_codes(self):
+        # andi.b #$f0,ccr would AND SR's system byte away; rtr would load the popped word into SR.
+        for off in (0x10, 0x12, 0x22, 0x26, 0x2a, 0x2):
+            raw, fixed = self.at(off), pcode_fix.correct(self.at(off))
+            self.assertIn(66, [op['out'][1] for op in raw['ops'] if op.get('out')], hex(off))   # IPL
+            outs = [op.get('out') for op in fixed['ops']]
+            self.assertNotIn(['register', 0x200, 2], outs, hex(off))
+            self.assertFalse({0x40, 0x41, 0x42} & {o[1] for o in outs if o and o[0] == 'register'}, hex(off))
+            text = self.rust_of(off)
+            self.assertIn('pcode_rt::ops::ccr_set(r, ', text)
+            self.assertNotIn('sr_set', text)
+
+    def test_movem_w_to_predecrement_steps_two_a_word_and_movem_l_four(self):
+        def steps(off):
+            return [op['in'][1][1] for op in pcode_fix.correct(self.at(off))['ops']
+                    if op['op'] == 'INT_SUB' and op['out'] == ['register', 0x304, 4]]
+        self.assertEqual([op['in'][1][1] for op in self.at(0x3a)['ops'] if op['op'] == 'INT_SUB'], [4, 4])
+        self.assertEqual(steps(0x3a), [2, 2])          # movem.w d0/a0,-(a1)
+        self.assertEqual(steps(0x42), [4, 4, 4])       # movem.l d0-d1/a0,-(a0)
+        self.assertEqual(steps(0x32), [4] * 15)        # movem.l d0-a6,-(a7)
+
+    def test_what_ghidra_gets_right_is_left_as_exported(self):
+        for off in (0x2e, 0x30, 0x32, 0x36, 0x3e, 0x46, 0x4a, 0x4c, 0x4e, 0x50, 0x52, 0x56, 0x58, 0x5a, 0x5e,
+                    0x62, 0x64, 0x66, 0x6a, 0x70, 0x72, 0x76, 0x78, 0x7c, 0x7e, 0x80):
+            self.assertIs(pcode_fix.correct(self.at(off)), self.at(off), hex(off))
+
+    def test_an_unrecognised_shape_is_left_alone(self):
+        ins = self.at(0x4)
+        odd = dict(ins, ops=ins['ops'][:5])              # unpackflags cut short
+        self.assertIs(pcode_fix.correct(odd), odd)
+        rte = dict(self.at(0x0), ops=[{'op': 'RETURN', 'out': None, 'in': [['register', 0x50, 4]]}])
+        self.assertIs(pcode_fix.correct(rte), rte)
+
+
 class InsnMode(unittest.TestCase):
     def test_the_committed_fixture_is_current(self):
         with tempfile.TemporaryDirectory() as d:
@@ -234,6 +326,14 @@ class InsnMode(unittest.TestCase):
         self.assertIn('r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(());', bne)
         self.assertIn('r.set(PC, 4, img.h(0, 0xc) as u64);', bne)   # not taken: the next instruction
         self.assertNotIn("continue 'b", text)
+
+    def test_an_rts_alone_counts_no_depth(self):
+        # A site function never calls `fn_entry`, so its `rts` must not take one off `Regs::depth`:
+        # from the check's fresh `Regs` that underflows and panics (translator T14 review).
+        rts = {'len': 2, 'mnem': 'rts', 'ops': [{'op': 'RETURN', 'in': [['register', 80, 4]]}]}
+        text = '\n'.join(pr.InsnEmit({(0, 0): rts}).instruction((0, 0), rts)[0])
+        self.assertIn('r.set(PC, 4, v);\n    return Ok(());', text)
+        self.assertNotIn('depth', text)
 
     def test_an_absolute_operand_is_a_seed_and_a_branch_target_is_not(self):
         doc = pr.load_export(FIXTURE)

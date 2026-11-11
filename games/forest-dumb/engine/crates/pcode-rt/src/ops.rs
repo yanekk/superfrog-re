@@ -253,6 +253,109 @@ pub fn popcount(a: u64, size: usize) -> u64 {
     (a & mask(size)).count_ones() as u64
 }
 
+// --- The status register (translator T10) ------------------------------------------------------
+//
+// Ghidra's sinc keeps T, S and the interrupt mask in bytes of their own (TF, SVF, IPL) and packs them
+// into a one-byte temporary, which drops them. Here the system byte lives in `SR`'s high byte, as the
+// instruction check seeds and reads it, and X N Z V C in their flag bytes; `pcode_fix.move_control`
+// routes every instruction that reads or writes SR or CCR through these three.
+
+/// Ghidra's `USP` and `ISP` (`68000.sinc`): the stack pointer that is not `A7` at the moment, by mode.
+pub const USP: usize = 0x11c;
+pub const ISP: usize = 0x100;
+/// The bits a 68000's SR holds: T, S, the mask, X N Z V C; the rest read 0.
+const SR_BITS: u64 = 0xa71f;
+
+/// The whole SR: the system byte from `SR`, the condition codes from their flag bytes.
+pub fn sr_get(r: &crate::Regs) -> u64 {
+    let ccr = [crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF]
+        .iter()
+        .fold(0, |v, &f| (v << 1) | (r.get(f, 1) & 1));
+    (r.get(crate::SR, 2) & 0xff00 & SR_BITS) | ccr
+}
+
+/// Writes the whole SR, as `move to SR`, `andi/ori/eori to SR` and `rte` do. A change of S swaps
+/// `A7` with the other stack pointer: leaving supervisor mode keeps the system stack in `ISP` and
+/// takes `A7` from `USP`, entering it the reverse.
+pub fn sr_set(r: &mut crate::Regs, v: u64) {
+    let v = v & SR_BITS;
+    let was = r.get(crate::SR, 2) & 0x2000 != 0;
+    let now = v & 0x2000 != 0;
+    if was != now {
+        let (save, take) = if was { (ISP, USP) } else { (USP, ISP) };
+        r.set(save, 4, r.a(7) as u64);
+        let other = r.get(take, 4) as u32;
+        r.set_a(7, other);
+    }
+    r.set(crate::SR, 2, v);
+    ccr_set(r, v);
+}
+
+/// Writes X N Z V C from the low five bits of `v`, and nothing else, as `move to CCR`,
+/// `andi/ori/eori to CCR` and `rtr` do.
+pub fn ccr_set(r: &mut crate::Regs, v: u64) {
+    for (bit, f) in [
+        (4, crate::XF),
+        (3, crate::NF),
+        (2, crate::ZF),
+        (1, crate::VF),
+        (0, crate::CF),
+    ] {
+        r.set(f, 1, (v >> bit) & 1);
+    }
+}
+
+// --- 68000 helpers the arith corrections call (tools/pcode_fix/arith.py) ---------------------
+//
+// Not P-code operations: where Ghidra's P-code for an instruction is wrong, the correction emits a
+// call to one of these instead, written to Moira's rules (vAmiga `MoiraALU_cpp.h`, 68000 core).
+
+/// `divu.w`: `dividend` (the whole destination) by the low word of `divisor`. `None` on a zero
+/// divisor, the divide trap. Otherwise (the new destination, V, N, Z); C is always cleared. On
+/// overflow (a quotient above $FFFF) the destination is unchanged, V is set and, as Moira's
+/// `setUndefinedDIVU` gives the 68000, N set and Z cleared.
+pub fn divu_w(dividend: u32, divisor: u64) -> Option<(u32, u64, u64, u64)> {
+    let d = (divisor & 0xffff) as u32;
+    if d == 0 {
+        return None;
+    }
+    let q = dividend / d;
+    if q > 0xffff {
+        return Some((dividend, 1, 1, 0));
+    }
+    let v = (dividend % d) << 16 | q;
+    Some((v, 0, (q as u64 >> 15) & 1, (q == 0) as u64))
+}
+
+/// `divs.w`: as [`divu_w`], signed, the divisor's low word sign-extended. Overflow is a quotient
+/// outside -$8000..$7FFF (which covers $80000000 by -1); the remainder takes the dividend's sign.
+pub fn divs_w(dividend: u32, divisor: u64) -> Option<(u32, u64, u64, u64)> {
+    let d = (divisor & 0xffff) as u16 as i16 as i64;
+    if d == 0 {
+        return None;
+    }
+    let n = dividend as i32 as i64;
+    let q = n / d;
+    if !(-0x8000..=0x7fff).contains(&q) {
+        return Some((dividend, 1, 1, 0));
+    }
+    let q = q as u32 & 0xffff;
+    let v = ((n % d) as u32) << 16 | q;
+    Some((v, 0, (q as u64 >> 15) & 1, (q == 0) as u64))
+}
+
+/// Whether a CPU word read of `a` is a read of a write-only custom register, which on the
+/// reference writes the data bus's last word into it (vAmiga `peekCustomFaulty16`); the readable
+/// ones are the routine oracle shim's `custom_readable` list.
+pub fn custom_write_only(a: u32) -> bool {
+    let a = a & 0xFF_FFFF;
+    if (a & 0xFF_FE00) != 0xDF_F000 {
+        return false;
+    }
+    let reg = a & 0x1FE;
+    !((0x002..=0x01E).contains(&reg) || reg == 0x07C || (0x180..=0x1BE).contains(&reg))
+}
+
 /// The kinds of a 68000 shift or rotate, as the opcode's type field numbers them.
 pub const SHIFT_AS: u8 = 0;
 pub const SHIFT_LS: u8 = 1;
@@ -565,6 +668,95 @@ mod tests {
         assert_eq!(signed(u64::MAX, 8), -1);
     }
 
+    fn supervisor(sr: u64, a7: u32, usp: u32) -> crate::Regs {
+        let mut r = crate::Regs::new();
+        r.set(crate::SR, 2, sr & 0xff00);
+        ccr_set(&mut r, sr);
+        r.set_a(7, a7);
+        r.set(USP, 4, usp as u64);
+        r
+    }
+
+    #[test]
+    fn sr_get_takes_the_system_byte_from_sr_and_the_ccr_from_the_flags() {
+        let mut r = supervisor(0x2700, 0x1000, 0);
+        r.set(crate::XF, 1, 1);
+        r.set(crate::CF, 1, 1);
+        // A stale low byte in SR is not the condition codes; unused bits read 0.
+        r.set(crate::SR, 2, 0x2fff);
+        assert_eq!(sr_get(&r), 0x2711);
+    }
+
+    #[test]
+    fn sr_set_restores_the_interrupt_mask_and_every_flag() {
+        let mut r = supervisor(0x2700, 0x1000, 0);
+        sr_set(&mut r, 0x231f);
+        assert_eq!(r.get(crate::SR, 2) >> 8, 0x23);
+        assert_eq!(
+            [crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF].map(|f| r.get(f, 1)),
+            [1; 5]
+        );
+        assert_eq!(sr_get(&r), 0x231f);
+        assert_eq!(r.a(7), 0x1000, "S unchanged: no stack swap");
+        sr_set(&mut r, 0xffff);
+        assert_eq!(
+            sr_get(&r),
+            0xa71f,
+            "only T, S, the mask and X N Z V C are held"
+        );
+    }
+
+    #[test]
+    fn divu_w_quotient_remainder_overflow_and_zero() {
+        // 100 / 7 = 14 r 2: quotient low, remainder high, N and Z from the quotient word.
+        assert_eq!(divu_w(100, 7), Some((2 << 16 | 14, 0, 0, 0)));
+        assert_eq!(divu_w(3, 7), Some((3 << 16, 0, 0, 1)));
+        assert_eq!(divu_w(0xffff, 1), Some((0xffff, 0, 1, 0)));
+        // Only the divisor's low word counts.
+        assert_eq!(divu_w(100, 0x1_0007), Some((2 << 16 | 14, 0, 0, 0)));
+        // A quotient over $FFFF: destination unchanged, V and N set, Z clear.
+        assert_eq!(divu_w(0x1_0000, 1), Some((0x1_0000, 1, 1, 0)));
+        assert_eq!(divu_w(0xffff_ffff, 3), Some((0xffff_ffff, 1, 1, 0)));
+        assert_eq!(divu_w(5, 0), None);
+        assert_eq!(divu_w(5, 0x1_0000), None);
+    }
+
+    #[test]
+    fn divs_w_signs_overflow_and_zero() {
+        // -100 / 7 = -14 r -2: the remainder takes the dividend's sign.
+        let r = (-2i32 as u32) << 16 | (-14i32 as u32 & 0xffff);
+        assert_eq!(divs_w(-100i32 as u32, 7), Some((r, 0, 1, 0)));
+        assert_eq!(
+            divs_w(100, 0xfff9),
+            Some((2 << 16 | (-14i32 as u32 & 0xffff), 0, 1, 0))
+        );
+        assert_eq!(divs_w(0, 0xffff), Some((0, 0, 0, 1)));
+        // A quotient of -$8000 fits, +$8000 does not.
+        assert_eq!(divs_w(0x8000, 0xffff), Some((0x8000, 0, 1, 0)));
+        assert_eq!(divs_w(-0x8000i32 as u32, 1), Some((0x8000, 0, 1, 0)));
+        let m = -0x8000i32 as u32;
+        assert_eq!(divs_w(m, 0xffff), Some((m, 1, 1, 0)));
+        assert_eq!(divs_w(0x8000_0000, 0xffff), Some((0x8000_0000, 1, 1, 0)));
+        assert_eq!(divs_w(1, 0), None);
+    }
+
+    #[test]
+    fn write_only_custom_registers() {
+        for a in [
+            0xDFF088, 0xDFF0A8, 0xDFF058, 0xDFF096, 0xDFF09A, 0xDFF000, 0xDFF1FE,
+        ] {
+            assert!(custom_write_only(a), "{a:x}");
+        }
+        for a in [
+            0xDFF002, 0xDFF006, 0xDFF01E, 0xDFF07C, 0xDFF180, 0xDFF1BE, 0xBFE001, 0x7A0000,
+            0xDFE088,
+        ] {
+            assert!(!custom_write_only(a), "{a:x}");
+        }
+        // The top byte of a 32-bit address is not on the 68000's bus.
+        assert!(custom_write_only(0xFFDFF088));
+    }
+
     // [result, X, N, Z, V, C]
     #[test]
     fn shift_by_zero_clears_c_and_keeps_x_but_roxl_copies_x_to_c() {
@@ -624,6 +816,25 @@ mod tests {
             shift68k(SHIFT_LS, false, 4, 32, 0x8000_0000, 0),
             [0, 1, 0, 1, 0, 1]
         );
+    }
+
+    #[test]
+    fn leaving_and_entering_supervisor_mode_swaps_the_stack_pointers() {
+        let mut r = supervisor(0x2700, 0x1000, 0x8000);
+        sr_set(&mut r, 0x0000);
+        assert_eq!((r.a(7), r.get(ISP, 4)), (0x8000, 0x1000));
+        r.set_a(7, 0x7ffc);
+        sr_set(&mut r, 0x2000);
+        assert_eq!((r.a(7), r.get(USP, 4)), (0x1000, 0x7ffc));
+    }
+
+    #[test]
+    fn ccr_set_touches_only_the_condition_codes() {
+        let mut r = supervisor(0x2700, 0x1000, 0x8000);
+        ccr_set(&mut r, 0x00f5);
+        assert_eq!(r.get(crate::SR, 2), 0x2700);
+        assert_eq!(r.a(7), 0x1000);
+        assert_eq!(sr_get(&r), 0x2715);
     }
 
     #[test]

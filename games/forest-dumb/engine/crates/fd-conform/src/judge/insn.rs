@@ -2,7 +2,8 @@
 //! `tools/pcode_rust.py --insn`, against Moira's one-instruction step ([`Cpu68k::step`]) on generated
 //! states, compared in every column:
 //!
-//! - `regs`: d0-d7, a0-a7, the next PC, and SR's system byte (trace, supervisor, interrupt mask);
+//! - `regs`: d0-d7, a0-a7, the stack pointer not in a7 (USP or SSP), the next PC, and SR's system
+//!   byte (trace, supervisor, interrupt mask);
 //! - `ccr`: X N Z V C;
 //! - `mem`: every byte written, and every custom-chip write in order;
 //! - `cycles`: the translated cycle counter against Moira's ([`translated_cycles`]; `not-counted`
@@ -294,6 +295,8 @@ impl InsnRig {
                 r.set(off, 1, (s.regs.sr >> bit) as u64 & 1);
             }
             r.set(SR, 2, s.regs.sr as u64);
+            // Moira's step starts the stack pointer `sr` does not select at a7 (`Cpu68k::step`).
+            r.set(pcode_rt::ops::USP, 4, s.regs.a[7] as u64);
             r.set(PC, 4, at as u64);
             let ran = catch_unwind(AssertUnwindSafe(|| (site.run)(&mut r, &mut mem, &img)));
             let stopped = match ran {
@@ -548,6 +551,16 @@ fn compare(
         let tpc = t.r.get(PC, 4) as u32 & 0xFF_FFFF;
         if m.pc & 0xFF_FFFF != tpc {
             diff("regs", "pc".into(), name(m.pc & 0xFF_FFFF), name(tpc));
+        }
+        // The stack pointer the new SR does not select: `move usp`, and `rte` or a write to SR
+        // that changes the mode, keep the other in pcode-rt's USP or ISP.
+        let (what, mo, to) = if m.regs.sr & 0x2000 != 0 {
+            ("usp", m.usp, t.r.get(pcode_rt::ops::USP, 4) as u32)
+        } else {
+            ("ssp", m.ssp, t.r.get(pcode_rt::ops::ISP, 4) as u32)
+        };
+        if mo != to {
+            diff("regs", what.into(), hex(mo), hex(to));
         }
         // T, S and the interrupt mask; the low byte is the ccr column's.
         let (ms, ts) = (m.regs.sr >> 8 & 0xa7, (t.r.get(SR, 2) >> 8) as u16 & 0xa7);
