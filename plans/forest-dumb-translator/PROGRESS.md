@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T09 (flags-shift-bit); T07, T08, T10, T11 and T14 build beside it.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | insn-check | T04, T05 | ✅ | |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
-| T09 | flags-shift-bit | T06 | ⬜ | |
+| T09 | flags-shift-bit | T06 | 🔍 | Register-form shifts and rotates emitted from the opcode word through `pcode_rt::ops::shift68k` (Moira's steps); everything else in the family already matched. Census family 0 fails of 41 500. 4 helper tests, 7 Rust on Moira, 6 Python. Deviation: emit replaces V-only patches, since rotates and asr X were wrong too. |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 
