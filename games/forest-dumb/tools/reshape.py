@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Muse turns a literal port into engine code on typed state, judged by the task's own rig test, then
+"""A model (Haiku, through `claude -p`) turns a literal port into engine code on typed state, judged by the task's own rig test, then
 tidies it against an automatic quality check: the engine-shape trial (plans/forest-dumb-level-1 T62),
 used by every porting task from T22 on (owner, 2026-11-06; DESIGN §4.3, §4.4, §5.3;
 docs/11-translation.md, "Reshaping by Muse").
 
-    python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-usd 0.10] [--out build/reshape]
+    python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-calls 40] [--out build/reshape]
     python3 -I games/forest-dumb/tools/reshape.py --task T08 --all [--only fn_a,fn_b] [...]
     python3 -I games/forest-dumb/tools/reshape.py --opus-cost [--conversations DIR]
 
 Prints one JSON line a unit and nothing else on stdout:
 
-    {"routine":"h0+$4274","routines":["h0_4274"],"fn":"rise_step","result":"pass|fail|no-key","tries":n,
+    {"routine":"h0+$4274","routines":["h0_4274"],"fn":"rise_step","result":"pass|fail|no-model","tries":n,
      "tidy_rounds":n,"tokens_in":n,"tokens_out":n,"usd":x,"port":"<out>/h0-4274/port.rs" or null,
      "quality":["what the builder still has to tidy", ...] or null}
 
@@ -26,12 +26,14 @@ function, literal port and rig line as the example. The judge copies the engine 
 build/reshape/scratch, cuts the unit's functions out of the copy, appends the answer, and runs the task's
 existing rig test there on that unit's routines only (10 000 states each, the test's own
 generators). The committed `fd-core` is never changed. A wrong answer gets the rig's first failing
-case back, one that does not compile the compiler's errors; up to --tries answers, under --max-usd,
-as translate.py (whose call, retries and spend guard this uses).
+case back, one that does not compile the compiler's errors; up to --tries answers. The call is
+model.py's (translator T17): at most --max-calls calls a run, --all's units included (`stopped`:
+"max-calls" when the cap ends one), a line a call in <out>/calls.jsonl and a line a judged answer in
+<out>/tries.jsonl; `no-model` when there is no `claude` on PATH. `usd` is `claude`'s list-price figure.
 
 Tidy. The prompt asks for the file's own style (docs naming the routine, names not numbers, no repeats).
 A passing answer goes through quality(): no model call, it lists what still reads like a literal port,
-plus the compiler's warnings on the answer's lines. Issues go back to Muse for up to --tidy rounds;
+plus the compiler's warnings on the answer's lines. Issues go back to the model for up to --tidy rounds;
 each tidied answer must pass the rig again. `port` is the passing answer with the fewest issues and
 `quality` what is left of them, for the builder.
 
@@ -42,7 +44,8 @@ import argparse, fcntl, glob, json, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import translate as tr  # noqa: E402  the model call, key, price and spend guard
+import judge_run as jr  # noqa: E402  read_result, Usage, where the literal ports are
+import model  # noqa: E402
 
 GAME = os.path.dirname(HERE)
 ENGINE = os.path.join(GAME, 'engine')
@@ -69,7 +72,7 @@ def main_checkout():
 
 def port_dirs():
     """Where literal ports are looked for: this checkout's build/translate, then the main checkout's."""
-    dirs = [tr.OUT]
+    dirs = [jr.JUDGE_DIR]
     main = main_checkout()
     if main:
         dirs.append(os.path.join(main, 'games', 'forest-dumb', 'build', 'translate'))
@@ -118,7 +121,7 @@ def load_tasks(path=TASKS_FILE):
 TASKS = load_tasks()
 
 
-class Usage(tr.Usage):
+class Usage(jr.Usage):
     pass
 
 
@@ -304,7 +307,7 @@ def read(path):
 def literal_port(name, off, dirs=None):
     """T40's passing literal port of `h0+$off`."""
     for d in dirs if dirs is not None else port_dirs():
-        r = tr.read_result(os.path.join(d, f'h0-{off:x}'))
+        r = jr.read_result(os.path.join(d, f'h0-{off:x}'))
         if r and r.get('result') == 'pass':
             return read(os.path.join(d, f'h0-{off:x}', 'port.rs'))
     raise Usage(f'{name} (h0+${off:x}) has no passing literal port in ' + ' or '.join(dirs or port_dirs())
@@ -532,7 +535,7 @@ def absolute_paths(manifest, crate_dir, engine):
 def passing_port(out, v):
     """Unit `v`'s kept answer under `out`, if it passed. -> code or None."""
     d = os.path.join(out, slug(v))
-    r = tr.read_result(d) or {}
+    r = jr.read_result(d) or {}
     p = os.path.join(d, 'port.rs')
     return read(p) if r.get('result') == 'pass' and os.path.exists(p) else None
 
@@ -670,11 +673,11 @@ def run_rig(task, u, answer, root=ENGINE, out=OUT):
 
 # --- The service ------------------------------------------------------------------------------------
 
-def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
+def reshape(routine, task, tries=3, out=OUT, dirs=None, tidy=2):
     """-> the result line as a dict. Raises Usage.
 
     Up to `tries` answers until one passes the rig; then up to `tidy` rounds in which the quality
-    check's issues go back to Muse and each tidied answer must pass the rig again. `port` is the
+    check's issues go back to the model and each tidied answer must pass the rig again. `port` is the
     passing answer with the fewest issues, `quality` what is left of them for the builder."""
     cfg, u = find_unit(task, routine)
     out = os.path.abspath(out)
@@ -682,10 +685,9 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
     res = {'routine': f'h0+${first:x}', 'routines': [n for n, _ in u['routines']], 'fn': u['fn'],
            'result': None, 'tries': 0, 'tidy_rounds': 0, 'tokens_in': 0, 'tokens_out': 0, 'usd': 0.0,
            'paths': 0, 'port': None, 'quality': None}
-    key, looked = tr.find_key()
-    if not key:
-        print(f'reshape: no OpenRouter key: looked in {looked}', file=sys.stderr)
-        return dict(res, result='no-key')
+    if not model.available():
+        print('reshape: no `claude` on PATH: the model is asked through `claude -p`', file=sys.stderr)
+        return dict(res, result='no-model')
     user = prompt(task, u, dirs=dirs)
     d = os.path.join(out, slug(u))
     os.makedirs(d, exist_ok=True)
@@ -694,9 +696,9 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
             os.remove(os.path.join(d, f))
     with open(os.path.join(d, 'prompt.md'), 'w', encoding='utf-8') as f:
         f.write(user)
-    per_in, per_out = tr.price(key)
-    messages = [{'role': 'system', 'content': SYSTEM}]
-    log_path = os.path.join(out, 'calls.jsonl')
+    messages = []
+    calls_log = os.path.join(out, 'calls.jsonl')
+    log_path = os.path.join(out, 'tries.jsonl')
     best = None  # (issues, code, paths) of the passing answer with the fewest issues
     n_call = 0
 
@@ -710,34 +712,32 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
         if best is not None and (not best[0] or res['tidy_rounds'] >= tidy):
             break
         messages.append({'role': 'user', 'content': user})
-        worst = sum(len(m['content']) for m in messages) / 3 * per_in + tr.MAX_TOKENS * per_out
-        if res['usd'] + worst > max_usd:
-            messages.pop()
-            res['stopped'] = 'max-usd'
-            print(f"reshape: stopped before call {n_call + 1}: it could cost ${worst:.4f}, which would take "
-                  f"${res['usd']:.4f} past --max-usd {max_usd}", file=sys.stderr)
-            break
         tidying = best is not None
+        rec = {'time': time.strftime('%Y-%m-%dT%H:%M:%S'), 'routine': res['routine'], 'task': task,
+               'fn': u['fn'], 'try': n_call + 1, 'tidy': tidying, 'service': 'reshape'}
+        r = model.ask(SYSTEM, model.transcript(messages), log=calls_log, tag=rec)
+        if r['result'] == 'max-calls':
+            messages.pop()
+            res['stopped'] = 'max-calls'
+            print(f'reshape: stopped before call {n_call + 1}: the run has made its --max-calls {model.MAX_CALLS} calls',
+                  file=sys.stderr)
+            break
         if tidying:
             res['tidy_rounds'] += 1
         else:
             res['tries'] += 1
         n_call += 1
-        t0 = time.time()
-        rec = {'time': time.strftime('%Y-%m-%dT%H:%M:%S'), 'routine': res['routine'], 'task': task,
-               'fn': u['fn'], 'model': tr.MODEL, 'try': n_call, 'tidy': tidying}
-        try:
-            answer, usage = tr.call_model(messages, key)
-        except tr.CallError as e:
+        rec.update(secs=r['secs'], tokens_in=r['tokens_in'], tokens_out=r['tokens_out'], usd=r['usd'])
+        res['tokens_in'] += r['tokens_in']
+        res['tokens_out'] += r['tokens_out']
+        res['usd'] += r['usd']
+        if r['result'] != 'ok':
+            # A lost try; the question stands for the next.
             messages.pop()
-            log(dict(rec, outcome='error', error=str(e), secs=round(time.time() - t0)))
+            log(dict(rec, outcome=r['result']))
             continue
+        answer = r['text']
         messages.append({'role': 'assistant', 'content': answer})
-        res['tokens_in'] += usage['in']
-        res['tokens_out'] += usage['out']
-        res['usd'] += usage['cost']
-        rec.update(secs=round(time.time() - t0), tokens_in=usage['in'], tokens_out=usage['out'],
-                   reasoning=usage['reasoning'], usd=usage['cost'], finish=usage.get('finish'))
         with open(os.path.join(d, f'answer{n_call}.md'), 'w', encoding='utf-8') as f:
             f.write(answer)
         blocks = re.findall(r'```rust\n(.*?)```', answer, re.S)
@@ -775,7 +775,7 @@ def reshape(routine, task, tries=3, max_usd=0.10, out=OUT, dirs=None, tidy=2):
     return res
 
 
-def reshape_all(task, tries=3, max_usd=0.10, out=OUT, tidy=2, only=None, report=None):
+def reshape_all(task, tries=3, out=OUT, tidy=2, only=None, report=None):
     """reshape() every unit of `task` but its hand-written examples (or those whose fn is in `only`),
     one after another, then once more each that failed while another passed: a caller judged before
     its callee's answer existed met the callee's stub (fill_stubs). `report(res)` is called on each
@@ -788,7 +788,7 @@ def reshape_all(task, tries=3, max_usd=0.10, out=OUT, tidy=2, only=None, report=
 
     def run(u):
         try:
-            res = reshape(f"h0+${u['routines'][0][1]:x}", task, tries, max_usd, out, tidy=tidy)
+            res = reshape(f"h0+${u['routines'][0][1]:x}", task, tries, out, tidy=tidy)
         except Usage as e:
             res = {'routine': f"h0+${u['routines'][0][1]:x}", 'fn': u['fn'], 'result': 'usage', 'error': str(e)}
         done[u['fn']] = res
@@ -843,28 +843,29 @@ def main(argv=None):
     ap.add_argument('--only', help='with --all: comma-separated engine fns')
     ap.add_argument('--tidy', type=int, default=2, help='rounds of the quality check sent back after a pass')
     ap.add_argument('--tries', type=int, default=3)
-    ap.add_argument('--max-usd', type=float, default=0.10)
+    ap.add_argument('--max-calls', type=int, default=model.MAX_CALLS, help='calls to the model this run, at most')
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--opus-cost', action='store_true', help="T08's, T09's and T51's session cost per routine")
     ap.add_argument('--conversations', help='the run\'s conversation logs (default: the main checkout\'s)')
     a = ap.parse_args(argv)
+    model.set_max_calls(a.max_calls)
     if a.opus_cost:
         print(json.dumps(opus_cost(a.conversations), separators=(',', ':')))
         return 0
     if a.all and a.task:
         try:
-            results = reshape_all(a.task, a.tries, a.max_usd, a.out, a.tidy,
+            results = reshape_all(a.task, a.tries, a.out, a.tidy,
                                   set(a.only.split(',')) if a.only else None,
                                   report=lambda res: print(json.dumps(res, separators=(',', ':')), flush=True))
-        except tr.Usage as e:
+        except jr.Usage as e:
             print(f'reshape: {e}', file=sys.stderr)
             return 2
         return 0 if all(res['result'] == 'pass' for res in results) else 1
     if not a.routine or not a.task:
         ap.error('a routine and --task (or --task and --all) are needed')
     try:
-        res = reshape(a.routine, a.task, a.tries, a.max_usd, a.out, tidy=a.tidy)
-    except tr.Usage as e:
+        res = reshape(a.routine, a.task, a.tries, a.out, tidy=a.tidy)
+    except jr.Usage as e:
         print(f'reshape: {e}', file=sys.stderr)
         return 2
     print(json.dumps(res, separators=(',', ':')))

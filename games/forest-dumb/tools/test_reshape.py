@@ -1,5 +1,5 @@
-"""reshape.py (plans/forest-dumb-level-1 T62). Model calls are stubbed: a test file never calls the
-network. The rig is stubbed too, so this needs no disks; test_reshape_judge.py builds real answers
+"""reshape.py (plans/forest-dumb-level-1 T62, translator T17). The model is test_model's fake `claude`
+on PATH: a test file never calls the network. The rig is stubbed too, so this needs no disks; test_reshape_judge.py builds real answers
 into the scratch copy and runs them on the rig."""
 import json
 import os
@@ -11,7 +11,9 @@ import unittest
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import model  # noqa: E402
 import reshape as r  # noqa: E402
+from test_model import FakeClaude  # noqa: E402
 
 
 def fake_ports(root):
@@ -178,7 +180,7 @@ def usage(cost=0.002):
 
 
 class Service(unittest.TestCase):
-    """reshape() with the key, the price, the model and the rig replaced."""
+    """reshape() with the model (a fake `claude`) and the rig replaced."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -189,25 +191,24 @@ class Service(unittest.TestCase):
         self.dirs = [ports]
         self.sent, self.answers, self.verdicts, self.judged = [], [], [], []
 
-        def call_model(messages, key):
-            self.sent.append(messages[-1]['content'])
-            return self.answers.pop(0), usage()
+        self.fake = FakeClaude(self)
 
         def run_rig(task, u, code, root=r.ENGINE, out=None):
             self.judged.append(code)
             return self.verdicts.pop(0)
 
-        for name, value in [('find_key', lambda: ('sk-test', 'nowhere')), ('price', lambda key: (1e-7, 2e-7)),
-                            ('call_model', call_model)]:
-            p = mock.patch.object(r.tr, name, value)
-            p.start()
-            self.addCleanup(p.stop)
         p = mock.patch.object(r, 'run_rig', run_rig)
         p.start()
         self.addCleanup(p.stop)
 
     def run_it(self, **kw):
-        return r.reshape('h0+$4274', 'T08', out=self.out, dirs=self.dirs, **kw)
+        self.fake.answer(*self.answers)
+        before = len(self.fake.prompts())
+        try:
+            return r.reshape('h0+$4274', 'T08', out=self.out, dirs=self.dirs, **kw)
+        finally:
+            # What each call asked last: the whole prompt of a first try, else the transcript's end.
+            self.sent += [p.split('# Now answer this\n\n')[-1] for p in self.fake.prompts()[before:]]
 
     def test_compile_errors_and_the_first_failing_case_go_back_then_a_pass(self):
         self.answers = [answer('impl Character<\'_> { nope }\n'), 'no code at all',
@@ -221,7 +222,7 @@ class Service(unittest.TestCase):
         self.assertEqual(self.sent[1], 'It did not compile:\nerror: expected `fn`')
         self.assertIn('no ```rust block', self.sent[2])
         self.assertEqual(len(self.judged), 2)
-        self.assertEqual(res['usd'], 0.006)
+        self.assertEqual(res['usd'], 0.009)
 
         self.answers = [answer('impl Character<\'_> { wrong }\n'), answer('impl Character<\'_> { right }\n')]
         self.verdicts = [{'outcome': 'fail', 'feedback': 'differs:\ncase 7: char_y $70 vs $6f'},
@@ -234,20 +235,37 @@ class Service(unittest.TestCase):
         self.assertEqual(r.read(res['port']), "impl Character<'_> { right }\n")
         saved = json.loads(r.read(os.path.join(self.out, 'h0-4274', 'result.json')))
         self.assertEqual((saved['result'], saved['task']), ('pass', 'T08'))
-        calls = [json.loads(l) for l in r.read(os.path.join(self.out, 'calls.jsonl')).splitlines()]
+        calls = [json.loads(l) for l in r.read(os.path.join(self.out, 'tries.jsonl')).splitlines()]
         self.assertEqual([c['outcome'] for c in calls], ['compile', 'no-code', 'fail', 'fail', 'pass'])
 
-    def test_no_call_starts_past_the_cap(self):
-        # 96 000 answer tokens at $2e-7 is $0.0192 a try: the cap allows none.
-        res = self.run_it(max_usd=0.01)
-        self.assertEqual((res['result'], res['tries'], res.get('stopped')), ('fail', 0, 'max-usd'))
+    def test_max_calls_spent_makes_no_call(self):
+        model.set_max_calls(0)
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res.get('stopped')), ('fail', 0, 'max-calls'))
         self.assertEqual(self.sent, [])
 
-    def test_no_key_makes_no_call(self):
-        with mock.patch.object(r.tr, 'find_key', lambda: (None, 'nowhere')):
+    def test_the_cap_ends_the_tidy_rounds_with_the_pass_kept(self):
+        model.set_max_calls(1)
+        # A rough pass would be sent back to tidy; the cap leaves it as the result.
+        self.answers = [answer(ROUGH_CODE)]
+        self.verdicts = [{'outcome': 'pass', 'paths': 6}]
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['tidy_rounds'], res.get('stopped')),
+                         ('pass', 1, 0, 'max-calls'))
+        self.assertTrue(res['quality'])
+
+    def test_no_claude_makes_no_call(self):
+        with mock.patch.dict(os.environ, {'PATH': self.tmp.name}):
             res = self.run_it()
-        self.assertEqual(res['result'], 'no-key')
+        self.assertEqual(res['result'], 'no-model')
         self.assertEqual(self.sent, [])
+
+    def test_a_failed_call_is_a_lost_try_and_the_question_stands(self):
+        self.answers = [{'exit': 1, 'stderr': 'Not logged in'}, answer("impl Character<'_> { right }\n")]
+        self.verdicts = [{'outcome': 'pass', 'paths': 6}]
+        res = self.run_it(tidy=0)
+        self.assertEqual((res['result'], res['tries']), ('pass', 2))
+        self.assertEqual(self.sent[0], self.sent[1])
 
 
 class OpusCost(unittest.TestCase):
@@ -380,7 +398,7 @@ class All(Service):
         seen = []
         verdicts = {}
 
-        def reshape(routine, task, tries, max_usd, out, tidy=2):
+        def reshape(routine, task, tries, out, tidy=2):
             u = r.find_unit(task, routine)[1]
             n = seen.count(u['fn'])
             seen.append(u['fn'])
