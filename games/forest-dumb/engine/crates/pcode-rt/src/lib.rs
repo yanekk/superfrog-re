@@ -218,6 +218,10 @@ pub enum Stop {
     Unsupported { op: String, at: String },
     /// A cap reached (DESIGN §2.4, §5.2).
     Hang { why: Hang },
+    /// The instruction at `at` took the 68000 exception `vector` (5: a division by zero). The
+    /// translated code cannot follow it into the handler, so it ends the run; the machine decides
+    /// what the original's exception would have done.
+    Trap { vector: u32, at: String },
 }
 
 /// Which cap a `Stop::Hang` reached.
@@ -237,6 +241,7 @@ impl fmt::Display for Stop {
             Stop::Unsupported { op, at } => write!(f, "unsupported: {op} at {at}"),
             Stop::Hang { why: Hang::Steps } => write!(f, "hang (steps)"),
             Stop::Hang { why: Hang::Depth } => write!(f, "hang (depth)"),
+            Stop::Trap { vector, at } => write!(f, "trap: vector {vector} at {at}"),
         }
     }
 }
@@ -517,5 +522,10 @@ mod tests {
         assert_eq!(u.to_string(), "unsupported: CALLOTHER at h0+$10");
         assert_eq!(Stop::Hang { why: Hang::Steps }.to_string(), "hang (steps)");
         assert_eq!(Stop::Hang { why: Hang::Depth }.to_string(), "hang (depth)");
+        let t = Stop::Trap {
+            vector: 5,
+            at: "h0+$6c9c".into(),
+        };
+        assert_eq!(t.to_string(), "trap: vector 5 at h0+$6c9c");
     }
 }

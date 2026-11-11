@@ -182,7 +182,7 @@ def load_export(path):
             raise BadInput(f'{where}: "targets" must be a list')
         targets = [parse_addr(t, f'{where} flow') for t in flow.get('targets', [])]
         raw = ins.get('bytes')
-        insns[a] = {'len': ins['len'], 'mnem': str(ins.get('mnem', '')), 'ops': ops,
+        insns[a] = {'at': a, 'len': ins['len'], 'mnem': str(ins.get('mnem', '')), 'ops': ops,
                     'targets': targets, 'bytes': raw if isinstance(raw, str) else None}
     return {'sizes': [h['size'] for h in hunks], 'entries': entries, 'insns': insns}
 
@@ -503,7 +503,21 @@ class Emit:
         ins = pcode_fix.correct(ins)
         whole, family = pcode_fix.emit(ins)
         if whole is not None:
-            return [head + f' (corrected: pcode_fix.{family})', '{'] + ['    ' + l for l in whole] + ['}'], False
+            # A line may be a P-code op (a dict), written as any other instruction's; such ops
+            # must not branch within the instruction.
+            try:
+                body = [x for l in whole
+                        for x in (self.op_lines(l, 0, a, ins) if isinstance(l, dict) else [l])
+                        for x in x.split('\n')]
+            except Unsupported as e:
+                stop = (f'return Err(Stop::Unsupported {{ op: {json.dumps(str(e))}.into(), '
+                        f'at: {json.dumps(fmt_addr(a))}.into() }});')
+                return [head, stop], True
+            uniques = sorted({v[1] for l in whole if isinstance(l, dict)
+                              for v in (l.get('in', []) + [l.get('out')]) if v and v[0] == 'unique'})
+            return ([head + f' (corrected: pcode_fix.{family})', '{']
+                    + [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
+                    + ['    ' + l for l in body] + ['}'], False)
         try:
             bodies = [[x for l in self.op_lines(op, j, a, ins) for x in l.split('\n')]
                       for j, op in enumerate(ins['ops'])]

@@ -20,7 +20,10 @@ A module may define any of:
                                  None for any other op. Lets a correction keep Ghidra's addressing and
                                  replace only the arithmetic it gets wrong.
 
-`ins` is the translator's form ({'len', 'mnem', 'ops', 'targets'}). A correction is chosen by
+`ins` is the translator's form ({'at', 'len', 'mnem', 'ops', 'targets', 'bytes'}), `at` its
+(hunk, offset). A line `emit` returns may be a P-code op (a dict, no branch within the instruction),
+which the translator writes as it writes any op, so a correction can keep the P-code it does not
+replace. A correction is chosen by
 mnemonic and P-code pattern, never by address: an address special case is a hand edit (§2.2).
 `correct` runs every module in MODULES order; `emit` takes the first module answering.
 Standard library only, so it runs under `python3 -I`.

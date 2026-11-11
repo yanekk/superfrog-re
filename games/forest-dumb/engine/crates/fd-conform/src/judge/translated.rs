@@ -79,6 +79,8 @@ pub struct Stops {
     /// `Stop::Hang`: the step or depth cap (`first` says which), apart from the original's hangs the
     /// report counts.
     pub hangs: usize,
+    /// `Stop::Trap`: an exception the translated code ends on (a division by zero).
+    pub traps: usize,
     pub first: String,
 }
 
@@ -89,6 +91,7 @@ impl Stops {
             Stop::WriteIntoCode(_) => self.write_into_code += 1,
             Stop::Unsupported { .. } => self.unsupported += 1,
             Stop::Hang { .. } => self.hangs += 1,
+            Stop::Trap { .. } => self.traps += 1,
         }
         if self.first.is_empty() {
             self.first = s.to_string();
