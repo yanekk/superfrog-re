@@ -10,12 +10,13 @@ from unittest import mock
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pcode_export as P  # noqa: E402
-from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, defects_program, two_hunk_program,  # noqa: E402
-                               whole_program)
+from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, MOVES_FUNCS, defects_program,  # noqa: E402
+                               moves_program, two_hunk_program, whole_program)
 import ghidra_headless as G  # noqa: E402
 
 GAME = os.path.dirname(HERE)
 DEFECTS_FIXTURE = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'fixtures', 'defects.json')
+MOVES_FIXTURE = os.path.join(os.path.dirname(DEFECTS_FIXTURE), 'moves.json')
 
 ROUTINE_SEEDS = [(h, off, 'routine') for h, off, _ in ENTRIES]
 
@@ -181,6 +182,19 @@ def export_defects(tmp):
     return {k: doc[k] for k in ('hunks', 'entries', 'insns')}, out.getvalue()
 
 
+def export_moves(tmp):
+    """The moves program (translator T10) through Ghidra: the fixture document."""
+    exe = os.path.join(tmp, 'm.exe')
+    with open(exe, 'wb') as f:
+        f.write(moves_program())
+    P.check_inputs(exe, P.SYMBOLS, P.ENTRIES)
+    syms = [P.Sym(h, off, n, 'func', 0, '') for h, off, n in MOVES_FUNCS]
+    with redirect_stdout(io.StringIO()):
+        doc = P.export(exe, syms, [(h, off, 'routine') for h, off, _ in MOVES_FUNCS], os.path.join(tmp, 'out'),
+                       name='m')
+    return {k: doc[k] for k in ('hunks', 'entries', 'insns')}
+
+
 def defects_text(doc):
     """The fixture's text: one instruction a line, so a change in Ghidra's P-code reads as a diff."""
     lines = ['{"hunks": ' + json.dumps(doc['hunks']) + ',', ' "entries": ' + json.dumps(doc['entries']) + ',',
@@ -225,6 +239,19 @@ class DefectsExport(unittest.TestCase):
         self.assertEqual(len(self.insns), 31)
         self.assertEqual({i['mnem'].split('.')[0] for i in self.insns.values()},
                          {'abcd', 'sbcd', 'nbcd', 'cmp', 'cmpa', 'cmpi', 'cmpm', 'bra', 'moveq', 'rts'})
+
+
+class MovesExport(unittest.TestCase):
+    """Translator T10: the move and control forms the game lacks, and the committed fixture
+    (fd-conform's insn_moves.rs judges its translation on Moira) is what Ghidra exports today.
+    Regenerate it with `python3 -I games/forest-dumb/tools/test_pcode_export_ghidra.py --write-moves`."""
+
+    def test_the_committed_fixture_is_current_and_holds_every_instruction(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = export_moves(d)
+        self.assertEqual(len(doc['insns']), 46)
+        with open(MOVES_FIXTURE, encoding='utf-8') as f:
+            self.assertEqual(f.read(), defects_text(doc), 'regenerate it: --write-moves')
 
 
 class GameExport(unittest.TestCase):
@@ -314,5 +341,11 @@ if __name__ == '__main__':
         with open(DEFECTS_FIXTURE, 'w', encoding='utf-8') as f:
             f.write(text)
         print(f'wrote {DEFECTS_FIXTURE}')
+    elif sys.argv[1:] == ['--write-moves']:
+        with tempfile.TemporaryDirectory() as d:
+            text = defects_text(export_moves(d))
+        with open(MOVES_FIXTURE, 'w', encoding='utf-8') as f:
+            f.write(text)
+        print(f'wrote {MOVES_FIXTURE}')
     else:
         unittest.main()

@@ -60,6 +60,8 @@ workspace = "engine"
 "crates/fd-conform/tests/insn_shift_bit.rs" = "full"
 # Translator T07: Ghidra's known defects, 31 made-up instructions on Moira, no disks: about 6 s.
 "crates/fd-conform/tests/insn_defects.rs" = "smoke"
+# Translator T10: the move and control forms, 44 made-up opcode words on Moira, no disks: about 5 s.
+"crates/fd-conform/tests/insn_moves.rs" = "smoke"
 # Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
 # 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
 "crates/fd-conform/tests/code_seen.rs" = "full"

@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T10 move_control check:** 129 kinds; before, only `rte` failed (regs 238, ccr 230); after, 0 in regs, ccr, mem. Whole census: 14 kinds fail (regs 593, ccr 9 521, mem 500), T08 and T09's. Trial 84 of 85. |
+| 2026-11-11 | 🐞 | Ghidra 12.0 sinc: `packflags` ORs T, S and the mask into a one-byte temporary; CCR ops and `rtr` write all of SR; `rte` is `return [0]`; `movem.w -(An)` steps 4. Corrected by pattern in `pcode_fix/move_control.py` (T10). |
+| 2026-11-11 | 📌 | T10 rig: `judge/insn.rs` starts pcode-rt's `USP` at a7, as Moira's step does, and compares the stack pointer not in a7. States always start supervisor, so `sr_set` entering supervisor mode is unit-tested only. |
 | 2026-11-11 | 📌 | No task measures whole frames' steps: T14's interface sets `STEP_CAP_GLOBAL` from T16, whose doc judges routines only. The cap stays 10 000 000; no task owns resetting `Regs::steps` per frame either. Left for the plan. |
 | 2026-11-11 | 📌 | `DEPTH_CAP` 32 rests on static call depth. A return outside its caller (`ret_check`, then `enter`) nests a Rust frame the original lacks, so running depth can exceed 8 (T14 review, read-only). T16/T28 should record the deepest `Regs::depth`. |
 | 2026-11-11 | 📌 | **T14 caps measured:** trial routines' longest run 3 968 blocks (`h0+$b20`), `game_frame` 737, nesting 6 at most; the whole tree's call graph is 8 deep from `h0+$0`, `level3_handler` 7, no recursion. `STEP_CAP_GLOBAL` left at 10 000 000 for T16. |
