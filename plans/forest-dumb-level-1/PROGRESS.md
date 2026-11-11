@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T84, then T28 and T29 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -105,9 +105,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T82 | route-picture | T48; blocks T29 | ✅ | |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
-| T85 | observes-only-flake | —; blocks T29 | 🔍 | Test unreliable, not sampling: vAmiga wiped its process-wide `dasDMA` table at every set-up; core patch 0007 fills it once. Two tests: `machines_apart.rs`, `a_sampled_step_made_to_differ_is_caught_at_that_step`. Deviation: both games' oracle smoke left to pir's end-of-plan suite, as parallel builds require. |
+| T85 | observes-only-flake | —; blocks T29 | ✅ | Review clean, no fix commit. Test unreliable, not sampling: core patch 0007 fills vAmiga's shared `dasDMA` once. Probed: without 0007 `machines_apart.rs` red (20 314 empty looks); a scratch thread wiping the table hangs a running pair; dropping edge_latch's memory compare reddens the new test. Whole file 1 of 1 green; the builder's 10 of 10 read-only. |
 
-**Review queue:** T85
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
