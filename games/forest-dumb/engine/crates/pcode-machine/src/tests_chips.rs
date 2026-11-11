@@ -441,3 +441,36 @@ fn a_blit_in_a_mid_frame_snapshots_first_frame_ends_on_time() {
     assert_eq!(get(&mut m, custom::DMACONR) & 0x4000, 0);
     assert_eq!(m.intreq() & blitter::INT_BLIT, blitter::INT_BLIT);
 }
+
+#[test]
+fn a_sprite_outside_a_lines_window_shows_colour_0_when_the_window_narrows_part_way_down() {
+    use copper::reg::*;
+    // From line $80 the window starts at $A1, not $81: the picture still spans $81 (the lines above
+    // keep it), but on line $90 a sprite at $91 is outside its line's window, one at $B1 inside.
+    let list = screen_list(
+        1,
+        &[
+            SPR0PTH,
+            0x3,
+            SPR0PTH + 2,
+            0,
+            SPR0PTH + 4,
+            0x3,
+            SPR0PTH + 6,
+            0x100,
+            0x8001,
+            0xFFFE,
+            DIWSTRT,
+            0x2CA1,
+        ],
+    );
+    let s0 = [0x9048, 0x9100, 0x8000, 0x0000, 0, 0];
+    let s1 = [0x9058, 0x9100, 0x8000, 0x0000, 0, 0];
+    let mem = [(0x400, &list[..]), (0x3_0000, &s0[..]), (0x3_0100, &s1[..])];
+    let mut m = machine(DMAEN | COPEN | BPLEN | SPREN, 0x400, &mem);
+    let pic = m.end_frame().picture;
+    assert_eq!((pic.left, pic.width), (0x81, 320));
+    let px = |x: i32, line: u16| pic.pixels[(line - 0x2C) as usize * 320 + (x - 0x81) as usize];
+    assert_eq!(px(0xB1, 0x90), 17, "inside the window");
+    assert_eq!(px(0x91, 0x90), 0, "left of the line's window");
+}
