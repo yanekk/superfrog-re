@@ -360,8 +360,7 @@ impl Rig {
 
     /// Whether `a` is in one of [`Rig::set_code`]'s ranges.
     fn in_code(&self, a: u32) -> bool {
-        let i = self.code.partition_point(|&(_, end)| end <= a);
-        self.code.get(i).is_some_and(|&(start, _)| start <= a)
+        in_ranges(&self.code, a)
     }
 
     /// The original's registers when it last returned, in the last check or survey.
@@ -743,4 +742,28 @@ fn panic_text(e: &Box<dyn std::any::Any + Send>) -> String {
         .cloned()
         .or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()))
         .unwrap_or_default()
+}
+
+/// Whether `a` is in one of `ranges`: `[start, end)`, sorted and disjoint (the tree's `CODE`).
+fn in_ranges(ranges: &[(u32, u32)], a: u32) -> bool {
+    let i = ranges.partition_point(|&(_, end)| end <= a);
+    ranges.get(i).is_some_and(|&(start, _)| start <= a)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::in_ranges;
+
+    /// A write to the first or last byte of a translated range is a write into code; the bytes
+    /// either side are not (translator T15 review).
+    #[test]
+    fn code_ranges_include_their_first_and_last_byte_only() {
+        let code = [(0x100, 0x106), (0x200, 0x202)];
+        let inside: Vec<u32> = (0xfe..0x204).filter(|&a| in_ranges(&code, a)).collect();
+        assert_eq!(
+            inside,
+            [0x100, 0x101, 0x102, 0x103, 0x104, 0x105, 0x200, 0x201]
+        );
+        assert!(!in_ranges(&[], 0x100));
+    }
 }
