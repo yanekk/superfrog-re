@@ -51,6 +51,6 @@ One thing to watch rather than check: **this branch can only merge into main aft
 
 ## Branch
 
-Synced with `main` at `24cc49e87a00` on 2026-11-07T17:44:47Z.
-The tests were red at the end; a worker tried to fix them and they stayed red.
-Tests: red. The branch is not ready to merge.
+Synced with `main` at `b289d5682bf3` on 2026-11-11T10:16:32Z.
+The tests were red at the end; a worker fixed them.
+Tests: green.
