@@ -53,6 +53,8 @@ workspace = "engine"
 "crates/fd-conform/tests/code_writes.rs" = "smoke"
 # Translator T06: the instruction check's rig on Moira with made-up encodings, no disks: about 1 s.
 "crates/fd-conform/tests/insn_check.rs" = "smoke"
+# Translator T08: the arith corrections on made-up encodings against Moira, with and without them: about 2 s.
+"crates/fd-conform/tests/insn_arith.rs" = "smoke"
 # Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
 # 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
 "crates/fd-conform/tests/code_seen.rs" = "full"
@@ -377,6 +379,8 @@ workspace = "engine"
 "tools/test_translator_trial.py" = "smoke"
 # Translator T06: pcode_fix, pcode_rust --insn and insn_check.py with a stub build and judge: under 1 s.
 "tools/test_insn_check.py" = "smoke"
+# Translator T08: pcode_fix.arith on made-up P-code, and its fixtures current: under 1 s.
+"tools/test_pcode_fix_arith.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]

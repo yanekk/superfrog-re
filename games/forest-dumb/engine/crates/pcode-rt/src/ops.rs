@@ -568,7 +568,10 @@ mod tests {
         // -100 / 7 = -14 r -2: the remainder takes the dividend's sign.
         let r = (-2i32 as u32) << 16 | (-14i32 as u32 & 0xffff);
         assert_eq!(divs_w(-100i32 as u32, 7), Some((r, 0, 1, 0)));
-        assert_eq!(divs_w(100, 0xfff9), Some((2 << 16 | (-14i32 as u32 & 0xffff), 0, 1, 0)));
+        assert_eq!(
+            divs_w(100, 0xfff9),
+            Some((2 << 16 | (-14i32 as u32 & 0xffff), 0, 1, 0))
+        );
         assert_eq!(divs_w(0, 0xffff), Some((0, 0, 0, 1)));
         // A quotient of -$8000 fits, +$8000 does not.
         assert_eq!(divs_w(0x8000, 0xffff), Some((0x8000, 0, 1, 0)));
@@ -581,10 +584,15 @@ mod tests {
 
     #[test]
     fn write_only_custom_registers() {
-        for a in [0xDFF088, 0xDFF0A8, 0xDFF058, 0xDFF096, 0xDFF09A, 0xDFF000, 0xDFF1FE] {
+        for a in [
+            0xDFF088, 0xDFF0A8, 0xDFF058, 0xDFF096, 0xDFF09A, 0xDFF000, 0xDFF1FE,
+        ] {
             assert!(custom_write_only(a), "{a:x}");
         }
-        for a in [0xDFF002, 0xDFF006, 0xDFF01E, 0xDFF07C, 0xDFF180, 0xDFF1BE, 0xBFE001, 0x7A0000, 0xDFE088] {
+        for a in [
+            0xDFF002, 0xDFF006, 0xDFF01E, 0xDFF07C, 0xDFF180, 0xDFF1BE, 0xBFE001, 0x7A0000,
+            0xDFE088,
+        ] {
             assert!(!custom_write_only(a), "{a:x}");
         }
         // The top byte of a 32-bit address is not on the 68000's bus.

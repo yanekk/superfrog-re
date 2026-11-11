@@ -1,0 +1,1720 @@
+{
+ "hunks": [
+  {
+   "index": 0,
+   "size": 48,
+   "kind": "CODE"
+  },
+  {
+   "index": 1,
+   "size": 16,
+   "kind": "DATA"
+  }
+ ],
+ "entries": [
+  {
+   "at": "h0+$0",
+   "source": "made-up"
+  }
+ ],
+ "insns": {
+  "h0+$0": {
+   "len": 2,
+   "mnem": "addx.l",
+   "bytes": "d181",
+   "operands": [
+    "D1",
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_ADD",
+     "out": [
+      "unique",
+      44928,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       4,
+       4
+      ],
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_CARRY",
+     "out": [
+      "unique",
+      45056,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       4,
+       4
+      ],
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      45184,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_CARRY",
+     "out": [
+      "unique",
+      45312,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       44928,
+       4
+      ],
+      [
+       "unique",
+       45184,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_OR",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       45056,
+       1
+      ],
+      [
+       "unique",
+       45312,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SCARRY",
+     "out": [
+      "unique",
+      45568,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       4,
+       4
+      ],
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      45696,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SCARRY",
+     "out": [
+      "unique",
+      45824,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       44928,
+       4
+      ],
+      [
+       "unique",
+       45696,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_XOR",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       45568,
+       1
+      ],
+      [
+       "unique",
+       45824,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_ADD",
+     "out": [
+      "unique",
+      83072,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       4,
+       4
+      ],
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      83200,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_ADD",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       83072,
+       4
+      ],
+      [
+       "unique",
+       83200,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      58880,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      59008,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       69,
+       1
+      ],
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_AND",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       58880,
+       1
+      ],
+      [
+       "unique",
+       59008,
+       1
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$2": {
+   "len": 2,
+   "mnem": "subx.l",
+   "bytes": "9181",
+   "operands": [
+    "D1",
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      49152,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_LESS",
+     "out": [
+      "unique",
+      49280,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "register",
+       4,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      49408,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ],
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      49536,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "register",
+       4,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_AND",
+     "out": [
+      "unique",
+      49664,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       49408,
+       1
+      ],
+      [
+       "unique",
+       49536,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_OR",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       49280,
+       1
+      ],
+      [
+       "unique",
+       49664,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SBORROW",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "register",
+       4,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      67,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       71,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_ADD",
+     "out": [
+      "unique",
+      49792,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       49152,
+       4
+      ],
+      [
+       "register",
+       4,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SUB",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "unique",
+       49792,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      58880,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      59008,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       69,
+       1
+      ],
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_AND",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       58880,
+       1
+      ],
+      [
+       "unique",
+       59008,
+       1
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$4": {
+   "len": 2,
+   "mnem": "negx.l",
+   "bytes": "4080",
+   "operands": [
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      53248,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       67,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_ADD",
+     "out": [
+      "unique",
+      53376,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "unique",
+       53248,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       4
+      ],
+      [
+       "unique",
+       53376,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SBORROW",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       4
+      ],
+      [
+       "unique",
+       53376,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      67,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       71,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_2COMP",
+     "out": [
+      "unique",
+      53376,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       53376,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       53376,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      58880,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "unique",
+      59008,
+      1
+     ],
+     "in": [
+      [
+       "register",
+       69,
+       1
+      ],
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "BOOL_AND",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       58880,
+       1
+      ],
+      [
+       "unique",
+       59008,
+       1
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$6": {
+   "len": 2,
+   "mnem": "divu.w",
+   "bytes": "80c1",
+   "operands": [
+    "D1w",
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      139520,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       6,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "unique",
+      139648,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_DIV",
+     "out": [
+      "unique",
+      139904,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_REM",
+     "out": [
+      "unique",
+      140160,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_LEFT",
+     "out": [
+      "unique",
+      140288,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140160,
+       4
+      ],
+      [
+       "const",
+       16,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_AND",
+     "out": [
+      "unique",
+      140416,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       65535,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_OR",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140288,
+       4
+      ],
+      [
+       "unique",
+       140416,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$8": {
+   "len": 4,
+   "mnem": "divs.w",
+   "bytes": "81fc0003",
+   "operands": [
+    "#0x3",
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_SEXT",
+     "out": [
+      "unique",
+      139520,
+      4
+     ],
+     "in": [
+      [
+       "const",
+       3,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "unique",
+      139648,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SDIV",
+     "out": [
+      "unique",
+      139904,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_SREM",
+     "out": [
+      "unique",
+      140160,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_LEFT",
+     "out": [
+      "unique",
+      140288,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140160,
+       4
+      ],
+      [
+       "const",
+       16,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_AND",
+     "out": [
+      "unique",
+      140416,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       65535,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_OR",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140288,
+       4
+      ],
+      [
+       "unique",
+       140416,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$c": {
+   "len": 4,
+   "mnem": "divu.w",
+   "bytes": "80fc0000",
+   "operands": [
+    "#0x0",
+    "D0"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "INT_ZEXT",
+     "out": [
+      "unique",
+      139520,
+      4
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "unique",
+      139648,
+      4
+     ],
+     "in": [
+      [
+       "register",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_DIV",
+     "out": [
+      "unique",
+      139904,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_REM",
+     "out": [
+      "unique",
+      140160,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139648,
+       4
+      ],
+      [
+       "unique",
+       139520,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "INT_SLESS",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_EQUAL",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_LEFT",
+     "out": [
+      "unique",
+      140288,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140160,
+       4
+      ],
+      [
+       "const",
+       16,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_AND",
+     "out": [
+      "unique",
+      140416,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       139904,
+       4
+      ],
+      [
+       "const",
+       65535,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "INT_OR",
+     "out": [
+      "register",
+      0,
+      4
+     ],
+     "in": [
+      [
+       "unique",
+       140288,
+       4
+      ],
+      [
+       "unique",
+       140416,
+       4
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$10": {
+   "len": 6,
+   "mnem": "clr.w",
+   "bytes": "427900dff0a8",
+   "operands": [
+    "(0x00dff0a8).l"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "COPY",
+     "out": [
+      "ram",
+      14676136,
+      2
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$18": {
+   "len": 6,
+   "mnem": "clr.l",
+   "bytes": "42b900dff0a8",
+   "operands": [
+    "(0x00dff0a8).l"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "COPY",
+     "out": [
+      "ram",
+      14676136,
+      4
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       4
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    }
+   ]
+  },
+  "h0+$20": {
+   "len": 2,
+   "mnem": "clr.w",
+   "bytes": "4250",
+   "operands": [
+    "(A0)"
+   ],
+   "flow": {
+    "kind": "fallthrough"
+   },
+   "ops": [
+    {
+     "op": "COPY",
+     "out": [
+      "unique",
+      20224,
+      2
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "STORE",
+     "out": null,
+     "in": [
+      [
+       "const",
+       417,
+       4
+      ],
+      [
+       "register",
+       32,
+       4
+      ],
+      [
+       "unique",
+       20224,
+       2
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      68,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      69,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       1,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      70,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    },
+    {
+     "op": "COPY",
+     "out": [
+      "register",
+      71,
+      1
+     ],
+     "in": [
+      [
+       "const",
+       0,
+       1
+      ]
+     ]
+    }
+   ]
+  }
+ }
+}

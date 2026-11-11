@@ -13,7 +13,8 @@ Three corrections, each by mnemonic and P-code shape (Ghidra 12.0's 68000.sinc),
               register writes the data bus's last word into it (the reference's `peekCustomFaulty16`):
               that word is the prefetch, the word after the instruction. The sinc has no read, so a
               word or long clr of memory writes that word first when its address is such a register
-              (`clr.w AUD0VOL` writes the next opcode as a volume, then 0).
+              (`clr.w AUD0VOL` writes the next opcode as a volume, then 0). A clr.l writes its low word
+              first, as the 68000 does.
 
 Not in the census, so not corrected: the sinc's subx V ignores X, and negx's C and V are computed from the
 wrapped `src + X` (FINDINGS). Their Z (only ever cleared) is already right.
@@ -107,6 +108,9 @@ def clear(ins):
         addr, val = op['in'][1], op['in'][2]
     else:
         addr, val = ['const', op['out'][1], 4], op['in'][0]
+    if val[0] == 'unique':
+        # A store through an address register stores a unique the sinc set to 0 before it.
+        val = next((o['in'][0] for o in reversed(ops[:k]) if o['op'] == 'COPY' and o['out'] == val), val)
     if val[0] != 'const' or val[1] != 0 or val[2] != size:
         return None
     # The store's address into a unique of our own, so the lines below can name it.
@@ -120,6 +124,11 @@ def clear(ins):
         lines += [f'if pcode_rt::ops::custom_write_only({wa}) {{',
                   f'    let w = load(bus, img.h({h}, {hex_lit(off + ins["len"])}), 2);',
                   f'    store(bus, img, {wa}, 2, w)?;', '}']
+    if size == 4:
+        # The 68000's clr.l writes its low word first (Moira's bus order), which a pair of custom
+        # registers sees; the sinc's one long store writes the high word first.
+        lines += ['store(bus, img, a.wrapping_add(2), 2, 0)?;', 'store(bus, img, a, 2, 0)?;']
+        return ops[:k] + [{'op': 'COPY', 'out': ['unique', tmp, 4], 'in': [addr]}] + lines + ops[k + 1:]
     return ops[:k] + [{'op': 'COPY', 'out': ['unique', tmp, 4], 'in': [addr]}] + lines + ops[k:]
 
 
