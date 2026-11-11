@@ -5,7 +5,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-11 (T05 implemented)
 **Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | code-seen | — | ⬜ | |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
-| T05 | oracle-step | — | ⬜ | |
+| T05 | oracle-step | — | 🔍 | Cpu68k::step over a new shim entry, no sentinel pushed, memory put back; 10 tests in tests/routine_step.rs, smoke. Deviations: Regs unchanged, since usp/ssp fields break Superfrog literals; Stepped reports pc, usp, ssp, and step_with_other_sp sets the inactive stack pointer. Stepped also carries hw_writes for hardware mode. |
 | T06 | insn-check | T04, T05 | ⬜ | |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T05
 
 ## Blocked on the user
 
