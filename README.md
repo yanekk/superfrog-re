@@ -23,6 +23,7 @@ tiers, each at the lowest level where it is true (see [CLAUDE.md](CLAUDE.md)).
 |---|---|
 | `toolkit/` | Tier 2: the game-free Rust workspace, the reverse-engineering tools, their notes |
 | `games/superfrog/` | Tier 3: the engine, tools, docs, symbols and disk home of Superfrog |
+| `games/forest-dumb/` | Tier 3: Forest Dumb Forever, the second game; its level 1 plays in its own app, judged against the original ([CLAUDE.md](games/forest-dumb/CLAUDE.md)) |
 | `knowledge/` | Tier 1: how the owner works and decides, and the faithful bar |
 | `plans/` | Every plan, sealed as history once finished |
 | `tools/` | Shared: `tools/smoke.sh` and `tools/full.sh`, the two test commands (see [Tests](#tests)); `tools/test.sh`, which runs what a branch's changes need (`PIR_TEST_SCOPE=all` runs everything); and the name check |
@@ -63,6 +64,7 @@ screen input unless `SF_E2E_OS=1` is set.
 | Engine architecture documented: every file classified as Amiga imitation, game logic, copied-in data or shell, rated for reuse in another Amiga game, with a recommended native rewrite order ([`games/superfrog/docs/architecture/`](games/superfrog/docs/architecture/README.md)) | ✅ |
 | [Amiga toolkit](#the-amiga-toolkit): the engine's game-free parts moved into `toolkit/`, a workspace with no Superfrog code or names that the engine uses by path; Superfrog's conformance unchanged | ✅ |
 | Map editor (view + edit + repack `ATN!` + rebuild `.adf`) | ⬜ next |
+| Forest Dumb Forever, level 1 on the toolkit: engine, app, recorder, map page and planner; the planned route finishes it in the app and on the original ([`plans/forest-dumb-level-1/`](plans/forest-dumb-level-1/PROGRESS.md)) | ✅ |
 
 **29 levels** found (all `300 × 84` blocks), stored as `ATN!`-packed `T7MP` files.
 

@@ -1,9 +1,12 @@
 # Backlog: the plans after forest-dumb-start
 
-Owner's sequence, 2026-10-31. Nothing here is planned or built yet. Each plan is a `pir plan` run with a slug
+Owner's sequence, 2026-10-31. Level 1 is built; nothing after it is planned yet. Each plan is a `pir plan` run with a slug
 starting `forest-dumb-`. `forest-dumb-start` is merged; the level 1 plan's brief is [level-1-brief.md](level-1-brief.md).
 
 ## Level 1
+
+Done (plan `plans/forest-dumb-level-1/`, 2026-11-11): every stage below is built and judged against the
+original; the drill (T29) closed it. Next is W2-1 or the title and menus, in the order below.
 
 One plan, one `pir plan` run (owner, 2026-10-31; a split into several plans was considered and dropped).
 The stages below are its order of work; the planner turns them into tasks and may run them side by side.
