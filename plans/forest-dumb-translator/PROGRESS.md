@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T24 (machine-chips).
 
 ## Tasks
 
@@ -38,7 +38,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
-| T24 | machine-chips | T22 | ⬜ | |
+| T24 | machine-chips | T22 | 🔍 | Blitter, copper, picture on the machine (`blitter.rs`, `copper.rs`, `video.rs`, `end_frame`); 11 unit tests, 1 full (title snapshot, frames 4923-4924 pixel-equal). Deviations: added `journal.rs` (memory as of the beam); amiga-chips gained `Blit::run_with`, `copper::run_from`; DMACON modelled here; snapshot at 4922 not the first title frame (CPU still draws in 4922). |
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T24
 
 ## Blocked on the user
 

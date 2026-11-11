@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T24 title picture:** the CPU strobes COPJMP1 on line 3 of frame 4921 and writes 185 chip bytes in 4922; a snapshot at 4922's end gives 4923 and 4924 pixel-equal on the machine (`machine_title.rs`, full). |
+| 2026-11-12 | 📌 | T24 stops rather than guess: a copper MOVE to COPJMP1/2 (`unsupported: copper jump`), line and fill blits (`blit line`, `blit fill`), HAM. The host must call `end_frame` at `frame_end()`; T28 owns that. |
+| 2026-11-12 | 🐞 | `purity.rs` fails on the feature branch: T23's generated `pcode-machine/tests/fixtures/irq.rs:7` holds an 18-element integer array (tables over 16 elements come from the disks). Found merging into T24; left alone. |
 | 2026-11-11 | 📌 | **T23 interrupts:** the pushed PC is a marker, `IRQ_RETURN` ($FFFFFF), not the interrupted address: `poll` is not told its block. `from_snapshot` takes INTENA/INTREQ from `custom[0x0E]`, `custom[0x0F]` (INTENAR, INTREQR); T27/T28 snapshots must fill them. |
 | 2026-11-11 | 📌 | **T25 CIA-A:** its interrupt reaches INTREQ only via `Machine::take_cia_interrupts()` (PORTS `$0008`); T23's interrupts or T27 must set it. A snapshot start must set the ICR mask (`cia_a_mut().set_icr_mask(0x08)`): the oracle exposes no CIA state. |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
@@ -30,13 +33,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | Moira's `clr.l` writes the low word before the high (custom writes `(aa,0)` then `(a8,0)`); the sinc's long store is high first, so arith emits clr.l as two word stores. |
 | 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |
 | 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
-| 2026-11-11 | 📌 | **T09 shift_bit census:** 9 kinds, 8 268 of 41 500 states failing (all ccr V) before; 0 after. Trial `--skip-export` still 84 of 85 (write_into_code 1). |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
 | 2026-11-11 | 📌 | **T07 bcd and compare check:** 25 kinds, 65 words, 32 500 states, 0 fail in regs, ccr, mem; 506 skipped. Game has no `nbcd` or `cmpm`; whole translation byte-identical to T06's, unsupported 0. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
-| 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
-| 2026-11-11 | 📌 | T06 fails by owner (`build/translator/insn.md`): T09 nine shift kinds (lsl/lsr V set where Moira clears it, asl.l V); T08 five (addx.l X, divu/divs registers and flags, clr.w abs.l); T10 rte (PC, flags). |
+| 2026-11-11 | 📌 | **T06 instruction check** (500 states a word, 815 words, 290 kinds, about 10 s) failed 15 kinds, listed by owner in `build/translator/insn.md`; T08 to T10 fixed them and T13's `insn_gate.rs` holds every kind at 0. |
 | 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |
 | 2026-11-11 | 🐞 | `--out` naming a file or an unwritable path gives a traceback, not exit 2 (unguarded `os.makedirs`, temp-rename write) in `pcode_export.py`, `re_listing.py`, `translate_batch.py`, `translator_trial.py` (T04 review sweep). Left alone. |
 | 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
