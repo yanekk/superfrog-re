@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-11 | 📌 | **T00 seam: mount `game_frame` whole.** Frame mount (transplant in, `game_frame_on`, write back what differs from memory) passes 2 000/2 000 `game_frame` states, 47 bytes changed a pass (max 71). T35 mounts by address; T36 mounts only `h0+$1fec`. |
+| 2026-11-11 | 📌 | **T00 seam: mount `game_frame` whole.** Transplant in, `game_frame_on`, write back what differs: 2 000/2 000 `game_frame` states, 34.5 bytes changed a pass, max 59 (review's count). T35 mounts by address; T36 mounts only `h0+$1fec`. |
 | 2026-11-11 | 📌 | Per routine also passes: `char_sprite_position` and `camera_update` mounted alone, and both inside translated `game_frame`, 2 000/2 000 each with no registers compared. All registers fail: ports leave scratch d0-d3, d7 (487/2 000 at `game_frame`'s exit). |
 | 2026-11-11 | 🐞 | A write-back compares with memory's bytes, not the typed state before: `camera_update`'s `crossed` flags are bools, so a poked `$6c` stayed and 288/2 000 failed. Camera needed four values outside `LAYOUT` (`h0+$4d76`, `$4d7a`, `$51f8`, `frame_flag`). |
 | 2026-11-11 | 📌 | Round trip (write back whole, transplant again) over `camera-right-left`'s first 100 steps: 0 equal. Not transplanted: `edges.pos` (`h0+$1e66`), pointers `p840`, `p83c`, the `input_log` bytes. Screen and plane share `h3+$fa10..$fa4f`; 4 bytes disagree. `game_frame` reads none. |
