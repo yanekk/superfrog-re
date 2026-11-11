@@ -17,6 +17,7 @@ pub mod disks;
 #[path = "gen/mod.rs"]
 pub mod generators;
 pub mod judge;
+pub mod os_surface;
 pub mod routine;
 pub mod sync;
 

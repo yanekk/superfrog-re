@@ -21,13 +21,20 @@
 //! then `{"total":{"cases","frames","changed","misses"}}`. A case that does not start at level 1
 //! is skipped with a line on stderr. Exit 0 when every case ran, changes or not; 1 for a missing
 //! input; 2 for a wrong command line.
+//!
+//! `fd-conform os-surface [--frames N] [--worlds 1,2] [--out FILE]`: where the program leans on the
+//! OS, measured on the original from power-on through the title, Start, level 1's load and `N`
+//! frames of play (default 300), and each other world's load asked for (`fd_conform::os_surface`,
+//! plans/forest-dumb-translator T01). Writes `games/forest-dumb/re/os-calls.toml` (or `--out`)
+//! through a temporary file, sorted and stable, and prints its path. Exit 0 when written; 1 for a
+//! missing input or a world whose load never ran; 2 for a wrong command line.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use fd_conform::{Case, run};
 
-const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N]";
+const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -35,6 +42,13 @@ fn main() -> ExitCode {
         [cmd, path] if cmd == "run" => run_case(Path::new(path)),
         [cmd, rest @ ..] if cmd == "code-writes" => match code_writes_args(rest) {
             Some((glob, max)) => code_writes(&glob, max),
+            None => {
+                eprintln!("{USAGE}");
+                return ExitCode::from(2);
+            }
+        },
+        [cmd, rest @ ..] if cmd == "os-surface" => match os_surface_args(rest) {
+            Some((opts, out)) => os_surface(&opts, out),
             None => {
                 eprintln!("{USAGE}");
                 return ExitCode::from(2);
@@ -140,6 +154,42 @@ fn bug_compare(zip: &Path, rest: &[String]) -> Result<bool, String> {
     let note = if note.is_empty() { "(no note)" } else { &note };
     write("bug-case.toml", c.case_text("bug-NAME", note).into_bytes())?;
     Ok(c.same())
+}
+
+fn os_surface_args(rest: &[String]) -> Option<(fd_conform::os_surface::Options, Option<PathBuf>)> {
+    let mut opts = fd_conform::os_surface::Options::default();
+    let mut out = None;
+    let mut it = rest.iter();
+    while let Some(flag) = it.next() {
+        match flag.as_str() {
+            "--frames" => opts.frames = it.next()?.parse().ok()?,
+            "--worlds" => {
+                opts.worlds = it
+                    .next()?
+                    .split(',')
+                    .map(|w| w.trim().parse().ok())
+                    .collect::<Option<Vec<u32>>>()?;
+            }
+            "--out" => out = Some(PathBuf::from(it.next()?)),
+            _ => return None,
+        }
+    }
+    Some((opts, out))
+}
+
+/// The survey, written through a temporary file and a rename.
+fn os_surface(
+    opts: &fd_conform::os_surface::Options,
+    out: Option<PathBuf>,
+) -> Result<bool, String> {
+    let r = fd_conform::os_surface::run(opts)?;
+    let path = out.unwrap_or_else(fd_conform::os_surface::committed_path);
+    let tmp = path.with_extension("toml.tmp");
+    std::fs::write(&tmp, r.toml(opts.frames, &opts.worlds))
+        .map_err(|e| format!("{}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("{}: {e}", path.display()))?;
+    println!("{}", path.display());
+    Ok(true)
 }
 
 fn code_writes_args(rest: &[String]) -> Option<(String, Option<u32>)> {
