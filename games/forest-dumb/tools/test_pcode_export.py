@@ -61,6 +61,36 @@ WHOLE_H1 = bytes.fromhex(
     '4E75')             # $06 rts
 
 
+# Translator T07: Ghidra 12.0's known defects, one instruction each, for the instruction check
+# (fd-conform/tests/insn_defects.rs, on Moira). The bcd and compare forms the game lacks (nbcd in
+# every alterable mode, cmpm, -(a7)) are here; the bra.w at $4a lands on another function, `other`,
+# and test_pcode_export_ghidra.py marks it CALL_RETURN as Ghidra does on the game.
+DEFECTS_H0 = bytes.fromhex(
+    'C101' 'C109' 'CF0F'                    # $00 abcd d1,d0; abcd -(a1),-(a0); abcd -(a7),-(a7)
+    '8101' '8109' '8F0F'                    # $06 sbcd, the same three
+    '4800' '4810' '4818' '4820'             # $0c nbcd d0; (a0); (a0)+; -(a0)
+    '481F' '4827'                           # $14 nbcd (a7)+; -(a7): steps 2
+    '48280010' '48301002'                   # $18 nbcd 16(a0); 2(a0,d1.w)
+    '48380400' '483900000004'               # $20 nbcd $400.w; h1+$4, relocated
+    'B001' 'B050' 'B081' 'B0C1' 'B1C9'      # $2a cmp.b d1,d0; cmp.w (a0),d0; cmp.l; cmpa.w d1,a0; cmpa.l a1,a0
+    '0C030001' '0C501234' '0C8012345678'    # $34 cmpi.b #1,d3; cmpi.w #$1234,(a0); cmpi.l #$12345678,d0
+    'B109' 'B149' 'B189' 'BF0F'             # $42 cmpm.b/.w/.l (a1)+,(a0)+; cmpm.b (a7)+,(a7)+
+    '60000006'                              # $4a bra.w $52, into `other`
+    '4E75' '4E71'                           # $4e rts; padding, never reached
+    '74024E75'                              # $52 other: moveq #2,d2; rts
+    '4E71')                                 # $56 padding
+DEFECTS_H1 = bytes(16)
+DEFECTS_RELOC = 0x26                        # the long of nbcd h1+$4
+DEFECTS_FUNCS = [(0, 0x0, 'start'), (0, 0x52, 'other')]
+DEFECTS_TAIL = 'h0+$4a'
+
+
+def defects_program():
+    return (longs(0x3F3, 0, 2, 0, 1, len(DEFECTS_H0) // 4, len(DEFECTS_H1) // 4)
+            + longs(0x3E9, len(DEFECTS_H0) // 4) + DEFECTS_H0 + longs(0x3EC, 1, 1, DEFECTS_RELOC, 0, 0x3F2)
+            + longs(0x3EA, len(DEFECTS_H1) // 4) + DEFECTS_H1 + longs(0x3F2))
+
+
 def longs(*xs):
     return b''.join(struct.pack('>I', x) for x in xs)
 
@@ -88,6 +118,13 @@ class HunkWalk(unittest.TestCase):
         h = P.read_hunks(whole_program())
         self.assertEqual(h.kinds, ['CODE', 'CODE'])
         self.assertEqual(h.relocs, [(0, 2, 0, 0x2c), (0, 0xa, 1, 0)])
+
+    def test_the_defects_programs_reloc32_entry_is_read_from_the_file(self):
+        # Ghidra's Amiga loader records no relocations (a defect of Ghidra 12.0's): the file's own
+        # HUNK_RELOC32 entry, with the long it relocates, is what the export matches operands by.
+        h = P.read_hunks(defects_program())
+        self.assertEqual(h.kinds, ['CODE', 'DATA'])
+        self.assertEqual(h.relocs, [(0, DEFECTS_RELOC, 1, 4)])
 
     def test_bss_and_a_declared_but_absent_hunk(self):
         data = longs(0x3F3, 0, 3, 0, 2, 1, 4, 2) + longs(0x3E9, 1, 0x4E754E75, 0x3F2) + longs(0x3EB, 4, 0x3F2)
