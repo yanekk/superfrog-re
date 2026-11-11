@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T07, T08, T10, T11 and T14 build; T09 is ✅.
+**Next `pir-work` will:** T08, T10, T11 and T14 build; T07 and T09 are ✅.
 
 ## Tasks
 
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
-| T07 | known-defects | T06 | ⬜ | |
+| T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ✅ | Review clean, no fix commit. Reran census check at 500 states: 0 of 41 500 fail; with emit off 8 268 ccr fails, matching FINDINGS. Trial 84 of 85. Mutating asl V to before-against-after failed one unit and two Moira tests. Deviation (emit whole, not V patches) held by the raw-fixture Moira test. |
 | T10 | flags-move-control | T06 | ⬜ | |

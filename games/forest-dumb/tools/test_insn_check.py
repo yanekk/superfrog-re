@@ -2,7 +2,9 @@
 trial corrected, `pcode_rust.py --insn` writes one function per opcode word, and `insn_check.py` runs
 its steps with a stub build and judge, on the made-up export the Rust rig test uses
 (`engine/crates/fd-conform/tests/fixtures/insn.json`). The rig itself, on Moira, is
-`fd-conform/tests/insn_check.rs`. No disks, no Ghidra, no cargo."""
+`fd-conform/tests/insn_check.rs`. Ghidra 12.0's four known defects and nbcd (T07) on the made-up
+program Ghidra exported to `fixtures/defects.json`, judged on Moira by `fd-conform/tests/insn_defects.rs`.
+No disks, no Ghidra, no cargo."""
 import json, os, re, subprocess, sys, tempfile, textwrap, unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +17,9 @@ GAME = os.path.dirname(HERE)
 FIXTURE = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'fixtures', 'insn.json')
 FIXTURE_RS = FIXTURE[:-5] + '.rs'
 BCD = os.path.join(GAME, 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures', 'bcd.json')
+DEFECTS = os.path.join(os.path.dirname(FIXTURE), 'defects.json')
+DEFECTS_RS = DEFECTS[:-5] + '.rs'
+DEFECTS_TEST = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'insn_defects.rs')
 
 
 def load(path):
@@ -70,6 +75,125 @@ class Fixes(unittest.TestCase):
                 for word in ('forest', 'dumb', 'superfrog'):
                     self.assertNotIn(word, src, name)
                 self.assertEqual(re.findall(r'h\d+\+\$[0-9a-f]+', src), [], name)
+
+
+class KnownDefects(unittest.TestCase):
+    """T07: the corrections on Ghidra's own P-code for the made-up defects program."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.doc = pr.load_export(DEFECTS)
+        cls.insns = cls.doc['insns']
+        cls.raw = load(DEFECTS)['insns']   # as exported, with operands, flow and relocs
+
+    def at(self, off):
+        return self.insns[(0, off)]
+
+    def test_the_committed_fixture_is_current_and_holds_the_program(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'defects.rs')
+            r = rust([DEFECTS, '--insn', '--out', out])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout.strip().splitlines()[-1]), {'sites': 31, 'unsupported': 0})
+            self.assertEqual(read(out), read(DEFECTS_RS), 'fixtures/defects.rs is stale: regenerate it (tests/insn_defects.rs)')
+        from test_pcode_export import DEFECTS_H0
+        rs = read(DEFECTS_TEST)
+        h0 = ''.join(re.findall(r'"([0-9a-f]+)"', rs[rs.index('const H0'):rs.index('];', rs.index('const H0'))]))
+        self.assertEqual(h0, DEFECTS_H0.hex())
+        # The opcode words (Ghidra's bytes hold the relocated long as it loaded it).
+        self.assertEqual({a: i['bytes'][:4] for a, i in load(DEFECTS)['insns'].items()},
+                         {pr.fmt_addr(a): DEFECTS_H0[a[1]:a[1] + 2].hex() for a in self.insns})
+
+    def test_nbcd_in_every_alterable_mode_keeps_ghidras_addressing_and_replaces_its_arithmetic(self):
+        nbcd = [a for a, i in self.insns.items() if i['mnem'] == 'nbcd']
+        self.assertEqual(len(nbcd), 10)
+        for a in nbcd:
+            ins = self.insns[a]
+            fixed = pcode_fix.correct(ins)
+            ops = [op['op'] for op in fixed['ops']]
+            self.assertNotIn('CALLOTHER', ops, a)
+            self.assertEqual(ops.count('NBCD'), 1, a)
+            k = ops.index('NBCD')
+            # Everything up to the read is Ghidra's: the address, any step of the register, the load.
+            self.assertEqual(fixed['ops'][:k], ins['ops'][:k], a)
+            self.assertEqual(fixed['ops'][k]['in'], [ins['ops'][k - 1]['out']], a)
+            # The result goes where the CALLOTHER wrote it: a register or ram itself, else a STORE.
+            in_place = a in ((0, 0xc), (0, 0x20), (0, 0x24))   # d0, $400.w, h1+$4
+            self.assertEqual(ops[k + 1:], [] if in_place else ['STORE'], a)
+            text = '\n'.join(pr.InsnEmit(self.insns).instruction(a, ins)[0])
+            self.assertIn('pcode_rt::bcd::bcd_sub(', text)
+            self.assertIn(', 0, r.get(0x43, 1));', text)   # 0 - byte - X, as Moira's bcd<SBCD>(byte, 0)
+            self.assertIn('pcode_rt::bcd::bcd_flags(r, v, x, o);', text)
+        # -(a7) steps 2 in the sinc's own addressing, which the correction keeps.
+        self.assertIn({'op': 'INT_SUB', 'out': ['register', 60, 4], 'in': [['register', 60, 4], ['const', 2, 4]]},
+                      pcode_fix.correct(self.at(0x16))['ops'])
+
+    def test_nbcd_of_another_shape_stays_an_unsupported_stop(self):
+        ins = self.at(0xc)
+        odd = dict(ins, ops=ins['ops'] + [{'op': 'INT_XOR', 'out': ['register', 3, 1],
+                                           'in': [['register', 3, 1], ['const', 1, 1]]}])
+        self.assertIs(pcode_fix.correct(odd), odd)
+        lines, stop = pr.Emit({}, {}).instruction((0, 0xc), odd)
+        self.assertTrue(stop)
+        self.assertIn('CALLOTHER', '\n'.join(lines))
+
+    def test_nbcd_is_unsupported_nowhere_in_a_whole_translation(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = rust([DEFECTS, '--out', os.path.join(d, 'tree.rs')])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout.strip().splitlines()[-1])['unsupported'], 0)
+            self.assertNotIn('Unsupported', read(os.path.join(d, 'tree.rs')).split('fn h0_0(')[1])
+
+    def test_abcd_and_sbcd_through_a7_are_emitted_and_step_two(self):
+        for off, fn in ((0x2, 'bcd_add'), (0x4, 'bcd_add'), (0x8, 'bcd_sub'), (0xa, 'bcd_sub')):
+            lines, family = pcode_fix.emit(pcode_fix.correct(self.at(off)))
+            self.assertEqual(family, 'bcd', hex(off))
+            self.assertIn(f'pcode_rt::bcd::{fn}', '\n'.join(lines))
+        a7 = '\n'.join(pcode_fix.emit(self.at(0x4))[0])
+        self.assertIn('.wrapping_sub(2)', a7)
+        self.assertNotIn('.wrapping_sub(1)', a7)
+
+    def test_every_compare_loses_its_copy_of_c_into_x(self):
+        x_copy = {'op': 'COPY', 'out': ['register', 67, 1], 'in': [['register', 71, 1]]}
+        compares = [a for a, i in self.insns.items() if i['mnem'].split('.')[0] in ('cmp', 'cmpa', 'cmpi', 'cmpm')]
+        self.assertEqual(len(compares), 12)
+        for a in compares:
+            self.assertIn(x_copy, self.insns[a]['ops'], a)          # Ghidra's sinc: XF = CF
+            fixed = pcode_fix.correct(self.insns[a])
+            self.assertNotIn(x_copy, fixed['ops'], a)
+            self.assertFalse(any(op['out'] == ['register', 67, 1] for op in fixed['ops'] if op.get('out')), a)
+
+    def test_cmpm_b_steps_a7_by_two_and_other_registers_by_one(self):
+        def steps(off):
+            return [op['in'][1][1] for op in pcode_fix.correct(self.at(off))['ops']
+                    if op['op'] == 'INT_ADD' and op['out'] == op['in'][0] and op['out'][0] == 'register']
+        self.assertEqual(steps(0x48), [2, 2])    # cmpm.b (a7)+,(a7)+
+        self.assertEqual(steps(0x42), [1, 1])    # cmpm.b (a1)+,(a0)+
+        self.assertEqual(steps(0x44), [2, 2])    # cmpm.w
+        self.assertEqual(steps(0x46), [4, 4])    # cmpm.l
+
+    def test_the_bra_w_ghidra_marks_call_return_is_translated_as_a_branch(self):
+        # The export keeps the instruction's own flow (test_pcode_export_ghidra.DefectsExport): within
+        # the function the bra.w lands in `other`'s block, never a call that would return past it.
+        self.assertEqual(self.raw['h0+$4a']['flow'], {'kind': 'branch', 'targets': ['h0+$52']})
+        with tempfile.TemporaryDirectory() as d:
+            r = rust([DEFECTS, '--out', os.path.join(d, 'tree.rs')])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            start = read(os.path.join(d, 'tree.rs')).split('pub fn h0_0(')[1].split('\n}\n')[0]
+        bra = start[start.index('// h0+$4a bra.w'):]
+        self.assertTrue(bra.split('\n')[2].strip().startswith("pc = (0, 0x52); continue 'b;"), bra[:200])
+        self.assertIn('(0, 0x52) => {', start)
+        self.assertNotIn('h0_52(r, bus, img)', start)
+
+    def test_the_relocated_operand_comes_from_the_files_reloc32(self):
+        from test_pcode_export import DEFECTS_RELOC, defects_program
+        sys.path.insert(0, HERE)
+        import pcode_export as P
+        self.assertEqual(P.read_hunks(defects_program()).relocs, [(0, DEFECTS_RELOC, 1, 4)])
+        nbcd = self.at(0x24)
+        self.assertEqual(self.raw['h0+$24']['relocs'][0], {'in_op': 0, 'slot': 0, 'target': 'h1+$4'})
+        self.assertEqual(pr.seeds(nbcd), [(1, 4)])
+        self.assertIn('load(bus, img.h(1, 0x4), 1)', '\n'.join(pr.InsnEmit(self.insns).instruction((0, 0x24), nbcd)[0]))
 
 
 class InsnMode(unittest.TestCase):
