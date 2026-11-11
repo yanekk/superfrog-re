@@ -38,6 +38,29 @@ DATA = bytes(16) + struct.pack('>I', 0x18) + bytes(12)
 ENTRIES = [(0, 0x0, 10), (0, 0x1c, 2), (0, 0x24, 3), (0, 0x28, 3), (0, 0x30, 2)]
 
 
+# The whole-program export's made-up program (T03): an entry, a vector install, a bounded jump table
+# through (d8,PC,Xn), a second code hunk and a computed jump nothing resolves.
+WHOLE_H0 = bytes.fromhex(
+    '21FC0000002C006C'  # $00 move.l #h0+$2c,$6c.w  installs the level 3 autovector, relocated
+    '4EB900000000'      # $08 jsr h1+$0             relocated to hunk 1
+    '0C400001'          # $0e cmpi.w #1,d0          d0 unknown: the table's bound
+    '620E'              # $12 bhi.s $22
+    'D040'              # $14 add.w d0,d0
+    '303B0006'          # $16 move.w ($1e,pc,d0.w),d0
+    '4EFB0002'          # $1a jmp ($1e,pc,d0.w)
+    '0006000A'          # $1e the table: $24, $28 (data, never exported)
+    '4E75'              # $22 rts
+    '74024E75'          # $24 moveq #2,d2; rts       reached only through the table
+    '74034E75'          # $28 moveq #3,d2; rts
+    '4E73'              # $2c rte                    reached only through the vector
+    '4E71')             # $2e padding, never reached
+WHOLE_H1 = bytes.fromhex(
+    '7605'              # $00 moveq #5,d3
+    '6702'              # $02 beq.s $06
+    '4ED0'              # $04 jmp (a0)               nothing says where
+    '4E75')             # $06 rts
+
+
 def longs(*xs):
     return b''.join(struct.pack('>I', x) for x in xs)
 
@@ -48,12 +71,23 @@ def two_hunk_program():
             + longs(0x3EA, len(DATA) // 4) + DATA + longs(0x3EC, 1, 0, 0x10, 0, 0x3F2))
 
 
+def whole_program():
+    return (longs(0x3F3, 0, 2, 0, 1, len(WHOLE_H0) // 4, len(WHOLE_H1) // 4)
+            + longs(0x3E9, len(WHOLE_H0) // 4) + WHOLE_H0 + longs(0x3EC, 1, 0, 2, 1, 1, 0x0a, 0, 0x3F2)
+            + longs(0x3E9, len(WHOLE_H1) // 4) + WHOLE_H1 + longs(0x3F2))
+
+
 class HunkWalk(unittest.TestCase):
     def test_sizes_kinds_and_every_reloc32_with_the_long_it_relocates(self):
         h = P.read_hunks(two_hunk_program())
         self.assertEqual(h.sizes, [len(CODE), len(DATA)])
         self.assertEqual(h.kinds, ['CODE', 'DATA'])
         self.assertEqual(h.relocs, [(0, 2, 1, 0x10), (1, 0x10, 0, 0x18)])
+
+    def test_the_whole_program_two_code_hunks_and_its_two_relocs(self):
+        h = P.read_hunks(whole_program())
+        self.assertEqual(h.kinds, ['CODE', 'CODE'])
+        self.assertEqual(h.relocs, [(0, 2, 0, 0x2c), (0, 0xa, 1, 0)])
 
     def test_bss_and_a_declared_but_absent_hunk(self):
         data = longs(0x3F3, 0, 3, 0, 2, 1, 4, 2) + longs(0x3E9, 1, 0x4E754E75, 0x3F2) + longs(0x3EB, 4, 0x3F2)
@@ -97,6 +131,31 @@ class MissingInputs(unittest.TestCase):
         self.assertIn('/nowhere/symbols.toml', err)
         run.assert_not_called()
 
+    def test_missing_entries_exits_2_naming_them(self):
+        code, err, run = self.run_main({}, '--entries', '/nowhere/entries.toml')
+        self.assertEqual(code, 2)
+        self.assertIn('/nowhere/entries.toml', err)
+        run.assert_not_called()
+
+    def test_missing_routines_exits_2_naming_them(self):
+        code, err, run = self.run_main({}, '--routines', '/nowhere/translate.toml')
+        self.assertEqual(code, 2)
+        self.assertIn('/nowhere/translate.toml', err)
+        run.assert_not_called()
+
+    def test_a_malformed_entries_file_exits_2_naming_it_and_the_row(self):
+        for row, says in (('at = "0x4"\nsource = "trace"', "'0x4'"), ('at = "h0+$4"\nsource = "guess"', 'guess'),
+                          ('source = "trace"', 'None')):
+            with tempfile.TemporaryDirectory() as tmp, self.subTest(row=row):
+                path = os.path.join(tmp, 'entries.toml')
+                with open(path, 'w') as f:
+                    f.write(f'[[entry]]\n{row}\n')
+                code, err, run = self.run_main({}, '--entries', path)
+                self.assertEqual(code, 2)
+                self.assertIn(path, err)
+                self.assertIn(says, err)
+                run.assert_not_called()
+
     def test_from_the_command_line_under_python_I(self):
         r = subprocess.run([sys.executable, '-I', os.path.join(HERE, 'pcode_export.py'), '--exe', '/nowhere/X'],
                            capture_output=True, text=True, timeout=30)
@@ -139,6 +198,64 @@ class HeadlessCommand(unittest.TestCase):
                                     '-postScript', 'X.java', 'a', 'b'])
 
 
+class WholeSeeds(unittest.TestCase):
+    """The whole program's seeds: the entry, every func symbol, re/entries.toml, one source an address."""
+
+    def seeds(self, toml, symbols=()):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'entries.toml')
+            with open(path, 'w') as f:
+                f.write(toml)
+            return P.whole_seeds(list(symbols), path)
+
+    def test_program_entry_then_symbol_then_vector_then_trace(self):
+        syms = [P.Sym(0, 0x30, 'f', 'func', 0, ''), P.Sym(0, 0x40, 'v', 'var', 0, ''),
+                P.Sym(4, 0x10, 'player', 'func', 0, ''), P.Sym(0, 0, 'start', 'func', 0, '')]
+        toml = ''.join(f'[[entry]]\nat = "{a}"\nsource = "{s}"\n\n' for a, s in [
+            ('h0+$0', 'symbol'), ('h0+$30', 'trace'), ('h0+$50', 'trace'), ('h0+$50', 'vector'),
+            ('h4+$10', 'symbol'), ('h2+$8', 'trace')])
+        self.assertEqual(self.seeds(toml, syms), [
+            (0, 0, 'program-entry'), (0, 0x30, 'symbol'), (0, 0x50, 'vector'), (2, 8, 'trace'),
+            (4, 0x10, 'symbol')])
+
+    def test_the_program_entry_is_seeded_with_no_entries_file_rows(self):
+        self.assertEqual(self.seeds(''), [(0, 0, 'program-entry')])
+
+    def test_an_unknown_source_is_refused_naming_the_address(self):
+        with self.assertRaisesRegex(P.Usage, r'h0\+\$4.*guess'):
+            self.seeds('[[entry]]\nat = "h0+$4"\nsource = "guess"\n')
+
+    def test_the_committed_entries_file_seeds_every_func_symbol(self):
+        syms = P.load_symbols(P.SYMBOLS)
+        seeds = P.whole_seeds(syms, P.ENTRIES)
+        at = {(h, off) for h, off, _ in seeds}
+        self.assertTrue({(s.hunk, s.offset) for s in syms if s.kind == 'func'} <= at)
+        self.assertEqual(seeds[0], (0, 0, 'program-entry'))
+        self.assertTrue({h for h, _, _ in seeds} >= {0, 4})
+
+
+class Summary(unittest.TestCase):
+    def test_the_summary_counts_entries_by_source_and_instructions_by_hunk(self):
+        doc = {'hunks': [{}, {}, {}],
+               'entries': [{'at': 'h0+$0', 'source': 'program-entry'}, {'at': 'h0+$8', 'source': 'symbol'},
+                           {'at': 'h2+$0', 'source': 'symbol'}, {'at': 'h0+$20', 'source': 'vector'}],
+               'insns': {'h0+$0': {'hunk': 0}, 'h0+$8': {'hunk': 0}, 'h2+$0': {'hunk': 2}},
+               'check': {'instructions': 3, 'functions': 2, 'unresolved': 1, 'unresolved_computed': ['h2+$0'],
+                         'relocs': 0, 'relocs_matched': 0, 'unmatched': [], 'mismatched': [],
+                         'unexplained': [], 'undecoded': []}}
+        s = P.summary(doc)
+        self.assertEqual((s['instructions'], s['entries'], s['unresolved_computed'], s['hunks']), (3, 4, 1, [2, 0, 1]))
+        self.assertEqual(s['by_source'], {'program-entry': 1, 'symbol': 2, 'vector': 1})
+
+
+class Modes(unittest.TestCase):
+    def test_whole_and_routines_are_exclusive(self):
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as e:
+            P.main(['--whole', '--routines', P.TRANSLATE])
+        self.assertEqual(e.exception.code, 2)
+
+
+
 class Reach(unittest.TestCase):
     def test_reach_follows_fallthrough_branches_and_calls(self):
         def i(kind, targets=(), n=2):
@@ -146,6 +263,8 @@ class Reach(unittest.TestCase):
         doc = {'entries': ['h0+$0'], 'insns': {
             'h0+$0': i('call', ['h0+$8']), 'h0+$2': i('cbranch', ['h0+$6']), 'h0+$4': i('return'),
             'h0+$6': i('branch', ['h0+$4']), 'h0+$8': i('return'), 'h0+$a': i('return')}}
+        self.assertEqual(P.reach_counts(doc), {'h0+$0': 5})
+        doc['entries'] = [{'at': 'h0+$0', 'source': 'program-entry'}]
         self.assertEqual(P.reach_counts(doc), {'h0+$0': 5})
 
 

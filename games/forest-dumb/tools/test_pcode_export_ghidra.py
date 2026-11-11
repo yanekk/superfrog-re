@@ -1,4 +1,4 @@
-"""pcode_export.py through Ghidra: a hand-written two-hunk program, then the game (full set: about 20 s).
+"""pcode_export.py through Ghidra: hand-written programs, then the game, whole and the trial's set (full set).
 
 Needs Ghidra and its JDK (translator DESIGN §5); without them the test fails naming the path, never
 skips (§2.8).
@@ -9,7 +9,9 @@ from contextlib import redirect_stdout
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pcode_export as P  # noqa: E402
-from test_pcode_export import ENTRIES, two_hunk_program  # noqa: E402
+from test_pcode_export import ENTRIES, two_hunk_program, whole_program  # noqa: E402
+
+ROUTINE_SEEDS = [(h, off, 'routine') for h, off, _ in ENTRIES]
 
 
 class GhidraExport(unittest.TestCase):
@@ -19,12 +21,12 @@ class GhidraExport(unittest.TestCase):
         exe = os.path.join(cls.tmp.name, 'p.exe')
         with open(exe, 'wb') as f:
             f.write(two_hunk_program())
-        P.check_inputs(exe, P.SYMBOLS, P.TRANSLATE)   # a missing Ghidra fails here, naming the path
+        P.check_inputs(exe, P.SYMBOLS, P.ENTRIES)   # a missing Ghidra fails here, naming the path
         syms = [P.Sym(0, 0, 'start', 'func', 0, ''), P.Sym(0, 0x18, 'callee', 'func', 0, ''),
                 P.Sym(0, 0x1c, 'other', 'func', 0, ''), P.Sym(0, 0x24, 'tail_a', 'func', 0, ''),
                 P.Sym(0, 0x28, 'tail_b', 'func', 0, '')]
         with redirect_stdout(io.StringIO()):
-            cls.doc = P.export(exe, syms, ENTRIES, os.path.join(cls.tmp.name, 'out'), name='p')
+            cls.doc = P.export(exe, syms, ROUTINE_SEEDS, os.path.join(cls.tmp.name, 'out'), name='p')
         cls.insns = cls.doc['insns']
 
     @classmethod
@@ -35,7 +37,9 @@ class GhidraExport(unittest.TestCase):
         return self.insns[at]['flow']
 
     def test_every_instruction_by_direct_flow_hunk_relative(self):
-        self.assertEqual(self.doc['entries'], ['h0+$0', 'h0+$1c', 'h0+$24', 'h0+$28', 'h0+$30'])
+        self.assertEqual(self.doc['entries'], [{'at': a, 'source': 'routine'}
+                                               for a in ('h0+$0', 'h0+$1c', 'h0+$24', 'h0+$28', 'h0+$30')])
+        self.assertEqual({i['hunk'] for i in self.insns.values()}, {0})
         self.assertEqual(sorted(self.insns, key=lambda a: int(a.split('$')[1], 16)),
                          ['h0+$0', 'h0+$6', 'h0+$a', 'h0+$c', 'h0+$e', 'h0+$12', 'h0+$14', 'h0+$16',
                           'h0+$18', 'h0+$1a', 'h0+$1c', 'h0+$20', 'h0+$24', 'h0+$28', 'h0+$2c', 'h0+$2e',
@@ -88,15 +92,69 @@ class GhidraExport(unittest.TestCase):
         self.assertEqual(self.doc['check']['unexplained'], ['h0+$30 const h0+$4'])
 
 
+class WholeProgramExport(unittest.TestCase):
+    """The made-up whole program seeded from its entry alone: the vector, the table and hunk 1 are found."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        exe = os.path.join(cls.tmp.name, 'w.exe')
+        with open(exe, 'wb') as f:
+            f.write(whole_program())
+        P.check_inputs(exe, P.SYMBOLS, P.ENTRIES)
+        entries = os.path.join(cls.tmp.name, 'entries.toml')
+        with open(entries, 'w') as f:
+            f.write('')
+        syms = [P.Sym(0, 0, 'start', 'func', 0, '')]
+        with redirect_stdout(io.StringIO()):
+            cls.doc = P.export(exe, syms, P.whole_seeds(syms, entries), os.path.join(cls.tmp.name, 'out'),
+                               name='w')
+        cls.insns = cls.doc['insns']
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_every_instruction_of_both_hunks_and_no_data(self):
+        self.assertEqual(sorted(self.insns, key=P.parse_rel), [
+            'h0+$0', 'h0+$8', 'h0+$e', 'h0+$12', 'h0+$14', 'h0+$16', 'h0+$1a', 'h0+$22', 'h0+$24', 'h0+$26',
+            'h0+$28', 'h0+$2a', 'h0+$2c', 'h1+$0', 'h1+$2', 'h1+$4', 'h1+$6'])
+        self.assertEqual({a: i['hunk'] for a, i in self.insns.items()},
+                         {a: P.parse_rel(a)[0] for a in self.insns})
+        self.assertEqual(P.summary(self.doc)['hunks'], [13, 4])
+
+    def test_the_vector_install_seeds_its_handler_as_vector(self):
+        self.assertEqual(self.doc['vectors'], ['h0+$2c'])
+        self.assertEqual(self.doc['entries'], [{'at': 'h0+$0', 'source': 'program-entry'},
+                                               {'at': 'h0+$2c', 'source': 'vector'}])
+        self.assertEqual(self.insns['h0+$2c']['mnem'], 'rte')
+        self.assertEqual(P.summary(self.doc)['by_source'], {'program-entry': 1, 'vector': 1})
+
+    def test_the_jump_table_targets_are_found(self):
+        self.assertEqual(self.insns['h0+$1a']['flow'], {'kind': 'computed', 'targets': ['h0+$24', 'h0+$28']})
+        # the table base through (d8,PC,Xn) is PC-relative, not an unexplained number
+        self.assertEqual(self.doc['check']['unexplained'], [])
+        self.assertEqual(self.doc['check']['pcrel'], 1)
+
+    def test_an_unresolved_computed_jump_is_listed_by_address(self):
+        self.assertEqual(self.insns['h1+$4']['flow'], {'kind': 'computed', 'targets': []})
+        self.assertEqual(self.doc['check']['unresolved_computed'], ['h1+$4'])
+        self.assertEqual(P.summary(self.doc)['unresolved_computed'], 1)
+
+    def test_every_relocation_lands_on_an_operand(self):
+        c = self.doc['check']
+        self.assertEqual((c['relocs'], c['relocs_matched'], c['undecoded'], c['outside']), (2, 2, [], []))
+
+
 class GameExport(unittest.TestCase):
-    """The game's program from the extracted disk (`fd-tools extract`), into a scratch project."""
+    """The game's program from the extracted disk (`fd-tools extract`), the trial's routines only."""
 
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         P.check_inputs(P.EXE, P.SYMBOLS, P.TRANSLATE)   # names the program's path when it is missing
         with redirect_stdout(io.StringIO()):
-            cls.doc = P.export(P.EXE, P.load_symbols(P.SYMBOLS), P.load_entries(P.TRANSLATE),
+            cls.doc = P.export(P.EXE, P.load_symbols(P.SYMBOLS), P.routine_seeds(P.TRANSLATE),
                                os.path.join(cls.tmp.name, 'out'))
 
     @classmethod
@@ -113,6 +171,59 @@ class GameExport(unittest.TestCase):
         c = self.doc['check']
         self.assertEqual(c['relocs'], c['relocs_matched'])
         self.assertEqual((c['unmatched'], c['mismatched'], c['unexplained'], c['undecoded']), ([], [], [], []))
+
+
+class GameWholeExport(unittest.TestCase):
+    """The game's whole program, as `pcode_export.py` writes it by default."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        P.check_inputs(P.EXE, P.SYMBOLS, P.ENTRIES)
+        syms = P.load_symbols(P.SYMBOLS)
+        with redirect_stdout(io.StringIO()):
+            cls.doc = P.export(P.EXE, syms, P.whole_seeds(syms, P.ENTRIES), os.path.join(cls.tmp.name, 'whole'))
+            cls.trial = P.export(P.EXE, syms, P.routine_seeds(P.TRANSLATE), os.path.join(cls.tmp.name, 'trial'))
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_the_trial_routines_instructions_are_a_subset_of_the_whole_export(self):
+        whole, trial = self.doc['insns'], self.trial['insns']
+        self.assertEqual(sorted(set(trial) - set(whole), key=P.parse_rel), [])
+        for a, i in trial.items():
+            self.assertEqual((whole[a]['len'], whole[a]['mnem']), (i['len'], i['mnem']), a)
+
+    def test_every_seed_is_an_entry_and_decodes(self):
+        seeds = {P.rel(h, off) for h, off, _ in P.whole_seeds(P.load_symbols(P.SYMBOLS), P.ENTRIES)}
+        entries = {e['at'] for e in self.doc['entries']}
+        self.assertTrue(seeds <= entries)
+        self.assertEqual(sorted(entries - set(self.doc['insns'])), [])
+        c = self.doc['check']
+        self.assertEqual((c['undecoded'], c['unmatched'], c['mismatched'], c['unexplained']), ([], [], [], []))
+        self.assertEqual(c['relocs'], c['relocs_matched'])
+
+    def test_the_installed_level_2_and_3_handlers_are_found_as_vectors(self):
+        # entry h0+$100, $120 and system_off install level3_handler and level2_handler (docs/15)
+        self.assertEqual(set(self.doc['vectors']), {'h0+$1eda', 'h0+$1f7a'})
+
+    def test_hunk_4_the_music_player_is_exported(self):
+        self.assertGreater(P.summary(self.doc)['hunks'][4], 0)
+
+    def test_unresolved_computed_jumps_are_listed_by_address(self):
+        c = self.doc['check']
+        self.assertEqual(len(c['unresolved_computed']), c['unresolved'])
+        computed_empty = sorted((a for a, i in self.doc['insns'].items()
+                                 if i['flow'].get('computed') or i['flow']['kind'] == 'computed'
+                                 if not i['flow']['targets']), key=P.parse_rel)
+        self.assertEqual(sorted(c['unresolved_computed'], key=P.parse_rel), computed_empty)
+
+    def test_flows_out_of_the_program_come_only_from_unresolved_calls(self):
+        # Ghidra aims an OS call `jsr -n(a6)` at the loader's stand-in library, outside every hunk
+        c = self.doc['check']
+        self.assertGreater(len(c['outside']), 0)
+        self.assertEqual({o.split(' -> ')[0] for o in c['outside']} - set(c['unresolved_computed']), set())
 
 
 if __name__ == '__main__':

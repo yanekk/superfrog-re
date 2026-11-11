@@ -99,16 +99,24 @@ Names print as spelled; case-insensitive comparison with the inventory is the ca
 ## Translator
 
 ### pcode_export.py (stdlib)
-Ghidra's P-code for every instruction of `re/translate.toml`'s routines and their callees, every address
-hunk-relative (`hN+$off`), for the static translator (plan `forest-dumb-translator-trial`, DESIGN §3.4).
+Ghidra's P-code for every instruction of the whole main program, every address hunk-relative
+(`hN+$off`), for the static translator (plan `forest-dumb-translator`, DESIGN §2.1, §2.3, §3.4).
 ```
-python3 -I games/forest-dumb/tools/pcode_export.py [--out build/translator] [--reimport]
+python3 -I games/forest-dumb/tools/pcode_export.py [--out build/translator] [--entries re/entries.toml]
+                                                   [--whole | --routines re/translate.toml] [--reimport]
 ```
-Needs Ghidra (`toolkit/tools/setup/install-ghidra.sh`). Writes `<out>/pcode.json` and the Ghidra project
-`<out>/ghidra/` (later runs reuse it; `--reimport` starts over), prints one JSON summary line, and warns on
-stderr for a routine whose reach differs from `translate.toml` by over 5%. Exit 2, path on stderr, when
-Ghidra, its JDK, the program or a symbols file is missing. Relocations come from the file's
-`HUNK_RELOC32` entries, since Ghidra's Amiga loader records none. The script is `ghidra/ExportPcode.java`.
+Seeds the program entry `h0+$0`, every `func` of `re/symbols.toml`, `re/entries.toml` (the oracle trace)
+and the handlers the code installs in an autovector (`$64..$7c`); follows direct flow and the jump tables
+Ghidra resolves. `--routines` seeds only the trial's routines and warns on stderr for one whose reach
+differs from `translate.toml` by over 5%. `pcode.json` holds `entries` (`{"at", "source"}`, source
+program-entry, symbol, vector, trace or routine), `vectors`, per instruction its `hunk`, and under `check`
+the unresolved computed jumps by address (`unresolved_computed`) and flows out of every hunk (`outside`,
+the OS calls). Needs Ghidra (`toolkit/tools/setup/install-ghidra.sh`); writes the Ghidra project
+`<out>/ghidra/` (later runs reuse it; `--reimport` starts over) and prints one JSON summary line
+(`instructions`, `entries`, `by_source`, `unresolved_computed`, `hunks`: instructions per hunk). Exit 2,
+path on stderr, when Ghidra, its JDK, the program, a symbols or entries file is missing. Relocations come
+from the file's `HUNK_RELOC32` entries, since Ghidra's Amiga loader records none. The script is
+`ghidra/ExportPcode.java`.
 
 ### translator_trial.py (stdlib)
 The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a

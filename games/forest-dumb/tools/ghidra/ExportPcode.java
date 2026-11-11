@@ -1,5 +1,5 @@
 // Post-script: exports Ghidra's P-code for every instruction reached by direct flow from a list of
-// entries, with every address written hunk-relative, so code generated from it does not depend on
+// entries and from the interrupt autovectors the code installs, with every address written hunk-relative, so code generated from it does not depend on
 // where Ghidra (or anything else) loaded the program. Names no game: every fact arrives as an argument.
 //
 // Args: <entries.tsv> <relocs.tsv> <out.json>
@@ -9,6 +9,11 @@
 //
 // The relocations come from the caller because Ghidra's Amiga loader records none in its relocation
 // table. A relocated long is found among an instruction's P-code operands by its loaded value.
+//
+// A vector install is a store of a relocated long into an autovector ($64..$7c, the 68000's levels 1
+// to 7) inside one instruction (`move.l #handler,$6c.w`); its target is seeded like an entry and listed
+// under "vectors". A handler address loaded into a register first and stored by a later instruction is
+// not followed: that would need data flow across instructions, and the trace (entries.tsv) covers it.
 //@category Amiga
 import ghidra.app.script.GhidraScript;
 import ghidra.app.util.PseudoDisassembler;
@@ -35,6 +40,7 @@ import java.util.regex.Pattern;
 public class ExportPcode extends GhidraScript {
     private static final Pattern HUNK_BLOCK = Pattern.compile("^[A-Z]+_(\\d+)$");
     private static final int MAX_ROUNDS = 6;
+    private static final long VECTOR_LO = 0x64, VECTOR_HI = 0x7c;
 
     private List<MemoryBlock> hunks;
     private Memory mem;
@@ -78,6 +84,60 @@ public class ExportPcode extends GhidraScript {
     /** What the export needs of one reloc site: its target hunk and the value the file holds. */
     private record Reloc(int hunk, long off, int target, long value) {}
 
+    private Map<Long, Reloc> relocs;
+
+    /** Loaded value -> the hunk address it relocates to, for every relocated long inside the instruction. */
+    private Map<Long, Address> relocatedValues(Instruction in) throws Exception {
+        Map<Long, Address> out = new HashMap<>();
+        long a = in.getAddress().getOffset();
+        for (long s = a; s < a + in.getLength(); s++) {
+            Reloc r = relocs.get(s);
+            if (r == null) continue;
+            long loaded = mem.getInt(in.getAddress().getNewAddress(s)) & 0xffffffffL;
+            out.put(loaded, at(r.target, r.value));
+        }
+        return out;
+    }
+
+    /** The handlers this instruction stores into an autovector: a relocated long, written in one step. */
+    private List<Address> vectorTargets(Instruction in) throws Exception {
+        List<Address> out = new ArrayList<>();
+        Map<Long, Address> values = relocatedValues(in);
+        if (values.isEmpty()) return out;
+        // constants carried through unique temporaries within the instruction's own P-code
+        Map<Long, Long> uniq = new HashMap<>();
+        for (PcodeOp op : in.getPcode(false)) {
+            Varnode o = op.getOutput();
+            if (op.getOpcode() == PcodeOp.COPY && o != null && o.isUnique()) {
+                Long c = constOf(op.getInput(0), uniq);
+                if (c != null) uniq.put(o.getOffset(), c);
+                else uniq.remove(o.getOffset());
+                continue;
+            }
+            Long where = null, value = null;
+            if (op.getOpcode() == PcodeOp.STORE && op.getNumInputs() == 3 && op.getInput(2).getSize() == 4) {
+                where = constOf(op.getInput(1), uniq);
+                value = constOf(op.getInput(2), uniq);
+            } else if (op.getOpcode() == PcodeOp.COPY && o != null && o.isAddress() && o.getSize() == 4) {
+                where = o.getOffset();
+                value = constOf(op.getInput(0), uniq);
+            } else if (o != null && o.isUnique()) {
+                uniq.remove(o.getOffset());
+            }
+            if (where == null || value == null) continue;
+            where &= 0xffffffffL;
+            if (where >= VECTOR_LO && where <= VECTOR_HI && (where & 3) == 0 && values.containsKey(value))
+                out.add(values.get(value));
+        }
+        return out;
+    }
+
+    private static Long constOf(Varnode v, Map<Long, Long> uniq) {
+        if (v.isConstant()) return v.getOffset() & 0xffffffffL;
+        if (v.isUnique()) return uniq.get(v.getOffset());
+        return null;
+    }
+
     @Override
     public void run() throws Exception {
         String[] args = getScriptArgs();
@@ -92,7 +152,7 @@ public class ExportPcode extends GhidraScript {
             entries.add(at(Integer.parseInt(f[0]), Long.parseLong(f[1])));
         }
         // keyed by the Ghidra address of the relocated long
-        Map<Long, Reloc> relocs = new HashMap<>();
+        relocs = new HashMap<>();
         for (String line : Files.readAllLines(Path.of(args[1]))) {
             if (line.isBlank()) continue;
             String[] f = line.split("\t");
@@ -108,11 +168,17 @@ public class ExportPcode extends GhidraScript {
         analyzeChanges(currentProgram);
         TreeMap<Long, Instruction> seen = new TreeMap<>();
         List<String> undecoded = new ArrayList<>();
+        // flows Ghidra gives an instruction that leave every hunk: "from -> $to", never walked
+        TreeSet<String> outside = new TreeSet<>();
+        // vector targets found in any round stay seeds: a later round must still reach them
+        LinkedHashSet<Address> vectors = new LinkedHashSet<>();
         for (int round = 0; round < MAX_ROUNDS; round++) {
             boolean grew = false;
             seen.clear();
             undecoded.clear();
+            outside.clear();
             Deque<Address> work = new ArrayDeque<>(entries);
+            work.addAll(vectors);
             while (!work.isEmpty()) {
                 Address a = work.pop();
                 if (seen.containsKey(a.getOffset())) continue;
@@ -127,8 +193,15 @@ public class ExportPcode extends GhidraScript {
                 if (in == null) { undecoded.add(rel(a.getOffset())); continue; }
                 seen.put(a.getOffset(), in);
                 if (in.getDefaultFallThrough() != null) work.push(in.getDefaultFallThrough());
-                for (Address t : in.getFlows()) work.push(t);
+                for (Address t : in.getFlows()) {
+                    if (hunkOf(t.getOffset()) >= 0) work.push(t);
+                    else outside.add(rel(a.getOffset()) + " -> " + String.format("$%x", t.getOffset()));
+                }
                 for (Address t : computedTargets(in)) work.push(t);
+                for (Address t : vectorTargets(in)) {
+                    if (vectors.add(t)) grew = true;
+                    work.push(t);
+                }
             }
             if (!grew) break;
             analyzeChanges(currentProgram);
@@ -143,6 +216,7 @@ public class ExportPcode extends GhidraScript {
 
         int unresolved = 0, relocsIn = 0, relocsMatched = 0, pcrel = 0;
         List<String> unmatched = new ArrayList<>(), unexplained = new ArrayList<>(), mismatched = new ArrayList<>();
+        List<String> unresolvedAt = new ArrayList<>();
         Set<Function> functions = new HashSet<>();
         StringBuilder js = new StringBuilder();
         js.append("{\"ghidra_bases\":[");
@@ -153,6 +227,9 @@ public class ExportPcode extends GhidraScript {
         js.append("],\n\"entries\":[");
         for (int i = 0; i < entries.size(); i++)
             js.append(i > 0 ? "," : "").append(q(rel(entries.get(i).getOffset())));
+        js.append("],\n\"vectors\":[");
+        int vi = 0;
+        for (Address v : vectors) js.append(vi++ > 0 ? "," : "").append(q(rel(v.getOffset())));
         js.append("],\n\"insns\":{");
         boolean firstInsn = true;
         for (Instruction in : seen.values()) {
@@ -179,7 +256,9 @@ public class ExportPcode extends GhidraScript {
                 relocValue.put(loaded, target);
                 sites.add(new long[]{s, loaded});
             }
-            boolean hasPcOperand = in.toString().toUpperCase().contains("PC)");
+            // (d16,PC) prints as "...,PC)", (d8,PC,Xn) as "...,PC,D0w)"
+            String text = in.toString().toUpperCase();
+            boolean hasPcOperand = text.contains("PC)") || text.contains("PC,");
 
             StringBuilder o = new StringBuilder("[");
             StringBuilder rl = new StringBuilder("[");
@@ -226,11 +305,15 @@ public class ExportPcode extends GhidraScript {
             else if (ft.isJump()) kind = "branch";
             else if (ft.isTerminal()) kind = "return";
             else kind = "fallthrough";
-            if (computed && targets.isEmpty()) unresolved++;
+            if (computed && targets.isEmpty()) {
+                unresolved++;
+                unresolvedAt.add(rel(a));
+            }
 
             js.append(firstInsn ? "\n" : ",\n");
             firstInsn = false;
-            js.append(q(rel(a))).append(":{\"len\":").append(len);
+            js.append(q(rel(a))).append(":{\"hunk\":").append(hunkOf(a));
+            js.append(",\"len\":").append(len);
             js.append(",\"mnem\":").append(q(in.getMnemonicString().toLowerCase()));
             js.append(",\"ops\":").append(o);
             js.append(",\"flow\":{\"kind\":").append(q(kind));
@@ -244,6 +327,7 @@ public class ExportPcode extends GhidraScript {
         js.append("\"instructions\":").append(seen.size());
         js.append(",\"functions\":").append(functions.size());
         js.append(",\"unresolved\":").append(unresolved);
+        js.append(",\"unresolved_computed\":").append(list(unresolvedAt));
         js.append(",\"relocs\":").append(relocsIn);
         js.append(",\"relocs_matched\":").append(relocsMatched);
         js.append(",\"pcrel\":").append(pcrel);
@@ -252,6 +336,7 @@ public class ExportPcode extends GhidraScript {
         js.append(",\"mismatched\":").append(list(mismatched));
         js.append(",\"unexplained\":").append(list(unexplained));
         js.append(",\"undecoded\":").append(list(undecoded));
+        js.append(",\"outside\":").append(list(new ArrayList<>(outside)));
         js.append("}}\n");
         try (PrintWriter w = new PrintWriter(args[2])) {
             w.print(js);

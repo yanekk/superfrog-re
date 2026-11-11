@@ -122,7 +122,8 @@ def load_export(path):
             raise BadInput(f'{path}: hunk {i} has index {h.get("index")}')
     if not isinstance(doc['entries'], list):
         raise BadInput(f'{path}: "entries" must be a list')
-    entries = [parse_addr(e, f'{path}: entries') for e in doc['entries']]
+    # {"at", "source"} since the whole export (translator T03), a bare address before it
+    entries = [parse_addr(e.get('at') if isinstance(e, dict) else e, f'{path}: entries') for e in doc['entries']]
     insns = {}
     if not isinstance(doc['insns'], dict):
         raise BadInput(f'{path}: "insns" must be an object keyed by address')
