@@ -18,10 +18,24 @@ import pcode_rust as pr
 
 TOOL = os.path.join(HERE, 'pcode_rust.py')
 FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures')
-# (export, hints or None, committed translation)
-TRANSLATIONS = [(n + '.json', None, n + '.rs') for n in (
+# (export, hints or None, committed translation, extra arguments): a `.rs` is one module, else a directory
+TRANSLATIONS = [(n + '.json', None, n + '.rs', []) for n in (
     'bcd', 'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
-    'relative', 'unsupported')] + [('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs')]
+    'relative', 'shared_call', 'unsupported')] + [
+    ('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs', []),
+    ('shared_call.json', None, 'shared_call', ['--parts', '2'])]
+
+
+def tree_files(path):
+    """{name: text} of a translation, one module or a directory."""
+    if path.endswith('.rs'):
+        with open(path) as f:
+            return {os.path.basename(path): f.read()}
+    out = {}
+    for name in sorted(os.listdir(path)):
+        with open(os.path.join(path, name)) as f:
+            out[name] = f.read()
+    return out
 
 D0 = ['register', 0, 4]
 D1 = ['register', 4, 4]
@@ -298,17 +312,121 @@ class Cli(unittest.TestCase):
             self.assertEqual(outs[0], outs[1])
 
     def test_the_committed_fixture_translations_are_current(self):
-        for src, hints, rs in TRANSLATIONS:
+        for src, hints, rs, extra in TRANSLATIONS:
             with self.subTest(rs=rs), tempfile.TemporaryDirectory() as d:
                 out = os.path.join(d, rs)
-                args = [os.path.join(FIXTURES, src), '--out', out]
+                args = [os.path.join(FIXTURES, src), '--out', out] + extra
                 if hints:
                     args += ['--hints', os.path.join(FIXTURES, hints)]
                 r = run(args)
                 self.assertEqual(r.returncode, 0, r.stderr)
-                with open(out) as f, open(os.path.join(FIXTURES, rs)) as g:
-                    self.assertEqual(f.read(), g.read(),
-                                     f'{rs} is stale: run python3 tools/test_pcode_rust.py --regen')
+                self.assertEqual(tree_files(out), tree_files(os.path.join(FIXTURES, rs)),
+                                 f'{rs} is stale: run python3 tools/test_pcode_rust.py --regen')
+
+
+def call(at, target):
+    """bsr: push the address after it, call `target`."""
+    nxt = pr.fmt_addr((0, pr.parse_addr(at, 't')[1] + 4))
+    return {'len': 4, 'mnem': 'bsr', 'ops': [
+        {'op': 'INT_SUB', 'out': ['register', 60, 4], 'in': [['register', 60, 4], ['const', 4, 4]]},
+        {'op': 'STORE', 'in': [['const', 433, 8], ['register', 60, 4], ['const', nxt, 4]]},
+        {'op': 'CALL', 'in': [['ram', target, 4]]}]}
+
+
+NOP = {'len': 2, 'mnem': 'nop', 'ops': []}
+
+
+def program(calls, sizes):
+    """An export of functions at $100 apart: `calls` {function: [callees]}, `sizes` {function: nops}."""
+    insns = {}
+    for f in sorted(set(calls) | set(sizes)):
+        a = f * 0x100
+        for c in calls.get(f, []):
+            insns[pr.fmt_addr((0, a))] = call(pr.fmt_addr((0, a)), pr.fmt_addr((0, c * 0x100)))
+            a += 4
+        for _ in range(sizes.get(f, 0)):
+            insns[pr.fmt_addr((0, a))] = NOP
+            a += 2
+        insns[pr.fmt_addr((0, a))] = RTS
+    doc = export(insns, entries=[pr.fmt_addr((0, f * 0x100)) for f in sorted(set(calls) | set(sizes))],
+                 sizes=(0x10000,))
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, 'p.json')
+        with open(p, 'w') as f:
+            json.dump(doc, f)
+        ex = pr.load_export(p)
+    return pr.translate(ex), ex['insns']
+
+
+def parts_of(part_of):
+    """[[function numbers in a part]], from entry -> part."""
+    out = {}
+    for e, i in part_of.items():
+        out.setdefault(i, []).append(e[1] // 0x100)
+    return [sorted(out[i]) for i in sorted(out)]
+
+
+class Split(unittest.TestCase):
+    """--out DIR: the tree as mod.rs and one module per part (translator T04)."""
+
+    def test_a_single_caller_function_sits_with_its_caller_and_a_shared_one_stands_alone(self):
+        # 0 calls 1 and 2; 1 and 2 both call 3; 1 alone calls 4.
+        funcs, insns = program({0: [1, 2], 1: [3, 4], 2: [3]}, {0: 10, 1: 10, 2: 10, 3: 10, 4: 10})
+        groups = sorted(sorted(e[1] // 0x100 for e in g) for g in pr.clusters(funcs, insns, 10 ** 6))
+        self.assertEqual(groups, [[0, 1, 2, 4], [3]])
+
+    def test_a_group_stops_growing_at_the_cap_smallest_first(self):
+        # 1 (2 nops) and 2 (40) both called only by 0 (2): with room for one, the small one folds.
+        funcs, insns = program({0: [1, 2]}, {0: 2, 1: 2, 2: 40})
+        groups = sorted(sorted(e[1] // 0x100 for e in g) for g in pr.clusters(funcs, insns, 12))
+        self.assertEqual(groups, [[0, 1], [2]])
+
+    def test_parts_are_balanced_and_none_is_empty(self):
+        funcs, insns = program({}, {0: 40, 1: 30, 2: 20, 3: 10})
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 2)), [[0, 3], [1, 2]])
+        # More parts than functions: one part each, numbered without gaps.
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 9)), [[0], [1], [2], [3]])
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 1)), [[0, 1, 2, 3]])
+
+    def test_a_call_across_parts_names_the_part_and_one_within_does_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', out, '--parts', '2'])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout)['parts'], 2)
+            files = tree_files(out)
+            self.assertEqual(sorted(files), ['mod.rs', 'p00.rs', 'p01.rs'])
+            self.assertIn('#[path = "p00.rs"]\nmod p00;', files['mod.rs'])
+            self.assertIn('"h0+$30" => Some(p01::h0_30),', files['mod.rs'])
+            self.assertIn('super::p01::h0_30(r, bus, img)?;', files['p00.rs'])
+            self.assertIn('\n                    h0_30(r, bus, img)?;', files['p01.rs'])
+            self.assertNotIn('pub fn h0_30', files['p00.rs'])
+
+    def test_the_split_holds_the_same_functions_as_one_module(self):
+        with tempfile.TemporaryDirectory() as d:
+            one, tree = os.path.join(d, 'one.rs'), os.path.join(d, 'tree')
+            src = os.path.join(FIXTURES, 'shared_call.json')
+            self.assertEqual(run([src, '--out', one]).returncode, 0)
+            self.assertEqual(run([src, '--out', tree, '--parts', '2']).returncode, 0)
+            fns = lambda text: sorted(re.findall(r'^pub fn (h\d+_[0-9a-f]+)', text, re.M))
+            files = tree_files(tree)
+            self.assertEqual(fns(tree_files(one)['one.rs']), fns(files['p00.rs'] + files['p01.rs']))
+
+    def test_a_smaller_split_removes_the_parts_it_no_longer_has(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            src = os.path.join(FIXTURES, 'shared_call.json')
+            self.assertEqual(run([src, '--out', out, '--parts', '2']).returncode, 0)
+            with open(os.path.join(out, 'notes.txt'), 'w') as f:
+                f.write('kept')
+            self.assertEqual(run([src, '--out', out, '--parts', '1']).returncode, 0)
+            self.assertEqual(sorted(os.listdir(out)), ['mod.rs', 'notes.txt', 'p00.rs'])
+
+    def test_parts_below_one_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', os.path.join(d, 't'), '--parts', '0'])
+            self.assertEqual(r.returncode, 2)
+            self.assertIn('--parts', r.stderr)
 
 
 def fixture_insn(at):
@@ -385,8 +503,8 @@ class NoGame(unittest.TestCase):
 
 
 def regen():
-    for src, hints, rs in TRANSLATIONS:
-        args = [os.path.join(FIXTURES, src), '--out', os.path.join(FIXTURES, rs)]
+    for src, hints, rs, extra in TRANSLATIONS:
+        args = [os.path.join(FIXTURES, src), '--out', os.path.join(FIXTURES, rs)] + extra
         if hints:
             args += ['--hints', os.path.join(FIXTURES, hints)]
         r = run(args)

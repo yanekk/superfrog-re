@@ -29,6 +29,11 @@ mod nested_call;
 mod pushed_return;
 #[path = "fixtures/relative.rs"]
 mod relative;
+#[path = "fixtures/shared_call.rs"]
+mod shared_call;
+// The same program written as a directory of two parts (translator T04, `--out DIR --parts 2`).
+#[path = "fixtures/shared_call/mod.rs"]
+mod shared_call_split;
 #[path = "fixtures/unsupported.rs"]
 mod unsupported;
 
@@ -280,4 +285,30 @@ fn code_lists_every_translated_instructions_bytes() {
     assert_eq!(jump_table::CODE, &[(0, 0, 0x10)]);
     assert_eq!(jump_table_hinted::CODE, &[(0, 0, 0x18)]);
     assert_eq!(code_write::HUNK_SIZES, &[0x20, 0x10]);
+}
+
+/// The split tree runs exactly as the one-module tree: the caller and one helper in one part, the
+/// other helper and the routine both helpers call in the other.
+#[test]
+fn a_tree_split_into_parts_runs_as_the_unsplit_one() {
+    let run = |f: Routine, sizes: &[u32], code: &[(u32, u32, u32)]| {
+        let (mut r, mut m) = (Regs::new(), ram());
+        r.set_d(1, 10);
+        call(f, sizes, code, &mut r, &mut m).unwrap();
+        returned(&r);
+        (r, m.0)
+    };
+    let (one, one_mem) = run(shared_call::entry("h0+$0").unwrap(), shared_call::HUNK_SIZES, shared_call::CODE);
+    let (split, split_mem) = run(
+        shared_call_split::entry("h0+$0").unwrap(),
+        shared_call_split::HUNK_SIZES,
+        shared_call_split::CODE,
+    );
+    assert_eq!((one.d(1), one.d(2), one.d(3)), (12, 1, 2), "the shared routine ran twice");
+    assert_eq!(one, split, "registers");
+    assert!(one_mem == split_mem, "memory");
+    assert_eq!(shared_call::CODE, shared_call_split::CODE);
+    for at in ["h0+$0", "h0+$10", "h0+$20", "h0+$30"] {
+        assert!(shared_call_split::entry(at).is_some(), "{at}");
+    }
 }
