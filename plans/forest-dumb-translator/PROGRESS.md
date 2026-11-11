@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ✅ | |
 | T09 | flags-shift-bit | T06 | ✅ | |
-| T10 | flags-move-control | T06 | ⬜ | |
+| T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
