@@ -8,6 +8,8 @@ pub const SLOW_BASE: u32 = 0xC0_0000;
 pub const CHIP_WINDOW: u32 = 0x20_0000;
 /// Slow RAM's window: past the fitted slow RAM it mirrors the custom registers, up to `$D80000`.
 pub const SLOW_WINDOW_END: u32 = 0xD8_0000;
+/// Kickstart ROM's window, 512 KB up to the top of the 24-bit space.
+pub const ROM_BASE: u32 = 0xF8_0000;
 /// Most chip RAM an OCS or ECS Agnus addresses, and most slow RAM the window holds.
 pub const MAX_CHIP: u32 = CHIP_WINDOW;
 pub const MAX_SLOW: u32 = SLOW_WINDOW_END - SLOW_BASE;
@@ -23,7 +25,10 @@ pub enum Region {
     Custom(u16),
     /// The CIAs' window, the address itself: which CIA answers depends on its bits 12, 13 and 0.
     Cia(u32),
-    /// Nothing the machine models: ROM and its mirror, autoconfig, the clock chip's window,
+    /// Kickstart's ROM window, `$F80000..$FFFFFF`, at this offset from [`ROM_BASE`]: where the
+    /// machine puts its made-up OS structures (`os`). What they do not cover is outside.
+    Rom(u32),
+    /// Nothing the machine models: ROM's mirror, autoconfig, the clock chip's window,
     /// unmapped space.
     Outside,
 }
@@ -41,6 +46,7 @@ pub fn region(a: u32, chip: u32, slow: u32) -> Region {
         0xA0..=0xBF => Region::Cia(a),
         0xC0..=0xD7 if a - SLOW_BASE < slow => Region::Slow((a - SLOW_BASE) as usize),
         0xC0..=0xDB | 0xDE | 0xDF => Region::Custom((a & 0x1FE) as u16),
+        0xF8..=0xFF => Region::Rom(a - ROM_BASE),
         _ => Region::Outside,
     }
 }
@@ -86,10 +92,10 @@ mod tests {
         assert_eq!(region(0xDE_F1FE, K512, K512), Region::Custom(0x1FE));
         assert_eq!(region(0xBF_E001, K512, K512), Region::Cia(0xBF_E001));
         assert_eq!(region(0xA0_0000, K512, K512), Region::Cia(0xA0_0000));
-        for a in [
-            0x20_0000, 0x9F_FFFF, 0xE0_0000, 0xE8_0000, 0xF8_0000, 0xFF_FFFF,
-        ] {
+        for a in [0x20_0000, 0x9F_FFFF, 0xE0_0000, 0xE8_0000, 0xF7_FFFF] {
             assert_eq!(region(a, K512, K512), Region::Outside, "${a:x}");
         }
+        assert_eq!(region(0xF8_0000, K512, K512), Region::Rom(0));
+        assert_eq!(region(0xFF_FFFF, K512, K512), Region::Rom(0x7_FFFF));
     }
 }

@@ -16,12 +16,14 @@ pub mod cia;
 pub mod custom;
 pub mod input;
 pub mod mem;
+pub mod os;
 pub mod paula;
 
 pub use cia::CiaA;
 pub use custom::Cia;
 pub use input::Input;
 use mem::{Region, SLOW_BASE};
+pub use os::{Disks, Library};
 pub use paula::PaulaLog;
 
 /// The machine's shape.
@@ -143,6 +145,8 @@ pub struct Machine {
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
+    /// The operating system's answers, its structures and the disk (`os`, translator T26).
+    os: os::Os,
 }
 
 impl Machine {
@@ -163,11 +167,13 @@ impl Machine {
             phase: 0,
             bus: 0,
             fault: None,
+            os: os::Os::new(),
         }
     }
 
     /// `program` (an AmigaDOS hunk file) with hunk `n` at `cfg.hunk_bases[n]`, relocated, in
-    /// otherwise zeroed RAM; the beam at line 0's start at cycle 0.
+    /// otherwise zeroed RAM but for what Kickstart leaves a program it starts (ExecBase at `$4`, the
+    /// autovectors on the OS's handlers, `os`); the beam at line 0's start at cycle 0.
     pub fn new(cfg: Config, program: &[u8]) -> Result<Machine, LoadError> {
         cfg.check()?;
         let hunks = amiga_disk::hunk::parse(program).map_err(|e| LoadError::Hunk(e.to_string()))?;
@@ -215,12 +221,14 @@ impl Machine {
                 }
             }
         }
+        m.install_os();
         Ok(m)
     }
 
     /// A case's sync point: `mem` is chip RAM then slow RAM, as the oracle's `AmigaMemory` holds
     /// them, `custom` the registers by `reg / 2`. VPOSR and VHPOSR (`custom[2]`, `custom[3]`) place
-    /// the beam at cycle 0; the rest are the registers' values. Hunk sizes are unknown here.
+    /// the beam at cycle 0; the rest are the registers' values. Hunk sizes are unknown here. `$4`
+    /// is set to the machine's ExecBase (`os`): the oracle's would lead into a Kickstart not here.
     ///
     /// Panics on an impossible `cfg` or on `mem` not `cfg.chip + cfg.slow` bytes: both are the
     /// host's own facts, not the program's.
@@ -240,6 +248,7 @@ impl Machine {
         m.custom = *custom;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
+        m.set_exec_base();
         m
     }
 
@@ -486,6 +495,11 @@ impl Bus for Machine {
         }
     }
 
+    /// A library vector: the OS's answer (`os`).
+    fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.os_call(a, r, img)
+    }
+
     fn rb(&mut self, a: u32) -> u8 {
         match self.region(a) {
             Region::Chip(_) | Region::Slow(_) => {
@@ -511,6 +525,16 @@ impl Bus for Machine {
                 self.bus = v as u16;
                 v
             }
+            Region::Rom(off) => match self.os.rom_byte(off) {
+                Some(v) => {
+                    self.bus = v as u16;
+                    v
+                }
+                None => {
+                    self.outside(a);
+                    0
+                }
+            },
             Region::Outside => {
                 self.outside(a);
                 0
@@ -520,7 +544,7 @@ impl Bus for Machine {
 
     fn rw(&mut self, a: u32) -> u16 {
         match self.region(a) {
-            Region::Chip(_) | Region::Slow(_) => {
+            Region::Chip(_) | Region::Slow(_) | Region::Rom(_) => {
                 let hi = self.rb(a);
                 let lo = self.rb(a.wrapping_add(1));
                 let v = (hi as u16) << 8 | lo as u16;
@@ -572,7 +596,8 @@ impl Bus for Machine {
                     self.cia_write(Cia::B, reg, v);
                 }
             }
-            Region::Outside => self.outside(a),
+            // Kickstart's ROM: a write is the program's bug, and would change nothing there.
+            Region::Rom(_) | Region::Outside => self.outside(a),
         }
     }
 
@@ -595,7 +620,7 @@ impl Bus for Machine {
                     self.cia_write(Cia::B, reg, (v >> 8) as u8);
                 }
             }
-            Region::Outside => self.outside(a),
+            Region::Rom(_) | Region::Outside => self.outside(a),
         }
     }
 

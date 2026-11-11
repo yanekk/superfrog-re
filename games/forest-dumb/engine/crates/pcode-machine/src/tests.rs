@@ -159,7 +159,9 @@ fn chip_ram_mirrors_and_slow_ram_ends_at_its_size() {
 #[test]
 fn an_access_outside_memory_is_a_stop_naming_it_at_the_next_block() {
     for (a, write) in [
-        (0xF8_0000u32, false),
+        // Kickstart's ROM past the OS's made-up structures, and a write to them (translator T26).
+        (0xFC_0000u32, false),
+        (0xF8_1000, true),
         (0x20_0000, true),
         (0xE8_0000, false),
         (0xDC_0000, true),
