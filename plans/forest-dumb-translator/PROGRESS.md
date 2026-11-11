@@ -15,7 +15,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | seam-spike | — | ✅ | |
-| T01 | os-surface | — | ⬜ | |
+| T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ⬜ | |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
