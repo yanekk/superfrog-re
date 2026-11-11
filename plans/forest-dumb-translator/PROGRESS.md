@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T13; then T16 (whole-tree-judge), which T13 and T15 unblock.
 
 ## Tasks
 
@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ✅ | |
 | T12 | cycles-dynamic | T11 | ✅ | |
-| T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
+| T13 | insn-gate | T07, T08, T09, T10, T12 | 🔍 | Gate run: 290 kinds, 2 000 states a site, seed `insn-gate-T13`, 0 fail in every column; no fix needed. New full test `insn_gate.rs` (1) exports with Ghidra and runs `insn_check.py`; mutation-checked. Reading in docs/14-translator.md. Deviation: the seed is fixed, not new each run, so the test repeats the recorded reading. |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ✅ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T13
 
 ## Blocked on the user
 

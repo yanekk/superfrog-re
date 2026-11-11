@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T13 gate:** whole census, 290 kinds, 2 000 states a site, seed `insn-gate-T13`: 1 630 000 states, 0 fail in every column, cycles counted; 26 780 skipped (exceptions). `insn_gate.rs` (full) guards it; without `shift_bit` it fails 9 kinds. |
 | 2026-11-11 | 📌 | **T12 cycles:** all 290 census kinds counted, 0 failures in 407 500 states, every column. The 11 data-dependent kinds (`mulu.w`, `divu.w`, `divs.w`, `dbf`, `movem.l`, `lsl.l`/`lsr.l Dn,Dn`) tick from the registers before the instruction. |
 | 2026-11-11 | 📌 | T12 timings follow Moira (`cyclesMul`, `cyclesDiv`, `cyclesBit`); none known to differ from a real 68000, unmeasured. Divide by zero (38), `trap` (34), `chk` trapping (40) are the manual's, unjudged: Moira's step reports exceptions without a time. |
 | 2026-11-11 | 📌 | A `mulu`/`muls`/`divu`/`divs` with a memory source stops the run (`Stop::Unsupported`, `cycles: mulu.w with a (An) source`) rather than read its operand twice; the game has only `Dn` and `#imm` sources (T12). |
