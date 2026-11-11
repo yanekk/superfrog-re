@@ -146,5 +146,29 @@ class Transcript(unittest.TestCase):
         self.assertTrue(t.endswith('# Now answer this\n\nfeedback'))
 
 
+class MuseIsGone(unittest.TestCase):
+    # Muse's own tools and their tests, which T18 rewrites or deletes.
+    ALLOWED = {'translate.py', 'translate_batch.py', 'test_translate.py', 'test_translate_batch.py'}
+
+    def test_only_muse_s_own_tools_mention_openrouter(self):
+        here = os.path.dirname(os.path.abspath(__file__))
+        found = []
+        for root, dirs, files in os.walk(here):
+            dirs[:] = [d for d in dirs if d != '__pycache__']
+            for f in files:
+                path = os.path.join(root, f)
+                if f in self.ALLOWED and root == here:
+                    continue
+                try:
+                    with open(path, encoding='utf-8') as fh:
+                        text = fh.read()
+                except (UnicodeDecodeError, OSError):
+                    continue
+                # This file names it to look for it.
+                if 'openrouter' in text.lower() and f != 'test_model.py':
+                    found.append(os.path.relpath(path, here))
+        self.assertEqual(found, [])
+
+
 if __name__ == '__main__':
     unittest.main()

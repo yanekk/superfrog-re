@@ -23,10 +23,10 @@ routine it came from; a second run names the lock); 2 on usage.
 
 Unjudgeable (DESIGN §2.4): no generator (`gen_task` absent in re/translate.toml, or none registered
 in fd-conform), or `no-oracle` exactly as translate.py answers it from the judge's survey. Each judge
-run has translate.py's JUDGE_SECONDS; past it the routine fails with first stop `timeout`.
+run has judge_run's JUDGE_SECONDS; past it the routine fails with first stop `timeout`.
 
-The run holds translate.py's build/translate/judge.lock from start to end, taken without waiting: the
-judge binary is shared with translate.py, and build/translator/ with any other trial run.
+The run holds judge_run's build/translate/judge.lock from start to end, taken without waiting: the
+judge binary is shared with every tool building fd-judge, and build/translator/ with any other trial run.
 
 Muse's column is `result` from T40's build/translate/batch.json, in this checkout or else the main
 checkout's (where the batch ran), `none` without it.
@@ -40,14 +40,13 @@ from dataclasses import dataclass, field
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import translate  # noqa: E402
-import translate_batch  # noqa: E402
+import judge_run as jr  # noqa: E402
 
-GAME = translate.GAME
-ENGINE = translate.ENGINE
+GAME = jr.GAME
+ENGINE = jr.ENGINE
 GATE_PCT = 90.0
 BUILD_SECONDS = 1800
-SURVEY_SECONDS = translate.JUDGE_SECONDS
+SURVEY_SECONDS = jr.JUDGE_SECONDS
 # Judge runs at once: each is one process over a built binary, so they overlap freely; kept low so a
 # loaded machine does not push an honest routine past its wall-clock limit.
 PARALLEL = 4
@@ -66,15 +65,15 @@ class StepFailed(Exception):
 @dataclass
 class Paths:
     out: str = os.path.join(GAME, 'build', 'translator')
-    lock_dir: str = translate.OUT
-    inventory: str = translate.INVENTORY
+    lock_dir: str = jr.JUDGE_DIR
+    inventory: str = jr.INVENTORY
     hints: str = os.path.join(GAME, 're', 'translator-hints.toml')
     batches: list = field(default_factory=lambda: [os.path.join(d, 'batch.json') for d in batch_dirs()])
 
 
 def batch_dirs():
     """Where T40's batch.json is looked for: this checkout's build/translate, then the main checkout's."""
-    dirs = [translate.OUT]
+    dirs = [jr.JUDGE_DIR]
     try:
         r = subprocess.run(['git', '-C', HERE, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
                            capture_output=True, text=True, timeout=30)
@@ -92,12 +91,28 @@ def command(var, default):
 
 # --- Inputs ----------------------------------------------------------------------------------------
 
+def entries(path):
+    """The inventory's routines in address order: dicts with label, name, gen (None for sound),
+    port_task, split_at (labels). Copied from translate_batch.py (T17), which T18 deletes."""
+    with open(path, 'rb') as f:
+        inv = tomllib.load(f)
+    out = []
+    for r in inv.get('routine', []):
+        out.append({'label': jr.label(r['hunk'], r['offset']), 'name': r['name'],
+                    'hunk': r['hunk'], 'offset': r['offset'],
+                    # The generator is named as the routine (T35 to T39, T53, T54, T56); sound has none.
+                    'gen': r['name'] if r.get('gen_task') else None,
+                    'port_task': r.get('port_task'), 'subsystem': r.get('subsystem'),
+                    'split_at': [jr.label(*jr.resolve(c)) for c in r.get('split_at', [])]})
+    return sorted(out, key=lambda e: (e['hunk'], e['offset']))
+
+
 def routines(inventory, only=None):
-    """The inventory's routines as translate_batch reads them, with `instructions`; `only` filters by
+    """The inventory's routines as entries() reads them, with `instructions`; `only` filters by
     name or label."""
-    rows = translate_batch.entries(inventory)
+    rows = entries(inventory)
     with open(inventory, 'rb') as f:
-        sizes = {translate.label(r['hunk'], r['offset']): r.get('instructions') for r in tomllib.load(f).get('routine', [])}
+        sizes = {jr.label(r['hunk'], r['offset']): r.get('instructions') for r in tomllib.load(f).get('routine', [])}
     for r in rows:
         r['instructions'] = sizes.get(r['label'])
     if only:
@@ -180,8 +195,8 @@ def build(tree):
 def judge(routine, gen, cases, mode):
     """One fd-judge run (`--survey` or `--translated`) -> its JSON line, or {'outcome': ...} for a
     timeout, a crash, or exit 2 (`usage`, the stderr in `why`)."""
-    argv = command('FD_TRIAL_JUDGE', [translate.judge_bin()]) + [routine, '--gen', gen, '--cases', str(cases), mode]
-    limit = SURVEY_SECONDS if mode == '--survey' else translate.JUDGE_SECONDS
+    argv = command('FD_TRIAL_JUDGE', [jr.judge_bin()]) + [routine, '--gen', gen, '--cases', str(cases), mode]
+    limit = SURVEY_SECONDS if mode == '--survey' else jr.JUDGE_SECONDS
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=limit)
     except OSError as e:
@@ -290,7 +305,7 @@ def write(path, text):
 # --- The run ---------------------------------------------------------------------------------------
 
 def take_lock(lock_dir):
-    """translate.py's judge.lock, held until the process ends; a second run is refused, not queued."""
+    """judge_run's judge.lock, held until the process ends; a second run is refused, not queued."""
     os.makedirs(lock_dir, exist_ok=True)
     path = os.path.join(lock_dir, 'judge.lock')
     f = open(path, 'w')
@@ -302,7 +317,7 @@ def take_lock(lock_dir):
     return f
 
 
-def run(paths, only=None, skip_export=False, cases=translate.CASES, log=lambda m: None):
+def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None):
     """The whole trial -> the summary dict. Raises Usage, StepFailed."""
     rows_in = routines(paths.inventory, only)
     lock = take_lock(paths.lock_dir)
@@ -365,7 +380,7 @@ def main(argv=None, paths=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--routines', help='comma-separated names or `hN+$off` labels of re/translate.toml')
     ap.add_argument('--skip-export', action='store_true', help='reuse build/translator/pcode.json')
-    ap.add_argument('--cases', type=int, default=translate.CASES)
+    ap.add_argument('--cases', type=int, default=jr.CASES)
     a = ap.parse_args(argv)
     if a.cases <= 0:
         print('translator_trial: --cases takes a whole number above 0', file=sys.stderr)

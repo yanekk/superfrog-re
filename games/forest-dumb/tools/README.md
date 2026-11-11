@@ -9,17 +9,27 @@ ports, packs, pictures) stays under `games/forest-dumb/build/` (git-ignored) and
 writes `build/files/disk1/FOREST_DUMB_FOREVER` and the rest of `build/files/` (disk location:
 `docs/01-disk-location.md`).
 
-## Muse services (paid, OpenRouter)
+## Model services
 
-translate, generate, reshape and translate_batch call a paid model. They need `OPENROUTER_API_KEY` in the
-environment or as an `export OPENROUTER_API_KEY=` line in `~/.zshrc` (no key: result `no-key`), the
-listing `build/re/forest_dumb_forever.lst` (re_listing.py), and cargo for the judge. Each prints one JSON
-line per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason
-on stderr). Calls log to `<out>/calls.jsonl`. Procedure, results table and when to translate by hand:
+generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
+haiku`, no tools; login check `claude auth status`; no `claude` on PATH: result `no-model`). A run makes
+at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). translate and
+translate_batch still call Muse, a paid model, with their own key and dollar cap (their docstrings);
+T18 of `plans/forest-dumb-translator/` replaces them. All need the listing
+`build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line
+per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason on
+stderr). Model calls log to `<out>/calls.jsonl`, a line a call; generate and reshape log each judged
+answer to `<out>/tries.jsonl`. Procedure, results table and when to translate by hand:
 [docs/11-translation.md](../docs/11-translation.md). Quote the routine: `$5` is a shell parameter.
 
+### model.py, judge_run.py (stdlib, libraries)
+`model.ask(system, prompt, log=...)` is one Haiku call: `ok`, `no-model`, `timeout` or `max-calls`;
+`model.transcript(messages)` folds earlier tries into one prompt, since `claude -p` keeps no
+conversation. `judge_run` holds the routine's listing (`flow_text`), the judge lock
+(`build/translate/judge.lock`) and `fd-judge`'s build and run, shared by every tool here.
+
 ### translate.py (stdlib)
-One routine to a literal Rust port, judged by `fd-judge` on its generator's 2 000 states.
+One routine to a literal Rust port by Muse, judged by `fd-judge` on its generator's 2 000 states.
 ```
 python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen <generator> [--tries 3] [--max-usd 0.10] [--out DIR]
 ```
@@ -29,25 +39,25 @@ pass, fail, too-big (over 180 instructions; see call_tree `split_at`), no-oracle
 with no passing port yet is a usage error.
 
 ### generate.py (stdlib)
-Muse writes one routine's test-state generator, judged by branch coverage on the original.
+Haiku writes one routine's test-state generator, judged by branch coverage on the original.
 ```
-python3 -I games/forest-dumb/tools/generate.py 'h0+$5462' --name <generator> [--tries 3] [--max-usd 0.10] [--out DIR]
+python3 -I games/forest-dumb/tools/generate.py 'h0+$5462' --name <generator> [--tries 3] [--max-calls 40] [--out DIR]
 ```
 Default out `build/generate/`; `gen` is `<out>/<name>.rs`. Results: covered, partial, fail, no-oracle,
-no-key; `uncovered` lists branches never taken. The builder reads the generator and commits it into
+no-model; `uncovered` lists branches never taken. The builder reads the generator and commits it into
 `fd-conform/src/gen/` itself.
 
 ### reshape.py (stdlib)
-Muse turns a literal port into engine code on typed state, judged by the task's rig test, then tidied.
+Haiku turns a literal port into engine code on typed state, judged by the task's rig test, then tidied.
 ```
-python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-usd 0.10] [--out DIR]
+python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-calls 40] [--out DIR]
 python3 -I games/forest-dumb/tools/reshape.py --task T08 --all [--only fn_a,fn_b]
 python3 -I games/forest-dumb/tools/reshape.py --opus-cost [--conversations DIR]
 ```
 `--task` choices are the tables of `re/reshape.toml`; the routine is `h0+$off` or its rig name. Needs
 the unit's literal port in `build/translate`. Default out `build/reshape/`; it works in a scratch copy
 there and never changes committed `fd-core`. `quality` lists what the builder still has to tidy.
-`--opus-cost` makes no model call.
+`--all`'s units share one `--max-calls`. `--opus-cost` makes no model call.
 
 ### translate_batch.py (stdlib)
 translate.py over every routine of `re/translate.toml`, one unattended run.
