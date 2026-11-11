@@ -1,8 +1,8 @@
 //! The command line, and the seatbelts it enforces (DESIGN §5.2).
 //!
 //! ```text
-//! fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR] [--max-frames N] [--timeout S]
-//!        [--scale N] [--bugs-dir DIR]
+//! fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N]
+//!        [--timeout S] [--scale N] [--bugs-dir DIR]
 //! ```
 
 use std::ffi::OsString;
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// `--timeout` under `--script` when none is given (DESIGN §5.2).
 pub const SCRIPT_TIMEOUT_S: u64 = 120;
 
-pub const USAGE: &str = "usage: fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR] \
+pub const USAGE: &str = "usage: fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] \
 [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR]";
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -24,6 +24,9 @@ pub struct Args {
     pub script: Option<PathBuf>,
     /// Write every frame, its state hash and the inputs the game saw here.
     pub capture: Option<PathBuf>,
+    /// The capture without its frames' pictures: a whole level's PNGs would be gigabytes and take
+    /// most of the run to encode (T28).
+    pub capture_hashes: bool,
     /// Exit with status 0 after this many steps.
     pub max_frames: Option<u64>,
     /// Stop the app and its whole process group after this many seconds of wall clock.
@@ -59,6 +62,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             "--disks" => a.disks = Some(value("a folder")?.into()),
             "--script" => a.script = Some(value("a file")?.into()),
             "--capture" => a.capture = Some(value("a folder")?.into()),
+            "--capture-hashes" => a.capture_hashes = true,
             "--bugs-dir" => a.bugs_dir = Some(value("a folder")?.into()),
             "--max-frames" => a.max_frames = Some(number(&name, value("a number")?)?),
             "--timeout" => a.timeout_s = Some(number(&name, value("a number of seconds")?)?),
@@ -73,6 +77,11 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             }
             _ => return Err(format!("unknown argument {name:?}\n{USAGE}")),
         }
+    }
+    if a.capture_hashes && a.capture.is_none() {
+        return Err(format!(
+            "--capture-hashes needs --capture DIR to write in\n{USAGE}"
+        ));
     }
     // A scripted run always ends: the watchdog is on unless it names its own limit.
     if a.script.is_some() && a.timeout_s.is_none() {
@@ -151,5 +160,16 @@ mod tests {
             assert!(p(bad).is_err(), "{bad:?}");
         }
         assert!(p(&["--fly"]).unwrap_err().contains(USAGE));
+        assert!(
+            p(&["--capture-hashes"])
+                .unwrap_err()
+                .contains("--capture DIR")
+        );
+        assert!(
+            p(&["--capture", "c", "--capture-hashes"])
+                .unwrap()
+                .capture_hashes
+        );
+        assert!(!p(&["--capture", "c"]).unwrap().capture_hashes);
     }
 }

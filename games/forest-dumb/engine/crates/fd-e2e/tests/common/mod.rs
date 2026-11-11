@@ -98,3 +98,73 @@ pub fn said(c: &Captured) -> Vec<String> {
         .map(String::from)
         .collect()
 }
+
+/// The one route through W1-1 (T84), `fd-plan`'s committed fixture: inputs only.
+pub const ROUTE: &str = include_str!("../../../fd-plan/tests/routes/W1-1.txt");
+
+/// The route's inputs, a step each: entry `k` is what the engine's step `k + 1` sees, as
+/// `fd-plan` replays it from `Start::Level1`, the app's start.
+pub fn route() -> Vec<FrameInput> {
+    let s = amiga_conform::script::parse(ROUTE).unwrap_or_else(|e| panic!("the route: {e}"));
+    let n = s.lines.last().expect("an empty route").0;
+    (0..n).map(|k| s.input_at(k)).collect()
+}
+
+/// The host key each joystick bit is on in the app's default keys (`fd-app/src/settings.rs`):
+/// Up on Space, Fire on Left Option, the arrows for the rest.
+const KEYS: [(Joy, &str); 5] = [
+    (Joy::UP, "Space"),
+    (Joy::DOWN, "ArrowDown"),
+    (Joy::LEFT, "ArrowLeft"),
+    (Joy::RIGHT, "ArrowRight"),
+    (Joy::FIRE, "AltLeft"),
+];
+
+/// `inputs` as the app's script lines: a key goes down or up where its bit changes, landing before
+/// the step that reads it (`N:` is seen by step N), and everything held is let go after the last.
+pub fn key_lines(inputs: &[FrameInput]) -> String {
+    let mut out = String::new();
+    let mut held = Joy::NONE;
+    for (k, i) in inputs.iter().map(|i| i.joy).chain([Joy::NONE]).enumerate() {
+        for (bit, key) in KEYS {
+            let (was, is) = (held.0 & bit.0 != 0, i.0 & bit.0 != 0);
+            if was != is {
+                let how = if is { "down" } else { "up" };
+                out.push_str(&format!("{}: {how} {key}\n", k + 1));
+            }
+        }
+        held = i;
+    }
+    out
+}
+
+/// What a `shot` at step `n` shows of the picture, back at 1×: the frame it showed, and the
+/// viewport read a pixel from each scaled block. `width` and `height` are the picture's.
+pub fn shown(c: &Captured, n: u64, width: u32, height: u32) -> (u64, Image) {
+    let (img, shot) = c.read_shot(n);
+    let (x, y, w, h) = shot.viewport;
+    let k = w / width;
+    assert!(
+        k >= 1 && w == width * k && h == height * k,
+        "{shot:?}: a whole multiple of the {width}×{height} picture"
+    );
+    assert!(
+        x + w <= shot.surface.0 && y + h <= shot.surface.1,
+        "{shot:?}: the picture is cut off"
+    );
+    let mut rgba = Vec::with_capacity((width * height * 4) as usize);
+    for py in 0..height {
+        for px in 0..width {
+            let i = (((y + py * k) * img.width + x + px * k) * 4) as usize;
+            rgba.extend_from_slice(&img.rgba[i..i + 4]);
+        }
+    }
+    (
+        shot.frame,
+        Image {
+            width,
+            height,
+            rgba,
+        },
+    )
+}
