@@ -8,6 +8,8 @@
 use fd_conform::judge::insn::{Columns, Entry, InsnReport, InsnRig, Site};
 use pcode_rt::{Bus, CF, Image, Regs, Stop};
 
+// Byte for byte as pcode_rust.py writes it, which test_insn_check.py compares: never rustfmt it.
+#[rustfmt::skip]
 #[allow(dead_code, unused_imports)]
 #[path = "fixtures/insn.rs"]
 mod fixture;

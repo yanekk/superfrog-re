@@ -1,7 +1,7 @@
 // Generated from insn.json by pcode_rust.py --insn; never committed when made from a game.
 // Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, PC, Regs, STEP_CAP, Stop, load, ops::*, store};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
 
 /// The bytes of every emitted instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -30,17 +30,7 @@ pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[
     ("23c0", "h0+$e", 0, 0xe, 6, &[(1, 0x4)], i_h0_e),
 ];
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$0 moveq
     {
@@ -59,17 +49,7 @@ pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2 add.l
     {
@@ -90,17 +70,7 @@ pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4 abcd (corrected: pcode_fix.bcd)
     {
@@ -112,17 +82,7 @@ pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$6 cmpi.b
     {
@@ -145,43 +105,20 @@ pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$a bne.b
     {
         let mut u_100: u64 = 0;
         let v = bool_negate(r.get(0x45, 1));
         u_100 = v & 0xff;
-        if u_100 != 0 {
-            r.set(PC, 4, img.h(0, 0x0) as u64);
-            return Ok(());
-        }
+        if u_100 != 0 { r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(()); }
     }
     r.set(PC, 4, img.h(0, 0xc) as u64);
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$c move.w
     {
@@ -205,17 +142,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     Ok(())
 }
 
-#[allow(
-    unused_mut,
-    unused_variables,
-    unused_assignments,
-    unreachable_code,
-    unused_braces,
-    unused_parens,
-    unused_labels,
-    non_snake_case,
-    clippy::all
-)]
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn i_h0_e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$e move.l
     {
