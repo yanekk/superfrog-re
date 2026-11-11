@@ -3,13 +3,19 @@
 Needs Ghidra and its JDK (translator DESIGN §5); without them the test fails naming the path, never
 skips (§2.8).
 """
-import io, os, sys, tempfile, unittest
+import io, json, os, sys, tempfile, unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pcode_export as P  # noqa: E402
-from test_pcode_export import ENTRIES, two_hunk_program, whole_program  # noqa: E402
+from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, defects_program, two_hunk_program,  # noqa: E402
+                               whole_program)
+import ghidra_headless as G  # noqa: E402
+
+GAME = os.path.dirname(HERE)
+DEFECTS_FIXTURE = os.path.join(GAME, 'engine', 'crates', 'fd-conform', 'tests', 'fixtures', 'defects.json')
 
 ROUTINE_SEEDS = [(h, off, 'routine') for h, off, _ in ENTRIES]
 
@@ -155,6 +161,72 @@ class WholeProgramExport(unittest.TestCase):
         self.assertEqual((c['relocs'], c['relocs_matched'], c['undecoded'], c['outside']), (2, 2, [], []))
 
 
+def export_defects(tmp):
+    """The defects program through Ghidra, with its bra.w into `other` overridden to CALL_RETURN first,
+    as Ghidra's function analysis does to such a branch on the game: (fixture document, Ghidra's output)."""
+    exe = os.path.join(tmp, 'd.exe')
+    with open(exe, 'wb') as f:
+        f.write(defects_program())
+    P.check_inputs(exe, P.SYMBOLS, P.ENTRIES)
+    syms = [P.Sym(h, off, n, 'func', 0, '') for h, off, n in DEFECTS_FUNCS]
+    run_import = G.run_import
+
+    def with_override(*a, **k):
+        k['post_scripts'] = [('SetFlowOverride.java', ['CALL_RETURN', DEFECTS_TAIL])] + list(k['post_scripts'])
+        return run_import(*a, **k)
+    out = io.StringIO()
+    with mock.patch.object(P.ghidra_headless, 'run_import', with_override), redirect_stdout(out):
+        doc = P.export(exe, syms, [(h, off, 'routine') for h, off, _ in DEFECTS_FUNCS], os.path.join(tmp, 'out'),
+                       name='d')
+    return {k: doc[k] for k in ('hunks', 'entries', 'insns')}, out.getvalue()
+
+
+def defects_text(doc):
+    """The fixture's text: one instruction a line, so a change in Ghidra's P-code reads as a diff."""
+    lines = ['{"hunks": ' + json.dumps(doc['hunks']) + ',', ' "entries": ' + json.dumps(doc['entries']) + ',',
+             ' "insns": {']
+    ats = sorted(doc['insns'], key=P.parse_rel)
+    for k, at in enumerate(ats):
+        lines.append(f'  {json.dumps(at)}: {json.dumps(doc["insns"][at])}' + (',' if k < len(ats) - 1 else ''))
+    return '\n'.join(lines + [' }}']) + '\n'
+
+
+class DefectsExport(unittest.TestCase):
+    """Translator T07: Ghidra 12.0's defects on a made-up program, and the committed fixture
+    (fd-conform's insn_defects.rs judges its translation on Moira) is what Ghidra exports today.
+    Regenerate it with `python3 -I games/forest-dumb/tools/test_pcode_export_ghidra.py --write-defects`."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.doc, cls.ghidra = export_defects(cls.tmp.name)
+        cls.insns = cls.doc['insns']
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_the_committed_fixture_is_current(self):
+        with open(DEFECTS_FIXTURE, encoding='utf-8') as f:
+            self.assertEqual(f.read(), defects_text(self.doc), 'regenerate it: --write-defects')
+
+    def test_a_bra_w_ghidra_marks_call_return_is_exported_as_a_branch(self):
+        # Ghidra's own flow for it is now a call that ends the function; the export reads the
+        # instruction's flow and the plain BRANCH P-code (ExportPcode.rawFlow, getPcode(false)).
+        self.assertIn(f'override CALL_RETURN at {DEFECTS_TAIL}: bra.w', self.ghidra)
+        self.assertIn('flow CALL_TERMINATOR', self.ghidra)
+        self.assertEqual(self.insns[DEFECTS_TAIL]['flow'], {'kind': 'branch', 'targets': ['h0+$52']})
+        self.assertEqual(self.insns[DEFECTS_TAIL]['ops'], [{'op': 'BRANCH', 'out': None, 'in': [['ram', 'h0+$52', 4]]}])
+
+    def test_the_relocated_operand_names_its_hunk(self):
+        self.assertEqual(self.insns['h0+$24']['relocs'][0], {'in_op': 0, 'slot': 0, 'target': 'h1+$4'})
+
+    def test_every_instruction_is_exported(self):
+        self.assertEqual(len(self.insns), 31)
+        self.assertEqual({i['mnem'].split('.')[0] for i in self.insns.values()},
+                         {'abcd', 'sbcd', 'nbcd', 'cmp', 'cmpa', 'cmpi', 'cmpm', 'bra', 'moveq', 'rts'})
+
+
 class GameExport(unittest.TestCase):
     """The game's program from the extracted disk (`fd-tools extract`), the trial's routines only."""
 
@@ -236,4 +308,11 @@ class GameWholeExport(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    if sys.argv[1:] == ['--write-defects']:
+        with tempfile.TemporaryDirectory() as d:
+            text = defects_text(export_defects(d)[0])
+        with open(DEFECTS_FIXTURE, 'w', encoding='utf-8') as f:
+            f.write(text)
+        print(f'wrote {DEFECTS_FIXTURE}')
+    else:
+        unittest.main()

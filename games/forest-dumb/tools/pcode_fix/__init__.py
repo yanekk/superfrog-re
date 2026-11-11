@@ -2,7 +2,7 @@
 
 Each family is its own file so the tasks fixing them (T07 to T12) never edit the same one:
 
-    bcd           abcd, sbcd (nbcd: T07)
+    bcd           abcd, sbcd, nbcd
     compare       cmp, cmpa, cmpi, cmpm
     arith         add .. chk (T08)
     shift_bit     shifts, rotates, bit ops, scc, tas, swap (T09)
@@ -14,6 +14,11 @@ A module may define any of:
     correct(ins) -> ins          the instruction with its P-code corrected (unchanged when not its)
     emit(ins) -> [str] | None    Rust replacing the instruction's P-code whole, or None
     cycles(ins) -> [str]         Rust lines run after the instruction (T11)
+    op_lines(op, rd, wr) -> [str] | None
+                                 Rust for one op a `correct` put in the P-code in place of Ghidra's,
+                                 given the translator's varnode reader `rd(v)` and writer `wr(v, expr)`;
+                                 None for any other op. Lets a correction keep Ghidra's addressing and
+                                 replace only the arithmetic it gets wrong.
 
 `ins` is the translator's form ({'len', 'mnem', 'ops', 'targets'}). A correction is chosen by
 mnemonic and P-code pattern, never by address: an address special case is a hand edit (§2.2).
@@ -47,6 +52,15 @@ def emit(ins):
         if lines is not None:
             return lines, m.__name__.rsplit('.', 1)[1]
     return None, None
+
+
+def op_lines(op, rd, wr):
+    for m in MODULES:
+        f = getattr(m, 'op_lines', None)
+        lines = f(op, rd, wr) if f else None
+        if lines is not None:
+            return lines
+    return None
 
 
 def cycles(ins):
