@@ -9,7 +9,7 @@ use amiga_oracle::RETURN_SENTINEL;
 use fd_conform::generators::{self, h};
 use fd_conform::judge::translated::{self, Entry, tree};
 use fd_conform::routine::{Generator, Rig, Setup};
-use pcode_rt::{Bus, Image, Regs, Stop, load, store};
+use pcode_rt::{Bus, DEPTH_CAP, Hang, Image, Regs, Stop, fn_entry, load, store};
 
 const ROUTINE: &str = "h0+$5462";
 const GEN: &str = "char_sprite_position";
@@ -74,7 +74,19 @@ fn writes_into_itself(_: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<()
 }
 
 fn never_ends(_: &mut Regs, _: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
-    Err(Stop::Hang)
+    Err(Stop::Hang { why: Hang::Steps })
+}
+
+/// Calls itself for ever, as generated code does (`fn_entry` first), each frame holding 128 KB: at
+/// `DEPTH_CAP` frames that is more stack than a test thread's 2 MB, so only the judge's own thread
+/// ([`translated::RUN_STACK`]) lets it reach the cap rather than overflow and abort.
+fn recurses(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
+    let mut frame = [0u8; 128 << 10];
+    frame[r.depth as usize] = 1;
+    std::hint::black_box(&mut frame);
+    recurses(r, bus, img)?;
+    Ok(())
 }
 
 /// The routine's instructions as a tree would list them in `CODE`.
@@ -148,7 +160,13 @@ fn a_store_into_code_and_the_step_cap_are_stops_counted_by_kind() {
 
     let j = judge(&mut r, 10, Some(never_ends), CODE);
     assert_eq!(j.verdict.unwrap_err().failures, 10);
-    assert_eq!((j.stops.hangs, j.stops.first.as_str()), (10, "hang"));
+    assert_eq!((j.stops.hangs, j.stops.first.as_str()), (10, "hang (steps)"));
+
+    let j = judge(&mut r, 10, Some(recurses), CODE);
+    assert_eq!(j.verdict.unwrap_err().failures, 10);
+    assert_eq!((j.stops.hangs, j.stops.first.as_str()), (10, "hang (depth)"));
+    assert!(DEPTH_CAP as usize * (128 << 10) > 2 << 20, "the frames outgrow a test thread");
+    assert!(DEPTH_CAP as usize * (256 << 10) <= translated::RUN_STACK);
 }
 
 #[test]

@@ -53,6 +53,11 @@ workspace = "engine"
 "crates/fd-conform/tests/code_writes.rs" = "smoke"
 # Translator T06: the instruction check's rig on Moira with made-up encodings, no disks: about 1 s.
 "crates/fd-conform/tests/insn_check.rs" = "smoke"
+# Translator T08: the arith corrections on made-up encodings against Moira, with and without them: about 2 s.
+"crates/fd-conform/tests/insn_arith.rs" = "smoke"
+# Translator T09: every shift and bit encoding of a made-up program on Moira, with and without
+# pcode_fix.shift_bit, no disks: about 9 s unoptimised, too near the line while smoke is over budget.
+"crates/fd-conform/tests/insn_shift_bit.rs" = "full"
 # Translator T07: Ghidra's known defects, 31 made-up instructions on Moira, no disks: about 6 s.
 "crates/fd-conform/tests/insn_defects.rs" = "smoke"
 # Translator T10: the move and control forms, 44 made-up opcode words on Moira, no disks: about 5 s.
@@ -381,6 +386,10 @@ workspace = "engine"
 "tools/test_translator_trial.py" = "smoke"
 # Translator T06: pcode_fix, pcode_rust --insn and insn_check.py with a stub build and judge: under 1 s.
 "tools/test_insn_check.py" = "smoke"
+# Translator T08: pcode_fix.arith on made-up P-code, and its fixtures current: under 1 s.
+"tools/test_pcode_fix_arith.py" = "smoke"
+# Translator T09: pcode_fix.shift_bit on Ghidra's P-code for the made-up program, fixtures current: under 1 s.
+"tools/test_shift_bit.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]

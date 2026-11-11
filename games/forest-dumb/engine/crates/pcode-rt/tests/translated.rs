@@ -7,10 +7,12 @@
 //! Each run calls the entry as a subroutine, as the judge does: a return address outside every hunk
 //! on the stack, and after the run `PC` holds it and the stack is back where it was.
 
-use pcode_rt::{Bus, CF, Image, PC, Regs, Stop, XF, ZF};
+use pcode_rt::{Bus, CF, DEPTH_CAP, Hang, Image, PC, Regs, STEP_CAP_GLOBAL, Stop, XF, ZF};
 
 #[path = "fixtures/bcd.rs"]
 mod bcd;
+#[path = "fixtures/call_loop.rs"]
+mod call_loop;
 #[path = "fixtures/code_write.rs"]
 mod code_write;
 #[path = "fixtures/dbf_loop.rs"]
@@ -23,12 +25,16 @@ mod flags_call;
 mod jump_table;
 #[path = "fixtures/jump_table_hinted.rs"]
 mod jump_table_hinted;
+#[path = "fixtures/mutual_call.rs"]
+mod mutual_call;
 #[path = "fixtures/nested_call.rs"]
 mod nested_call;
 #[path = "fixtures/pushed_return.rs"]
 mod pushed_return;
 #[path = "fixtures/relative.rs"]
 mod relative;
+#[path = "fixtures/self_call.rs"]
+mod self_call;
 #[path = "fixtures/shared_call.rs"]
 mod shared_call;
 // The same program written as a directory of two parts (translator T04, `--out DIR --parts 2`).
@@ -219,7 +225,137 @@ fn an_endless_loop_stops_as_a_hang() {
     let (mut r, mut m) = (Regs::new(), ram());
     let f = endless::entry("h0+$0").unwrap();
     let got = call(f, endless::HUNK_SIZES, endless::CODE, &mut r, &mut m);
-    assert_eq!(got, Err(Stop::Hang));
+    assert_eq!(got, Err(Stop::Hang { why: Hang::Steps }));
+    assert_eq!(r.steps, STEP_CAP_GLOBAL + 1);
+}
+
+/// `bsr` to itself: each call pushes and nests one more frame, so before the stack could overflow
+/// the depth cap stops it.
+#[test]
+fn a_routine_calling_itself_stops_as_a_depth_hang() {
+    let (mut r, mut m) = (Regs::new(), ram());
+    let f = self_call::entry("h0+$0").unwrap();
+    let got = call(f, self_call::HUNK_SIZES, self_call::CODE, &mut r, &mut m);
+    assert_eq!(got, Err(Stop::Hang { why: Hang::Depth }));
+    assert_eq!(got.unwrap_err().to_string(), "hang (depth)");
+    assert_eq!(r.depth, DEPTH_CAP + 1);
+    // DEPTH_CAP calls ran, each pushing its return address.
+    assert_eq!(r.a(7), STACK - 4 - 4 * DEPTH_CAP);
+    assert_eq!(r.steps, DEPTH_CAP as u64, "one block a frame, the last stopped on entry");
+}
+
+#[test]
+fn two_routines_calling_each_other_by_jsr_stop_as_a_depth_hang() {
+    let (mut r, mut m) = (Regs::new(), ram());
+    let f = mutual_call::entry("h0+$0").unwrap();
+    let got = call(f, mutual_call::HUNK_SIZES, mutual_call::CODE, &mut r, &mut m);
+    assert_eq!(got, Err(Stop::Hang { why: Hang::Depth }));
+    assert_eq!(r.depth, DEPTH_CAP + 1);
+    // Return addresses alternate: h0+$6 from the first, h0+$16 from the second.
+    assert_eq!(m.rl(STACK - 8), BASES[0] + 0x6);
+    assert_eq!(m.rl(STACK - 12), BASES[0] + 0x16);
+}
+
+/// Every pass of the loop goes through a call that returns, so no one call runs long: only the
+/// count across calls sees it. The depth goes back to 1 after each return.
+#[test]
+fn a_loop_spread_across_calls_stops_as_a_steps_hang() {
+    let (mut r, mut m) = (Regs::new(), ram());
+    let f = call_loop::entry("h0+$0").unwrap();
+    let got = call(f, call_loop::HUNK_SIZES, call_loop::CODE, &mut r, &mut m);
+    assert_eq!(got, Err(Stop::Hang { why: Hang::Steps }));
+    assert_eq!(got.unwrap_err().to_string(), "hang (steps)");
+    assert_eq!(r.steps, STEP_CAP_GLOBAL + 1);
+    // Two blocks a pass (the caller's, the callee's); the step past the cap is a caller block,
+    // after STEP_CAP_GLOBAL / 2 calls, each adding 1 to d0.
+    assert_eq!(r.d(0) as u64, STEP_CAP_GLOBAL / 2);
+    assert_eq!(r.depth, 1);
+    assert_eq!(r.a(7), STACK - 4, "every call returned");
+}
+
+/// A run's counters go on from where the host left them: a second call does not start again at 0.
+#[test]
+fn the_step_count_carries_across_runs_until_the_host_resets_it() {
+    let f = dbf_loop::entry("h0+$0").unwrap();
+    let (mut r, mut m) = (Regs::new(), ram());
+    call(f, dbf_loop::HUNK_SIZES, dbf_loop::CODE, &mut r, &mut m).unwrap();
+    let one = r.steps;
+    assert_eq!(r.depth, 0, "back to the host's depth after a return");
+    call(f, dbf_loop::HUNK_SIZES, dbf_loop::CODE, &mut r, &mut m).unwrap();
+    assert_eq!(r.steps, 2 * one);
+    r.steps = STEP_CAP_GLOBAL - 1;
+    let got = call(f, dbf_loop::HUNK_SIZES, dbf_loop::CODE, &mut r, &mut m);
+    assert_eq!(got, Err(Stop::Hang { why: Hang::Steps }));
+}
+
+/// `Ram` that counts `poll`s, and stops on the `stop_at`th with an `Unsupported` naming it.
+struct Polled {
+    ram: Ram,
+    polls: u64,
+    stop_at: u64,
+}
+
+impl Bus for Polled {
+    fn rb(&mut self, a: u32) -> u8 {
+        self.ram.rb(a)
+    }
+    fn rw(&mut self, a: u32) -> u16 {
+        self.ram.rw(a)
+    }
+    fn rl(&mut self, a: u32) -> u32 {
+        self.ram.rl(a)
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        self.ram.wb(a, v)
+    }
+    fn ww(&mut self, a: u32, v: u16) {
+        self.ram.ww(a, v)
+    }
+    fn wl(&mut self, a: u32, v: u32) {
+        self.ram.wl(a, v)
+    }
+    fn poll(&mut self, r: &mut Regs, _img: &Image) -> Result<(), Stop> {
+        self.polls += 1;
+        // Polled after the block was counted, so the count it sees includes its own block.
+        assert_eq!(r.steps, self.polls);
+        if self.polls == self.stop_at {
+            return Err(Stop::Unsupported { op: "poll".into(), at: format!("{}", self.polls) });
+        }
+        Ok(())
+    }
+}
+
+#[test]
+fn poll_is_called_once_per_block_and_its_stop_ends_the_run() {
+    // dbf_loop: moveq #3,d0 / addq #2,d1 / dbf d0 / rts. Blocks: the moveq's, then the loop body
+    // four times (the dbf's branch back is a block boundary), then the rts's: 1 + 4 + 1.
+    let f = dbf_loop::entry("h0+$0").unwrap();
+    let mut r = Regs::new();
+    let mut b = Polled { ram: ram(), polls: 0, stop_at: u64::MAX };
+    let img = Image { bases: &BASES[..1], sizes: dbf_loop::HUNK_SIZES, code: dbf_loop::CODE };
+    r.set_a(7, STACK - 4);
+    b.ram.wl(STACK - 4, RETURN_TO);
+    f(&mut r, &mut b, &img).unwrap();
+    returned(&r);
+    assert_eq!(b.polls, 6);
+    assert_eq!(r.steps, 6);
+
+    // Across calls too, and a stop from poll ends the run with nothing after it run.
+    let f = nested_call::entry("h0+$0").unwrap();
+    let img = Image { bases: &BASES[..1], sizes: nested_call::HUNK_SIZES, code: nested_call::CODE };
+    let mut r = Regs::new();
+    let mut b = Polled { ram: ram(), polls: 0, stop_at: u64::MAX };
+    r.set_a(7, STACK - 4);
+    b.ram.wl(STACK - 4, RETURN_TO);
+    f(&mut r, &mut b, &img).unwrap();
+    assert_eq!(b.polls, 3, "one block in each of three functions");
+    let mut r = Regs::new();
+    let mut b = Polled { ram: ram(), polls: 0, stop_at: 3 };
+    r.set_a(7, STACK - 4);
+    b.ram.wl(STACK - 4, RETURN_TO);
+    let got = f(&mut r, &mut b, &img);
+    assert_eq!(got, Err(Stop::Unsupported { op: "poll".into(), at: "3".into() }));
+    assert_eq!(r.d(2), 0, "the innermost block's moveq #5 never ran");
 }
 
 #[test]
