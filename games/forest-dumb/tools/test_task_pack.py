@@ -47,7 +47,12 @@ class Pack(unittest.TestCase):
         self.assertIn('## Muse writes the engine code', text)
         # Before T22 adds its table the pack shows the fields to fill; after, T22's own.
         self.assertTrue("re/reshape.toml` has no `[T22]` yet" in text or "re/reshape.toml` has `[T22]`" in text)
-        self.assertEqual(res['omitted'], [])
+        # The opening reads and the porting sections always fit; a later section may be left out as
+        # the tree grows past --max-kb (T22's files did once T22 was built), named with where to read it.
+        for name in ('how', 'task', 'progress', 'findings', 'design', 'listings', 'reshape', 'rules'):
+            self.assertIn(name, res['sections'])
+        for name in res['omitted']:
+            self.assertIn(f'- {name}: read `', text.split('## Omitted to fit the pack', 1)[1])
 
     def test_dependencies_are_this_plans_commits_only(self):
         _, text = self.build('T22')

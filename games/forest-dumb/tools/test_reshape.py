@@ -51,6 +51,11 @@ class Prompt(unittest.TestCase):
         for task, cfg in r.TASKS.items():
             for u in cfg['units']:
                 with self.subTest(task=task, fn=u['fn']):
+                    if [f for f in cfg['examples'] if f != u['fn']] == []:
+                        # A task's only example is kept by hand (T25's spring_trigger): the tool refuses it.
+                        with self.assertRaises(r.Usage):
+                            r.prompt(task, u, dirs=self.dirs)
+                        continue
                     p = r.prompt(task, u, dirs=self.dirs)
                     for fn in r.removed(u):
                         self.assertNotIn(body(r.fn_text(src(task), fn)), p)
