@@ -35,7 +35,7 @@ use crate::{address, sync};
 pub const MISSES: &str = "a write restored within one frame; code run outside the program's hunks; paths the cases do not take";
 
 /// The longest 68000 instruction.
-const MAX_LEN: usize = 10;
+pub(crate) const MAX_LEN: usize = 10;
 
 /// One change to the bytes of an executed instruction.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,7 +120,7 @@ struct Watch {
     seen: std::collections::BTreeMap<u32, Vec<u8>>,
 }
 
-fn read(mem: &AmigaMemory, addr: u32, len: usize) -> Vec<u8> {
+pub(crate) fn read(mem: &AmigaMemory, addr: u32, len: usize) -> Vec<u8> {
     (0..len as u32)
         .map(|k| {
             let a = (addr + k) as usize & 0xFF_FFFF;
@@ -235,8 +235,21 @@ pub fn run_case_in(
     cache: &Path,
     case: &Case,
     max_frames: Option<u32>,
-    mut between: impl FnMut(&mut Amiga, u32),
+    between: impl FnMut(&mut Amiga, u32),
 ) -> Result<Report, String> {
+    run_case_seen_in(kickstart, disk_dir, cache, case, max_frames, between).map(|(r, _)| r)
+}
+
+/// [`run_case_in`], also returning every executed instruction start with its bytes as last seen
+/// (`code-seen`, translator DESIGN §2.3).
+pub fn run_case_seen_in(
+    kickstart: &Path,
+    disk_dir: &Path,
+    cache: &Path,
+    case: &Case,
+    max_frames: Option<u32>,
+    mut between: impl FnMut(&mut Amiga, u32),
+) -> Result<(Report, std::collections::BTreeMap<u32, Vec<u8>>), String> {
     if !case.is_level() {
         return Err(format!("{}: does not start at level 1", case.name));
     }
@@ -266,13 +279,14 @@ pub fn run_case_in(
         am.step(inputs.at(frame)).map_err(|e| e.to_string())?;
         changed.extend(watch.after_step(frame, am.pc_hits(), &am.memory()));
     }
-    Ok(Report {
+    let report = Report {
         case: case.name.clone(),
         frames: steps,
         executed: watch.seen.len(),
         executed_bytes: watch.seen.values().map(Vec::len).sum(),
         changed,
-    })
+    };
+    Ok((report, watch.seen))
 }
 
 /// `*` and `?` over a case's file stem.

@@ -83,6 +83,11 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `code_writes::run_case(&Case, max_frames, between: FnMut(&mut Amiga, frame)) -> Result<Report, String>` and `run_case_in(kickstart, disk_dir, cache, ...)`: a level case on the original from the level sync point, unfrozen, watching every even address of the program's hunks.
 - `Report { case, frames, executed, executed_bytes, changed: Vec<Change { at, frame, from, to, since }> }`, `.json()`, `total_json`; `since` is `"load"` (against the relocated program at first run) or `"run"` (against the last frame).
 
+**Code seen** (`src/code_seen.rs`, translator T02)
+- `code_seen::collect_in(kickstart, disk_dir, cache, &Options { cases, power_on_frames, worlds }, &mut skipped) -> Result<(Seen, HunkSpans), String>`: every level case, the power-on run and the world starts (level 1 ended by the cheat with `world_index` set, `next_world` loads the world) on the original; `Seen { insns, vectors, foreign, runs }`.
+- `flow`, `local_starts`, `closure`, `run_starts`, `entries(insns, funcs, vectors, program_entry) -> BTreeMap<u32, Source>`, `render`, `parse_symbols`, `funcs`; `Source::{ProgramEntry, Symbol, Vector, Trace}`.
+- `run_case_seen_in` in `code_writes` returns a case's executed instructions with its `Report`.
+
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 
@@ -99,6 +104,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | `cargo run -p fd-conform -- bug replay <zip> [--out DIR]` | Replay a bug zip on the engine, check the screenshot |
 | `cargo run -p fd-conform -- bug compare <zip> [--out DIR]` | Retime the zip onto the original and compare it; writes `bug-case.toml` |
 | `cargo run --release -p fd-conform -- code-writes [--cases <glob>] [--max-frames N]` | Every level case on the original, each change to an executed instruction's bytes; JSON lines and a total |
+| `cargo run --release -p fd-conform -- code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6\|none] [--out FILE]` | Every instruction the original runs over the level cases, power-on and the world 2 to 6 starts, reduced to entries in `re/entries.toml`; JSON lines per run and a total; about 5 minutes |
 | `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --gen <name> [--cases N] [--survey \| --cover]` | One routine against the built-in port; prints one JSON line |
 
 Output formats: the `//!` headers of `src/main.rs` and `src/bin/fd-judge.rs`.

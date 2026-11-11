@@ -51,6 +51,9 @@ workspace = "engine"
 # Translator trial T05: changes to executed instructions on w1-idle from the cached level sync point,
 # a poke caught, missing inputs named: under 2 s warm. The full run over every case is a tool run.
 "crates/fd-conform/tests/code_writes.rs" = "smoke"
+# Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
+# 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
+"crates/fd-conform/tests/code_seen.rs" = "full"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
