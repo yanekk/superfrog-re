@@ -12,11 +12,17 @@ use std::ops::Range;
 use pcode_rt::{Bus, Image, Regs, Stop};
 
 pub mod beam;
+pub mod cia;
 pub mod custom;
+pub mod input;
 pub mod mem;
+pub mod paula;
 
+pub use cia::CiaA;
 pub use custom::Cia;
+pub use input::Input;
 use mem::{Region, SLOW_BASE};
+pub use paula::PaulaLog;
 
 /// The machine's shape.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -120,8 +126,13 @@ pub struct Machine {
     route: [u8; 256],
     /// CIA-A's and CIA-B's device index plus one; 0 for none.
     cia_route: [u8; 2],
-    /// What a CIA register without a device reads: its last byte written.
+    /// What a CIA-B register without a device reads: its last byte written. (Index 0, CIA-A's,
+    /// is unused: without a device, CIA-A is [`CiaA`].)
     cia_latch: [[u8; 16]; 2],
+    /// CIA-A's model, used when no device is attached to it.
+    cia_a: CiaA,
+    /// Paula's writes this frame.
+    paula: PaulaLog,
     hunk_sizes: Vec<u32>,
     /// The cycle count as of the last `poll` (or `set_cycles`): the time of every access until the
     /// next. The bus is not handed the registers, so an access inside a block is timed at the
@@ -145,6 +156,8 @@ impl Machine {
             route: [0; 256],
             cia_route: [0; 2],
             cia_latch: [[0; 16]; 2],
+            cia_a: CiaA::default(),
+            paula: PaulaLog::default(),
             hunk_sizes: Vec::new(),
             now: 0,
             phase: 0,
@@ -375,6 +388,7 @@ impl Machine {
         if custom::read_only(reg) {
             return;
         }
+        self.paula.note(reg, v, self.now, self.beam(self.now));
         self.custom[reg as usize >> 1] = v;
         if let id @ 1.. = self.route[reg as usize >> 1] {
             self.devices[id as usize - 1].write(reg, v, self.now);
@@ -383,6 +397,11 @@ impl Machine {
 
     fn cia_read(&mut self, cia: Cia, reg: u16) -> u8 {
         match self.cia_route[cia as usize] {
+            0 if cia == Cia::A => {
+                let v = self.cia_a.read(reg, self.now);
+                self.cia_fault();
+                v
+            }
             0 => self.cia_latch[cia as usize][reg as usize],
             id => self.devices[id as usize - 1].read(reg, self.now) as u8,
         }
@@ -390,16 +409,77 @@ impl Machine {
 
     fn cia_write(&mut self, cia: Cia, reg: u16, v: u8) {
         match self.cia_route[cia as usize] {
+            0 if cia == Cia::A => {
+                self.cia_a.write(reg, v, self.now);
+                self.cia_fault();
+            }
             0 => self.cia_latch[cia as usize][reg as usize] = v,
             id => self.devices[id as usize - 1].write(reg, v as u16, self.now),
         }
     }
 }
 
+impl Machine {
+    /// A timer touched on CIA-A: the run stops at the next block, as for an access outside memory.
+    fn cia_fault(&mut self) {
+        if let (None, Some(reg)) = (&self.fault, self.cia_a.fault()) {
+            self.fault = Some(Stop::Unsupported {
+                op: "CIA-A timer".into(),
+                at: format!("${:06x}", 0xBF_E001 | (reg as u32) << 8),
+            });
+        }
+    }
+
+    /// The next frame's input, at the current cycle count: JOY1DAT reads `i.joy1`, CIA-A's PRA
+    /// the fire buttons, and the keyboard queues a byte for each key gone down or up, sending the
+    /// first at once if the program acknowledged the last (`cia`).
+    pub fn set_input(&mut self, i: &Input) {
+        self.custom[custom::JOY1DAT as usize >> 1] = i.joy1;
+        self.cia_a.fire = i.fire;
+        self.cia_a.mouse_left = i.mouse_left;
+        self.cia_a.set_keys(i.key_set(), self.now);
+    }
+
+    /// Paula's writes this frame, in order: the cycle count each was made at, and the write with
+    /// its beam position.
+    pub fn paula_writes(&self) -> &[(u64, amiga_paula::PaulaWrite)] {
+        self.paula.writes()
+    }
+
+    /// The frame's Paula writes, emptying the list for the next frame.
+    pub fn take_paula_writes(&mut self) -> Vec<(u64, amiga_paula::PaulaWrite)> {
+        self.paula.take()
+    }
+
+    /// The INTREQ bits the CIAs have asked for since the last call: PORTS (`$0008`) when CIA-A's
+    /// interrupt line went down. The interrupt logic sets them in INTREQ.
+    pub fn take_cia_interrupts(&mut self) -> u16 {
+        if self.cia_a.take_interrupt() {
+            INTREQ_PORTS
+        } else {
+            0
+        }
+    }
+
+    /// CIA-A's model (when no device is attached to it): at a snapshot, set its ICR mask as the
+    /// program left it.
+    pub fn cia_a(&self) -> &CiaA {
+        &self.cia_a
+    }
+    pub fn cia_a_mut(&mut self) -> &mut CiaA {
+        &mut self.cia_a
+    }
+}
+
+/// INTREQ's PORTS bit: level 2, CIA-A's interrupt line.
+pub const INTREQ_PORTS: u16 = 0x0008;
+
 impl Bus for Machine {
     /// Times the block's accesses, and ends the run on an access outside memory made since.
     fn poll(&mut self, r: &mut Regs, _img: &Image) -> Result<(), Stop> {
         self.now = r.cycles();
+        // The keyboard's next byte, if its time has come since the last block.
+        self.cia_a.tick(self.now);
         match &self.fault {
             Some(f) => Err(f.clone()),
             None => Ok(()),

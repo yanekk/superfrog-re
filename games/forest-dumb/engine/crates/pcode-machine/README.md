@@ -14,6 +14,9 @@ let mut m = pcode_machine::Machine::from_snapshot(cfg, &chip_then_slow, &custom)
 m.attach(0x0A0..0x0E0, Box::new(paula));   // custom registers $0A0..$0DE to a Device
 m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 // m is a pcode_rt::Bus: hand it to the generated code.
+m.set_input(&pcode_machine::Input::from(frame_input));     // each frame, at its start
+let paula = m.take_paula_writes();                          // each frame, at its end: (cycle, PaulaWrite)
+let intreq = m.take_cia_interrupts();                       // after each block: INTREQ bits to set
 ```
 
 - `poll` (called at every translated block's start) takes the cycle count from `Regs`; every
@@ -40,7 +43,24 @@ m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
   written value (a snapshot's, at first). Every written value is kept in `custom()`.
 - **CIAs:** register `(a >> 8) & $F`; A on odd bytes with bit 12 low, B on even bytes with bit 13
   low; a byte write reaches every selected chip, a word write gives A its low byte and B its high.
-  A CIA with no device keeps the last byte written to each register.
+  An attached device replaces either chip's model.
+- **CIA-A** (`cia.rs`), what the program uses (translator T01's OS surface names the sites): PRA reads its outputs' latch and, on inputs, fire (bit 7, port 2) and the left mouse
+  button (bit 6, port 1) low when held, the OVL, LED and disk lines high; PRB, DDRA, DDRB as
+  registers. ICR: a write with bit 7 sets mask bits, without clears them; a read returns the flags
+  (bit 7 if the line is driven) and clears them. The line falling is PORTS (`$0008`) from
+  `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard (`amiga-input`
+  `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag, and
+  the next waits for the handshake (CRA bit 6 set then cleared) plus `KEY_BYTE_CYCLES` (3 405, the
+  manual's 8 bits at 60 µs, unmeasured). A keyboard never acknowledged waits for ever; the real one
+  resyncs. Reset state: all masked, all inputs; at a snapshot set the mask (`cia_a_mut`), since the
+  oracle's snapshot holds no CIA state. TOD registers keep their byte.
+- **CIA-B:** each register keeps its last byte written; the program only latches the drive motor off
+  through PRB.
+- **Input:** `set_input` sets JOY1DAT (read-only to the program), the fire buttons and the keys
+  held; `Input::from(FrameInput)` is the hand engine's input (`Joy::joydat`).
+- **Paula's writes** (`paula.rs`): every write to DMACON, INTENA, INTREQ, ADKCON and `$0A0..$0DE`
+  (`amiga_chips::is_paula`), in order, with its cycle count and beam position, including the one a
+  read of a write-only audio register makes. The host empties the list each frame.
 
 ## What is not
 
@@ -53,4 +73,9 @@ m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 - **VPOSW/VHPOSW** are kept as values; they do not move the beam.
 - **Odd word addresses**: a word access at an odd address is made at it, byte by byte; the 68000
   would take an address error.
-- Chips, interrupts, sound, input and the OS: devices and `poll` added by translator T23 to T26.
+- **CIA timers:** neither CIA-A timer is modelled; reading or writing a timer register, or setting
+  CRA's or CRB's START bit, stops the run (`unsupported: CIA-A timer at $bfe401`). The program
+  touches no timer (T01). CIA-B's timers are not checked.
+- **Audio interrupts:** none is raised; the program never enables level 4 (T01). Sound is played
+  from the writes by `amiga-paula` in the app, not here.
+- The chips, interrupts and the OS: translator T23, T24 and T26.
