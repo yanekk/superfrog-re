@@ -6,6 +6,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
+| 2026-11-11 | 📌 | After T06 moved the trial's corrections into `pcode_fix/`, the whole tree differs only in comments, and `translator_trial.py --skip-export` still passes 84 of 85 (write_into_code 1, as before). |
+| 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
+| 2026-11-11 | 📌 | T06 fails by owner (`build/translator/insn.md`): T09 nine shift kinds (lsl/lsr V set where Moira clears it, asl.l V); T08 five (addx.l X, divu/divs registers and flags, clr.w abs.l); T10 rte (PC, flags). |
+| 2026-11-11 | 🐞 | `clr.w` at BLTSIZE (`h0+$2a`): Moira's clr reads first, and its shim answers a write-only register's read by writing the bus's last word, an extra custom write the judge's `Mem` does not model. Judge gap or translation: T08 decides. |
+| 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |
 | 2026-11-11 | 🐞 | `pcode_export.py` `--out` naming a file: `os.makedirs` raises a traceback, not exit 2 (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 🐞 | `re_listing.py` `--out` naming a file: unguarded `os.makedirs` and temp-rename write, traceback not exit 2 (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 🐞 | `translate_batch.py` `--out`: unguarded `os.makedirs` and state temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |

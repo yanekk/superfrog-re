@@ -13,6 +13,10 @@
 // `--translated` stops as untranslated: that mode's negative check. FD_TRANSLATED may also name a
 // directory, `build/translator/tree/` (translator T04): its `mod.rs` and parts are compiled where they
 // are, through a `#[path]`, so each part is a module of its own and rustc's errors name the part.
+//
+// The instruction check's module (src/judge/insn.rs, `tree`) comes from FD_INSN the same way
+// (translator T06): `build/translator/insn.rs`, written by `pcode_rust.py --insn`. Without it the
+// stub has no sites, so `fd-judge --insn-all` checks nothing.
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -33,6 +37,15 @@ fn main() {
         "use pcode_rt::{Bus, Image, Regs, Stop};\n\
          pub const CODE: &[(u32, u32, u32)] = &[];\n\
          pub fn entry(_addr: &str) -> Option<fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>> {\n    None\n}\n",
+    );
+    built_in(
+        "FD_INSN",
+        &out.join("insn.rs"),
+        "use pcode_rt::{Bus, Image, Regs, Stop};\n\
+         pub const CODE: &[(u32, u32, u32)] = &[];\n\
+         pub const HUNK_SIZES: &[u32] = &[];\n\
+         pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;\n\
+         pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[];\n",
     );
 }
 

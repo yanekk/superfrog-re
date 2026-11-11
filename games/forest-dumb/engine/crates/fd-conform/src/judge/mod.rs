@@ -7,6 +7,7 @@
 //! Without `FD_PORT` a stub that changes nothing is built, so the judge fails every routine that
 //! changes anything: its negative check.
 
+pub mod insn;
 mod mem;
 pub mod translated;
 
