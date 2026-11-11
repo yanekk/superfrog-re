@@ -862,6 +862,19 @@ mod tests {
     }
 
     #[test]
+    fn a_computed_target_after_a_return_is_the_start_not_the_code_it_branches_back_to() {
+        let mut p = program();
+        // $1080 and $1082 are reached only by $1084's back-branch; $1084, after an rts, only by a
+        // computed jump. The one start is $1084: the closure's lowest-unreached fallback would pick
+        // $1080 too if the rts were taken to fall into $1084.
+        p.insert(0x1080, vec![0x72, 0x00]); // moveq #0, d1
+        p.insert(0x1082, vec![0x4e, 0x75]); // rts
+        p.insert(0x1084, vec![0x60, 0xfa]); // bra.s $1080
+        let starts: Vec<u32> = run_starts(&p).into_iter().collect();
+        assert_eq!(starts, vec![0x1000, 0x1040, 0x1060, 0x1084]);
+    }
+
+    #[test]
     fn entries_name_their_source() {
         let funcs: BTreeSet<u32> = [0x1000, 0x1020, 0x1060, 0x2000].into();
         let vectors: BTreeSet<u32> = [0x1060, 0x1040].into();
