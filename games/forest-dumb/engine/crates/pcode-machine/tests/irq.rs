@@ -11,6 +11,8 @@
 use pcode_machine::{Config, Machine, irq};
 use pcode_rt::{Bus, Image, PC, Regs, SR, Stop, cycles as cy, ops};
 
+// Generated: test_pcode_rust.py checks it byte for byte, so rustfmt must not touch it.
+#[rustfmt::skip]
 #[path = "fixtures/irq.rs"]
 mod prog;
 
