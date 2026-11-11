@@ -10,8 +10,26 @@ use std::fmt;
 pub mod bcd;
 pub mod ops;
 
-/// Blocks a translated call may run before it stops as `Stop::Hang` (DESIGN §5.2).
-pub const STEP_CAP: u64 = 10_000_000;
+/// Blocks a translated run may enter, counted in `Regs::steps` across every call, before it stops as
+/// `Stop::Hang { why: Steps }` (DESIGN §2.4, §5.2). A per-call count let endless recursion run until
+/// the Rust stack overflowed; one count for the run cannot be reset by a call.
+///
+/// Measured (translator T14, 2026-11-11, the trial's 85 judgeable routines over 2 000 states each):
+/// the longest run was 3 968 blocks (`h0+$b20`), `game_frame` 737. The trial's 10 000 000 is kept,
+/// 2 500 times that and more than the blocks a 68000 can run in 280 frames (at most 35 450 a
+/// frame: 141 800 cycles, 4 a instruction), until T16 measures whole frames of the whole tree and
+/// sets it to 10 times the longest.
+pub const STEP_CAP_GLOBAL: u64 = 10_000_000;
+
+/// Translated functions a run may have entered and not yet left, counted in `Regs::depth`, before it
+/// stops as `Stop::Hang { why: Depth }`. Each is a Rust frame, so the cap bounds the stack a run
+/// needs; a host runs translated code on a thread with room for this many (fd-conform's judge).
+///
+/// Measured (translator T14, 2026-11-11): the deepest call chain in the whole tree's call graph is 8
+/// functions (from the program entry, no recursion), the level 3 handler's 7; the trial's routines
+/// nested 6 at most (`game_frame`). Four times the deepest chain, which also covers an interrupt
+/// handler's chain taken on top of the deepest one (8 + 7 + 1).
+pub const DEPTH_CAP: u32 = 32;
 
 /// The size of Ghidra's 68000 register space: its last register, `FP7`, is 10 bytes at `0x746`
 /// (`Processors/68000/data/languages/68000.sinc`, Ghidra 12.0).
@@ -31,6 +49,14 @@ pub const SR: usize = 0x200;
 
 /// Memory as the host provides it. Word and long accesses are big-endian.
 pub trait Bus {
+    /// Called at the start of every translated basic block, before its first instruction: where a
+    /// machine takes a pending interrupt (DESIGN §2.8), by calling the translated handler with the
+    /// exception frame pushed. A stop it returns ends the run. Plain memory has nothing to take.
+    #[inline]
+    fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let _ = (r, img);
+        Ok(())
+    }
     fn rb(&mut self, a: u32) -> u8;
     fn rw(&mut self, a: u32) -> u16;
     fn rl(&mut self, a: u32) -> u32;
@@ -39,16 +65,24 @@ pub trait Bus {
     fn wl(&mut self, a: u32, v: u32);
 }
 
-/// Ghidra's 68000 register space, byte for byte, big-endian.
+/// Ghidra's 68000 register space, byte for byte, big-endian, and the run's two counters.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Regs {
     pub space: [u8; REG_SPACE],
+    /// Blocks entered since the host last set it, across every call; against `STEP_CAP_GLOBAL`. A
+    /// host that runs frame by frame resets it each frame.
+    pub steps: u64,
+    /// Translated functions entered and not yet returned from; against `DEPTH_CAP`. Left as it was
+    /// when a run stops, since a stop ends the run.
+    pub depth: u32,
 }
 
 impl Default for Regs {
     fn default() -> Self {
         Regs {
             space: [0; REG_SPACE],
+            steps: 0,
+            depth: 0,
         }
     }
 }
@@ -182,12 +216,21 @@ pub enum Stop {
     WriteIntoCode(String),
     /// An instruction or P-code op the translator does not carry out.
     Unsupported { op: String, at: String },
-    /// The step cap (DESIGN §5.2).
-    Hang,
+    /// A cap reached (DESIGN §2.4, §5.2).
+    Hang { why: Hang },
     /// The instruction at `at` took the 68000 exception `vector` (5: a division by zero). The
     /// translated code cannot follow it into the handler, so it ends the run; the machine decides
     /// what the original's exception would have done.
     Trap { vector: u32, at: String },
+}
+
+/// Which cap a `Stop::Hang` reached.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Hang {
+    /// `STEP_CAP_GLOBAL`: an endless loop, however many calls it spans.
+    Steps,
+    /// `DEPTH_CAP`: endless recursion, by calls or by jumps into other functions' entries.
+    Depth,
 }
 
 impl fmt::Display for Stop {
@@ -196,10 +239,33 @@ impl fmt::Display for Stop {
             Stop::Untranslated(at) => write!(f, "untranslated: {at}"),
             Stop::WriteIntoCode(at) => write!(f, "write-into-code: {at}"),
             Stop::Unsupported { op, at } => write!(f, "unsupported: {op} at {at}"),
-            Stop::Hang => write!(f, "hang"),
+            Stop::Hang { why: Hang::Steps } => write!(f, "hang (steps)"),
+            Stop::Hang { why: Hang::Depth } => write!(f, "hang (depth)"),
             Stop::Trap { vector, at } => write!(f, "trap: vector {vector} at {at}"),
         }
     }
+}
+
+/// What a translated function does on entry: one more frame, or `Hang { why: Depth }` past the cap.
+/// It undoes this itself (`r.depth -= 1`) when it returns, or when a function it jumped into does.
+#[inline]
+pub fn fn_entry(r: &mut Regs) -> Result<(), Stop> {
+    r.depth += 1;
+    if r.depth > DEPTH_CAP {
+        return Err(Stop::Hang { why: Hang::Depth });
+    }
+    Ok(())
+}
+
+/// What every translated basic block does first: one more step, or `Hang { why: Steps }` past the
+/// cap, then the bus's `poll`.
+#[inline]
+pub fn block_start<B: Bus + ?Sized>(bus: &mut B, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+    r.steps += 1;
+    if r.steps > STEP_CAP_GLOBAL {
+        return Err(Stop::Hang { why: Hang::Steps });
+    }
+    bus.poll(r, img)
 }
 
 /// A load of `size` bytes at `a`, big-endian. An 8-byte load is two longs; any other size than
@@ -454,12 +520,12 @@ mod tests {
             at: "h0+$10".into(),
         };
         assert_eq!(u.to_string(), "unsupported: CALLOTHER at h0+$10");
-        assert_eq!(Stop::Hang.to_string(), "hang");
+        assert_eq!(Stop::Hang { why: Hang::Steps }.to_string(), "hang (steps)");
+        assert_eq!(Stop::Hang { why: Hang::Depth }.to_string(), "hang (depth)");
         let t = Stop::Trap {
             vector: 5,
             at: "h0+$6c9c".into(),
         };
         assert_eq!(t.to_string(), "trap: vector 5 at h0+$6c9c");
-        assert_eq!(STEP_CAP, 10_000_000);
     }
 }

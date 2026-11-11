@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | No task measures whole frames' steps: T14's interface sets `STEP_CAP_GLOBAL` from T16, whose doc judges routines only. The cap stays 10 000 000; no task owns resetting `Regs::steps` per frame either. Left for the plan. |
+| 2026-11-11 | 📌 | `DEPTH_CAP` 32 rests on static call depth. A return outside its caller (`ret_check`, then `enter`) nests a Rust frame the original lacks, so running depth can exceed 8 (T14 review, read-only). T16/T28 should record the deepest `Regs::depth`. |
+| 2026-11-11 | 📌 | **T14 caps measured:** trial routines' longest run 3 968 blocks (`h0+$b20`), `game_frame` 737, nesting 6 at most; the whole tree's call graph is 8 deep from `h0+$0`, `level3_handler` 7, no recursion. `STEP_CAP_GLOBAL` left at 10 000 000 for T16. |
+| 2026-11-11 | 📌 | The trial builds `fd-judge` unoptimised: one translated frame takes up to 49 KB of stack (`h0+$9b06`), 66 KB at `game_frame`'s depth 6. Hence `RUN_STACK` 64 MB; at 1 MB the judge's recursion test aborts (SIGABRT). |
+| 2026-11-11 | 📌 | With other workers building (load 6 to 7), one `fd-judge` binary's CPU over the trial's 85 routines varied 139 to 174 s. Compare run time by alternating several runs of each build (T14 did three and five). |
 | 2026-11-11 | 📌 | **T08 arith check**: before, 5 of 111 kinds failed, 1 807 states (regs 593, ccr 1 253, mem 500); after, 0 in each, 288 skipped (odd `(d8,An,Xn)` index 274, zero divisor 14). Trial: 84 of 85. |
 | 2026-11-11 | 📌 | The T06 `clr.w` row was COPJMP1 (`$dff088`), a translation gap: the 68000's clr reads first, and a write-only register's read writes the next instruction word. The music player's `clr.w AUDxVOL` (`h4+$184e2`..) does it too; `pcode_fix.arith` emits it. |
 | 2026-11-11 | 📌 | Moira's `clr.l` writes the low word before the high (custom writes `(aa,0)` then `(a8,0)`); the sinc's long store is high first, so arith emits clr.l as two word stores. |

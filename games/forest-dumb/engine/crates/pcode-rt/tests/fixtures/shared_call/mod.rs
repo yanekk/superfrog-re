@@ -1,7 +1,7 @@
 // Generated from shared_call.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};
 
 #[path = "p00.rs"]
 mod p00;

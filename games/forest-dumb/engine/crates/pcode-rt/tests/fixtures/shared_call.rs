@@ -1,7 +1,7 @@
 // Generated from shared_call.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -51,13 +51,10 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x0);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x0) => {
                 // h0+$0 bsr h0+$10
@@ -100,24 +97,26 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0xa);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x10);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x10) => {
                 // h0+$10 bsr h0+$30
@@ -149,24 +148,26 @@ pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0x18);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x20);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x20) => {
                 // h0+$20 bsr h0+$30
@@ -198,24 +199,26 @@ pub fn h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0x28);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 pub fn h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
     let mut pc: (u32, u32) = (0, 0x30);
-    let mut steps: u64 = 0;
     'b: loop {
-        steps += 1;
-        if steps > STEP_CAP {
-            return Err(Stop::Hang);
-        }
+        block_start(bus, r, img)?;
         match pc {
             (0, 0x30) => {
                 // h0+$30 addq.l #1,d1
@@ -231,11 +234,16 @@ pub fn h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     r.set(0x3c, 4, v);
                     let v = r.get(0x50, 4);
                     r.set(PC, 4, v);
+                    r.depth -= 1;
                     return Ok(());
                 }
                 pc = (0, 0x34);
             }
-            k => return enter(k, r, bus, img),
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
         }
     }
 }

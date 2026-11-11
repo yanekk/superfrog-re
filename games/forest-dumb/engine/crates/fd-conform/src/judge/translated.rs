@@ -9,8 +9,13 @@
 //! state stops as untranslated: this mode's negative check.
 //!
 //! A [`Stop`] fails its state and is counted by kind; the rig reports it as "the port stopped: ..".
+//!
+//! Each state runs on a thread of its own with a [`RUN_STACK`]-byte stack, so a run that nests
+//! `pcode_rt::DEPTH_CAP` translated frames stops as `hang (depth)` instead of overflowing the stack,
+//! which aborts the process (translator T14).
 
 use std::panic::resume_unwind;
+use std::thread;
 
 use amiga_oracle::{RETURN_SENTINEL, Regs};
 use pcode_rt::{Bus, Image, Stop};
@@ -20,6 +25,12 @@ use crate::HUNK_BASES;
 use crate::routine::{
     Effects, Generator, PortStop, RegsCompared, Rig, RigFailure, RigReport, STACK,
 };
+
+/// The stack each judged state runs on. Every translated function is a Rust frame, and a run nests
+/// at most `pcode_rt::DEPTH_CAP` of them. Measured (translator T14, 2026-11-11, the trial's tree in
+/// the judge's unoptimised build): one frame up to 49 KB (`h0+$9b06`), 66 KB at the deepest run
+/// (`game_frame`, 6 deep). 64 MB is 2 MB a frame at the cap; the pages are touched only as used.
+pub const RUN_STACK: usize = 64 << 20;
 
 /// A translated entry, as `tools/pcode_rust.py` emits each function and `tree::entry` returns it.
 pub type Entry = fn(&mut pcode_rt::Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
@@ -65,7 +76,8 @@ pub struct Stops {
     pub untranslated: usize,
     pub write_into_code: usize,
     pub unsupported: usize,
-    /// `Stop::Hang`: the step cap, apart from the original's hangs the report counts.
+    /// `Stop::Hang`: the step or depth cap (`first` says which), apart from the original's hangs the
+    /// report counts.
     pub hangs: usize,
     /// `Stop::Trap`: an exception the translated code ends on (a division by zero).
     pub traps: usize,
@@ -78,7 +90,7 @@ impl Stops {
             Stop::Untranslated(_) => self.untranslated += 1,
             Stop::WriteIntoCode(_) => self.write_into_code += 1,
             Stop::Unsupported { .. } => self.unsupported += 1,
-            Stop::Hang => self.hangs += 1,
+            Stop::Hang { .. } => self.hangs += 1,
             Stop::Trap { .. } => self.traps += 1,
         }
         if self.first.is_empty() {
@@ -135,7 +147,14 @@ pub fn check(
             code,
         };
         let ran = match run {
-            Some(f) => f(&mut r, &mut mem, &img),
+            Some(f) => thread::scope(|scope| {
+                let t = thread::Builder::new()
+                    .stack_size(RUN_STACK)
+                    .spawn_scoped(scope, || f(&mut r, &mut mem, &img))
+                    .expect("a thread for a judged state");
+                // A panic in the run goes on unwinding here, where the rig catches it.
+                t.join().unwrap_or_else(|e| resume_unwind(e))
+            }),
             None => Err(Stop::Untranslated(at.clone())),
         };
         if let Err(stop) = ran {

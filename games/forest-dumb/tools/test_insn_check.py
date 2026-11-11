@@ -233,6 +233,14 @@ class InsnMode(unittest.TestCase):
         self.assertIn('r.set(PC, 4, img.h(0, 0xc) as u64);', bne)   # not taken: the next instruction
         self.assertNotIn("continue 'b", text)
 
+    def test_an_rts_alone_counts_no_depth(self):
+        # A site function never calls `fn_entry`, so its `rts` must not take one off `Regs::depth`:
+        # from the check's fresh `Regs` that underflows and panics (translator T14 review).
+        rts = {'len': 2, 'mnem': 'rts', 'ops': [{'op': 'RETURN', 'in': [['register', 80, 4]]}]}
+        text = '\n'.join(pr.InsnEmit({(0, 0): rts}).instruction((0, 0), rts)[0])
+        self.assertIn('r.set(PC, 4, v);\n    return Ok(());', text)
+        self.assertNotIn('depth', text)
+
     def test_an_absolute_operand_is_a_seed_and_a_branch_target_is_not(self):
         doc = pr.load_export(FIXTURE)
         self.assertEqual(pr.seeds(doc['insns'][(0, 0xe)]), [(1, 4)])

@@ -21,7 +21,10 @@ a hunk, or a relocated `const`) is hunk-relative; an instruction's `relocs` entr
 inside a `BRANCH`/`CBRANCH` is P-code's relative branch within the instruction.
 
 The generated code, per call target, one function: its basic blocks are the arms of a `match` on
-the block address inside a loop, which counts blocks against `STEP_CAP`. An address that is no
+the block address inside a loop. Each function counts itself into `Regs::depth` on entry and out on
+return (`DEPTH_CAP`); each block starts with `block_start`, which counts it into `Regs::steps`, one
+count for the whole run (`STEP_CAP_GLOBAL`), and calls the bus's `poll`, where a machine takes an
+interrupt (translator T14). An address that is no
 block of the function falls to the last arm, which enters the translated function there (a jump
 into another routine's entry runs it; its return is checked by our caller) or stops with
 `Untranslated`. A `RETURN` writes the popped address into `PC` and returns; the caller compares it
@@ -485,7 +488,7 @@ class Emit:
                     '    None => return Err(Stop::Untranslated(img.describe(a))),\n}',
                     self.ret_check(nxt)]
         if o == 'RETURN':
-            return [f'let v = {self.rd(op["in"][0])};', 'r.set(PC, 4, v);', 'return Ok(());']
+            return [f'let v = {self.rd(op["in"][0])};', 'r.set(PC, 4, v);', 'r.depth -= 1;', 'return Ok(());']
         if o == 'CALLOTHER':
             name = op.get('name')
             raise Unsupported(f'CALLOTHER {name}' if name else 'CALLOTHER')
@@ -542,13 +545,10 @@ class Emit:
 
     def function(self, e, blocks):
         lines = [ALLOW, f'pub fn {fn_name(e)}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',
+                 '    fn_entry(r)?;',
                  f'    let mut pc: (u32, u32) = {key(e)};',
-                 '    let mut steps: u64 = 0;',
                  '    \'b: loop {',
-                 '        steps += 1;',
-                 '        if steps > STEP_CAP {',
-                 '            return Err(Stop::Hang);',
-                 '        }',
+                 '        block_start(bus, r, img)?;',
                  '        match pc {']
         unsupported = 0
         for l in sorted(blocks):
@@ -561,7 +561,11 @@ class Emit:
             last = run[-1]
             lines.append(f'                pc = {key((last[0], last[1] + self.insns[last]["len"]))};')
             lines.append('            }')
-        lines += ['            k => return enter(k, r, bus, img),', '        }', '    }', '}']
+        # A jump into another function's entry nests a Rust frame as a call does: this frame stays
+        # counted until that one returns.
+        lines += ['            k => {', '                let res = enter(k, r, bus, img);',
+                  '                r.depth -= 1;', '                return res;', '            }',
+                  '        }', '    }', '}']
         return lines, unsupported
 
 
@@ -595,7 +599,7 @@ def stats_of(funcs, insns):
 
 
 IMPORTS = ['#[allow(unused_imports)]',
-           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};']
+           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};']
 
 
 def head(export, funcs, source_name, path=lambda e: fn_name(e)):
@@ -778,6 +782,9 @@ class InsnEmit(Emit):
             return [self.goto(t[1])]
         if o == 'CALLIND':
             return [self.goto_abs(self.rd(op['in'][0]))]
+        if o == 'RETURN':
+            # No `fn_entry` here, so no `r.depth -= 1` either: from a fresh `Regs` it underflows.
+            return [f'let v = {self.rd(op["in"][0])};', 'r.set(PC, 4, v);', 'return Ok(());']
         return super().op_lines(op, j, a, ins)
 
     def function(self, a):
