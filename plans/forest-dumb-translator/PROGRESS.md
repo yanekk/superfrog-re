@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** review T25 (machine-sound-input); T23, T24 and T26 build beside it, then T27 wires CIA-A's interrupt into INTREQ.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** build T23, T24 and T26; T27 wires CIA-A's interrupt (`take_cia_interrupts`) into INTREQ.
 
 ## Tasks
 
@@ -39,7 +39,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
-| T25 | machine-sound-input | T22 | 🔍 | Paula log, CIA-A (fire and mouse on PRA, ICR, keyboard queue with the CRA bit 6 handshake), `set_input`, `Input::from(FrameInput)`; amiga-input `key_bytes`, `Joy::joydat`. 19 new tests. Deviations: `paula_writes` gives `(u64, PaulaWrite)` per plan review; CIA-A's interrupt via `take_cia_interrupts`, as T23 owns INTREQ; no audio interrupt or timers (T01: unused), timers stop. |
+| T25 | machine-sound-input | T22 | ✅ | Reviewed: fixed ICR line released by mask writes (vAmiga releases only on ICR read) and CRA/CRB strobe bits read back; reproduced by unit tests, fixed, tests lock it. Probed old vs new `feed` over 4 096 key pairs; handshake mutation caught. Hand-engine sf-core keyboard tests green. Deviations held. |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T25
+**Review queue:** empty
 
 ## Blocked on the user
 
