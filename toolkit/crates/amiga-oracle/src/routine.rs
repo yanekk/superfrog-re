@@ -16,7 +16,7 @@ use amiga_disk::ReadError;
 use amiga_disk::hunk::{self, Block};
 
 use crate::amiga::{AmigaMemory, SLOW_BASE};
-use crate::ffi::{self, RawCallStatus, RawCpu, RawRegs};
+use crate::ffi::{self, RawCallStatus, RawCpu, RawRegs, RawStepRegs};
 
 /// The return address [`Cpu68k::call`] pushes; the call ends when the PC reaches it.
 pub const RETURN_SENTINEL: u32 = 0xF0_0000;
@@ -75,6 +75,24 @@ impl CallResult {
         }
         out
     }
+}
+
+/// What one instruction did ([`Cpu68k::step`]).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Stepped {
+    /// The registers after it; `a[7]` is the stack pointer the new `sr` selects.
+    pub regs: Regs,
+    /// The address of the next instruction: past this one, or where it branched or jumped.
+    pub pc: u32,
+    /// Both stack pointers after it, whichever `sr` selects: `move usp` and `rte` move between them.
+    pub usp: u32,
+    pub ssp: u32,
+    /// Every byte it changed, as in [`CallResult::writes`]: `(addr, old, new)`, ascending.
+    pub writes: Vec<(u32, u8, u8)>,
+    /// Its cycles on Moira's clock, with no bus contention.
+    pub cycles: u32,
+    /// In hardware mode, its custom-chip writes, as in [`CallResult::hw_writes`].
+    pub hw_writes: Vec<(u16, u16)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -603,6 +621,98 @@ impl Cpu68k {
         }
     }
 
+    /// Run exactly one instruction at `pc` from `regs`, in the hardware mode set; the stack pointer
+    /// `regs.sr` does not select starts equal to `regs.a[7]` ([`Cpu68k::step_with_other_sp`] sets
+    /// it). Nothing is pushed, and memory is put back as it was before this returns, as in
+    /// [`Cpu68k::call`]. An instruction that takes an exception (`illegal`, `trap`, a division by
+    /// zero, a privilege violation) returns the error naming it; the exception is not followed.
+    pub fn step(&mut self, pc: u32, regs: Regs) -> Result<Stepped, CallError> {
+        self.step_with_other_sp(pc, regs, regs.a[7])
+    }
+
+    /// [`Cpu68k::step`] with the stack pointer `regs.sr` does not select (the user one in
+    /// supervisor mode, the supervisor one in user mode) at `other_sp`.
+    pub fn step_with_other_sp(
+        &mut self,
+        pc: u32,
+        regs: Regs,
+        other_sp: u32,
+    ) -> Result<Stepped, CallError> {
+        // Moira's reset fetches from the even address below an odd one and runs that instruction;
+        // a 68000 reaching an odd PC takes an address error instead.
+        if pc & 1 != 0 {
+            return Err(CallError::Exception { pc, vector: 3 });
+        }
+        let mut r = RawRegs {
+            d: regs.d,
+            a: regs.a,
+            sr: regs.sr,
+        };
+        let mut ext = RawStepRegs::default();
+        let mut st = RawCallStatus::default();
+        unsafe {
+            ffi::amiga_cpu68k_step(self.raw.as_ptr(), pc, &mut r, other_sp, &mut ext, &mut st)
+        };
+        let (writes, hw_writes) = if st.status == ffi::AMIGA_CALL_RETURNED {
+            (self.journal(), self.last_hw_writes())
+        } else {
+            (Vec::new(), Vec::new())
+        };
+        unsafe { ffi::amiga_cpu68k_rollback(self.raw.as_ptr()) };
+        status_error(&st)?;
+        Ok(Stepped {
+            regs: Regs {
+                d: r.d,
+                a: r.a,
+                sr: r.sr,
+            },
+            pc: ext.pc,
+            usp: ext.usp,
+            ssp: ext.ssp,
+            writes,
+            cycles: st.cycles as u32,
+            hw_writes,
+        })
+    }
+
+    /// The custom-chip writes of the last call or step.
+    fn last_hw_writes(&self) -> Vec<(u16, u16)> {
+        let mut hw = std::ptr::null();
+        let n = unsafe { ffi::amiga_cpu68k_hw_writes(self.raw.as_ptr(), &mut hw) };
+        if n == 0 {
+            return Vec::new();
+        }
+        unsafe { std::slice::from_raw_parts(hw, n) }
+            .iter()
+            .map(|w| (w.reg, w.value))
+            .collect()
+    }
+
+    /// The bytes the last call or step changed, before rollback: `(addr, old, new)`, ascending,
+    /// leaving out a byte written with the value it already held.
+    fn journal(&self) -> Vec<(u32, u8, u8)> {
+        let (mut addrs, mut olds) = (std::ptr::null(), std::ptr::null());
+        let n = unsafe { ffi::amiga_cpu68k_journal(self.raw.as_ptr(), &mut addrs, &mut olds) };
+        if n == 0 {
+            return Vec::new();
+        }
+        let (addrs, olds) = unsafe {
+            (
+                std::slice::from_raw_parts(addrs, n),
+                std::slice::from_raw_parts(olds, n),
+            )
+        };
+        let mem = self.memory();
+        let mut writes: Vec<_> = addrs
+            .iter()
+            .zip(olds)
+            .filter(|&(&a, &old)| mem[a as usize] != old)
+            .map(|(&a, &old)| (a, old, mem[a as usize]))
+            .collect();
+        writes.sort_unstable_by_key(|w| w.0);
+        writes
+    }
+
     /// Run the routine at `entry` with `regs` until it returns, at most `max_instr` instructions.
     ///
     /// The CPU is reset, [`RETURN_SENTINEL`] is pushed below `regs.a[7]`, and the routine starts
@@ -641,66 +751,47 @@ impl Cpu68k {
             )
         };
 
-        let mut writes = Vec::new();
-        let mut hw_writes = Vec::new();
-        if st.status == ffi::AMIGA_CALL_RETURNED {
-            let mut hw = std::ptr::null();
-            let n = unsafe { ffi::amiga_cpu68k_hw_writes(self.raw.as_ptr(), &mut hw) };
-            if n > 0 {
-                hw_writes = unsafe { std::slice::from_raw_parts(hw, n) }
-                    .iter()
-                    .map(|w| (w.reg, w.value))
-                    .collect();
-            }
-            let (mut addrs, mut olds) = (std::ptr::null(), std::ptr::null());
-            let n = unsafe { ffi::amiga_cpu68k_journal(self.raw.as_ptr(), &mut addrs, &mut olds) };
-            if n > 0 {
-                let (addrs, olds) = unsafe {
-                    (
-                        std::slice::from_raw_parts(addrs, n),
-                        std::slice::from_raw_parts(olds, n),
-                    )
-                };
-                let mem = self.memory();
-                writes = addrs
-                    .iter()
-                    .zip(olds)
-                    .filter(|&(&a, &old)| mem[a as usize] != old)
-                    .map(|(&a, &old)| (a, old, mem[a as usize]))
-                    .collect();
-                writes.sort_unstable_by_key(|w| w.0);
-            }
-        }
+        let (writes, hw_writes) = if st.status == ffi::AMIGA_CALL_RETURNED {
+            (self.journal(), self.last_hw_writes())
+        } else {
+            (Vec::new(), Vec::new())
+        };
         unsafe { ffi::amiga_cpu68k_rollback(self.raw.as_ptr()) };
         self.write(sp, &saved);
 
-        match st.status {
-            ffi::AMIGA_CALL_RETURNED => Ok(CallResult {
-                regs: Regs {
-                    d: r.d,
-                    a: r.a,
-                    sr: r.sr,
-                },
-                writes,
-                instr: st.instr,
-                cycles: st.cycles,
-                hw_writes,
-            }),
-            ffi::AMIGA_CALL_TIMEOUT => Err(CallError::Timeout),
-            ffi::AMIGA_CALL_CUSTOM => Err(CallError::CustomChipAccess {
-                pc: st.pc,
-                addr: st.addr,
-            }),
-            ffi::AMIGA_CALL_EXCEPTION if matches!(st.vector, 4 | 10 | 11) => {
-                Err(CallError::IllegalInstruction { pc: st.pc })
-            }
-            ffi::AMIGA_CALL_EXCEPTION => Err(CallError::Exception {
-                pc: st.pc,
-                vector: st.vector,
-            }),
-            ffi::AMIGA_CALL_HALTED => Err(CallError::Halted { pc: st.pc }),
-            other => unreachable!("moira_shim returned status {other}"),
+        status_error(&st)?;
+        Ok(CallResult {
+            regs: Regs {
+                d: r.d,
+                a: r.a,
+                sr: r.sr,
+            },
+            writes,
+            instr: st.instr,
+            cycles: st.cycles,
+            hw_writes,
+        })
+    }
+}
+
+/// The error a call or step's status names, if any.
+fn status_error(st: &RawCallStatus) -> Result<(), CallError> {
+    match st.status {
+        ffi::AMIGA_CALL_RETURNED => Ok(()),
+        ffi::AMIGA_CALL_TIMEOUT => Err(CallError::Timeout),
+        ffi::AMIGA_CALL_CUSTOM => Err(CallError::CustomChipAccess {
+            pc: st.pc,
+            addr: st.addr,
+        }),
+        ffi::AMIGA_CALL_EXCEPTION if matches!(st.vector, 4 | 10 | 11) => {
+            Err(CallError::IllegalInstruction { pc: st.pc })
         }
+        ffi::AMIGA_CALL_EXCEPTION => Err(CallError::Exception {
+            pc: st.pc,
+            vector: st.vector,
+        }),
+        ffi::AMIGA_CALL_HALTED => Err(CallError::Halted { pc: st.pc }),
+        other => unreachable!("moira_shim returned status {other}"),
     }
 }
 

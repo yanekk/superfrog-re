@@ -126,6 +126,7 @@ source; open the source only for what the README lacks.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 - [docs/13-translator-trial.md](docs/13-translator-trial.md): the translator trial (stage 0): 84 of 85 judgeable routines pass with no hand edit, no write into code on level 1's path; how to rerun it; owner's go (2026-11-07).
 - [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass instead of Muse.
+- [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
 - [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## The first case

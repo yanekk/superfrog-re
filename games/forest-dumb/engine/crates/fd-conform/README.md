@@ -88,6 +88,10 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `flow`, `local_starts`, `closure`, `run_starts`, `entries(insns, funcs, vectors, program_entry) -> BTreeMap<u32, Source>`, `render`, `parse_symbols`, `funcs`; `Source::{ProgramEntry, Symbol, Vector, Trace}`.
 - `run_case_seen_in` in `code_writes` returns a case's executed instructions with its `Report`.
 
+**The OS surface** (`src/os_surface.rs`, translator T01)
+- `os_surface::run(&Options { frames, worlds }) -> Result<Report, String>`, `run_in(kickstart, disk_dir, ...)`: the original from power-on through level 1 and each world's load, every program address and library jump-table slot watched.
+- `Report { steps, vectors, calls, mem, cia, jumps, irqs, undecoded }`, `.toml(frames, worlds)` (the committed `re/os-calls.toml`, `committed_path()`), `.calls_named(name)`; `Survey` and `Observation` for made-up runs; `lvo_name`, `cia_name`, `read_libs`. Reading: `games/forest-dumb/docs/15-os-surface.md`.
+
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 
@@ -105,6 +109,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | `cargo run -p fd-conform -- bug compare <zip> [--out DIR]` | Retime the zip onto the original and compare it; writes `bug-case.toml` |
 | `cargo run --release -p fd-conform -- code-writes [--cases <glob>] [--max-frames N]` | Every level case on the original, each change to an executed instruction's bytes; JSON lines and a total |
 | `cargo run --release -p fd-conform -- code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6\|none] [--out FILE]` | Every instruction the original runs over the level cases, power-on and the world 2 to 6 starts, reduced to entries in `re/entries.toml`; JSON lines per run and a total; about 5 minutes |
+| `cargo run --release -p fd-conform -- os-surface [--frames N] [--worlds 1,2] [--out FILE]` | The program's OS calls, OS memory, interrupts and CIA accesses on the original, written to `re/os-calls.toml`; about 25 s |
 | `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --gen <name> [--cases N] [--survey \| --cover]` | One routine against the built-in port; prints one JSON line |
 
 Output formats: the `//!` headers of `src/main.rs` and `src/bin/fd-judge.rs`.

@@ -54,6 +54,9 @@ workspace = "engine"
 # Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
 # 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
 "crates/fd-conform/tests/code_seen.rs" = "full"
+# T01 (translator): the OS survey's input checks, under a second; the run on the original (about 56 s)
+# is #[ignore]d for full.
+"crates/fd-conform/tests/os_surface.rs" = ["a_missing_kickstart_names_the_path", "a_world_out_of_range_is_refused"]
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
@@ -338,11 +341,13 @@ workspace = "engine"
 [python]
 "tools/test_call_tree.py" = "smoke"
 "tools/test_find_file_names.py" = "smoke"
-# T61: model calls stubbed, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
+# T61: the model is test_model's fake `claude`, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
 "tools/test_generate.py" = "smoke"
 "tools/test_generate_judge.py" = "smoke"
+# T17 (translator): a fake `claude` on PATH, no network; the slow-answer case waits 1 s: about 4 s.
+"tools/test_model.py" = "smoke"
 "tools/test_re_listing.py" = "smoke"
-# T62: model calls stubbed, no network. The judge one builds three canned answers into the engine's
+# T62: the model is test_model's fake `claude`, no network. The judge one builds three canned answers into the engine's
 # scratch copy and runs T08's rig on h0_4274: about 4 s warm, 20 s on a cold scratch target.
 "tools/test_reshape.py" = "smoke"
 "tools/test_reshape_judge.py" = "smoke"

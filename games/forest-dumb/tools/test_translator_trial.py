@@ -241,7 +241,7 @@ class Trial(unittest.TestCase):
     def test_a_judge_past_its_limit_fails_as_timeout(self):
         slow = self.write('slow.py', 'import time; time.sleep(5)\n')
         os.environ['FD_TRIAL_JUDGE'] = f'{shlex.quote(sys.executable)} {shlex.quote(slow)}'
-        with mock.patch.object(t.translate, 'JUDGE_SECONDS', 0.2):
+        with mock.patch.object(t.jr, 'JUDGE_SECONDS', 0.2):
             v = t.verdict({'label': 'h0+$0', 'gen': 'h0_0'}, 10)
         self.assertEqual((v['verdict'], v['first']), ('fail', 'timeout (0.2 s)'))
 

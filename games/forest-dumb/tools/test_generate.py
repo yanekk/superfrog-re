@@ -1,5 +1,5 @@
-"""generate.py (plans/forest-dumb-level-1 T61). Model calls are stubbed: a test file never calls the
-network. The listing and the judge are stubbed too, so this needs no disks; fd-judge's `--cover` is
+"""generate.py (plans/forest-dumb-level-1 T61, translator T17). The model is test_model's fake `claude`
+on PATH: a test file never calls the network. The listing and the judge are stubbed too, so this needs no disks; fd-judge's `--cover` is
 run for real in test_generate_judge.py."""
 import io
 import json
@@ -12,7 +12,9 @@ from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import generate as g  # noqa: E402
-import translate as tr  # noqa: E402
+import judge_run as jr  # noqa: E402
+import model  # noqa: E402
+from test_model import FakeClaude  # noqa: E402
 
 TOOL = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'generate.py')
 # A made-up routine: two branches, the second guarded by a compare of a variable.
@@ -57,24 +59,22 @@ def read(path):
         return f.read()
 
 
+def queue(answers):
+    """The tests' answers as the fake's: (text, usage) an answer, an exception a failed run."""
+    return [{'exit': 1, 'stderr': str(a)} if isinstance(a, Exception) else a[0] for a in answers]
+
+
 class Service(unittest.TestCase):
-    """generate() with every outside piece replaced: the key, the listing, the price, the model, the
+    """generate() with every outside piece replaced: the listing, the model (a fake `claude`), the
     judge."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.out = self.tmp.name
-        self.calls = []
         self.answers = []
         self.judged = []
-
-        def call_model(messages, key):
-            self.calls.append([dict(m) for m in messages])
-            nxt = self.answers.pop(0)
-            if isinstance(nxt, Exception):
-                raise nxt
-            return nxt
+        self.fake = FakeClaude(self)
 
         def run_cover(path, hunk, off, name, out):
             src = read(path)
@@ -88,13 +88,10 @@ class Service(unittest.TestCase):
             return cover(ONE_WAY)
 
         for name, value in [
-            ('find_key', lambda: ('sk-test', 'nowhere')),
             ('flow_text', lambda h, o, stops=(): (LISTING, 7)),
-            ('price', lambda key: (0.06e-6, 0.2e-6)),
-            ('call_model', call_model),
             ('symbols', lambda: [{'name': 'char_thing', 'hunk': 0, 'offset': 0x5462}]),
         ]:
-            p = mock.patch.object(tr, name, value)
+            p = mock.patch.object(jr, name, value)
             p.start()
             self.addCleanup(p.stop)
         for name, value in [
@@ -111,10 +108,18 @@ class Service(unittest.TestCase):
         self.addCleanup(p.stop)
 
     def run_it(self, **kw):
+        self.fake.answer(*queue(self.answers))
         return g.generate('h0+$5462', 'h0_5462', out=self.out, **kw)
 
+    def ncalls(self):
+        return len(self.fake.seen())
+
+    def last(self, n):
+        """What call `n` asked last: the whole prompt of a first try, else the end of the transcript."""
+        return self.fake.prompts()[n].split('# Now answer this\n\n')[-1]
+
     def log(self):
-        with open(os.path.join(self.out, 'calls.jsonl')) as f:
+        with open(os.path.join(self.out, 'tries.jsonl')) as f:
             return [json.loads(l) for l in f]
 
     def test_a_generator_covering_every_branch_is_covered_and_written(self):
@@ -124,7 +129,7 @@ class Service(unittest.TestCase):
                          ('covered', 1, 2, 2000, []))
         self.assertEqual(read(res['gen']), FULL)
         self.assertTrue(res['gen'].endswith('h0_5462.rs'))
-        prompt = self.calls[0][1]['content']
+        prompt = self.last(0)
         self.assertIn('`h0_5462`', prompt)
         self.assertIn('char_thing', prompt)
         self.assertIn('// an example', prompt)
@@ -135,8 +140,7 @@ class Service(unittest.TestCase):
         self.answers = [(answer(HALF), usage()), (answer(FULL), usage())]
         res = self.run_it()
         self.assertEqual((res['result'], res['tries']), ('covered', 2))
-        back = self.calls[1][-1]['content']
-        self.assertEqual(self.calls[1][-1]['role'], 'user')
+        back = self.last(1)
         self.assertIn('h0+$5470: no state took it', back)
         # The branch line and the compare before it, not the other branch.
         self.assertIn('00005470  6e02                  bgt.s    h0+$5474', back)
@@ -146,7 +150,7 @@ class Service(unittest.TestCase):
     def test_three_answers_missing_a_branch_give_partial_naming_it(self):
         self.answers = [(answer(HALF), usage())] * 3 + [AssertionError('a fourth call')]
         res = self.run_it()
-        self.assertEqual((res['result'], res['tries'], len(self.calls)), ('partial', 3, 3))
+        self.assertEqual((res['result'], res['tries'], self.ncalls()), ('partial', 3, 3))
         self.assertEqual(res['uncovered'], [{'at': 'h0+$5470', 'never': 'taken'}])
         self.assertEqual(read(res['gen']), HALF)
         self.assertEqual([r['outcome'] for r in self.log()], ['partial'] * 3)
@@ -185,13 +189,13 @@ class Service(unittest.TestCase):
         with mock.patch.object(g, 'run_cover', run_cover):
             res = self.run_it(tries=2)
         self.assertEqual(res['uncovered'], [{'at': 'h0+$5470', 'never': 'not-taken'}])
-        self.assertIn('h0+$5470: every state took it', self.calls[1][-1]['content'])
+        self.assertIn('h0+$5470: every state took it', self.last(1))
 
     def test_a_generator_hanging_the_original_is_a_failed_try_with_the_reason_back(self):
         self.answers = [(answer(HANG), usage()), (answer(FULL), usage())]
         res = self.run_it()
         self.assertEqual((res['result'], res['tries']), ('covered', 2))
-        back = self.calls[1][-1]['content']
+        back = self.last(1)
         self.assertIn('never returned on 10 state(s)', back)
         self.assertEqual([r['outcome'] for r in self.log()], ['hang', 'covered'])
 
@@ -199,7 +203,7 @@ class Service(unittest.TestCase):
         self.answers = [(answer(WILD), usage()), (answer(FULL), usage())]
         res = self.run_it()
         self.assertEqual((res['result'], res['tries']), ('covered', 2))
-        back = self.calls[1][-1]['content']
+        back = self.last(1)
         self.assertIn('2000 poked byte(s)', back)
         self.assertIn('pokes $c077e8 (h0+$10)', back)
         self.assertEqual(self.log()[0]['outcome'], 'outside')
@@ -214,13 +218,14 @@ class Service(unittest.TestCase):
         for j, want in ((cover(BOTH, passed=1899, faults=101), 'returned on 1899 of 2000 states (101 took an exception'),
                         (cover(BOTH, blits=4), 'line or fill blit')):
             with self.subTest(want=want):
-                self.calls.clear()
+                if os.path.exists(os.path.join(self.fake.dir, 'seen.jsonl')):
+                    os.remove(os.path.join(self.fake.dir, 'seen.jsonl'))
                 self.answers = [(answer(FULL), usage()), (answer(FULL), usage())]
                 seq = [j, cover(BOTH)]
                 with mock.patch.object(g, 'run_cover', lambda *a: seq.pop(0)):
                     res = self.run_it()
                 self.assertEqual((res['result'], res['tries']), ('covered', 2))
-                self.assertIn(want, self.calls[1][-1]['content'])
+                self.assertIn(want, self.last(1))
 
     def test_exactly_95_percent_returning_is_enough(self):
         self.answers = [(answer(FULL), usage())]
@@ -235,8 +240,8 @@ class Service(unittest.TestCase):
         with mock.patch.object(g, 'run_cover', lambda *a: seq.pop(0)):
             res = self.run_it()
         self.assertEqual((res['result'], res['tries']), ('covered', 3))
-        self.assertIn('E0425', self.calls[1][-1]['content'])
-        self.assertIn('does not list', self.calls[2][-1]['content'])
+        self.assertIn('E0425', self.last(1))
+        self.assertIn('does not list', self.last(2))
 
     def test_an_original_returning_on_no_state_of_any_answer_is_no_oracle(self):
         self.answers = [(answer(FULL), usage())] * 2
@@ -245,46 +250,69 @@ class Service(unittest.TestCase):
         self.assertEqual(res['result'], 'no-oracle')
         self.assertIn('routine oracle', self.stderr.getvalue())
 
-    def test_max_usd_stops_before_a_call_that_would_pass_it(self):
-        # A full answer costs 96 000 x $0.2/M = $0.0192 at worst: $0.03 allows one call, not two.
-        self.answers = [(answer(HALF), usage(0.012)), AssertionError('a second call')]
-        res = self.run_it(max_usd=0.03)
-        self.assertEqual((res['result'], res['tries'], res['stopped']), ('partial', 1, 'max-usd'))
-        self.assertEqual(len(self.calls), 1)
-        self.assertIn('--max-usd', self.stderr.getvalue())
+    def test_max_calls_stops_the_run(self):
+        model.set_max_calls(1)
+        self.answers = [(answer(HALF), usage()), AssertionError('a second call')]
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['stopped']), ('partial', 1, 'max-calls'))
+        self.assertEqual(self.ncalls(), 1)
+        self.assertIn('--max-calls 1', self.stderr.getvalue())
 
-    def test_max_usd_below_one_call_makes_none(self):
+    def test_max_calls_spent_makes_no_call(self):
+        model.set_max_calls(0)
         self.answers = [AssertionError('a call')]
-        res = self.run_it(max_usd=0.01)
-        self.assertEqual((res['result'], res['tries'], res['stopped']), ('fail', 0, 'max-usd'))
-        self.assertEqual(self.calls, [])
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['stopped']), ('fail', 0, 'max-calls'))
+        self.assertEqual(self.ncalls(), 0)
+
+    def test_the_answer_comes_from_claude_p_with_the_system_prompt(self):
+        self.answers = [(answer(FULL), usage())]
+        res = self.run_it()
+        self.assertEqual(res['usd'], 0.003)
+        argv = self.fake.seen()[0]['argv']
+        self.assertEqual(argv[argv.index('--system-prompt') + 1], g.SYSTEM)
+        self.assertEqual(argv[argv.index('--model') + 1], 'haiku')
+        with open(os.path.join(self.out, 'calls.jsonl')) as f:
+            calls = [json.loads(l) for l in f]
+        self.assertEqual([(c['result'], c['service'], c['try']) for c in calls], [('ok', 'generate', 1)])
 
     def test_a_failed_call_is_a_lost_try(self):
-        self.answers = [tr.CallError('HTTP 400: bad'), (answer(FULL), usage())]
+        self.answers = [RuntimeError('Not logged in'), (answer(FULL), usage())]
         res = self.run_it()
         self.assertEqual((res['result'], res['tries']), ('covered', 2))
-        self.assertEqual([m['role'] for m in self.calls[1]], ['system', 'user'])
-        self.assertEqual(self.log()[0]['outcome'], 'error')
+        # The question is asked again as it was, with no failed exchange before it.
+        self.assertEqual(self.fake.prompts()[1], self.fake.prompts()[0])
+        self.assertEqual(self.log()[0]['outcome'], 'no-model')
+
+    def test_a_claude_that_never_answers_is_no_model_not_fail(self):
+        # Logged out: `claude` is on PATH but every call exits non-zero. Haiku was never asked, so the
+        # result must not read as Haiku failing to write a generator (T19 counts `fail` against it).
+        self.answers = [RuntimeError('Not logged in')] * 3
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['gen']), ('no-model', 3, None))
+        self.assertIn('Not logged in', self.stderr.getvalue())
 
 
 class Command(unittest.TestCase):
-    def test_a_missing_key_gives_no_key_and_names_where_it_looked(self):
+    def test_no_claude_on_path_gives_no_model_and_asks_nothing(self):
         with tempfile.TemporaryDirectory() as home:
-            with open(os.path.join(home, '.zshrc'), 'w') as f:
-                f.write('export PATH=/bin\n')
-            env = {k: v for k, v in os.environ.items() if k != 'OPENROUTER_API_KEY'}
-            env['HOME'] = home
+            env = dict(os.environ, HOME=home, PATH=home)
             r = subprocess.run([sys.executable, '-I', TOOL, 'h0+$5462', '--name', 'h0_5462',
                                 '--out', os.path.join(home, 'out')], capture_output=True, text=True, env=env)
         self.assertEqual(r.returncode, 1)
         res = json.loads(r.stdout)
-        self.assertEqual((res['result'], res['tries'], res['usd'], res['gen']), ('no-key', 0, 0.0, None))
-        self.assertIn('OPENROUTER_API_KEY', r.stderr)
-        self.assertIn(os.path.join(home, '.zshrc'), r.stderr)
+        self.assertEqual((res['result'], res['tries'], res['usd'], res['gen']), ('no-model', 0, 0.0, None))
+        self.assertIn('claude', r.stderr)
+
+    def test_max_usd_is_gone(self):
+        r = subprocess.run([sys.executable, '-I', TOOL, 'h0+$5462', '--name', 'x', '--max-usd', '1'],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn('--max-usd', r.stderr)
 
     def test_an_unknown_routine_is_a_usage_error(self):
         with tempfile.TemporaryDirectory() as home:
-            env = dict(os.environ, HOME=home, OPENROUTER_API_KEY='sk-test')
+            env = dict(os.environ, HOME=home)
             r = subprocess.run([sys.executable, '-I', TOOL, 'no_such_routine', '--name', 'x'],
                                capture_output=True, text=True, env=env)
         self.assertEqual((r.returncode, r.stdout), (2, ''))
@@ -341,7 +369,7 @@ class Pieces(unittest.TestCase):
         self.assertEqual(g.to_label(0x5462, bases), 'h0+$5462')
         self.assertIsNone(g.to_listing('$7e0000', bases))
 
-    @unittest.skipUnless(os.path.exists(tr.LISTING), "needs the listing from the owner's disks (re_listing.py)")
+    @unittest.skipUnless(os.path.exists(jr.LISTING), "needs the listing from the owner's disks (re_listing.py)")
     def test_the_real_listing_s_bases(self):
         bases = g.listing_bases()
         self.assertEqual((bases[0], bases[1]), (0, 0x5be68))

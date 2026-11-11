@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Building; T02 done.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T03 (whole-export); T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** T03 (whole-export), now unblocked; then T04.
 
 ## Tasks
 
@@ -14,12 +14,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | seam-spike | — | ⬜ | |
-| T01 | os-surface | — | ⬜ | |
+| T00 | seam-spike | — | ✅ | |
+| T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ✅ | `fd-conform code-seen`, `re/entries.toml` (135 entries, 0 trace). Review: one fix, a test locking the local-start fall-through rule (its mutation survived). Ran the full test (fresh run equals committed), an independent Python closure (6 380 of 6 380 instructions reached from entries), `--worlds 7` exit 2, `--out`. Pre-Start `world_index` reset claim read-only. |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
-| T05 | oracle-step | — | ⬜ | |
+| T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | run-stops | T04 | ⬜ | |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
-| T17 | haiku-backend | — | ⬜ | |
+| T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |

@@ -330,7 +330,7 @@ class FlowText(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             lst = os.path.join(d, 'x.lst')
             write(lst, '\n'.join(rows) + '\n')
-            with mock.patch.object(t, 'LISTING', lst), mock.patch.object(t, 'symbols', lambda: []):
+            with mock.patch.object(t.judge_run, 'LISTING', lst), mock.patch.object(t.judge_run, 'symbols', lambda: []):
                 text, n = t.flow_text(0, 0x100)
         return {int(l[:8], 16) for l in text.splitlines() if l[:8].isalnum() and len(l) > 8 and l[8] == ' '}, n
 
