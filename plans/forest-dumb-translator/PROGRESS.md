@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T16 (whole-tree-judge), which T13 and T15 unblock.
+**Next `pir-work` will:** T16 (whole-tree-judge), which T13 and T15 unblock; T23 to T26 beside it, which T22 unblocks.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
-| T22 | machine-core | T11, T14 | ⬜ | |
+| T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ⬜ | |

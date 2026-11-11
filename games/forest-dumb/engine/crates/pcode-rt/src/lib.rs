@@ -239,6 +239,10 @@ pub enum Stop {
     /// translated code cannot follow it into the handler, so it ends the run; the machine decides
     /// what the original's exception would have done.
     Trap { vector: u32, at: String },
+    /// A read or write of `$xxxxxx`, an address the machine maps to no memory or chip (ROM,
+    /// autoconfig, the clock chip, nothing). The bus cannot fail an access, so the machine records
+    /// it and returns this at the next block start (pcode-machine).
+    Outside(String),
 }
 
 /// Which cap a `Stop::Hang` reached.
@@ -259,6 +263,7 @@ impl fmt::Display for Stop {
             Stop::Hang { why: Hang::Steps } => write!(f, "hang (steps)"),
             Stop::Hang { why: Hang::Depth } => write!(f, "hang (depth)"),
             Stop::Trap { vector, at } => write!(f, "trap: vector {vector} at {at}"),
+            Stop::Outside(a) => write!(f, "outside-memory: {a}"),
         }
     }
 }
@@ -562,5 +567,9 @@ mod tests {
             at: "h0+$6c9c".into(),
         };
         assert_eq!(t.to_string(), "trap: vector 5 at h0+$6c9c");
+        assert_eq!(
+            Stop::Outside("$f80000".into()).to_string(),
+            "outside-memory: $f80000"
+        );
     }
 }

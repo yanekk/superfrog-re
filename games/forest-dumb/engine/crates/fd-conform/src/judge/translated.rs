@@ -84,6 +84,9 @@ pub struct Stops {
     pub hangs: usize,
     /// `Stop::Trap`: an exception the translated code ends on (a division by zero).
     pub traps: usize,
+    /// `Stop::Outside`: an access to unmapped memory. The judge's own memory never makes one; the
+    /// machine's does (pcode-machine).
+    pub outside: usize,
     pub first: String,
 }
 
@@ -95,6 +98,7 @@ impl Stops {
             Stop::Unsupported { .. } => self.unsupported += 1,
             Stop::Hang { .. } => self.hangs += 1,
             Stop::Trap { .. } => self.traps += 1,
+            Stop::Outside(_) => self.outside += 1,
         }
         if self.first.is_empty() {
             self.first = s.to_string();
