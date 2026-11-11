@@ -22,6 +22,15 @@
 //! is skipped with a line on stderr. Exit 0 when every case ran, changes or not; 1 for a missing
 //! input; 2 for a wrong command line.
 //!
+//! `fd-conform code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE]`:
+//! every instruction the original executes over the level cases in DIR (default
+//! `engine/conform/cases/`), the power-on run and the world starts, reduced to entries
+//! (`fd_conform::code_seen`, translator DESIGN §2.3), written to FILE (default
+//! `games/forest-dumb/re/entries.toml`). One JSON line per run, `{"run","frames","executed"}`, then
+//! `{"total":{"runs","frames","instructions","entries","by_source","foreign","funcs_executed","funcs"}}`.
+//! `--worlds none` runs no world start. Exit 0 when every run ran; 1 otherwise; 2 for a wrong
+//! command line.
+//!
 //! `fd-conform os-surface [--frames N] [--worlds 1,2] [--out FILE]`: where the program leans on the
 //! OS, measured on the original from power-on through the title, Start, level 1's load and `N`
 //! frames of play (default 300), and each other world's load asked for (`fd_conform::os_surface`,
@@ -34,7 +43,7 @@ use std::process::ExitCode;
 
 use fd_conform::{Case, run};
 
-const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
+const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -42,6 +51,13 @@ fn main() -> ExitCode {
         [cmd, path] if cmd == "run" => run_case(Path::new(path)),
         [cmd, rest @ ..] if cmd == "code-writes" => match code_writes_args(rest) {
             Some((glob, max)) => code_writes(&glob, max),
+            None => {
+                eprintln!("{USAGE}");
+                return ExitCode::from(2);
+            }
+        },
+        [cmd, rest @ ..] if cmd == "code-seen" => match code_seen_args(rest) {
+            Some((opts, out)) => code_seen(&opts, &out),
             None => {
                 eprintln!("{USAGE}");
                 return ExitCode::from(2);
@@ -261,5 +277,61 @@ fn code_writes(glob: &str, max: Option<u32>) -> Result<bool, String> {
         reports.push(r);
     }
     println!("{}", total_json(&reports));
+    Ok(true)
+}
+
+fn code_seen_args(rest: &[String]) -> Option<(fd_conform::code_seen::Options, PathBuf)> {
+    use fd_conform::code_seen::{Options, re_dir};
+    let mut opts = Options::default();
+    let mut out = re_dir().join("entries.toml");
+    let mut it = rest.iter();
+    while let Some(flag) = it.next() {
+        match flag.as_str() {
+            "--cases" => opts.cases = PathBuf::from(it.next()?),
+            "--power-on-frames" => opts.power_on_frames = it.next()?.parse().ok()?,
+            "--worlds" => {
+                let v = it.next()?;
+                opts.worlds = if v == "none" {
+                    vec![]
+                } else {
+                    v.split(',')
+                        .map(|w| w.trim().parse().ok().filter(|w| (2..=6).contains(w)))
+                        .collect::<Option<Vec<u32>>>()?
+                };
+            }
+            "--out" => out = PathBuf::from(it.next()?),
+            _ => return None,
+        }
+    }
+    Some((opts, out))
+}
+
+/// Every run, its entries written to `out`.
+fn code_seen(opts: &fd_conform::code_seen::Options, out: &Path) -> Result<bool, String> {
+    use fd_conform::code_seen::{
+        collect_in, entries, funcs, parse_symbols, re_dir, render, summary_json, write_atomic,
+    };
+    let kickstart = amiga_oracle::kickstart_path().map_err(|e| e.to_string())?;
+    let disks = fd_tools::disk_dir()?;
+    let mut skipped = Vec::new();
+    let (seen, hunks) = collect_in(
+        &kickstart,
+        &disks,
+        &fd_conform::sync::cache_dir(),
+        opts,
+        &mut skipped,
+    )?;
+    for s in &skipped {
+        eprintln!("{s}: skipped, it does not start at level 1");
+    }
+    let path = re_dir().join("symbols.toml");
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let funcs = funcs(&parse_symbols(&text)?);
+    let e = entries(&seen.insns, &funcs, &seen.vectors, hunks[0].0);
+    write_atomic(out, &render(&e, &hunks))?;
+    for (run, frames, executed) in &seen.runs {
+        println!(r#"{{"run":"{run}","frames":{frames},"executed":{executed}}}"#);
+    }
+    println!("{}", summary_json(&seen, &e, &funcs));
     Ok(true)
 }

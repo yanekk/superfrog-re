@@ -51,6 +51,9 @@ workspace = "engine"
 # Translator trial T05: changes to executed instructions on w1-idle from the cached level sync point,
 # a poke caught, missing inputs named: under 2 s warm. The full run over every case is a tool run.
 "crates/fd-conform/tests/code_writes.rs" = "smoke"
+# Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
+# 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
+"crates/fd-conform/tests/code_seen.rs" = "full"
 # T01 (translator): the OS survey's input checks, under a second; the run on the original (about 56 s)
 # is #[ignore]d for full.
 "crates/fd-conform/tests/os_surface.rs" = ["a_missing_kickstart_names_the_path", "a_world_out_of_range_is_refused"]

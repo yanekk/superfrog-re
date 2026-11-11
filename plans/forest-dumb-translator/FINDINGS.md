@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T02 code-seen:** 48 runs, 6 380 instructions, 135 entries (program-entry 1, symbol 134, vector 0, trace 0); every computed target is a named symbol. `world_index` poked before Start is reset to 0, so world starts use `next_world`. |
 | 2026-11-11 | 📌 | `os-surface --worlds 1,3,6` (T01 review) lists `lea $0.l` to `$3.l` at `h0+$691e`..`$6930`, constants in play, as `[[read]]` OS memory with access `address`. Not in the committed worlds 1,2 file; not OS use. |
 | 2026-11-11 | 📌 | docs/07 says the file routines open dos.library by `OpenLibrary`; they call `OldOpenLibrary` (-408), as `entry` does for graphics (T01 review, listing). docs/15 is right; docs/07 left alone. |
 | 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |

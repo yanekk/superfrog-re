@@ -10,6 +10,7 @@
 
 pub mod bug;
 pub mod case;
+pub mod code_seen;
 pub mod code_writes;
 pub mod coverage;
 pub mod disks;
