@@ -6,10 +6,19 @@
 //! MC68000 User's Manual tables give them (section 8) and Moira counts them with no bus contention.
 //! Generated code calls [`of`] inside `const { }`, so each instruction's time is a constant and a
 //! kind this table does not hold is a compile error, not a silent zero. A conditional branch's two
-//! times are [`bcc`]. The data-dependent kinds (multiply, divide, `dbcc`, `movem`, shifts by a
-//! register, bit ops numbered by a register, `scc` on a register) are T12's.
+//! times are [`bcc`].
 //!
-//! Every `const fn` here, so the generated code's `const { }` evaluates it at build time.
+//! The data-dependent part (T12): multiply by the source's bits ([`mulu_cycles`], [`muls_cycles`]),
+//! divide by its steps ([`divu_cycles`], [`divs_cycles`]), a shift by a register's count
+//! ([`shift_cycles`]), `dbcc` by its outcome ([`dbcc`]), `scc` on a register ([`scc_reg`]) and a bit
+//! op numbered by a register ([`of`] at run time). Generated code computes these from the registers
+//! before the instruction runs, so the tick still comes first. `movem` ([`movem_cycles`]) depends
+//! only on its register mask, the instruction's own word, so it is a constant like the rest.
+//! These follow Moira's rules (`MoiraALU_cpp.h` `cyclesMul`, `cyclesDiv`, `cyclesBit`), the
+//! reference the instruction check judges against.
+//!
+//! Every function here is a `const fn`, so the generated code's `const { }` evaluates the fixed ones
+//! at build time.
 
 /// An operand's size. An instruction with no size suffix (`lea`, `moveq`, `exg`) uses `L`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -90,15 +99,15 @@ pub enum Op {
     Rtr,
     Link,
     Unlk,
-    /// A shift or rotate: of a data register by an immediate count (1 to 8), or of a word in memory
-    /// by one (count 1).
+    /// A shift or rotate: of a data register by a count (an immediate's 1 to 8, or a register's 0 to
+    /// 63 at run time, [`shift_cycles`]), or of a word in memory by one (count 1).
     Shift(u32),
     Btst,
-    /// `bset` and `bchg`, with the bit number of an immediate form (only a data register's time
-    /// depends on it).
+    /// `bset` and `bchg`, with the bit number (only a data register's time depends on it): an
+    /// immediate's, or by a register the register's at run time.
     Bset(u32),
     Bclr(u32),
-    /// `scc` on memory; on a data register its time is the condition's (T12).
+    /// `scc` on memory; on a data register its time is the condition's ([`scc_reg`]).
     Scc,
     Tas,
 }
@@ -246,22 +255,24 @@ pub const fn base_cycles(k: Kind) -> u32 {
             (Ea::Dn, _) => 4,
             _ => panic!("btst: no such mode"),
         },
+        // A bit number above 15 costs 2 more on a register (Moira's cyclesBit); by a register, the
+        // number is the register's at run time.
         Op::Bset(bit) => match (src, dst) {
             (Ea::Imm, Ea::Dn) => 10 + if bit % 32 >= 16 { 2 } else { 0 },
             (Ea::Imm, _) => 12,
-            (Ea::Dn, Ea::Dn) => panic!("bset Dn,Dn: its time is the bit number's (T12)"),
+            (Ea::Dn, Ea::Dn) => 6 + if bit % 32 >= 16 { 2 } else { 0 },
             (Ea::Dn, _) => 8,
             _ => panic!("bset: no such mode"),
         },
         Op::Bclr(bit) => match (src, dst) {
             (Ea::Imm, Ea::Dn) => 12 + if bit % 32 >= 16 { 2 } else { 0 },
             (Ea::Imm, _) => 12,
-            (Ea::Dn, Ea::Dn) => panic!("bclr Dn,Dn: its time is the bit number's (T12)"),
+            (Ea::Dn, Ea::Dn) => 8 + if bit % 32 >= 16 { 2 } else { 0 },
             (Ea::Dn, _) => 8,
             _ => panic!("bclr: no such mode"),
         },
         Op::Scc => match src {
-            Ea::Dn => panic!("scc Dn: its time is the condition's (T12)"),
+            Ea::Dn => panic!("scc Dn: its time is the condition's, scc_reg"),
             _ => 8,
         },
         Op::Tas => match src {
@@ -311,6 +322,169 @@ pub const fn bcc(taken: bool, size: Size) -> u32 {
         (true, _) => 10,
         (false, Size::B) => 8,
         (false, _) => 12,
+    }
+}
+
+/// `mulu.w`'s time without its source operand's address time: 38 plus 2 for each 1 bit of the
+/// source (Moira's cyclesMul, 2 x (17 + ones), and the prefetch's 4).
+pub const fn mulu_cycles(src: u16) -> u32 {
+    38 + 2 * src.count_ones()
+}
+
+/// `muls.w`'s time without its source operand's address time: 38 plus 2 for each change between
+/// adjacent bits of the source with a 0 appended below it (Moira's cyclesMul).
+pub const fn muls_cycles(src: u16) -> u32 {
+    38 + 2 * ((src << 1) ^ src).count_ones()
+}
+
+/// `divu.w`'s time without its divisor operand's address time, by Moira's cyclesDiv: 10 when the
+/// quotient overflows a word, else 76 plus 1 or 2 cycles' pairs a step of its 15-step loop. A zero
+/// divisor takes the divide-by-zero exception: 38 to the handler's first instruction, the manual's
+/// total, which the instruction check cannot judge (Moira's step reports the exception, no time).
+pub const fn divu_cycles(dividend: u32, divisor: u16) -> u32 {
+    if divisor == 0 {
+        return DIV_ZERO;
+    }
+    if (dividend >> 16) >= divisor as u32 {
+        return 10;
+    }
+    let mut dividend = dividend;
+    let hdivisor = (divisor as u32) << 16;
+    let mut m = 38;
+    let mut i = 0;
+    while i < 15 {
+        if (dividend as i32) < 0 {
+            dividend = (dividend << 1).wrapping_sub(hdivisor);
+        } else {
+            dividend <<= 1;
+            if dividend >= hdivisor {
+                dividend = dividend.wrapping_sub(hdivisor);
+                m += 1;
+            } else {
+                m += 2;
+            }
+        }
+        i += 1;
+    }
+    // cyclesDiv's 2 x m, less the 4 Moira syncs early, plus the prefetch's 4.
+    2 * m
+}
+
+/// `divs.w`'s time without its divisor operand's address time, by Moira's cyclesDiv: by the signs
+/// and by the absolute quotient's bits; 16 or 18 when the quotient overflows. A zero divisor is
+/// [`divu_cycles`]'s.
+pub const fn divs_cycles(dividend: i32, divisor: i16) -> u32 {
+    if divisor == 0 {
+        return DIV_ZERO;
+    }
+    let mut m: i32 = if dividend < 0 { 7 } else { 6 };
+    let (ad, av) = (dividend.unsigned_abs(), divisor.unsigned_abs() as u32);
+    if (ad >> 16) >= av {
+        return 2 * (m as u32 + 2);
+    }
+    m += 55;
+    if divisor >= 0 {
+        m += if dividend < 0 { 1 } else { -1 };
+    }
+    let mut q = ad / av;
+    let mut i = 0;
+    while i < 15 {
+        if (q as i16) >= 0 {
+            m += 1;
+        }
+        q <<= 1;
+        i += 1;
+    }
+    2 * m as u32
+}
+
+/// A divide by zero's time, to the handler's first instruction (MC68000UM table 8-11, plus the
+/// divisor's address time). Moira's step stops at the exception without reporting a time, so this is
+/// the manual's, unjudged.
+pub const DIV_ZERO: u32 = 38;
+
+/// `trap #n`'s time to the handler's first instruction (MC68000UM table 8-11), unjudged as
+/// [`DIV_ZERO`]: the translated code stops at a trap and the machine takes the vector.
+pub const TRAP: u32 = 34;
+
+/// `chk`'s time without its bound's address time: 10 when in bounds, 40 to the handler's first
+/// instruction when out (MC68000UM table 8-11; the out-of-bounds time unjudged as [`DIV_ZERO`]).
+pub const fn chk_cycles(trapped: bool) -> u32 {
+    if trapped { 40 } else { 10 }
+}
+
+/// A shift or rotate of a data register by the count in another, 0 to 63 (the register modulo
+/// 64): 6 (byte, word) or 8 (long) plus 2 a step.
+pub const fn shift_cycles(size: Size, count: u32) -> u32 {
+    of(Op::Shift(count & 63), size, Ea::Dn, Ea::Dn)
+}
+
+/// `movem`'s direction.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dir {
+    /// Registers to memory.
+    ToMem,
+    /// Memory to registers.
+    ToRegs,
+}
+
+/// `movem`'s time: its base by mode (MC68000UM table 8-14) and 4 a register a word, 8 a long. `ea`
+/// is the memory operand's mode; `-(An)` only to memory, `(An)+` and the PC modes only from it.
+pub const fn movem_cycles(dir: Dir, ea: Ea, size: Size, nregs: u32) -> u32 {
+    let base = match ea {
+        Ea::Ind | Ea::PostInc | Ea::PreDec => 8,
+        Ea::D16An | Ea::AbsW | Ea::D16Pc => 12,
+        Ea::D8AnXn | Ea::D8PcXn => 14,
+        Ea::AbsL => 16,
+        _ => panic!("movem: no such mode"),
+    };
+    // Memory to registers reads one word more than it moves (the 68000's extra read).
+    let extra = match dir {
+        Dir::ToRegs => 4,
+        Dir::ToMem => 0,
+    };
+    base + extra + nregs * bw_l(size, 4, 8)
+}
+
+/// `dbcc`'s time: 12 when the condition holds (no decrement); else 10 when the loop goes on and
+/// 14 when the counter, before the decrement, is 0 and so expires.
+pub const fn dbcc(holds: bool, counter: u16) -> u32 {
+    if holds {
+        12
+    } else if counter == 0 {
+        14
+    } else {
+        10
+    }
+}
+
+/// `scc` on a data register: 6 when the condition holds (the byte set), 4 when not.
+pub const fn scc_reg(holds: bool) -> u32 {
+    if holds { 6 } else { 4 }
+}
+
+/// Whether condition `cc` (the opcode's 4-bit field: 0 `t`, 1 `f`, 2 `hi` .. 15 `le`) holds on
+/// the flags in `r`: what `dbcc` and `scc` time by, read before the instruction runs.
+pub fn cc_holds(cc: u32, r: &crate::Regs) -> bool {
+    let f = |off: usize| r.get(off, 1) != 0;
+    let (n, z, v, c) = (f(crate::NF), f(crate::ZF), f(crate::VF), f(crate::CF));
+    match cc & 15 {
+        0 => true,
+        1 => false,
+        2 => !c && !z,
+        3 => c || z,
+        4 => !c,
+        5 => c,
+        6 => !z,
+        7 => z,
+        8 => !v,
+        9 => v,
+        10 => !n,
+        11 => n,
+        12 => n == v,
+        13 => n != v,
+        14 => !z && n == v,
+        _ => z || n != v,
     }
 }
 
@@ -475,6 +649,99 @@ mod tests {
                 dst: AbsL
             }),
             4
+        );
+    }
+
+    // The data-dependent helpers (T12): Moira's rules, also judged on Moira in fd-conform's
+    // insn_cycles_dynamic.rs and insn_cycles.rs.
+
+    #[test]
+    fn multiply_by_the_sources_bits() {
+        assert_eq!(mulu_cycles(0), 38);
+        assert_eq!(mulu_cycles(0xffff), 70);
+        assert_eq!(mulu_cycles(0x5555), 54);
+        assert_eq!(muls_cycles(0), 38);
+        assert_eq!(muls_cycles(0xffff), 40, "-1: one change, at the appended 0");
+        assert_eq!(muls_cycles(0xaaaa), 68);
+        assert_eq!(muls_cycles(0x5555), 70);
+    }
+
+    #[test]
+    fn divide_by_steps_overflow_and_zero() {
+        assert_eq!(divu_cycles(0x0001_0000, 1), 10, "a quotient over a word");
+        assert_eq!(divu_cycles(0xffff_ffff, 0xffff), 10);
+        assert_eq!(divu_cycles(0, 1), 136, "every step 2: the longest");
+        assert_eq!(divu_cycles(7, 0), DIV_ZERO);
+        assert_eq!(
+            divs_cycles(0x0001_0000, 1),
+            16,
+            "overflow, dividend positive"
+        );
+        assert_eq!(
+            divs_cycles(-0x0001_0000, 1),
+            18,
+            "overflow, dividend negative"
+        );
+        assert_eq!(divs_cycles(-7, 0), DIV_ZERO);
+        // Moira: 6 + 55 - 1, plus 1 for each of 15 quotient bits clear after shifting; quotient 0.
+        assert_eq!(divs_cycles(0, 1), 2 * (60 + 15));
+        assert!(
+            divs_cycles(100, -3) > divs_cycles(100, 3),
+            "a negative divisor skips the -1"
+        );
+    }
+
+    #[test]
+    fn a_register_shift_counts_its_count_modulo_64() {
+        assert_eq!(shift_cycles(W, 0), 6);
+        assert_eq!(shift_cycles(L, 0), 8);
+        assert_eq!(shift_cycles(B, 63), 6 + 126);
+        assert_eq!(shift_cycles(L, 64), 8, "64 is 0");
+        assert_eq!(shift_cycles(L, 65), 10);
+    }
+
+    #[test]
+    fn bit_ops_by_register_on_a_register() {
+        assert_eq!(of(Op::Bset(15), L, Dn, Dn), 6);
+        assert_eq!(of(Op::Bset(16), L, Dn, Dn), 8);
+        assert_eq!(of(Op::Bclr(15), L, Dn, Dn), 8);
+        assert_eq!(of(Op::Bclr(16), L, Dn, Dn), 10);
+        assert_eq!(scc_reg(true), 6);
+        assert_eq!(scc_reg(false), 4);
+    }
+
+    #[test]
+    fn dbcc_three_outcomes_and_movem_by_count() {
+        assert_eq!(dbcc(true, 0), 12);
+        assert_eq!(dbcc(false, 5), 10);
+        assert_eq!(dbcc(false, 0), 14);
+        assert_eq!(movem_cycles(Dir::ToMem, PreDec, L, 1), 16);
+        assert_eq!(movem_cycles(Dir::ToMem, Ind, L, 8), 72);
+        assert_eq!(movem_cycles(Dir::ToRegs, PostInc, L, 8), 76);
+        assert_eq!(movem_cycles(Dir::ToRegs, PostInc, W, 16), 76);
+        assert_eq!(movem_cycles(Dir::ToRegs, AbsL, L, 0), 20);
+        assert_eq!(movem_cycles(Dir::ToMem, D8AnXn, W, 2), 22);
+    }
+
+    #[test]
+    fn conditions_read_the_flags() {
+        let mut r = crate::Regs::new();
+        assert!(cc_holds(0, &r) && !cc_holds(1, &r));
+        assert!(cc_holds(6, &r) && !cc_holds(7, &r), "ne with Z clear");
+        r.set(crate::ZF, 1, 1);
+        assert!(
+            cc_holds(7, &r) && cc_holds(15, &r) && !cc_holds(14, &r),
+            "eq, le, not gt"
+        );
+        r.set(crate::ZF, 1, 0);
+        r.set(crate::NF, 1, 1);
+        assert!(cc_holds(13, &r) && !cc_holds(12, &r), "lt with N and not V");
+        r.set(crate::VF, 1, 1);
+        assert!(cc_holds(12, &r) && cc_holds(14, &r), "ge, gt");
+        r.set(crate::CF, 1, 1);
+        assert!(
+            cc_holds(3, &r) && cc_holds(5, &r) && !cc_holds(2, &r),
+            "ls, cs, not hi"
         );
     }
 

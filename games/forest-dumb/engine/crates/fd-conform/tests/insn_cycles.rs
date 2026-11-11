@@ -1,8 +1,10 @@
-//! The fixed cycle times (translator T11, DESIGN §2.6) on Moira, beyond the game's census: every
-//! encoding of T09's shift_bit program (`fixtures/shift_bit.rs`: shifts in every size and form, bit
-//! ops by immediate and by register, scc and tas on a register and on memory, swap). A counted
-//! encoding equals Moira on every state; an uncounted one is exactly a data-dependent kind, T12's
-//! (`tools/pcode_fix/cycles.py`, `is_dynamic`). The bcd and compare forms are judged in every column,
+//! The cycle times (translator T11 fixed, T12 data-dependent, DESIGN §2.6) on Moira, beyond the
+//! game's census: every encoding of T09's shift_bit program (`fixtures/shift_bit.rs`: shifts in every
+//! size and form, bit ops by immediate and by register, scc and tas on a register and on memory, swap).
+//! Every encoding is counted and equals Moira on every state, the data-dependent ones (a shift by a
+//! register, a bit op numbered by a register, scc on a register; `tools/pcode_fix/cycles.py`,
+//! `is_dynamic`) by their run-time helpers. Multiply, divide, dbcc and movem are
+//! `insn_cycles_dynamic.rs`'s. The bcd and compare forms are judged in every column,
 //! cycles included, by `insn_defects.rs`.
 
 use fd_conform::judge::insn::{Columns, InsnRig, Site};
@@ -25,39 +27,16 @@ fn rig() -> InsnRig {
     InsnRig::new(mem, &[BASE], &[PROGRAM.len() as u32])
 }
 
-/// Whether the time of the instruction `text` depends on data: a shift by a register count, a
-/// bset/bclr/bchg numbered by a register on a register, scc on a register.
-fn dynamic(text: &str) -> bool {
-    let (m, ops) = text.split_once(' ').unwrap_or((text, ""));
-    let m = m.split('.').next().unwrap();
-    let shift = ["asl", "asr", "lsl", "lsr", "rol", "ror", "roxl", "roxr"].contains(&m);
-    let bit = ["bset", "bclr", "bchg"].contains(&m);
-    let scc = m.starts_with('s') && m != "swap" && m != "sub";
-    (shift && ops.starts_with('d') && ops.contains(','))
-        || (bit && ops.starts_with('d') && ops.ends_with(",d0"))
-        || (scc && ops == "d0")
-}
-
 #[test]
-fn every_counted_shift_bit_encoding_takes_moiras_time() {
+fn every_shift_bit_encoding_takes_moiras_time() {
     let mut rig = rig();
     let cols = Columns::parse("cycles").unwrap();
-    let (mut counted, mut uncounted) = (0, 0);
     for (r, text) in fixed::SITES.iter().zip(TEXTS) {
         let s = Site::of(r);
         let rep = rig.check(&s, STATES, "cycles", cols);
         assert_eq!(rep.fail, 0, "{} {text}: {:?}", s.at, rep.first);
         assert!(rep.pass > 0, "{} {text}: {}", s.at, rep.first_skip);
-        assert_eq!(rep.cycles_counted, !dynamic(text), "{} {text}", s.at);
-        if rep.cycles_counted {
-            counted += 1;
-        } else {
-            uncounted += 1;
-        }
+        assert!(rep.cycles_counted, "{} {text}: not counted", s.at);
     }
-    eprintln!("counted {counted}, uncounted {uncounted}");
-    assert!(
-        counted > 60 && uncounted > 30,
-        "counted {counted}, uncounted {uncounted}"
-    );
+    assert!(fixed::SITES.len() > 90, "{} sites", fixed::SITES.len());
 }

@@ -63,6 +63,8 @@ workspace = "engine"
 "crates/fd-conform/tests/insn_defects.rs" = "smoke"
 # Translator T11: the fixed cycle times of every shift_bit encoding on Moira, 60 states each, no disks: about 3 s.
 "crates/fd-conform/tests/insn_cycles.rs" = "smoke"
+# Translator T12: multiply, divide, dbcc and movem times on Moira, a made-up program, 200 states a site: about 1.5 s.
+"crates/fd-conform/tests/insn_cycles_dynamic.rs" = "smoke"
 # Translator T10: the move and control forms, 44 made-up opcode words on Moira, no disks: about 5 s.
 "crates/fd-conform/tests/insn_moves.rs" = "smoke"
 # Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
@@ -398,6 +400,8 @@ workspace = "engine"
 "tools/test_shift_bit.py" = "smoke"
 # Translator T11: pcode_fix.cycles, the r.tick lines and where they go: under 1 s.
 "tools/test_pcode_fix_cycles.py" = "smoke"
+# Translator T12: the data-dependent ticks on Ghidra's P-code for a made-up program, fixtures current: under 1 s.
+"tools/test_cycles_dynamic.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]

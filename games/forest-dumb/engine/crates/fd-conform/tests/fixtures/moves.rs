@@ -367,6 +367,7 @@ pub fn i_h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_32(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$32 movem.l
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToMem, cy::Ea::PreDec, cy::Size::L, 15) });
         let v = r.get(0x3c, 4);
         r.set(0x304, 4, v);
         let v = int_sub(r.get(0x304, 4), 0x4u64, 4);
@@ -440,6 +441,7 @@ pub fn i_h0_32(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_36(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$36 movem.l
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToRegs, cy::Ea::PostInc, cy::Size::L, 15) });
         let v = r.get(0x3c, 4);
         r.set(0x304, 4, v);
         let v = load(bus, r.get(0x304, 4) as u32, 4);
@@ -513,6 +515,7 @@ pub fn i_h0_36(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_3a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$3a movem.w
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToMem, cy::Ea::PreDec, cy::Size::W, 2) });
         let v = r.get(0x24, 4);
         r.set(0x304, 4, v);
         let v = int_sub(r.get(0x304, 4), 0x2u64, 4);
@@ -534,6 +537,7 @@ pub fn i_h0_3a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_3e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$3e movem.w
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToRegs, cy::Ea::PostInc, cy::Size::W, 2) });
         let mut u_29900: u64 = 0;
         let mut u_29a80: u64 = 0;
         let v = r.get(0x20, 4);
@@ -561,6 +565,7 @@ pub fn i_h0_3e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_42(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$42 movem.l
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToMem, cy::Ea::PreDec, cy::Size::L, 3) });
         let v = r.get(0x20, 4);
         r.set(0x304, 4, v);
         let v = int_sub(r.get(0x304, 4), 0x4u64, 4);
@@ -586,6 +591,7 @@ pub fn i_h0_42(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_46(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$46 movem.l
     {
+        r.tick(const { cy::movem_cycles(cy::Dir::ToRegs, cy::Ea::PostInc, cy::Size::L, 2) });
         let v = r.get(0x20, 4);
         r.set(0x304, 4, v);
         let v = load(bus, r.get(0x304, 4) as u32, 4);
@@ -865,6 +871,7 @@ pub fn i_h0_64(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_66(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$66 dbeq
     {
+        r.tick(cy::dbcc(cy::cc_holds(7, r), r.d(0) as u16));
         let mut u_21a80: u64 = 0;
         let mut u_21b00: u64 = 0;
         if r.get(0x45, 1) != 0 { r.set(PC, 4, img.h(0, 0x6a) as u64); return Ok(()); }
@@ -884,6 +891,7 @@ pub fn i_h0_66(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_6a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$6a dbf
     {
+        r.tick(cy::dbcc(cy::cc_holds(1, r), r.d(1) as u16));
         let mut u_21a80: u64 = 0;
         let mut u_21b00: u64 = 0;
         if 0x0u64 != 0 { r.set(PC, 4, img.h(0, 0x6e) as u64); return Ok(()); }
