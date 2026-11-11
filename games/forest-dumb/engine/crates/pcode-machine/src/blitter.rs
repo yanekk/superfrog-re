@@ -121,10 +121,12 @@ impl Machine {
         let (ll, lh) = *times.last().expect("a blit has a word");
         // `word_times` counts on past the frame's last line; offsets from the frame's start are
         // linear in the line, so the end lands in the next frame where it should.
+        // Signed: in a snapshot's first frame the frame began before cycle 0.
         let into = (self.phase.wrapping_add(at)) % beam::frame_cycles(frames);
-        let start = at - into;
+        let start = at as i64 - into as i64;
+        let done = start + beam::offset(ll, lh) as i64 + 2;
         self.blitter = super::blitter::Blitter {
-            busy_until: Some((start + beam::offset(ll, lh) + 2).max(at + 1)),
+            busy_until: Some((done.max(0) as u64).max(at + 1)),
             zero: end.zero,
         };
     }

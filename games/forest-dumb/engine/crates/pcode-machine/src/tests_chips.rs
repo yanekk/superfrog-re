@@ -421,3 +421,23 @@ fn the_picture_reads_bitplanes_as_they_were_when_the_beam_fetched_them() {
     );
     assert!(row(0xD5).iter().all(|&p| p == 1), "fetched after");
 }
+
+/// A snapshot part way down a frame: that frame began before cycle 0, and a blit in it still ends
+/// a few cycles on (it underflowed the frame's start once).
+#[test]
+fn a_blit_in_a_mid_frame_snapshots_first_frame_ends_on_time() {
+    let cfg = Config::a500(vec![]);
+    let ram = vec![0u8; (cfg.chip + cfg.slow) as usize];
+    let mut custom = [0u16; 256];
+    custom[2] = 0x8000;
+    custom[3] = 0x6400; // VHPOSR: line $64
+    custom[custom::DMACONR as usize >> 1] = DMAEN | BLTEN;
+    let mut m = Machine::from_snapshot(cfg, &ram, &custom);
+    at(&mut m, 10).unwrap();
+    put(&mut m, blitter::BLTCON0, 0x0100);
+    put(&mut m, blitter::BLTSIZE, 0x0041);
+    assert_ne!(get(&mut m, custom::DMACONR) & 0x4000, 0);
+    at(&mut m, 200).unwrap();
+    assert_eq!(get(&mut m, custom::DMACONR) & 0x4000, 0);
+    assert_eq!(m.intreq() & blitter::INT_BLIT, blitter::INT_BLIT);
+}
