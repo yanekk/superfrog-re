@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T07 (known-defects); T08 to T11 and T14 run beside it.
+**Next `pir-work` will:** T08 to T11 and T14; T13 waits on T08, T09, T10 and T12.
 
 ## Tasks
 
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
-| T07 | known-defects | T06 | 🔍 | nbcd in `pcode_fix.bcd` (NBCD op via new `op_lines` hook in pcode_rust); cmpm.b A7 steps 2. `insn_defects.rs`: 31 made-up instructions Ghidra exports, on Moira; 3 Rust, 9 Python, 4 Ghidra tests. Deviations: game lacks nbcd and cmpm, so made-up encodings; hook and cmpm fix unlisted; CALL_RETURN forced by test-only `SetFlowOverride.java`. |
+| T07 | known-defects | T06 | ✅ | Review clean, no fix commit. Reran game bcd/compare check (25 kinds, 0 fail, 506 odd-address skips), game translation byte-identical to base with unsupported 0, Ghidra fixture current. Mutations caught on Moira: cmpm.b A7 step 1, nbcd as bcd_add, compares keeping XF=CF. Game has no nbcd or cmpm; made-up program covers them. |
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ⬜ | |
 | T10 | flags-move-control | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
