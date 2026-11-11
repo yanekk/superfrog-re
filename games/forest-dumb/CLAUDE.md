@@ -83,6 +83,10 @@ it ends elsewhere. The one route both sides finish with no life lost (T84,
 with both sides in the loop; both are committed and guarded, and
 [docs/13-full-route.md](docs/13-full-route.md) says how to find them again. A shorter search stalls
 with coins left and exits 1.
+`fd-e2e`'s `finish_level.rs` plays the one route in the real app, by key presses, from launch to
+"Level 1 complete" and fire's restart, the state equal to headless every frame (T28; full, about 40 s:
+`cargo test -q -p fd-e2e --test finish_level -- --ignored`); `finish_short.rs`, its first 600 steps, is
+in smoke.
 
 ## Bug-fix procedure
 
