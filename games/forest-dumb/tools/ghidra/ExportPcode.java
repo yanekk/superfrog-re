@@ -315,6 +315,14 @@ public class ExportPcode extends GhidraScript {
             js.append(q(rel(a))).append(":{\"hunk\":").append(hunkOf(a));
             js.append(",\"len\":").append(len);
             js.append(",\"mnem\":").append(q(in.getMnemonicString().toLowerCase()));
+            // Ghidra's operand text and the instruction's bytes, for the census (translator T04): the
+            // mnemonic alone does not tell addressing modes apart.
+            js.append(",\"operands\":[");
+            for (int i = 0; i < in.getNumOperands(); i++)
+                js.append(i > 0 ? "," : "").append(q(in.getDefaultOperandRepresentation(i)));
+            js.append("],\"bytes\":\"");
+            for (byte b : in.getBytes()) js.append(String.format("%02x", b & 0xff));
+            js.append('"');
             js.append(",\"ops\":").append(o);
             js.append(",\"flow\":{\"kind\":").append(q(kind));
             if (kind.equals("call") && computed) js.append(",\"computed\":true");

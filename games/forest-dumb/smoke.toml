@@ -362,6 +362,8 @@ workspace = "engine"
 "tools/test_pcode_export.py" = "smoke"
 # Ghidra headless on a hand-written program and on the game's program, two imports: about 18 s.
 "tools/test_pcode_export_ghidra.py" = "full"
+# Translator T04: the census on made-up exports, under a second.
+"tools/test_pcode_census.py" = "smoke"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"

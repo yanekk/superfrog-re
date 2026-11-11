@@ -48,6 +48,15 @@ class GhidraExport(unittest.TestCase):
         self.assertEqual(self.insns['h0+$0']['len'], 6)
         self.assertEqual(self.insns['h0+$6']['mnem'], 'bsr.w')
 
+    def test_operands_and_bytes_for_the_census(self):
+        # translator T04: the census reads the modes from these, not from the mnemonic
+        i = self.insns['h0+$0']
+        self.assertEqual(len(i['bytes']), 2 * i['len'])
+        self.assertEqual(i['bytes'][:4], '41f9')   # lea (abs).l,a0
+        self.assertEqual(len(i['operands']), 2)
+        self.assertEqual(self.insns['h0+$6']['bytes'][:4], '6100')
+        self.assertEqual(self.insns['h0+$16']['operands'], [])
+
     def test_the_lea_to_the_other_hunk_is_a_relocated_constant(self):
         i = self.insns['h0+$0']
         self.assertEqual(i['relocs'], [{'in_op': 0, 'slot': 0, 'target': 'h1+$10'}])
