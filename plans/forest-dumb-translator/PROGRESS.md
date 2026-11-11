@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T23 (interrupts); T13, T24, T25 and T26 can run beside it.
+**Next `pir-work` will:** T24, T25, T26 and T13 can run; T27 needs T16, T24 and T25.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
-| T23 | interrupts | T22 | 🔍 | INTENA/INTREQ, `raise`, `poll` takes the highest level above SR's mask, 44 cycles, frame on the system stack, handler via `set_entry(entry)`. 11 tests on translated `fixtures/irq.json`, 5 unit. Deviations: pushed PC is marker `$FFFFFF` (poll lacks the block address); INTENAR/INTREQR no longer read a device (T22 test moved to ADKCONR); fixture added to `test_pcode_rust.py`. |
+| T23 | interrupts | T22 | ✅ | Review: 2 fixes, INTREQ bit 14 now level 6 as vAmiga; poll's retake loop had no test (added). rustfmt skip on the fixture mod. Probed: never-cleared request stops `hang (steps)`, stack outside memory stops `outside-memory`; game handlers never read the stacked PC (listing). Mutated mask, settle, loop: caught. |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ⬜ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T23
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
