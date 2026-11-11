@@ -18,6 +18,8 @@ fd-app = { path = "../fd-app" }
 # The game's data from the disks for the headless run (test side only; the app never links it).
 fd-conform = { path = "../fd-conform" }
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# Reads the route fixture (T28), as fd-plan writes it; fd-conform builds it already.
+amiga-conform = { path = "../../../../../toolkit/crates/amiga-conform" }
 # libc checks a process group is gone after the watchdog.
 libc = "0.2"
 # The recording a bug zip holds and the zip itself, read and rewritten by the recorder tests (T14).

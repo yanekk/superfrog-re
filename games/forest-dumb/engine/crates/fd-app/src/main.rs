@@ -12,7 +12,8 @@
 //! the recording bar sits under the picture, the window that much taller.
 //!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
-//! inputs and each frame's state hash (`fd_app::HASHES`); `--max-frames` and `--timeout` bound a
+//! inputs and each frame's state hash (`fd_app::HASHES`), without the frames' pictures under
+//! `--capture-hashes`; `--max-frames` and `--timeout` bound a
 //! run (DESIGN §5.2).
 
 mod args;
@@ -275,11 +276,14 @@ impl App {
                 }
             }
         };
+        let pictures = !self.args.capture_hashes;
         let (capture, hashes) = match &self.args.capture {
             None => (None, None),
             Some(dir) => {
                 let made = Capture::new(dir, RATE).and_then(|mut c| {
-                    c.frame(0, (size.0, size.1, &rgba))?;
+                    if pictures {
+                        c.frame(0, (size.0, size.1, &rgba))?;
+                    }
                     let mut h =
                         std::io::BufWriter::new(std::fs::File::create(dir.join(fd_app::HASHES))?);
                     h.write_all(fd_app::hash_line(0, &game).as_bytes())?;
@@ -623,7 +627,11 @@ impl App {
         if let Some(c) = &mut run.capture {
             c.clock(n, run.clock.samples());
             c.input(n, input);
-            let written = c.frame(n, (size.0, size.1, &rgba)).and_then(|()| {
+            let picture = match self.args.capture_hashes {
+                true => Ok(()),
+                false => c.frame(n, (size.0, size.1, &rgba)),
+            };
+            let written = picture.and_then(|()| {
                 let h = run.hashes.as_mut().expect("hashes with the capture");
                 h.write_all(fd_app::hash_line(n, &run.game).as_bytes())
             });

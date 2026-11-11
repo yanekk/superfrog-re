@@ -75,7 +75,10 @@ Lesson: a person who sees something wrong saves one zip and describes nothing fu
 - learned on: Superfrog. Produced `plans/smart-planner/DESIGN.md`, `games/superfrog/engine/crates/sf-plan/`, `games/superfrog/engine/crates/sf-bench/`, `games/superfrog/engine/crates/sf-routeview/`, `games/superfrog/tools/handover.py`, `games/superfrog/tools/recording_guide.py`, `games/superfrog/docs/planner-stall-ask-owner.md`.
 - learned on: Superfrog. One level's seed that failed the same way on every run finished first time with a 44-second recording of the owner playing the stuck stretch.
 
+- learned on: Forest Dumb Forever. Produced `games/forest-dumb/engine/crates/fd-e2e/tests/finish_level.rs`, the planned route played in the real app from launch to the level's end (about 40 s, debug), and `finish_short.rs`, its smoke part. A whole level's PNG capture was 1.7 GB at 33 ms a frame, so the app gained the first game's `--capture-hashes` and runs unpaced (`fast-until`) to just before the end.
+
 Lesson: build the measuring instrument before the thing measured: the benchmark and an early sample of the old tools came before the planner. When a route stalls, show where and ask the person to play that stretch, instead of adding hints per level. The rule stays with the game until the planner is generalised.
+A level's final proof is its route as key presses in the real app, the state equal to headless every frame: give the app a hashes-only capture and an unpaced mode before writing it (both games needed them).
 
 ## What the next game still needs
 

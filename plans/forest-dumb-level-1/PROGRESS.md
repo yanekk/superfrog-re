@@ -12,7 +12,7 @@
 
 **Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-06
-**Next `pir-work` will:** T84, then T28 and T29 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | case-mechanics | T25, T45 | ✅ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ✅ | |
 | T48 | route-on-original | T27 | ✅ | |
-| T28 | finish-end-to-end | T16, T48 | ⬜ | |
+| T28 | finish-end-to-end | T16, T48 | ✅ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
@@ -104,7 +104,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 | T82 | route-picture | T48; blocks T29 | ✅ | |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
-| T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
+| T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ✅ | |
 | T85 | observes-only-flake | —; blocks T29 | ✅ | Review clean, no fix commit. Test unreliable, not sampling: core patch 0007 fills vAmiga's shared `dasDMA` once. Probed: without 0007 `machines_apart.rs` red (20 314 empty looks); a scratch thread wiping the table hangs a running pair; dropping edge_latch's memory compare reddens the new test. Whole file 1 of 1 green; the builder's 10 of 10 read-only. |
 
 **Review queue:** *(empty)*
