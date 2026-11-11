@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T06; then T07 to T11 (the instruction families and cycles) can run side by side, each fixing what `insn_check.py` reports.
 
 ## Tasks
 
@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | whole-export | T02 | ✅ | |
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
-| T06 | insn-check | T04, T05 | ⬜ | |
+| T06 | insn-check | T04, T05 | 🔍 | Built pcode_fix/ (trial's bcd and compare moved; four empty family modules), pcode_rust --insn, judge::insn, fd-judge --insn/--insn-all, insn_check.py; 15 Python, 5 Rust tests. Deviations: no Regs::cycles (T11's; `translated_cycles` hook reads None); extra `stop` column, PC and SR in regs; the original's exceptions skipped; census computed from pcode.json; fixture P-code hand-written. |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T06
 
 ## Blocked on the user
 
