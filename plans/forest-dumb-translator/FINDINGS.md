@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T07 bcd and compare check:** 25 kinds, 65 words, 32 500 states, 0 fail in regs, ccr, mem; 506 skipped. Game has no `nbcd` or `cmpm`; whole translation byte-identical to T06's, unsupported 0. |
+| 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
 | 2026-11-11 | 📌 | After T06 moved the trial's corrections into `pcode_fix/`, the whole tree differs only in comments, and `translator_trial.py --skip-export` still passes 84 of 85 (write_into_code 1, as before). |
 | 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
