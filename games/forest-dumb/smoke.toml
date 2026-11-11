@@ -294,7 +294,7 @@ workspace = "engine"
     "the_opening_is_the_originals_to_the_pixel_through_a_redraw_never_reached",
     "a_bar_left_unredrawn_where_the_original_redrew_fails",
     # T84, the one route: its two files hold the same inputs (instant) and its first 600 steps
-    # agree with the original, picture and all (about 5 s). Its whole run (100 s) is full.
+    # agree with the original, picture and all (about 5 s). Its whole run (about 80 s) is full.
     "both_guards_play_the_same_inputs",
     "the_one_routes_first_600_steps_agree_with_the_original",
 ]

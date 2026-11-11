@@ -7,7 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-10 | 📌 | T84: **one route** finishes both sides (owner, T48 review): `fd-plan/tests/routes/W1-1.txt`, case `route-both-W1-1`, 22 464 steps. Measured: with two creatures drawn a pass reads the next step's joystick, 8 596 of 22 527 passes. Search: `prototype/t84-one-route` (docs/13). |
-| 2026-11-10 | 🐞 | T84: a pass cutting a scan inside a creature start (`h0_681c`, `h0_6852`; T75 review's unmeasured case) differs: the original's place lands in slot 1 before its flag, the sort moves it. `prototype/t84-one-route/differs-creature-slot.txt`, pass 1 905. Left. |
+| 2026-11-10 | 🐞 | T84: a pass cutting a scan inside a creature start (`h0_681c`, `h0_6852`; T75 review's unmeasured case) differs: the original's place lands in slot 1 before its flag, the sort moves it. `prototype/t84-one-route/differs-creature-slot.txt`, the runner's pass 1 904. Left. |
 | 2026-11-10 | 🔄 | T82: frames in a row are counted as the toolkit counts (coordinator; `Escape: forest-dumb-level-1 T06`). A status period whose redraw the original never called shows the old bar (coordinator, DESIGN §2.1; README, `Engine::redraw_skipped`, `Verdict::skipped_redraws`). |
 | 2026-11-10 | 🐞 | T82 review: counted as the toolkit counts, an engine running a cut scan whole passes `mechanic-spring` faithful, 18 glitch frames, never three together (animated cells a phase apart). `edge_latch.rs` judges that half strict. `anim_cells` stays uncompared. Left. |
 | 2026-11-10 | 📌 | T82, unmeasured: a pass between two of `h0_6882`'s counts, or at its search's `beq` (`h0+$696e`), is read as `AddCut::Whole` or `List`. |

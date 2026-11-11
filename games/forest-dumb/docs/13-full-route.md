@@ -53,7 +53,8 @@ planned again, 424 cut redraws. No stretch needed the owner.
 ### A difference it went round (left)
 
 Four times the search met one difference between the engine and the original, at pass 1 905 of
-`prototype/t84-one-route/differs-creature-slot.txt`: pass 1 903 cuts a redraw's scan
+`prototype/t84-one-route/differs-creature-slot.txt` (the runner's pass 1 904, `creature_active+$0` 255
+against 0; the passes here count from 1): pass 1 903 cuts a redraw's scan
 (`EdgesCut { next: 2, defer_from: Some(..) }`) while it starts a creature. The original had
 written the creature's place into free slot 1 and not yet its flag; the pass's sort moved the
 place to slot 0, and the flag then went to slot 1. The engine starts the creature after the pass.
@@ -68,7 +69,7 @@ another joystick 8 or 16 steps before it; the one route does not meet it.
 - `engine/crates/fd-conform/tests/full_route.rs`: `both_guards_play_the_same_inputs` (smoke) holds
   the two files to the same inputs, step for step; the first 600 steps agree with the original,
   picture and all (smoke); the whole case `route-both-W1-1` passes with the level's end as its
-  goal (full, 100 s): every variable `route-W1-1` compares on 21 821 passes, the picture on 22 174
+  goal (full, about 80 s): every variable `route-W1-1` compares on 21 821 passes, the picture on 22 174
   frames with nothing set aside, no life lost, `Event::LevelEnd` the only event. 126 frames show
   the status bar as it stood, its redraw never reached; 8 frames are past a few pixels, never
   three in a row.
