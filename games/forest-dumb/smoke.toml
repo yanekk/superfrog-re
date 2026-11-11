@@ -273,6 +273,9 @@ workspace = "engine"
 # route to "Level 1 complete" (finish_level.rs, #[ignore]d) about 40 s warm, in full.
 "crates/fd-e2e/tests/finish_short.rs" = "smoke"
 "crates/fd-e2e/tests/finish_level.rs" = "full"
+# T29, the level drill: what a person tries unasked, 8 s; the stretches (about 12 min) and the recorded
+# route (about 2 min) against the original are #[ignore]d for full.
+"crates/fd-e2e/tests/level_drill.rs" = "smoke"
 # T19, the map page: its unit tests, and the real fd-routeview writing the page from a 150-frame
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
