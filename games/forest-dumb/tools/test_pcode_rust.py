@@ -428,6 +428,16 @@ class Split(unittest.TestCase):
             self.assertEqual(r.returncode, 2)
             self.assertIn('--parts', r.stderr)
 
+    def test_an_out_that_cannot_be_written_exits_2_naming_it(self):
+        # T04 review: a file where the directory goes gave a FileExistsError traceback.
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            open(out, 'w').close()
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', out])
+            self.assertEqual(r.returncode, 2, r.stderr)
+            self.assertIn(out, r.stderr)
+            self.assertNotIn('Traceback', r.stderr)
+
 
 def fixture_insn(at):
     """One instruction of the bcd fixture, in the translator's own form."""

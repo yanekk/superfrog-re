@@ -829,13 +829,17 @@ def main(argv=None):
     except BadInput as e:
         print(f'pcode_rust: {e}', file=sys.stderr)
         return 2
-    if single:
-        tmp = args.out + '.tmp'
-        with open(tmp, 'w', encoding='utf-8') as f:
-            f.write(text)
-        os.replace(tmp, args.out)
-    else:
-        write_tree(files, args.out)
+    try:
+        if single:
+            tmp = args.out + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(text)
+            os.replace(tmp, args.out)
+        else:
+            write_tree(files, args.out)
+    except OSError as e:
+        print(f'pcode_rust: {args.out}: cannot write: {e.strerror}', file=sys.stderr)
+        return 2
     print(json.dumps(stats, separators=(',', ':')))
     return 0
 

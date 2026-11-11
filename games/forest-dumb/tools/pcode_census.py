@@ -157,10 +157,14 @@ def main(argv=None):
         print(f'pcode_census: {e}', file=sys.stderr)
         return 2
     tmp = args.out + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        json.dump(rows, f, indent=1)
-        f.write('\n')
-    os.replace(tmp, args.out)
+    try:
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(rows, f, indent=1)
+            f.write('\n')
+        os.replace(tmp, args.out)
+    except OSError as e:
+        print(f'pcode_census: {args.out}: cannot write: {e.strerror}', file=sys.stderr)
+        return 2
     print(json.dumps({'kinds': len(rows), 'instructions': sum(r['count'] for r in rows)}, separators=(',', ':')))
     return 0
 

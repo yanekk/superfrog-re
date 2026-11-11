@@ -125,6 +125,17 @@ class Bad(unittest.TestCase):
                 self.assertIn(says, r.stderr)
             self.assertFalse(os.path.exists(out))
 
+    def test_an_out_that_cannot_be_written_exits_2_naming_it(self):
+        # T04 review: an --out in a missing directory gave a FileNotFoundError traceback.
+        with tempfile.TemporaryDirectory() as d:
+            p, out = os.path.join(d, 'pcode.json'), os.path.join(d, 'no', 'census.json')
+            with open(p, 'w') as f:
+                json.dump({'insns': INSNS}, f)
+            r = subprocess.run([sys.executable, '-I', TOOL, p, '--out', out], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, r.stderr)
+            self.assertIn(out, r.stderr)
+            self.assertNotIn('Traceback', r.stderr)
+
     def test_cli_writes_the_census_and_a_summary(self):
         with tempfile.TemporaryDirectory() as d:
             p, out = os.path.join(d, 'pcode.json'), os.path.join(d, 'census.json')
