@@ -105,9 +105,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T82 | route-picture | T48; blocks T29 | ✅ | |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ⬜ | |
-| T85 | observes-only-flake | —; blocks T29 | ⬜ | |
+| T85 | observes-only-flake | —; blocks T29 | 🔍 | Test unreliable, not sampling: vAmiga wiped its process-wide `dasDMA` table at every set-up; core patch 0007 fills it once. Two tests: `machines_apart.rs`, `a_sampled_step_made_to_differ_is_caught_at_that_step`. Deviation: both games' oracle smoke left to pir's end-of-plan suite, as parallel builds require. |
 
-**Review queue:** *(empty)*
+**Review queue:** T85
 
 ## Blocked on the user
 
