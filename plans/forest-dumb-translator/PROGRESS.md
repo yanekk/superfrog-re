@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ⬜ | |
-| T11 | cycles-static | T06 | ⬜ | |
+| T11 | cycles-static | T06 | 🔍 | pcode-rt `cycles.rs` const table by op, size and mode; `Regs::cycles`, `tick`; generated code ticks before each instruction, bcc on each path. 279 of 290 census kinds equal Moira, 11 left for T12. Tests: Rust units, `insn_cycles.rs`, `test_pcode_fix_cycles.py`. Deviations: bcc, bra, bsr, immediate bit ops, memory scc counted here, not T12 (fixed per instruction); `Kind` is a struct, `of` added. |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T11
 
 ## Blocked on the user
 

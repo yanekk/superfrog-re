@@ -21,8 +21,9 @@ Writes, through a temporary file and a rename, build/translator/insn.json:
       "moira","translated"}|null,"first_skip"}]
 
 and build/translator/insn.md, one row per kind sorted by fail count, after a table by family naming the
-task that owns it (`cycles` failures belong to T11, or T12 for the data-dependent kinds). `cycles` is
-`"not-counted"` while the generated code counts none. Prints one line:
+task that owns it (`cycles` failures belong to T11, or T12 for the data-dependent kinds,
+`pcode_fix.cycles.is_dynamic`). `cycles` is `"not-counted"` for a kind the generated code does not count
+(T12's). Prints one line:
 
     {"kinds":n,"sites":n,"failing_kinds":n,"states":n,"fail":n,"skipped":n,"columns":{..}}
 

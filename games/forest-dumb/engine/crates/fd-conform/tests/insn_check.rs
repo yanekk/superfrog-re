@@ -82,11 +82,21 @@ fn a_wrong_time_fails_the_cycles_column_and_an_uncounted_one_is_reported() {
     assert_eq!(r.fail, STATES);
     assert_eq!(r.cycles, STATES);
     let first = r.first.as_ref().unwrap();
-    assert_eq!((first.column, first.moira.as_str(), first.translated.as_str()), ("cycles", "8", "10"));
+    assert_eq!(
+        (
+            first.column,
+            first.moira.as_str(),
+            first.translated.as_str()
+        ),
+        ("cycles", "8", "10")
+    );
     let r = check(&with("h0+$2", add_uncounted), Columns::ALL);
     assert_eq!(r.fail, 0);
     assert!(!r.cycles_counted);
-    assert!(r.json(&with("h0+$2", add_uncounted), Columns::ALL).contains("\"cycles\":\"not-counted\""));
+    assert!(
+        r.json(&with("h0+$2", add_uncounted), Columns::ALL)
+            .contains("\"cycles\":\"not-counted\"")
+    );
 }
 
 #[test]

@@ -61,10 +61,9 @@ pub enum Op {
     Adda,
     Cmpa,
     Cmpm,
-    /// `addi`, `subi`, `ori`, `eori`.
+    /// `addi`, `subi`, `andi`, `ori`, `eori`. Moira counts `andi.l #,Dn` 16 like the rest, where the
+    /// manual's table 8-9 gives 14 (translator T11, measured on the census).
     Imm,
-    /// `andi`, whose long form on a data register is 2 cycles quicker than its siblings'.
-    Andi,
     Cmpi,
     /// `addq`, `subq`.
     Quick,
@@ -101,6 +100,7 @@ pub enum Op {
     Bclr(u32),
     /// `scc` on memory; on a data register its time is the condition's (T12).
     Scc,
+    Tas,
 }
 
 /// One instruction kind: its timing class, size and the census's two operand modes (a lone
@@ -150,7 +150,15 @@ pub const fn base_cycles(k: Kind) -> u32 {
     match op {
         Op::Move | Op::Movea | Op::Moveq | Op::Tst => 4,
         // The long's 2 extra cycles on a register or immediate source are the ALU's idle bus time.
-        Op::AluToDn => bw_l(size, 4, if is_reg(src) || matches!(src, Ea::Imm) { 8 } else { 6 }),
+        Op::AluToDn => bw_l(
+            size,
+            4,
+            if is_reg(src) || matches!(src, Ea::Imm) {
+                8
+            } else {
+                6
+            },
+        ),
         Op::AluToMem => bw_l(size, 8, 12),
         Op::Cmp => bw_l(size, 4, 6),
         Op::Adda => {
@@ -163,8 +171,8 @@ pub const fn base_cycles(k: Kind) -> u32 {
         Op::Cmpa => 6,
         Op::Cmpm => bw_l(size, 12, 20),
         // The immediate's fetch is in these base times, not an `Imm` operand time.
-        Op::Imm | Op::Andi => match dst {
-            Ea::Dn => bw_l(size, 8, if matches!(op, Op::Andi) { 14 } else { 16 }),
+        Op::Imm => match dst {
+            Ea::Dn => bw_l(size, 8, 16),
             _ => bw_l(size, 12, 20),
         },
         Op::Cmpi => match dst {
@@ -256,6 +264,10 @@ pub const fn base_cycles(k: Kind) -> u32 {
             Ea::Dn => panic!("scc Dn: its time is the condition's (T12)"),
             _ => 8,
         },
+        Op::Tas => match src {
+            Ea::Dn => 4,
+            _ => 10,
+        },
     }
 }
 
@@ -265,12 +277,16 @@ const fn operand_cycles(k: Kind) -> u32 {
     match op {
         // A move's destination is written, not read: `-(An)` costs what `(An)` does there.
         Op::Move => {
-            let d = if matches!(dst, Ea::PreDec) { Ea::Ind } else { dst };
+            let d = if matches!(dst, Ea::PreDec) {
+                Ea::Ind
+            } else {
+                dst
+            };
             ea_cycles(src, size) + ea_cycles(d, size)
         }
         Op::Movea | Op::AluToDn | Op::Cmp | Op::Adda | Op::Cmpa | Op::Tst => ea_cycles(src, size),
-        Op::AluToMem | Op::Imm | Op::Andi | Op::Cmpi | Op::Quick => ea_cycles(dst, size),
-        Op::Clr | Op::Nbcd | Op::Scc => ea_cycles(src, size),
+        Op::AluToMem | Op::Imm | Op::Cmpi | Op::Quick => ea_cycles(dst, size),
+        Op::Clr | Op::Nbcd | Op::Scc | Op::Tas => ea_cycles(src, size),
         Op::Shift(_) if matches!(dst, Ea::None) => ea_cycles(src, Size::W),
         // Bit ops on memory touch one byte; their immediate bit number is in the base time.
         Op::Btst | Op::Bset(_) | Op::Bclr(_) => ea_cycles(dst, Size::B),
@@ -342,8 +358,8 @@ mod tests {
         assert_eq!(of(Op::Imm, L, Imm, Dn), 16);
         assert_eq!(of(Op::Imm, W, Imm, AbsL), 24);
         assert_eq!(of(Op::Imm, L, Imm, AbsL), 36);
-        assert_eq!(of(Op::Andi, L, Imm, Dn), 14);
-        assert_eq!(of(Op::Andi, B, Imm, Dn), 8);
+        assert_eq!(of(Op::Imm, L, Imm, Dn), 16, "andi.l too, on Moira");
+        assert_eq!(of(Op::Imm, B, Imm, Dn), 8);
         assert_eq!(of(Op::Quick, W, Imm, An), 8);
         assert_eq!(of(Op::Quick, L, Imm, An), 8);
         assert_eq!(of(Op::Quick, L, Imm, Dn), 8);
@@ -410,13 +426,19 @@ mod tests {
         assert_eq!(of(Op::Btst, B, Dn, Ind), 8);
         assert_eq!(of(Op::Bset(3), L, Imm, Dn), 10);
         assert_eq!(of(Op::Bset(31), L, Imm, Dn), 12);
-        assert_eq!(of(Op::Bset(35), L, Imm, Dn), 10, "the bit number is modulo 32");
+        assert_eq!(
+            of(Op::Bset(35), L, Imm, Dn),
+            10,
+            "the bit number is modulo 32"
+        );
         assert_eq!(of(Op::Bset(7), B, Imm, AbsL), 24);
         assert_eq!(of(Op::Bclr(0), L, Imm, Dn), 12);
         assert_eq!(of(Op::Bclr(16), L, Imm, Dn), 14);
         assert_eq!(of(Op::Bclr(1), B, Imm, AbsL), 24);
         assert_eq!(of(Op::Scc, B, Ind, None), 12);
         assert_eq!(of(Op::Scc, B, AbsL, None), 20);
+        assert_eq!(of(Op::Tas, B, Dn, None), 4);
+        assert_eq!(of(Op::Tas, B, Ind, None), 14);
     }
 
     #[test]
@@ -440,7 +462,15 @@ mod tests {
             assert_eq!(ea_cycles(m, W), bw, "{m:?}.w");
             assert_eq!(ea_cycles(m, L), l, "{m:?}.l");
         }
-        assert_eq!(base_cycles(Kind { op: Op::Move, size: L, src: AbsL, dst: AbsL }), 4);
+        assert_eq!(
+            base_cycles(Kind {
+                op: Op::Move,
+                size: L,
+                src: AbsL,
+                dst: AbsL
+            }),
+            4
+        );
     }
 
     #[test]

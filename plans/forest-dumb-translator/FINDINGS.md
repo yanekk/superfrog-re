@@ -6,7 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-11 | 📌 | `pcode_rust.instruction` returns early for a `pcode_fix.emit` instruction (T09's register shifts), so T11/T12 must add `cycles(ins)` lines on that path too; T12's shift cost needs the count `cnt` the emit computes. Left alone (T09 review). |
+| 2026-11-11 | 📌 | **T11 cycles:** 279 of 290 census kinds counted, 0 cycle failures in 407 500 states. Left for T12: `mulu.w` 2 kinds, `divu.w` 2, `divs.w`, `dbf`, `movem.l` 3, `lsl.l`/`lsr.l Dn,Dn`. |
+| 2026-11-11 | 📌 | Moira counts `andi.l #imm,Dn` 16 cycles; the MC68000UM table 8-9, as T11 read it, gives 14. `pcode_rt::cycles` follows Moira. Real hardware unmeasured. |
+| 2026-11-11 | 📌 | **T11 build time**, load about 15: fd-judge `--parts 16` release best 11.2 s against 9.8 s without ticks (CPU +5%), dev 5.0 s against 3.5 s (CPU +35%). Within T04's 10.8 s, 4 to 7 s, plus 20%. |
+| 2026-11-11 | 📌 | A `pcode_fix.emit` instruction (T09's register shifts) gets its `cycles(ins)` tick first, as any other (T11); T12's register-count shift cost needs the count `cnt` the emit computes. |
 | 2026-11-11 | 📌 | **T09 shift_bit census:** 9 kinds, 8 268 of 41 500 states failing (all ccr V) before; 0 after. Trial `--skip-export` still 84 of 85 (write_into_code 1). |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
 | 2026-11-11 | 📌 | `insn_shift_bit.rs` runs about 9 s unoptimised (the rig, about 0.4 ms a state, 200 states over 190 sites), so labelled full; `test_shift_bit.py` is smoke. |

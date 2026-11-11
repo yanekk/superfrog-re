@@ -362,7 +362,16 @@ mod tests {
         let mut r = Regs::new();
         assert_eq!(r.cycles(), 0);
         r.tick(4);
-        r.tick(const { cycles::of(cycles::Op::Move, cycles::Size::L, cycles::Ea::Dn, cycles::Ea::AbsL) });
+        r.tick(
+            const {
+                cycles::of(
+                    cycles::Op::Move,
+                    cycles::Size::L,
+                    cycles::Ea::Dn,
+                    cycles::Ea::AbsL,
+                )
+            },
+        );
         assert_eq!(r.cycles(), 24);
     }
 

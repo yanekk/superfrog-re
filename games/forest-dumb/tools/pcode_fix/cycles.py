@@ -31,11 +31,11 @@ EA = {None: 'None', 'label': 'None', 'Dn': 'Dn', 'An': 'An', '(An)': 'Ind', '(An
 # Mnemonic -> timing class, where the class does not hang on the operands.
 OPS = {'move': 'Move', 'movea': 'Movea', 'moveq': 'Moveq', 'cmp': 'Cmp', 'adda': 'Adda', 'suba': 'Adda',
        'cmpa': 'Cmpa', 'cmpm': 'Cmpm', 'addi': 'Imm', 'subi': 'Imm', 'ori': 'Imm', 'eori': 'Imm',
-       'andi': 'Andi', 'cmpi': 'Cmpi', 'addq': 'Quick', 'subq': 'Quick', 'clr': 'Clr', 'neg': 'Clr',
+       'andi': 'Imm', 'cmpi': 'Cmpi', 'addq': 'Quick', 'subq': 'Quick', 'clr': 'Clr', 'neg': 'Clr',
        'negx': 'Clr', 'not': 'Clr', 'tst': 'Tst', 'addx': 'Addx', 'subx': 'Addx', 'abcd': 'Bcd',
        'sbcd': 'Bcd', 'nbcd': 'Nbcd', 'ext': 'Ext', 'swap': 'Swap', 'exg': 'Exg', 'nop': 'Nop',
        'lea': 'Lea', 'pea': 'Pea', 'jsr': 'Jsr', 'jmp': 'Jmp', 'bra': 'Bra', 'bsr': 'Bsr', 'rts': 'Rts',
-       'rte': 'Rte', 'rtr': 'Rtr', 'link': 'Link', 'unlk': 'Unlk'}
+       'rte': 'Rte', 'rtr': 'Rtr', 'link': 'Link', 'unlk': 'Unlk', 'tas': 'Tas'}
 ALU = {'add', 'sub', 'and', 'or', 'eor'}
 SHIFTS = {'asl', 'asr', 'lsl', 'lsr', 'rol', 'ror', 'roxl', 'roxr'}
 SCC = {'st', 'sf'} | {'s' + c for c in CC}
@@ -104,6 +104,8 @@ def kind(ins):
         op = 'Scc'
     else:
         return None
+    if op in ('Scc', 'Nbcd', 'Tas'):
+        size = 'B'   # byte ops Ghidra writes with no suffix
     return op, size, EA[src], EA[dst]
 
 

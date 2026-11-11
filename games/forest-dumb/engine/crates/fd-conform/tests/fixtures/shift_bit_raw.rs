@@ -6069,7 +6069,7 @@ pub fn i_h0_ee(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_f0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$f0 st
     {
-        r.tick(const { cy::of(cy::Op::Scc, cy::Size::L, cy::Ea::Ind, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Scc, cy::Size::B, cy::Ea::Ind, cy::Ea::None) });
         let mut u_5800: u64 = 0;
         let v = int_2comp(0x1u64, 1);
         u_5800 = v & 0xff;
@@ -6084,7 +6084,7 @@ pub fn i_h0_f0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_f2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$f2 sne
     {
-        r.tick(const { cy::of(cy::Op::Scc, cy::Size::L, cy::Ea::Ind, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Scc, cy::Size::B, cy::Ea::Ind, cy::Ea::None) });
         let mut u_5800: u64 = 0;
         let mut u_a180: u64 = 0;
         let v = bool_negate(r.get(0x45, 1));
@@ -6102,6 +6102,7 @@ pub fn i_h0_f2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_f4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$f4 tas
     {
+        r.tick(const { cy::of(cy::Op::Tas, cy::Size::B, cy::Ea::Dn, cy::Ea::None) });
         let v = 0x0u64;
         r.set(0x46, 1, v);
         let v = 0x0u64;
@@ -6121,6 +6122,7 @@ pub fn i_h0_f4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_f6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$f6 tas
     {
+        r.tick(const { cy::of(cy::Op::Tas, cy::Size::B, cy::Ea::Ind, cy::Ea::None) });
         let mut u_5800: u64 = 0;
         let v = 0x0u64;
         r.set(0x46, 1, v);

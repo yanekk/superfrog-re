@@ -58,6 +58,8 @@ workspace = "engine"
 "crates/fd-conform/tests/insn_shift_bit.rs" = "full"
 # Translator T07: Ghidra's known defects, 31 made-up instructions on Moira, no disks: about 6 s.
 "crates/fd-conform/tests/insn_defects.rs" = "smoke"
+# Translator T11: the fixed cycle times of every shift_bit encoding on Moira, 60 states each, no disks: about 3 s.
+"crates/fd-conform/tests/insn_cycles.rs" = "smoke"
 # Translator T02: code-seen on the game, a fresh run against the committed re/entries.toml, about
 # 8.5 minutes unoptimised (#[ignore]d). The reduction's unit tests are in src.
 "crates/fd-conform/tests/code_seen.rs" = "full"
@@ -384,6 +386,8 @@ workspace = "engine"
 "tools/test_insn_check.py" = "smoke"
 # Translator T09: pcode_fix.shift_bit on Ghidra's P-code for the made-up program, fixtures current: under 1 s.
 "tools/test_shift_bit.py" = "smoke"
+# Translator T11: pcode_fix.cycles, the r.tick lines and where they go: under 1 s.
+"tools/test_pcode_fix_cycles.py" = "smoke"
 "tools/test_unpack.py" = "smoke"
 
 [[area]]
