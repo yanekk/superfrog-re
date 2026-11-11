@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` crashes with a bare `KeyError` traceback on a `symbols.toml` row missing `hunk`, `offset`, `name` or `kind`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
+| 2026-11-11 | 🐞 | `pcode_export.py` `load_entries` (`--routines`, `translate.toml`) crashes with a bare `KeyError` traceback on a routine row missing `hunk` or `offset`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 📌 | **T03 whole export:** 6 684 instructions (h0 5 774, h4 910), 143 entries (program-entry 1, symbol 142), vectors `h0+$1eda`, `$1f7a` (both symbols); 24 `unresolved_computed`, every one an OS call `jsr -n(a5|a6)`. Trial on it: 84 of 85. |
 | 2026-11-11 | 📌 | **T02 code-seen:** 48 runs, 6 380 instructions, 135 entries (program-entry 1, symbol 134, vector 0, trace 0); every computed target is a named symbol. `world_index` poked before Start is reset to 0, so world starts use `next_world`. |
 | 2026-11-11 | 📌 | `os-surface --worlds 1,3,6` (T01 review) lists `lea $0.l` to `$3.l` at `h0+$691e`..`$6930`, constants in play, as `[[read]]` OS memory with access `address`. Not in the committed worlds 1,2 file; not OS use. |
