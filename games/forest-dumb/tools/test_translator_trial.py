@@ -163,20 +163,33 @@ class Trial(unittest.TestCase):
         self.assertEqual(list(s), list(t.SUMMARY_KEYS))
         # One judgeable routine; the four others are out of the percentage.
         self.assertEqual(s, {'judgeable': 1, 'pass': 0, 'pass_pct': 0.0, 'pass_with_hints': 1, 'unjudgeable': 4,
-                             'unsupported': 0, 'untranslated': 1, 'write_into_code': 0})
+                             'unsupported': 0, 'untranslated': 1, 'write_into_code': 0, 'self_modifying': 0})
         tab = self.table()
         self.assertIn('| Routine | Subsystem | Instructions | Without hints | First difference or stop | Untranslated '
-                      '| Write into code | Unsupported | With hints | Muse |', tab)
-        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | fail | untranslated: h0+$10 | 2000 | 0 | 0 | pass | none |', tab)
+                      '| Write into code | Self-modifying | Unsupported | With hints | Muse |', tab)
+        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | fail | untranslated: h0+$10 | 2000 | 0 | 0 | 0 | pass | none |', tab)
         rows = {m.group(1): m.group(0) for m in re.finditer(r'^\| `(h0\+\$\w+)`.*$', tab, re.M)}
         self.assertIn('unjudgeable: no generator (sound)', rows['h0+$40'])
         self.assertIn('unjudgeable: no-oracle: the original returned on none of 2000 states', rows['h0+$80'])
         self.assertIn('unjudgeable: no-oracle: a line or fill blit on 4 of 1990 states', rows['h0+$c0'])
         self.assertIn('unjudgeable: no generator registered (`unregistered`)', rows['h0+$100'])
         self.assertIn('Gate: 0 of 1 judgeable routines pass with no hand edit (0.0%), against 90%: not met.', tab)
+        self.assertIn('0 routine(s) with self-modifying states', tab)
         with open(os.path.join(self.paths.out, 'trial.json')) as f:
             self.assertEqual(json.load(f)['summary'], s)
         self.assertFalse(os.path.exists(os.path.join(self.paths.out, 'table.md.tmp')))
+
+    def test_self_modifying_states_are_a_column_and_the_routine_still_passes(self):
+        ans = json.loads(json.dumps(ANSWERS))
+        ans['tree.rs']['h0+$0'] = {'pass': True, 'passed': 1966, 'self_modifying': 34}
+        self.write('answers.json', json.dumps(ans))
+        code, out, err = self.run_trial()
+        self.assertEqual(code, 0, err)
+        s = json.loads(out)
+        self.assertEqual((s['pass'], s['judgeable'], s['self_modifying'], s['write_into_code']), (1, 1, 1, 0))
+        tab = self.table()
+        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | pass |  | 0 | 0 | 34 | 0 | pass | none |', tab)
+        self.assertIn('1 routine(s) with self-modifying states, each judged on the rest.', tab)
 
     def test_percentage_counts_only_judgeable_routines(self):
         rows = [{'unjudgeable': None, 'plain': {'verdict': 'pass'}, 'hints': {'verdict': 'pass'}}] * 9 + \

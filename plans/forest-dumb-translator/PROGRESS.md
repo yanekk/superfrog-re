@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T12 | cycles-dynamic | T11 | ✅ | Review clean, no fix commit. Reran census check: 290 kinds, 0 fail, none not-counted. Probed 60 000 divides and 5 000 random dbcc/mul states against Moira, all equal; memory-source mul/div emit the Unsupported stop. Mutations of divu step, cc_holds ge, movem extra read and the dbcc counter field all caught. Exception times manual's, unjudged; census holds no trap or chk. |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ✅ | |
-| T15 | code-write-rule | T02, T14 | ⬜ | |
+| T15 | code-write-rule | T02, T14 | ✅ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
