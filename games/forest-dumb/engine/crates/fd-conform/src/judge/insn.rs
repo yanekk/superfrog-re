@@ -61,7 +61,8 @@ pub mod tree {
 
 /// The translated cycle count after one instruction, from 0, or `None` when it counted none: every
 /// 68000 instruction takes 4 cycles or more, so 0 is a kind the generated code does not count yet
-/// (`pcode_fix.cycles`' data-dependent kinds, T12), reported `not-counted`, never failed.
+/// (`pcode_fix.cycles`' data-dependent kinds, T12), reported `not-counted`, never failed, unless
+/// another state of the same site counted: then it is a path that lost its tick, and fails.
 pub fn translated_cycles(r: &pcode_rt::Regs) -> Option<u64> {
     Some(r.cycles()).filter(|&c| c != 0)
 }
@@ -241,6 +242,10 @@ impl InsnRig {
             states,
             ..InsnReport::default()
         };
+        // Each judged state's mismatches, and Moira's cycles where the translation counted none:
+        // tallied after the loop, since a state counting none fails only when another counted
+        // (a path that lost its tick, not a kind left to T12).
+        let mut judged: Vec<(Vec<Mismatch>, Option<(usize, u64)>)> = Vec::new();
         for state in 0..states {
             let s = State::random(&mut g, &seeds, &own);
             for (a, b) in &s.pokes {
@@ -297,6 +302,7 @@ impl InsnRig {
                 Err(_) => Some("panic".to_string()),
             };
             let mut diffs: Vec<Mismatch> = Vec::new();
+            let mut uncounted = None;
             match stopped {
                 Some(why) => diffs.push(Mismatch {
                     state,
@@ -308,6 +314,9 @@ impl InsnRig {
                 None => {
                     let cyc = translated_cycles(&r);
                     rep.cycles_counted |= cyc.is_some();
+                    if cyc.is_none() {
+                        uncounted = Some((state, moira.cycles as u64));
+                    }
                     let t = Translated {
                         r: &r,
                         writes: mem.changed_since(&before),
@@ -316,6 +325,18 @@ impl InsnRig {
                     };
                     compare(state, &moira, &t, cols, |a| self.name(a), &mut diffs);
                 }
+            }
+            judged.push((diffs, uncounted));
+        }
+        for (mut diffs, uncounted) in judged {
+            if let Some((state, c)) = uncounted.filter(|_| cols.cycles && rep.cycles_counted) {
+                diffs.push(Mismatch {
+                    state,
+                    column: "cycles",
+                    what: "cycles".into(),
+                    moira: c.to_string(),
+                    translated: "0".into(),
+                });
             }
             rep.tally(&diffs);
         }

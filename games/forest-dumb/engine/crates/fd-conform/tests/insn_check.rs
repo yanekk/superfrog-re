@@ -107,6 +107,35 @@ fn bne_counts_its_taken_and_its_untaken_time() {
     assert!(r.cycles_counted);
 }
 
+/// bne.b with its not-taken tick lost: that path counts nothing, the taken path its 10.
+fn bne_untaken_uncounted(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fixture::i_h0_a(r, bus, img)?;
+    if r.cycles() == 8 {
+        let mut fresh = Regs::new();
+        fresh.space = r.space;
+        *r = fresh;
+    }
+    Ok(())
+}
+
+#[test]
+fn a_path_that_counts_nothing_fails_once_the_kind_counts() {
+    // A state counting zero is "not counted" only when no state of the site counted (T12's kinds);
+    // a branch whose untaken path lost its tick fails on exactly the untaken states.
+    let r = check(
+        &with("h0+$a", bne_untaken_uncounted),
+        Columns::parse("cycles").unwrap(),
+    );
+    assert!(r.cycles_counted);
+    assert!(r.fail > 0 && r.fail < STATES, "fail {}", r.fail);
+    assert_eq!(r.cycles, r.fail);
+    let first = r.first.as_ref().unwrap();
+    assert_eq!(
+        (first.moira.as_str(), first.translated.as_str()),
+        ("8", "0")
+    );
+}
+
 fn add_with_c_flipped(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fixture::i_h0_2(r, bus, img)?;
     r.set(CF, 1, r.get(CF, 1) ^ 1);

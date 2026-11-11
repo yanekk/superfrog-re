@@ -431,6 +431,11 @@ mod tests {
             10,
             "the bit number is modulo 32"
         );
+        // Moira's cyclesBit: 2 more for a bit above 15 (MoiraALU_cpp.h), so 15 and 16 are the edge.
+        assert_eq!(of(Op::Bset(15), L, Imm, Dn), 10);
+        assert_eq!(of(Op::Bset(16), L, Imm, Dn), 12);
+        assert_eq!(of(Op::Bclr(15), L, Imm, Dn), 12);
+        assert_eq!(of(Op::Bclr(16), L, Imm, Dn), 14);
         assert_eq!(of(Op::Bset(7), B, Imm, AbsL), 24);
         assert_eq!(of(Op::Bclr(0), L, Imm, Dn), 12);
         assert_eq!(of(Op::Bclr(16), L, Imm, Dn), 14);
