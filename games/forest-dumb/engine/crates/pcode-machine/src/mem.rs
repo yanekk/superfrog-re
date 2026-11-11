@@ -31,15 +31,16 @@ pub enum Region {
 /// Where `a` (its low 24 bits, as the 68000 drives them) leads with `chip` bytes of chip RAM (a
 /// power of two) and `slow` of slow RAM.
 ///
-/// The clock chip's window `$D80000..$DC0000` and `$DC0000..$DE0000` are left outside: the oracle
-/// has no clock chip, and a game reading there reads what no model here would answer for.
+/// `$D80000..$DC0000` is custom on the A500 bank map (vAmiga puts the clock chip there only on the
+/// A1000 and A2000A maps). The clock chip's `$DC0000` and the reserved `$DD0000` are left outside:
+/// the oracle has none, and a game reading there reads what no model here would answer for.
 pub fn region(a: u32, chip: u32, slow: u32) -> Region {
     let a = a & 0xFF_FFFF;
     match a >> 16 {
         0x00..=0x1F if chip != 0 => Region::Chip((a & (chip - 1)) as usize),
         0xA0..=0xBF => Region::Cia(a),
         0xC0..=0xD7 if a - SLOW_BASE < slow => Region::Slow((a - SLOW_BASE) as usize),
-        0xC0..=0xD7 | 0xDE | 0xDF => Region::Custom((a & 0x1FE) as u16),
+        0xC0..=0xDB | 0xDE | 0xDF => Region::Custom((a & 0x1FE) as u16),
         _ => Region::Outside,
     }
 }
@@ -72,8 +73,10 @@ mod tests {
         assert_eq!(region(0xC8_0000, K512, K512), Region::Custom(0));
         assert_eq!(region(0xD7_F096, K512, K512), Region::Custom(0x096));
         assert_eq!(region(0xC0_0000, K512, 0), Region::Custom(0));
-        assert_eq!(region(0xD8_0000, K512, K512), Region::Outside);
+        assert_eq!(region(0xD8_0000, K512, K512), Region::Custom(0));
+        assert_eq!(region(0xDB_F1FE, K512, K512), Region::Custom(0x1FE));
         assert_eq!(region(0xDC_0000, K512, K512), Region::Outside);
+        assert_eq!(region(0xDD_FFFF, K512, K512), Region::Outside);
     }
 
     #[test]

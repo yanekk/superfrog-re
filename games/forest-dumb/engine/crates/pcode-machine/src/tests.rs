@@ -162,7 +162,7 @@ fn an_access_outside_memory_is_a_stop_naming_it_at_the_next_block() {
         (0xF8_0000u32, false),
         (0x20_0000, true),
         (0xE8_0000, false),
-        (0xD8_0000, true),
+        (0xDC_0000, true),
         (0xFFF0_0000, false),
     ] {
         let mut m = machine();
@@ -347,4 +347,41 @@ fn the_cias_answer_on_their_byte_lanes() {
     assert_eq!(m.rb(0xBF_E201), 0x03);
     assert_eq!(m.rb(0xBF_D200), 0x00);
     assert_eq!(m.fault(), None);
+}
+
+#[test]
+fn the_a500_bank_map_puts_custom_registers_at_d80000() {
+    // vAmiga's A500 bank map (not A1000/A2000A) makes $D8-$DB custom; $DC is the absent clock.
+    let mut m = machine();
+    m.ww(0xD8_0096, 0x8200);
+    assert_eq!(m.custom()[0x96 / 2], 0x8200);
+    m.ww(0xDB_F180, 0x0123);
+    assert_eq!(m.rw(0xDB_F180), 0x0123);
+    assert_eq!(m.fault(), None);
+    m.rb(0xDC_0001);
+    assert_eq!(m.fault(), Some(&Stop::Outside("$dc0001".into())));
+}
+
+#[test]
+fn a_cia_access_puts_its_byte_on_the_bus() {
+    // vAmiga peek8/poke8/poke16 <CIA> set dataBus, so a later faulty read takes the CIA's byte.
+    let mut m = machine();
+    let a = Log::default();
+    m.attach_cia(Cia::A, Box::new(a.clone()));
+    m.ww(0x10, 0xFFFF);
+    assert_eq!(m.rb(0xBF_EC01), 0x0C);
+    assert_eq!(m.rw(0xDF_F096), 0x000C, "a CIA byte read");
+    m.ww(0x10, 0xFFFF);
+    m.wb(0xBF_E201, 0x03);
+    assert_eq!(m.rw(0xDF_F096), 0x0003, "a CIA byte write");
+    m.ww(0x10, 0xFFFF);
+    m.ww(0xBF_E200, 0xAA55);
+    assert_eq!(m.rw(0xDF_F096), 0xAA55, "a CIA word write");
+    m.ww(0x10, 0xFFFF);
+    assert_eq!(m.rw(0xBF_C000), 0x0000);
+    assert_eq!(
+        m.rw(0xDF_F096),
+        0x0000,
+        "a CIA word read, B with no device then A"
+    );
 }

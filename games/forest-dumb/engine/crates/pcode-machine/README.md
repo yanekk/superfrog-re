@@ -27,9 +27,10 @@ m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 ## What is modelled
 
 - **Memory map** (vAmiga `A500_OCS_1MB`): chip RAM mirrored up to `$1FFFFF`; CIAs at
-  `$A00000..$BFFFFF`; slow RAM at `$C00000`, the custom registers mirrored past it up to `$D7FFFF`;
-  custom registers at `$DE0000..$DFFFFF` (offset `a & $1FE`). Addresses are 24 bits. Everything
-  else (ROM, its mirror, autoconfig, the clock chip's `$D80000..$DDFFFF`) is outside.
+  `$A00000..$BFFFFF`; slow RAM at `$C00000`, the custom registers mirrored past it up to `$DBFFFF`
+  (the A500 bank map); custom registers at `$DE0000..$DFFFFF` (offset `a & $1FE`). Addresses are
+  24 bits. Everything else (ROM, its mirror, autoconfig, the clock chip's `$DC0000`, the reserved
+  `$DD0000`) is outside.
 - **Custom registers:** a word is the unit; a byte write puts the byte on both halves, a byte read
   reads its half of the word. A write to a read-only register (`$000..$01E`, `$07C`) changes nothing.
   A read of a write-only register writes the data bus's last word into it and returns it (vAmiga

@@ -421,12 +421,15 @@ impl Bus for Machine {
             }
             Region::Cia(a) => {
                 let reg = custom::cia_reg(a);
-                match custom::cia_read8(a) {
+                let v = match custom::cia_read8(a) {
                     Some(cia) => self.cia_read(cia, reg),
                     // No chip answers: the bus holds the instruction word being fetched.
                     None if a & 1 == 0 => (self.bus >> 8) as u8,
                     None => self.bus as u8,
-                }
+                };
+                // vAmiga `peek8<CIA>` puts the byte on the bus, as RAM and custom reads do.
+                self.bus = v as u16;
+                v
             }
             Region::Outside => {
                 self.outside(a);
@@ -447,14 +450,16 @@ impl Bus for Machine {
             Region::Custom(reg) => self.custom_read(reg),
             Region::Cia(a) => {
                 let reg = custom::cia_reg(a);
-                match (a >> 12) & 3 {
+                let v = match (a >> 12) & 3 {
                     0 => {
                         (self.cia_read(Cia::B, reg) as u16) << 8 | self.cia_read(Cia::A, reg) as u16
                     }
                     1 => (self.cia_read(Cia::B, reg) as u16) << 8 | 0xFF,
                     2 => 0xFF00 | self.cia_read(Cia::A, reg) as u16,
                     _ => self.bus,
-                }
+                };
+                self.bus = v;
+                v
             }
             Region::Outside => {
                 self.outside(a);
@@ -479,6 +484,7 @@ impl Bus for Machine {
             Region::Cia(a) => {
                 let (sel_a, sel_b) = custom::cia_write(a);
                 let reg = custom::cia_reg(a);
+                self.bus = v as u16;
                 if sel_a {
                     self.cia_write(Cia::A, reg, v);
                 }
@@ -501,6 +507,7 @@ impl Bus for Machine {
             Region::Cia(a) => {
                 let (sel_a, sel_b) = custom::cia_write(a);
                 let reg = custom::cia_reg(a);
+                self.bus = v;
                 if sel_a {
                     self.cia_write(Cia::A, reg, v as u8);
                 }
