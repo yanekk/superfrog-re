@@ -362,6 +362,11 @@ workspace = "engine"
 "tools/test_pcode_export.py" = "smoke"
 # Ghidra headless on a hand-written program and on the game's program, two imports: about 18 s.
 "tools/test_pcode_export_ghidra.py" = "full"
+# Translator T04: the census on made-up exports, under a second.
+"tools/test_pcode_census.py" = "smoke"
+# Translator T04: fd-judge built with the split fixture as FD_TRANSLATED, about 3 s warm. Full: it
+# rebuilds fd-conform twice (with the fixture, then without for the next test), and smoke is over budget.
+"tools/test_pcode_rust_build.py" = "full"
 # Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"

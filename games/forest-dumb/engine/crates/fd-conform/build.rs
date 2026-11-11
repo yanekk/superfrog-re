@@ -10,7 +10,9 @@
 // The translated tree (src/judge/translated.rs, `tree`) comes from FD_TRANSLATED the same way
 // (translator-trial T04): `build/translator/tree.rs`, which `tools/pcode_rust.py` writes from the
 // game's code, so never committed. Without it the stub has no entries, so every routine judged
-// `--translated` stops as untranslated: that mode's negative check.
+// `--translated` stops as untranslated: that mode's negative check. FD_TRANSLATED may also name a
+// directory, `build/translator/tree/` (translator T04): its `mod.rs` and parts are compiled where they
+// are, through a `#[path]`, so each part is a module of its own and rustc's errors name the part.
 use std::{env, fs, path::Path};
 
 fn main() {
@@ -38,6 +40,13 @@ fn main() {
 fn built_in(var: &str, out: &Path, stub: &str) {
     println!("cargo:rerun-if-env-changed={var}");
     let src = match env::var(var) {
+        Ok(p) if !p.is_empty() && Path::new(&p).is_dir() => {
+            // Cargo watches a directory's files, so a regenerated part rebuilds.
+            println!("cargo:rerun-if-changed={p}");
+            let root = Path::new(&p).join("mod.rs");
+            let root = fs::canonicalize(&root).unwrap_or_else(|e| panic!("{var}={p}: {}: {e}", root.display()));
+            format!("#[path = {:?}]\nmod generated;\npub use generated::*;\n", root.display().to_string())
+        }
         Ok(p) if !p.is_empty() => {
             println!("cargo:rerun-if-changed={p}");
             let s = fs::read_to_string(&p).unwrap_or_else(|e| panic!("{var}={p}: {e}"));

@@ -2,10 +2,14 @@
 """Translate a P-code export into one Rust module that runs every exported routine instruction for
 instruction on `pcode-rt` (the translator trial's T03; its DESIGN §2.3, §2.5, §2.8, §3.3).
 
-    python3 -I pcode_rust.py <pcode.json> --out <tree.rs> [--hints <toml>]
+    python3 -I pcode_rust.py <pcode.json> --out <tree/ | tree.rs> [--hints <toml>] [--parts N]
 
-Prints one JSON line, {"functions":N,"blocks":N,"unsupported":N,"computed_unresolved":N}; exits 2 on
-a bad input, naming it on stderr.
+Prints one JSON line, {"functions":N,"blocks":N,"unsupported":N,"computed_unresolved":N} (and
+"parts" for a directory); exits 2 on a bad input, naming it on stderr.
+
+`--out DIR` (translator T04) writes the tree as `mod.rs`, holding `CODE`, `HUNK_SIZES`, `entry`,
+`by_addr` and `enter`, and one module per part, `p00.rs` .. `pNN.rs` (`partition`); a call to a
+function in another part is `super::pNN::name`. `--out x.rs` writes everything as one module.
 
 No model and no knowledge of any program: everything arrives in the export (T01's format) and the
 hints file. Addresses are `hN+$off` throughout, and the generated code resolves them through the
@@ -53,6 +57,8 @@ MIN_INPUTS = dict({o: 2 for o in (*BINARY, *SHIFT, *BOOL, 'SUBPIECE', 'PIECE', '
 JUMPS = {'BRANCH', 'CBRANCH', 'BRANCHIND', 'RETURN'}
 # Ops after which control never reaches the next op of the instruction.
 NO_FALLTHROUGH = {'BRANCH', 'BRANCHIND', 'RETURN'}
+# Parts of a directory tree when --parts is not given; translator T04 measured the choice (FINDINGS).
+DEFAULT_PARTS = 16
 
 
 class BadInput(Exception):
@@ -409,9 +415,17 @@ def bcd_lines(ins, form):
 # Rust
 
 class Emit:
-    def __init__(self, funcs, insns):
+    def __init__(self, funcs, insns, part_of=None):
         self.funcs = funcs
         self.insns = insns
+        self.part_of = part_of   # entry -> part, when the tree is split into modules
+        self.part = None         # the part being written
+
+    def callee(self, c):
+        """The path to function `c` from the part being written."""
+        if self.part_of is None or self.part_of[c] == self.part:
+            return fn_name(c)
+        return f'super::{part_name(self.part_of[c])}::{fn_name(c)}'
 
     # Varnodes -------------------------------------------------------------------------------
 
@@ -540,7 +554,7 @@ class Emit:
             c = parse_addr(t[1], 'call')
             if c not in self.funcs:
                 return [f'return Err(Stop::Untranslated({json.dumps(fmt_addr(c))}.into()));']
-            return [f'{fn_name(c)}(r, bus, img)?;', self.ret_check(nxt)]
+            return [f'{self.callee(c)}(r, bus, img)?;', self.ret_check(nxt)]
         if o == 'CALLIND':
             return [f'let a = ({self.rd(op["in"][0])}) as u32;',
                     'match img.hunk_of(a).and_then(by_addr) {\n    Some(f) => f(r, bus, img)?,\n'
@@ -629,10 +643,7 @@ def code_ranges(funcs, insns):
     return out
 
 
-def render(export, source_name):
-    insns = export['insns']
-    funcs = translate(export)
-    em = Emit(funcs, insns)
+def stats_of(funcs, insns):
     stats = {'functions': len(funcs), 'blocks': sum(len(b) for b in funcs.values()),
              'unsupported': 0, 'computed_unresolved': 0}
     for blocks in funcs.values():
@@ -641,10 +652,18 @@ def render(export, source_name):
                 ops = op_names(insns[a])
                 if ('BRANCHIND' in ops or 'CALLIND' in ops) and not insns[a]['targets']:
                     stats['computed_unresolved'] += 1
+    return stats
+
+
+IMPORTS = ['#[allow(unused_imports)]',
+           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};']
+
+
+def head(export, funcs, source_name, path=lambda e: fn_name(e)):
+    """CODE, HUNK_SIZES, entry(), by_addr() and enter(): the tree's root, `path` naming each function."""
+    insns = export['insns']
     out = [f'// Generated from {source_name}; never committed when made from a game.',
-           '// By pcode_rust.py. Do not edit: regenerate.',
-           '#[allow(unused_imports)]',
-           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};',
+           '// By pcode_rust.py. Do not edit: regenerate.'] + IMPORTS + [
            '',
            '/// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.',
            'pub const CODE: &[(u32, u32, u32)] = &[']
@@ -654,10 +673,10 @@ def render(export, source_name):
             '', '#[allow(dead_code)]', 'pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;', '',
             '/// The translated function entered at `addr` (`hN+$off`).',
             'pub fn entry(addr: &str) -> Option<Routine> {', '    match addr {']
-    out += [f'        {json.dumps(fmt_addr(e))} => Some({fn_name(e)}),' for e in sorted(funcs)]
+    out += [f'        {json.dumps(fmt_addr(e))} => Some({path(e)}),' for e in sorted(funcs)]
     out += ['        _ => None,', '    }', '}', '',
             '#[allow(dead_code)]', 'fn by_addr(k: (u32, u32)) -> Option<Routine> {', '    match k {']
-    out += [f'        {key(e)} => Some({fn_name(e)}),' for e in sorted(funcs)]
+    out += [f'        {key(e)} => Some({path(e)}),' for e in sorted(funcs)]
     out += ['        _ => None,', '    }', '}', '',
             '/// Control reached `k`, which is no block of the function it was in: enter the translated',
             '/// function there, whose return our caller checks, or stop.',
@@ -666,6 +685,16 @@ def render(export, source_name):
             '        Some(f) => f(r, bus, img),',
             '        None => Err(Stop::Untranslated(format!("h{}+${:x}", k.0, k.1))),',
             '    }', '}']
+    return out
+
+
+def render(export, source_name):
+    """The whole tree as one module (`--out x.rs`)."""
+    insns = export['insns']
+    funcs = translate(export)
+    em = Emit(funcs, insns)
+    stats = stats_of(funcs, insns)
+    out = head(export, funcs, source_name)
     for e in sorted(funcs):
         lines, n = em.function(e, funcs[e])
         stats['unsupported'] += n
@@ -673,24 +702,144 @@ def render(export, source_name):
     return '\n'.join(out) + '\n', stats
 
 
+# ---------------------------------------------------------------------------------------------
+# The split: one module per part
+
+def part_name(i):
+    return f'p{i:02d}'
+
+
+def calls_of(blocks, insns, funcs):
+    return {c for run in blocks.values() for a in run for c in succ(a, insns[a])[1] if c in funcs}
+
+
+def fn_size(blocks):
+    return sum(len(run) for run in blocks.values())
+
+
+def clusters(funcs, insns, cap):
+    """Functions grouped so that a function called from one other function only sits with it, as
+    long as the group stays within `cap` instructions.
+
+    rustc does not inline a plain function across codegen units, and a module is where a unit is
+    cut, so a call that crosses parts may cost a call. Folding each single-caller function into its
+    caller keeps those inside one part; only functions shared by several callers stand alone. The
+    cap keeps one group from holding a third of the program (the measured case), since the largest
+    part bounds the build: the smallest functions fold first, so a cut falls between big ones.
+    """
+    callers = {e: set() for e in funcs}
+    for e, blocks in funcs.items():
+        for c in calls_of(blocks, insns, funcs):
+            if c != e:
+                callers[c].add(e)
+    root = {e: e for e in funcs}
+    size = {e: fn_size(b) for e, b in funcs.items()}
+
+    def find(x):
+        while root[x] != x:
+            root[x] = root[root[x]]
+            x = root[x]
+        return x
+    for e in sorted(funcs, key=lambda e: (size[e], e)):
+        if len(callers[e]) == 1:
+            a, b = find(e), find(next(iter(callers[e])))
+            if a != b and size[a] + size[b] <= cap:
+                lo, hi = min(a, b), max(a, b)
+                root[hi] = lo
+                size[lo] += size[hi]
+    groups = {}
+    for e in sorted(funcs):
+        groups.setdefault(find(e), []).append(e)
+    return list(groups.values())
+
+
+def partition(funcs, insns, parts):
+    """entry -> part: the clusters packed largest first into the lightest part, by instructions.
+
+    Fewer clusters than parts leaves the rest empty; parts are numbered in order with none empty.
+    """
+    size = lambda g: sum(fn_size(funcs[e]) for e in g)
+    total = size(funcs)
+    load = [0] * max(1, parts)
+    members = [[] for _ in load]
+    for g in sorted(clusters(funcs, insns, -(-total // len(load))), key=lambda g: (-size(g), g[0])):
+        i = min(range(len(load)), key=lambda k: (load[k], k))
+        load[i] += size(g)
+        members[i].extend(g)
+    used = sorted((sorted(m) for m in members if m), key=lambda m: m[0])
+    return {e: i for i, m in enumerate(used) for e in m}
+
+
+def render_tree(export, source_name, parts):
+    """{file name: text} of the tree as a directory (`--out DIR`): mod.rs, then p00.rs .. pNN.rs."""
+    insns = export['insns']
+    funcs = translate(export)
+    part_of = partition(funcs, insns, parts)
+    n = len(set(part_of.values()))
+    em = Emit(funcs, insns, part_of)
+    stats = stats_of(funcs, insns)
+    stats['parts'] = n
+    root = head(export, funcs, source_name, lambda e: f'{part_name(part_of[e])}::{fn_name(e)}')
+    # `#[path]`, because the root may be loaded by a `#[path]` of its own (fd-conform's build.rs).
+    mods = [f'#[path = "{part_name(i)}.rs"]\nmod {part_name(i)};' for i in range(n)]
+    files = {'mod.rs': '\n'.join(root[:2 + len(IMPORTS)] + [''] + mods + root[2 + len(IMPORTS):]) + '\n'}
+    for i in range(n):
+        em.part = i
+        out = [f'// Part {i} of the tree generated from {source_name}. Do not edit: regenerate.'] + IMPORTS + [
+               '#[allow(unused_imports)]', 'use super::{by_addr, enter};']
+        for e in sorted(x for x in funcs if part_of[x] == i):
+            lines, k = em.function(e, funcs[e])
+            stats['unsupported'] += k
+            out += [''] + lines
+        files[part_name(i) + '.rs'] = '\n'.join(out) + '\n'
+    return files, stats
+
+
+def write_tree(files, out):
+    """Each file through a temporary name and a rename; parts a smaller split left behind removed."""
+    os.makedirs(out, exist_ok=True)
+    for name, text in files.items():
+        tmp = os.path.join(out, name + '.tmp')
+        with open(tmp, 'w', encoding='utf-8') as f:
+            f.write(text)
+        os.replace(tmp, os.path.join(out, name))
+    for name in os.listdir(out):
+        if re.fullmatch(r'p\d+\.rs', name) and name not in files:
+            os.remove(os.path.join(out, name))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     p.add_argument('pcode')
     p.add_argument('--out', required=True)
     p.add_argument('--hints')
+    p.add_argument('--parts', type=int, default=DEFAULT_PARTS)
     args = p.parse_args(argv)
+    if args.parts < 1:
+        p.error('--parts must be 1 or more')
+    single = args.out.endswith('.rs')
     try:
         export = load_export(args.pcode)
         if args.hints:
             export = apply_hints(export, *load_hints(args.hints))
-        text, stats = render(export, os.path.basename(args.pcode))
+        if single:
+            text, stats = render(export, os.path.basename(args.pcode))
+        else:
+            files, stats = render_tree(export, os.path.basename(args.pcode), args.parts)
     except BadInput as e:
         print(f'pcode_rust: {e}', file=sys.stderr)
         return 2
-    tmp = args.out + '.tmp'
-    with open(tmp, 'w', encoding='utf-8') as f:
-        f.write(text)
-    os.replace(tmp, args.out)
+    try:
+        if single:
+            tmp = args.out + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                f.write(text)
+            os.replace(tmp, args.out)
+        else:
+            write_tree(files, args.out)
+    except OSError as e:
+        print(f'pcode_rust: {args.out}: cannot write: {e.strerror}', file=sys.stderr)
+        return 2
     print(json.dumps(stats, separators=(',', ':')))
     return 0
 

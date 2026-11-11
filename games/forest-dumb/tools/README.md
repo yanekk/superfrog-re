@@ -109,7 +109,8 @@ Seeds the program entry `h0+$0`, every `func` of `re/symbols.toml`, `re/entries.
 and the handlers the code installs in an autovector (`$64..$7c`); follows direct flow and the jump tables
 Ghidra resolves. `--routines` seeds only the trial's routines and warns on stderr for one whose reach
 differs from `translate.toml` by over 5%. `pcode.json` holds `entries` (`{"at", "source"}`, source
-program-entry, symbol, vector, trace or routine), `vectors`, per instruction its `hunk`, and under `check`
+program-entry, symbol, vector, trace or routine), `vectors`, per instruction its `hunk`, Ghidra's
+`operands` text and its `bytes` (hex, for the census), and under `check`
 the unresolved computed jumps by address (`unresolved_computed`) and flows out of every hunk (`outside`,
 the OS calls). Needs Ghidra (`toolkit/tools/setup/install-ghidra.sh`); writes the Ghidra project
 `<out>/ghidra/` (later runs reuse it; `--reimport` starts over) and prints one JSON summary line
@@ -117,6 +118,33 @@ the OS calls). Needs Ghidra (`toolkit/tools/setup/install-ghidra.sh`); writes th
 path on stderr, when Ghidra, its JDK, the program, a symbols or entries file is missing. Relocations come
 from the file's `HUNK_RELOC32` entries, since Ghidra's Amiga loader records none. The script is
 `ghidra/ExportPcode.java`.
+
+### pcode_rust.py (stdlib)
+The translator: `pcode.json` to Rust on the `pcode-rt` runtime, instruction for instruction, no model.
+```
+python3 -I games/forest-dumb/tools/pcode_rust.py build/translator/pcode.json --out build/translator/tree/
+                                                 [--hints re/translator-hints.toml] [--parts N]
+```
+`--out DIR` writes `mod.rs` (`CODE`, `HUNK_SIZES`, `entry()`, `by_addr()`, `enter()`) and one module per
+part, `p00.rs` .. `pNN.rs`, removing parts a larger earlier split left; `--out x.rs` writes one module,
+as the trial did. Parts (default 16, measured by translator T04: the whole tree builds optimised in about
+11 s, 28 s as one module) are groups of functions, each function with the ones only it calls up to one
+part's share, packed largest first. `FD_TRANSLATED=<dir or .rs>` builds the tree into `fd-judge`. Prints
+one JSON line (`functions`, `blocks`, `unsupported`, `computed_unresolved`, `parts`); exit 2 on a bad
+input, named on stderr. After a translator change, `python3 tools/test_pcode_rust.py --regen` rewrites
+the committed fixtures in `pcode-rt/tests/fixtures/`.
+
+### pcode_census.py (stdlib)
+Every instruction kind `pcode.json` holds, the instruction check's work list (translator DESIGN §2.6).
+```
+python3 -I games/forest-dumb/tools/pcode_census.py build/translator/pcode.json --out build/translator/census.json
+```
+A kind is the mnemonic with its size suffix and each operand's addressing mode (`add.w Dn,(An)+`;
+modes `Dn An (An) (An)+ -(An) (d16,An) (d8,An,Xn) abs.w abs.l (d16,PC) (d8,PC,Xn) #imm list label`).
+Each row: `kind`, `mnemonic`, `size` (1/2/4 or null), `src`, `dst` (operand order, null when absent),
+`count`, `encodings` (distinct opcode words), `sites` (first five); commonest first. Modes Ghidra's text
+hides (movem's `-(An)`/`(An)+`, `jsr`/`jmp`/`pea`) come from the opcode word. Prints
+`{"kinds","instructions"}`; exit 2 naming an operand it cannot place, or an export without `operands`.
 
 ### translator_trial.py (stdlib)
 The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a
