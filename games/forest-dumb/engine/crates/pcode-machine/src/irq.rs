@@ -55,12 +55,17 @@ pub fn set_clear(old: u16, v: u16) -> u16 {
 }
 
 /// The level Paula asks the 68000 for: the highest among bits both enabled and requested, with
-/// the master enable on; 0 for none.
+/// the master enable on; 0 for none. INTREQ's bit 14, set by a write with bit 15, asks for level 6
+/// like EXTER: Paula ands the two registers before mapping, INTEN included (vAmiga
+/// `Paula::interruptLevel`, the oracle).
 pub fn ipl(intena: u16, intreq: u16) -> u8 {
     if intena & INTEN == 0 {
         return 0;
     }
-    let on = intena & intreq & 0x3FFF;
+    let on = intena & intreq & 0x7FFF;
+    if on & INTEN != 0 {
+        return 6;
+    }
     (0..14u16)
         .rev()
         .find(|&b| on & (1 << b) != 0)
@@ -113,7 +118,12 @@ mod tests {
         assert_eq!(ipl(0x4008, 0x0028), 2, "VERTB not enabled");
         assert_eq!(ipl(0x4028, 0x0000), 0);
         assert_eq!(ipl(0x6000, 0x2000), 6);
-        assert_eq!(ipl(0x7FFF, 0x4000), 0, "INTREQ's bit 14 requests nothing");
+        assert_eq!(
+            ipl(0x7FFF, 0x4000),
+            6,
+            "INTREQ bit 14 with INTEN on is level 6, as vAmiga Paula::interruptLevel"
+        );
+        assert_eq!(ipl(0x3FFF, 0x4000), 0, "and nothing with INTEN off");
     }
 
     #[test]

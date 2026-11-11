@@ -66,7 +66,7 @@ m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at c
   read Paula's state, never a device's. `from_snapshot` starts both from those two entries of
   `custom`. A request `raise`d for cycle `at` lands in INTREQ at the first INTREQR read, INTREQ write
   or `poll` timed at `at` or later; a write clearing INTREQ clears requests already due. Paula's levels: bits 0-2
-  level 1, 3 level 2, 4-6 level 3, 7-10 level 4, 11-12 level 5, 13 level 6; nothing with
+  level 1, 3 level 2, 4-6 level 3, 7-10 level 4, 11-12 level 5, 13 and 14 level 6 (as vAmiga); nothing with
   INTENA's bit 14 off.
 - **Taken at a block's start.** `poll` takes the highest pending level above SR's mask as the
   68000 does: SR copied, S set, T cleared, the mask raised (A7 swapped for the system stack if in
