@@ -179,6 +179,10 @@ pub struct RigReport {
     /// line mode or fill mode (BLTCON1 bit 0, 3 or 4 at the BLTSIZE write). The shim runs neither,
     /// so a port agreeing on such a state proves nothing (T33 answers `no-oracle`).
     pub unmodelled_blits: usize,
+    /// States the original returned from after changing a byte of [`Rig::set_code`]'s ranges: it
+    /// wrote into its own instructions, which translated code cannot follow (translator DESIGN
+    /// §2.5). Left out of `passed` and `paths`, and the port is not run on them.
+    pub self_modifying: usize,
 }
 
 /// One conditional branch of a routine or its callees (`Bcc` other than `BRA`/`BSR`, `DBcc`), by
@@ -257,6 +261,8 @@ pub struct Rig {
     hunks: Vec<(u32, u32)>,
     max_instr: u64,
     last_regs: Option<Regs>,
+    /// Absolute `[start, end)` ranges of translated instructions, sorted; empty unless set.
+    code: Vec<(u32, u32)>,
 }
 
 /// Each hunk's `(base, size)` on the oracle.
@@ -332,12 +338,30 @@ impl Rig {
             hunks: Vec::new(),
             max_instr: MAX_INSTR,
             last_regs: None,
+            code: Vec::new(),
         }
     }
 
     /// Instructions after which a state counts as a hang ([`MAX_INSTR`] unless set).
     pub fn set_max_instr(&mut self, n: u64) {
         self.max_instr = n;
+    }
+
+    /// The absolute `[start, end)` ranges of the translated instructions, for every later check: a
+    /// state on which the original changes a byte in one is counted as
+    /// [`RigReport::self_modifying`] and not compared. Empty (the default) turns this off.
+    ///
+    /// Only bytes whose value changed are seen (`CallResult::writes`), so an original that stores
+    /// the value a code byte already held is judged, and fails on the port's `write-into-code`.
+    pub fn set_code(&mut self, mut code: Vec<(u32, u32)>) {
+        code.sort_unstable();
+        self.code = code;
+    }
+
+    /// Whether `a` is in one of [`Rig::set_code`]'s ranges.
+    fn in_code(&self, a: u32) -> bool {
+        let i = self.code.partition_point(|&(_, end)| end <= a);
+        self.code.get(i).is_some_and(|&(start, _)| start <= a)
     }
 
     /// The original's registers when it last returned, in the last check or survey.
@@ -514,6 +538,10 @@ impl Rig {
                 }
                 Err(_) => {
                     report.faults += 1;
+                    None
+                }
+                Ok(r) if r.writes.iter().any(|w| self.in_code(w.0)) => {
+                    report.self_modifying += 1;
                     None
                 }
                 Ok(r) => {

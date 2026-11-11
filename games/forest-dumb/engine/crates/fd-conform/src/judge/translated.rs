@@ -9,6 +9,9 @@
 //! state stops as untranslated: this mode's negative check.
 //!
 //! A [`Stop`] fails its state and is counted by kind; the rig reports it as "the port stopped: ..".
+//! A state on which the original changes a byte of the tree's `CODE` is not judged: the rig counts
+//! it as `self_modifying` (DESIGN §2.5, translator T15), so a translated store into code fails only
+//! where the original does not write there.
 //!
 //! Each state runs on a thread of its own with a [`RUN_STACK`]-byte stack, so a run that nests
 //! `pcode_rt::DEPTH_CAP` translated frames stops as `hang (depth)` instead of overflowing the stack,
@@ -125,6 +128,16 @@ pub fn check(
     let sizes = rig.hunk_sizes();
     let at = rig.name(entry);
     let mut stops = Stops::default();
+    // A state on which the original itself changes a translated instruction's byte is out of the
+    // game's reach (DESIGN §2.5): the rig counts it as self-modifying and runs no port on it.
+    rig.set_code(
+        code.iter()
+            .map(|&(hunk, start, end)| {
+                let b = HUNK_BASES[hunk as usize];
+                (b + start, b + end)
+            })
+            .collect(),
+    );
     let verdict = rig.check_regs(name, cases, entry, generator, RegsCompared::ALL, |s| {
         let mut before = Mem::new(base.clone(), &s.pokes);
         before.beam.set(s.beam as u16);
@@ -172,5 +185,6 @@ pub fn check(
             hw_writes: mem.hw_writes,
         }
     });
+    rig.set_code(Vec::new());
     Judged { verdict, stops }
 }

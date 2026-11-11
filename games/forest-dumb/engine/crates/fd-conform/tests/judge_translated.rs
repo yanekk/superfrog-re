@@ -237,3 +237,92 @@ fn the_entry_sees_the_stack_the_original_sees() {
     let rep = j.verdict.unwrap_or_else(|f| panic!("{f}"));
     assert_eq!(rep.passed, 20);
 }
+
+/// A made-up routine laid over hunk 0 (translator T15, DESIGN §2.5): `move.b d0,(a0); rts`, then a
+/// `nop` it never runs. The tree lists all three as its code.
+const SELF_AT: u32 = fd_conform::HUNK_BASES[0] + 0x5462;
+const SELF_CODE: &[(u32, u32, u32)] = &[(0, 0x5462, 0x5468)];
+/// The `nop`'s first byte: a code byte the routine writes on some states.
+const SELF_TARGET: u32 = SELF_AT + 4;
+/// Where it writes on the others: data.
+const SELF_DATA: u32 = fd_conform::HUNK_BASES[1] + 0x100;
+
+fn lay_self_writer(m: &mut [u8]) {
+    let at = SELF_AT as usize;
+    m[at..at + 6].copy_from_slice(&[0x10, 0x80, 0x4e, 0x75, 0x4e, 0x71]);
+}
+
+/// Random registers; `a0` at the routine's own `nop` one state in four, else at data; `d0`'s low
+/// byte $12, so the write always changes the `nop`'s $4e.
+fn self_writer_case(g: &mut fd_conform::routine::Gen) -> Setup {
+    let mut s = Setup::random(g);
+    s.d[0] = s.d[0] & !0xff | 0x12;
+    s.a[0] = if g.one_in(4) { SELF_TARGET } else { SELF_DATA };
+    s
+}
+
+const SELF_WRITER: Generator = Generator {
+    base: Some(lay_self_writer),
+    case: self_writer_case,
+};
+
+fn pop_return(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    let sp = r.a(7);
+    let ret = load(bus, sp, 4) as u32;
+    r.set_a(7, sp.wrapping_add(4));
+    if ret != RETURN_SENTINEL {
+        return Err(Stop::Untranslated(img.describe(ret)));
+    }
+    Ok(())
+}
+
+/// The routine as translated code runs it: the byte store goes through `store`, which stops on a
+/// translated instruction.
+fn self_writer(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    store(bus, img, r.a(0), 1, (r.d(0) & 0xff) as u64)?;
+    pop_return(r, bus, img)
+}
+
+/// Wrong on purpose: always stores into the `nop`, also where the original writes data.
+fn always_into_code(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    store(bus, img, SELF_TARGET, 1, (r.d(0) & 0xff) as u64)?;
+    pop_return(r, bus, img)
+}
+
+fn judge_self(r: &mut Rig, run: Entry, code: &[(u32, u32, u32)]) -> translated::Judged {
+    translated::check(r, "self-writer", 200, SELF_AT, &SELF_WRITER, Some(run), code)
+}
+
+#[test]
+fn states_where_the_original_writes_into_its_code_are_self_modifying_the_rest_judged() {
+    let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let j = judge_self(&mut r, self_writer, SELF_CODE);
+    let rep = j.verdict.unwrap_or_else(|f| panic!("{f}"));
+    // About one state in four; the port never ran on them, so no stop was made.
+    assert!(
+        (25..=80).contains(&rep.self_modifying),
+        "{} self-modifying",
+        rep.self_modifying
+    );
+    assert_eq!(rep.passed + rep.self_modifying, 200);
+    assert_eq!((rep.hangs, rep.faults), (0, 0));
+    assert_eq!(j.stops, translated::Stops::default());
+    let self_modifying = rep.self_modifying;
+
+    // A translated store into code where the original writes data is still a failure, a stop.
+    let j = judge_self(&mut r, always_into_code, SELF_CODE);
+    let f = j.verdict.unwrap_err();
+    assert_eq!(f.report.self_modifying, self_modifying, "the same states");
+    assert_eq!(f.failures, 200 - self_modifying, "{f}");
+    assert_eq!(j.stops.write_into_code, f.failures);
+    assert_eq!(j.stops.first, "write-into-code: h0+$5466");
+
+    // With no tree code the rule is off: every state is judged, the code write a plain write.
+    let j = judge_self(&mut r, self_writer, &[]);
+    let rep = j.verdict.unwrap_or_else(|f| panic!("{f}"));
+    assert_eq!((rep.passed, rep.self_modifying), (200, 0));
+
+    // The rig forgets the tree's code after the check: the survey judges every state.
+    let rep = r.survey("self-writer", 200, SELF_AT, &SELF_WRITER);
+    assert_eq!((rep.passed, rep.self_modifying), (200, 0));
+}
