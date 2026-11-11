@@ -180,3 +180,13 @@ fn a_step_between_traced_calls_leaves_the_trace_alone() {
     assert!(reads.contains(&0x7000));
     assert!(!reads.contains(&0x5000) && !reads.contains(&0x6000), "{reads:x?}");
 }
+
+#[test]
+fn a_step_at_an_odd_address_is_an_address_error() {
+    // Moira's reset fetches from the even address below an odd entry; a 68000 takes an address error.
+    let mut cpu = with_code(&[0x70FF]); // moveq #-1,d0
+    assert_eq!(
+        cpu.step(AT + 1, regs()),
+        Err(CallError::Exception { pc: AT + 1, vector: 3 })
+    );
+}

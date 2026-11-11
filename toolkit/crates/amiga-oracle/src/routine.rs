@@ -638,6 +638,11 @@ impl Cpu68k {
         regs: Regs,
         other_sp: u32,
     ) -> Result<Stepped, CallError> {
+        // Moira's reset fetches from the even address below an odd one and runs that instruction;
+        // a 68000 reaching an odd PC takes an address error instead.
+        if pc & 1 != 0 {
+            return Err(CallError::Exception { pc, vector: 3 });
+        }
         let mut r = RawRegs {
             d: regs.d,
             a: regs.a,
