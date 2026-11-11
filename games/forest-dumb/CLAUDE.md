@@ -7,8 +7,8 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 ## What the game is
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
-the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is being
-built (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is built
+and judged against the original (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Its disks and where they live
 
@@ -86,7 +86,10 @@ with coins left and exits 1.
 `fd-e2e`'s `finish_level.rs` plays the one route in the real app, by key presses, from launch to
 "Level 1 complete" and fire's restart, the state equal to headless every frame (T28; full, about 40 s:
 `cargo test -q -p fd-e2e --test finish_level -- --ignored`); `finish_short.rs`, its first 600 steps, is
-in smoke.
+in smoke. `level_drill.rs` (T29) is the level's drill: each enemy, mechanic and death stretch and the
+route played in the app with the recorder on, every recording judged on the original by `bug compare`
+(full, about 15 min: `-- --ignored`), and what a person tries unasked (smoke). Opposite keys held
+together reach the game both, which no joystick can: a known gap (the plan's FINDINGS).
 
 ## Bug-fix procedure
 
@@ -119,7 +122,7 @@ source; open the source only for what the README lacks.
 - [docs/13-full-route.md](docs/13-full-route.md): the routes through the whole of W1-1 (the one route for both sides, the planner's, T48's on the original), how each is guarded and found again.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
-- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
+- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 done.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 - [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
@@ -131,4 +134,4 @@ state only, on every frame of the idle title. Run it from `engine/` with
 
 ## Backlog
 
-- Next plan: level 1, `forest-dumb-level-1`, from [docs/level-1-brief.md](docs/level-1-brief.md).
+- Level 1 (`forest-dumb-level-1`) is done; the next plans are in [docs/ROADMAP.md](docs/ROADMAP.md).

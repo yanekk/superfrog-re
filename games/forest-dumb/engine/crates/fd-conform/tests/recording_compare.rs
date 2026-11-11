@@ -108,6 +108,19 @@ fn a_recording_through_a_creature_cut_behind_the_beam_stays_in_step() {
     assert!(v.pictures > 490, "{}", c.report());
 }
 
+/// A recording through a status bar redraw the original cut short (T71), met by T29's drill in the
+/// app: `mechanic-vanish`'s first 140 steps, the score's redraw at frame 6432 (`death-water`'s
+/// hearts at frame 7872 the same). `Owners` hands the owner's game the measured cut as a case does
+/// (`cut_redraw`); without it the bar differs there three frames in a row.
+#[test]
+fn a_recording_through_a_cut_status_redraw_stays_in_step() {
+    let rec = recording(&script_steps("mechanic-vanish", 140), "vanish");
+    let c = compare(&rec);
+    assert!(c.same(), "{}", c.report());
+    let v = c.verdict.as_ref().expect("judged");
+    assert!(v.cut_redraws > 0, "{}", c.report());
+}
+
 /// 4 000 steps of running, jumping and dying both ways: retimed by pass, the original runs a pass
 /// a frame over the whole of it and two passes read the joystick in the frame of the pass before
 /// (measured 2026-11-06, T15 FINDINGS). The pairing also holds across a read cut by the frame's end

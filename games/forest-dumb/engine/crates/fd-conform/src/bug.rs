@@ -356,6 +356,18 @@ impl Engine for Owners<'_> {
     fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
         self.game.creatures_uncut(rows)
     }
+
+    /// Without it a recording differs at the first status bar redraw the original cut short (T71):
+    /// three frames of the old bar (T29's drill: `mechanic-vanish`'s score, `death-water`'s hearts).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        self.game.cut_redraw(cut)
+    }
+
+    /// A status period whose redraw the original never reached (T82); forwarded as the trait asks,
+    /// no recording here has met one yet.
+    fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        self.game.redraw_skipped(uncut)
+    }
 }
 
 /// A recording compared with the original ([`compare`]).

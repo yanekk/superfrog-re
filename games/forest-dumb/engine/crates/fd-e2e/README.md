@@ -54,7 +54,10 @@ Every launch passes `--home`, `--max-frames` and `--timeout` and runs in its own
 `smoke.rs` frames and hashes; `controls.rs` rebinding and settings; `disks.rs` missing disks;
 `window.rs` scale, quitting, the watchdog, the lock; `recorder_app.rs`, `recorder_replay.rs` bug zips;
 `game_over.rs`, `level_end.rs`; `finish_level.rs` (full) the one route from launch to "Level 1 complete", `finish_short.rs` (smoke) its first 600 steps; `drill.rs` (smoke) and `drill_sizes.rs` (full) the script-layer drill;
-`drill_os.rs` the OS layer (full, writes window captures to `$TMPDIR/fd-drill-os`). Labels are in
+`drill_os.rs` the OS layer (full, writes window captures to `$TMPDIR/fd-drill-os`); `level_drill.rs` (T29)
+the level's drill: case stretches and the route played as keys with the recorder on, each zip judged on
+the original by `bug compare` (full, about 15 min), and keys held, opposite keys, blur, resize and a pad
+unplugged (smoke); pictures to `$TMPDIR/fd-level-drill`. Labels are in
 `games/forest-dumb/smoke.toml`.
 
 ## Where the details are
