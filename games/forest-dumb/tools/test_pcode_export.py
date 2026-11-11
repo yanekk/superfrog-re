@@ -143,6 +143,19 @@ class MissingInputs(unittest.TestCase):
         self.assertIn('/nowhere/translate.toml', err)
         run.assert_not_called()
 
+    def test_a_malformed_entries_file_exits_2_naming_it_and_the_row(self):
+        for row, says in (('at = "0x4"\nsource = "trace"', "'0x4'"), ('at = "h0+$4"\nsource = "guess"', 'guess'),
+                          ('source = "trace"', 'None')):
+            with tempfile.TemporaryDirectory() as tmp, self.subTest(row=row):
+                path = os.path.join(tmp, 'entries.toml')
+                with open(path, 'w') as f:
+                    f.write(f'[[entry]]\n{row}\n')
+                code, err, run = self.run_main({}, '--entries', path)
+                self.assertEqual(code, 2)
+                self.assertIn(path, err)
+                self.assertIn(says, err)
+                run.assert_not_called()
+
     def test_from_the_command_line_under_python_I(self):
         r = subprocess.run([sys.executable, '-I', os.path.join(HERE, 'pcode_export.py'), '--exe', '/nowhere/X'],
                            capture_output=True, text=True, timeout=30)
@@ -209,7 +222,7 @@ class WholeSeeds(unittest.TestCase):
         self.assertEqual(self.seeds(''), [(0, 0, 'program-entry')])
 
     def test_an_unknown_source_is_refused_naming_the_address(self):
-        with self.assertRaisesRegex(ValueError, r'h0\+\$4.*guess'):
+        with self.assertRaisesRegex(P.Usage, r'h0\+\$4.*guess'):
             self.seeds('[[entry]]\nat = "h0+$4"\nsource = "guess"\n')
 
     def test_the_committed_entries_file_seeds_every_func_symbol(self):

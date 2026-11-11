@@ -44,7 +44,7 @@ KIND = {HUNK_CODE: 'CODE', HUNK_DATA: 'DATA', HUNK_BSS: 'BSS'}
 
 
 class Usage(Exception):
-    """A missing input: exit 2 with the path."""
+    """A missing or malformed input: exit 2 with the path."""
 
 
 @dataclass
@@ -155,8 +155,11 @@ def whole_seeds(symbols, entries_path):
             found.setdefault((s.hunk, s.offset), 'symbol')
     for e in doc.get('entry', []):
         if e.get('source') not in SOURCES:
-            raise ValueError(f"{entries_path}: {e.get('at')}: unknown source {e.get('source')!r}")
-        a = parse_rel(e['at'])
+            raise Usage(f"{entries_path}: {e.get('at')}: unknown source {e.get('source')!r}")
+        try:
+            a = parse_rel(e['at'])
+        except (KeyError, TypeError, ValueError):
+            raise Usage(f"{entries_path}: an entry's at is not hN+$off: {e.get('at')!r}") from None
         if a not in found or SOURCES.index(e['source']) < SOURCES.index(found[a]):
             found[a] = e['source']
     return [(h, off, found[(h, off)]) for h, off in sorted(found)]
