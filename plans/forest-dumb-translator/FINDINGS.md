@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T23 interrupts:** the pushed PC is a marker, `IRQ_RETURN` ($FFFFFF), not the interrupted address: `poll` is not told its block. `from_snapshot` takes INTENA/INTREQ from `custom[0x0E]`, `custom[0x0F]` (INTENAR, INTREQR); T27/T28 snapshots must fill them. |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
 | 2026-11-11 | 📌 | **T12 cycles:** all 290 census kinds counted, 0 failures in 407 500 states, every column. The 11 data-dependent kinds (`mulu.w`, `divu.w`, `divs.w`, `dbf`, `movem.l`, `lsl.l`/`lsr.l Dn,Dn`) tick from the registers before the instruction. |
 | 2026-11-11 | 📌 | T12 timings follow Moira (`cyclesMul`, `cyclesDiv`, `cyclesBit`); none known to differ from a real 68000, unmeasured. Divide by zero (38), `trap` (34), `chk` trapping (40) are the manual's, unjudged: Moira's step reports exceptions without a time. |
@@ -30,11 +31,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
 | 2026-11-11 | 📌 | **T09 shift_bit census:** 9 kinds, 8 268 of 41 500 states failing (all ccr V) before; 0 after. Trial `--skip-export` still 84 of 85 (write_into_code 1). |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
-| 2026-11-11 | 📌 | `insn_shift_bit.rs` runs about 9 s unoptimised (the rig, about 0.4 ms a state, 200 states over 190 sites), so labelled full; `test_shift_bit.py` is smoke. |
 | 2026-11-11 | 📌 | **T07 bcd and compare check:** 25 kinds, 65 words, 32 500 states, 0 fail in regs, ccr, mem; 506 skipped. Game has no `nbcd` or `cmpm`; whole translation byte-identical to T06's, unsupported 0. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
-| 2026-11-11 | 📌 | After T06 moved the trial's corrections into `pcode_fix/`, the whole tree differs only in comments, and `translator_trial.py --skip-export` still passes 84 of 85 (write_into_code 1, as before). |
 | 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
 | 2026-11-11 | 📌 | T06 fails by owner (`build/translator/insn.md`): T09 nine shift kinds (lsl/lsr V set where Moira clears it, asl.l V); T08 five (addx.l X, divu/divs registers and flags, clr.w abs.l); T10 rte (PC, flags). |
 | 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |

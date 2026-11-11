@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T23 (interrupts); T13, T24, T25 and T26 can run beside it.
 
 ## Tasks
 
@@ -37,7 +37,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
-| T23 | interrupts | T22 | ⬜ | |
+| T23 | interrupts | T22 | 🔍 | INTENA/INTREQ, `raise`, `poll` takes the highest level above SR's mask, 44 cycles, frame on the system stack, handler via `set_entry(entry)`. 11 tests on translated `fixtures/irq.json`, 5 unit. Deviations: pushed PC is marker `$FFFFFF` (poll lacks the block address); INTENAR/INTREQR no longer read a device (T22 test moved to ADKCONR); fixture added to `test_pcode_rust.py`. |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ⬜ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T23
 
 ## Blocked on the user
 
