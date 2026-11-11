@@ -68,13 +68,13 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     let v = int_equal(u_20c00, 0x0u64, 1);
                     r.set(0x45, 1, v);
                 }
-                // h0+$4 abcd d1b,d0b (corrected: Ghidra's P-code is wrong)
+                // h0+$4 abcd d1b,d0b (corrected: pcode_fix.bcd)
                 {
                     let (v, x, o) = pcode_rt::bcd::bcd_add(r.get(0x7, 1), r.get(0x3, 1), r.get(0x43, 1));
                     r.set(0x3, 1, v);
                     pcode_rt::bcd::bcd_flags(r, v, x, o);
                 }
-                // h0+$6 abcd -(a1),-(a0) (corrected: Ghidra's P-code is wrong)
+                // h0+$6 abcd -(a1),-(a0) (corrected: pcode_fix.bcd)
                 {
                     let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);
                     r.set(0x24, 4, ay as u64);
@@ -86,7 +86,7 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     store(bus, img, ax, 1, v)?;
                     pcode_rt::bcd::bcd_flags(r, v, x, o);
                 }
-                // h0+$8 abcd -(a1),-(a0) (corrected: Ghidra's P-code is wrong)
+                // h0+$8 abcd -(a1),-(a0) (corrected: pcode_fix.bcd)
                 {
                     let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);
                     r.set(0x24, 4, ay as u64);
@@ -98,7 +98,7 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
                     store(bus, img, ax, 1, v)?;
                     pcode_rt::bcd::bcd_flags(r, v, x, o);
                 }
-                // h0+$a sbcd d2b,d4b (corrected: Ghidra's P-code is wrong)
+                // h0+$a sbcd d2b,d4b (corrected: pcode_fix.bcd)
                 {
                     let (v, x, o) = pcode_rt::bcd::bcd_sub(r.get(0xb, 1), r.get(0x13, 1), r.get(0x43, 1));
                     r.set(0x13, 1, v);
