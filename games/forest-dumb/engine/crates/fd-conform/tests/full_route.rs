@@ -7,6 +7,10 @@
 //! The route is T27's (`fd-plan/tests/routes/W1-1.txt`) planned again from the original's states
 //! (`games/forest-dumb/docs/13-full-route.md`, "On the original"). A change to the engine that
 //! moves the character or a creature on it differs here at the pass it does.
+//!
+//! The one route (T84): `conform/scripts/route-both-W1-1.txt`, step for step the inputs the engine
+//! alone finishes the level on (`fd-plan/tests/routes/W1-1.txt`), played as
+//! `cases/route-both-W1-1.toml` to the level's end with no life lost (docs/13, "The one route").
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -343,6 +347,103 @@ fn the_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {
         }
     }
     assert!(by_objects > 100, "{by_objects} routine names read");
+}
+
+/// The steps of an input script, a joystick a step, to its last line's frame.
+fn steps(text: &str, what: &str) -> Vec<FrameInput> {
+    let s = amiga_conform::script::parse(text).unwrap_or_else(|e| panic!("{what}: {e}"));
+    let n = s.lines.last().unwrap_or_else(|| panic!("{what}: empty")).0;
+    (0..n).map(|k| s.input_at(k)).collect()
+}
+
+/// T84, one route for both sides: the script `route-both-W1-1` plays on the original is, step for
+/// step, the route `fd-plan`'s guard replays on the engine alone, and the case plays all of it.
+#[test]
+fn both_guards_play_the_same_inputs() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let read =
+        |p: &str| std::fs::read_to_string(dir.join(p)).unwrap_or_else(|e| panic!("{p}: {e}"));
+    let alone = steps(
+        &read("../fd-plan/tests/routes/W1-1.txt"),
+        "fd-plan/tests/routes/W1-1.txt",
+    );
+    let c = case(ONE_ROUTE);
+    let name = c.input.as_deref().expect("the case names its script");
+    let original = steps(&read(&format!("../../conform/scripts/{name}.txt")), name);
+    assert_eq!(alone.len(), original.len());
+    let differs = (0..alone.len()).find(|&k| alone[k] != original[k]);
+    assert_eq!(differs, None, "the two routes part at step {differs:?}");
+    // Every step is played, with the eight idle frames the original's last passes end in.
+    assert_eq!(c.frames as usize, alone.len() + 8);
+}
+
+/// The one route's case (T84).
+const ONE_ROUTE: &str = "route-both-W1-1";
+/// `items_left` (BCD) after the one route's first 600 steps, measured 2026-11-10.
+const ONE_ROUTE_OPENING_ITEMS: u32 = 0x272;
+
+/// The one route's opening on the original, in smoke: 600 steps, creatures live, variables and
+/// the whole picture, nothing excluded, no life lost. `fd-plan`'s guard replays the whole of it
+/// on the engine alone in smoke.
+#[test]
+fn the_one_routes_first_600_steps_agree_with_the_original() {
+    let mut c = case(ONE_ROUTE);
+    assert!(c.exclude.is_empty(), "{:?}", c.exclude);
+    c.frames = 600;
+    c.goal = Some(Goal::All {
+        all: vec![
+            ("items_left".into(), ONE_ROUTE_OPENING_ITEMS),
+            ("lives".into(), LIVES as u32),
+        ],
+        by_frame: c.sync_frame + c.frames,
+    });
+    let mut g = Watched::new(Shapes::Measured);
+    let v = run_with(&c, &mut g, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(
+        v.outcome,
+        Outcome::Same,
+        "items_left {:x}\n{}",
+        g.game.state().items_left,
+        head(&v)
+    );
+    assert!(
+        v.goal_met.is_some() && v.passes > 590 && v.pictures > 590,
+        "{}",
+        head(&v)
+    );
+    assert_eq!((g.lost, v.events.len()), (None, 0), "{}", head(&v));
+}
+
+/// T84, the one route on the original: the case passes with the level's end as its goal, on the
+/// inputs the engine alone finishes the level on. Everything `route-W1-1` compares is compared,
+/// the whole picture with nothing set aside, no life is lost on any pass and nothing but the
+/// level's end is raised.
+#[test]
+#[ignore = "full: 22 472 frames on the original with the picture, about 80 s"]
+fn the_one_route_reaches_the_levels_end_on_the_original_with_no_life_lost() {
+    let c = case(ONE_ROUTE);
+    let t48 = case("route-W1-1");
+    assert_eq!(c.vars, t48.vars);
+    assert!(c.compare.vars && c.compare.picture);
+    assert!(matches!(c.goal, Some(Goal::LevelEnd { .. })));
+    assert!(c.exclude.is_empty(), "{:?}", c.exclude);
+    let mut g = Watched::new(Shapes::Measured);
+    let v = run_with(&c, &mut g, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{}", head(&v));
+    assert!(
+        v.level_end.is_some() && v.goal_met == v.level_end,
+        "{}",
+        head(&v)
+    );
+    assert_eq!(g.lost, None, "a life lost at pass {:?}", g.lost);
+    let events: Vec<Event> = v.events.iter().map(|(_, e)| *e).collect();
+    assert_eq!(events, [Event::LevelEnd]);
+    assert_eq!(g.game.state().items_left, 0);
+    assert!(v.passes > 21_000 && v.pictures > 21_000, "{}", head(&v));
+    // The picture, measured 2026-11-10: four status periods whose redraw the original never
+    // reached, and eight frames past a few pixels, never three in a row (docs/13).
+    assert_eq!(v.skipped_redraws, 126, "{}", head(&v));
+    assert_eq!(v.tolerated[2], 8, "{}", head(&v));
 }
 
 /// The named list holds: each routine with a case runs in it, and the rest are the seven no case

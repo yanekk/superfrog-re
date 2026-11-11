@@ -1,13 +1,98 @@
-# The route through the whole of W1-1
+# The routes through the whole of W1-1
 
-Planned 2026-11-10 (plan `forest-dumb-level-1`, T27, DESIGN §2.11). The planner needed no guide and
-no stretch played by the owner.
+Three input scripts, a joystick state a step, from the level's start (`Start::Level1`, the level
+sync point) to the step that finds the level's end. Inputs only, no disk data, so they are committed.
 
-## What it is
+| Route | File | Finishes, no life lost |
+|---|---|---|
+| **The one route** (T84) | `engine/crates/fd-plan/tests/routes/W1-1.txt`, and the same inputs as `engine/conform/scripts/route-both-W1-1.txt` | on the engine alone and on the original |
+| The planner's (T27) | `engine/crates/fd-plan/tests/routes/W1-1-planned.txt` | on the engine alone; ends elsewhere on the original |
+| T48's | `engine/conform/scripts/route-W1-1.txt` | on the original; loses a life on the engine alone at step 1 743 |
 
-`engine/crates/fd-plan/tests/routes/W1-1.txt`: an input script, a joystick state a step, from the
-level's start (`Start::Level1`, the level sync point) to the step `main_loop` finds the level's end
-in. Inputs only, no disk data, so it is committed.
+T28's test plays the one route in the app. The planner's is where the one route is searched from. T48's
+stays as the case `route-W1-1`, the engine against the original over the whole level.
+
+## The one route
+
+Found 2026-11-10 (plan `forest-dumb-level-1`, T84, DESIGN §1). 22 464 steps; both sides find the
+level's end in the last, in the exit at `W1-1:208,92`, all 282 needed items taken, 32 lives on
+every step and every pass.
+
+### Why one script plays differently on the two sides
+
+Measured on `route-W1-1`, 22 527 passes:
+
+- **The joystick read.** 8 596 passes read the joystick of the step after their own, 13 931 their
+  own; the lateness changes 366 times. `game_frame` restores and cuts the drawn creatures and
+  draws a list of animated cells before `read_joystick`, and with two creatures drawn the frame
+  ends first. Late with 2 or more creatures drawn: 8 309 of 8 348 passes; with none: 1 of 7 815;
+  with one: 286 of 6 364, mostly with 5 or more cells in the pass's list. So on the original a
+  joystick held `n` steps is held `n - 1` or `n + 1` passes where the lateness changes, and the
+  character is a few pixels from the engine alone's from pass 146 on.
+- **Cut redraws.** 394 passes cut `main_loop`'s redraws, which starts a creature a pass apart.
+
+### How it was found
+
+`plans/forest-dumb-level-1/prototype/t84-one-route/both.rs` (its README says how to run it), from
+T48's tool. It drives the original a step at a time with the case's engine beside it and, on the
+same steps, the engine alone; each step is fed the plan's own input, so the engine alone plays the
+script as written. Every 200 steps, and wherever the original leaves its forecast, the rest of the
+plan is forecast 1 200 steps ahead on both sides: on the engine alone from its own state, and for
+the original on the engine from the original's state (`Game::own_cuts`), a pass reading the next
+step's joystick when 2 creatures are drawn, or 1 with 5 cells in its list. A plan holds when
+neither side loses a life, the engine alone stays on the planner's route (a cell and the items
+left, every 100 steps) and the original stays with the engine alone (within two cells and no item
+apart within 30 steps, every 20 steps: an item one side takes and the other misses is never made
+up). A failure is repaired in the 150 steps before it: a step doubled or dropped one to three
+times, or another joystick held 2 to 16 steps, the change that holds furthest on both sides; else
+an explorer leg (`amiga_plan::Goal::Reach`) that holds on both.
+
+The run that found it: from the planner's route, 2 008 s. 39 passes left the forecast, 49 checks
+planned again, 424 cut redraws. No stretch needed the owner.
+
+### A difference it went round (left)
+
+Four times the search met one difference between the engine and the original, at pass 1 905 of
+`prototype/t84-one-route/differs-creature-slot.txt` (the runner's pass 1 904, `creature_active+$0` 255
+against 0; the passes here count from 1): pass 1 903 cuts a redraw's scan
+(`EdgesCut { next: 2, defer_from: Some(..) }`) while it starts a creature. The original had
+written the creature's place into free slot 1 and not yet its flag; the pass's sort moved the
+place to slot 0, and the flag then went to slot 1. The engine starts the creature after the pass.
+T75's review named it unmeasured (`h0_681c`, `h0_6852`). The search went back 300 steps and held
+another joystick 8 or 16 steps before it; the one route does not meet it.
+
+### How it is guarded
+
+- `engine/crates/fd-plan/tests/full_route.rs`, smoke: the one route replayed on the engine alone
+  reaches the level's end with no life lost on any step and no other event, past 15 milestones (a
+  cell and the items left, every 1 500 steps) within a cell and 50 steps.
+- `engine/crates/fd-conform/tests/full_route.rs`: `both_guards_play_the_same_inputs` (smoke) holds
+  the two files to the same inputs, step for step; the first 600 steps agree with the original,
+  picture and all (smoke); the whole case `route-both-W1-1` passes with the level's end as its
+  goal (full, about 80 s): every variable `route-W1-1` compares on 21 821 passes, the picture on 22 174
+  frames with nothing set aside, no life lost, `Event::LevelEnd` the only event. 126 frames show
+  the status bar as it stood, its redraw never reached; 8 frames are past a few pixels, never
+  three in a row.
+
+### After an engine change
+
+A change that moves the character or a creature on the one route breaks one guard or both. Then:
+
+1. If the planner's route broke too, plan it again (below) and replace `W1-1-planned.txt`.
+2. Run `both.rs` with `REF` the one route as it stands, else the planner's route. About 35
+   minutes. It writes `OUT.txt`.
+3. Replace the bodies of `routes/W1-1.txt` and `conform/scripts/route-both-W1-1.txt` with it, set
+   the case's `frames` (steps + 8) and `by_frame` (6301 + frames), `FRAMES` and `MILESTONES` in
+   `fd-plan/tests/full_route.rs` (from the failure's printed track) and the two picture counts in
+   `fd-conform/tests/full_route.rs`.
+
+If the search stops on a stretch it cannot repair, it prints the steps and both sides' places;
+that stretch goes to the owner (DESIGN §2.11).
+
+## The planner's route
+
+Planned 2026-11-10 (T27, DESIGN §2.11). The planner needed no guide and no stretch played by the
+owner. `engine/crates/fd-plan/tests/routes/W1-1-planned.txt`:
 
 - 22 528 steps, about 7.5 minutes of play. The last step raises `Event::LevelEnd`.
 - All 282 needed items taken (`items_left` 0), ending in the exit at `W1-1:208,92`.
@@ -16,7 +101,7 @@ in. Inputs only, no disk data, so it is committed.
   that cost a life (`char_hit_check`, docs/10 "Contact damage"; measured as `hits_taken` after each
   step). The planner keeps no margin from contact.
 
-## Planning it again
+### Planning it again
 
 From `engine/`:
 
@@ -30,20 +115,12 @@ any machine and thread count; `--budget-mins 30` finds the same route when the m
 time. Shorter searches stall: 100 rounds at `W1-1:66,90` with 188 items left, 400 rounds at
 `W1-1:184,92` with 128. An engine step costs about 50 microseconds in release.
 
-## How it is guarded
+`engine/crates/fd-plan/tests/full_route.rs` guards it: in smoke it replays on the engine alone to
+the level's end with no life lost; in full the planner finds the same route again in 2 100 rounds.
+After an engine change that moves it, plan again with the command above, replace the file keeping
+its header, set `PLANNED_FRAMES` and `ROUNDS`, then find the one route again (above).
 
-`engine/crates/fd-plan/tests/full_route.rs`:
-
-- smoke: the route replayed on the engine alone reaches the level's end with no life lost on any
-  step and no other event; it passes 16 milestones (a cell and the items left, every 1 500 steps)
-  within a cell and 50 steps; the file reads back as the planner writes it.
-- full: the planner finds the same route again in 2 100 rounds.
-
-Any engine change that moves the character on the route breaks the smoke tests. Then plan again
-with the command above, replace the route keeping its header, and set `FRAMES`, `ROUNDS` and
-`MILESTONES` from the new run.
-
-## On the original
+## T48's route on the original
 
 `engine/conform/scripts/route-W1-1.txt`, played by `engine/conform/cases/route-W1-1.toml` (T48,
 2026-11-10): 22 528 steps from the level sync point, the original running `next_world` in the last.
@@ -52,9 +129,9 @@ The engine agrees on all 21 764 passes compared: the character, the camera, the 
 ends fall two to a step and are not seen. `fd-conform/tests/full_route.rs` holds it: the opening
 600 steps in smoke with the whole picture, the whole route in full.
 
-It is not the route above. The engine alone does not know which step each pass of the original
-read or which pass cut a redraw, so T27's route ends elsewhere on the original, and this one loses
-a life on the engine alone at step 1 743. The app plays the route above; the original this one.
+It is not the planner's route. The engine alone does not know which step each pass of the original
+read or which pass cut a redraw, so the planner's route ends elsewhere on the original, and this
+one loses a life on the engine alone at step 1 743. The one route (above) finishes on both.
 
 It was planned from the original's states by
 `plans/forest-dumb-level-1/prototype/t48-route-on-original/onoriginal.rs` (its README says how to
@@ -62,7 +139,7 @@ run it): T27's route fed a pass at a time, each step given the input of the pass
 the rest forecast on the engine alone from the original's state every 200 steps and wherever the
 original left the forecast, and repaired by doubling or dropping one to three inputs. 28 passes
 left the forecast, all by a creature started a pass apart; 6 repairs; 77 s. After an engine change
-that moves the route, run it again from this route's inputs or from the route above.
+that moves the route, run it again from this route's inputs or from the planner's route.
 
 Three differences stopped the first runs, each fixed where it lay:
 
