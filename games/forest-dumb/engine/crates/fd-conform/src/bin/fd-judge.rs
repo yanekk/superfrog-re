@@ -33,6 +33,10 @@
 //! changes the states. One line a site:
 //!
 //! `{"encoding":..,"at":..,"states":n,"pass":n,"fail":n,"skipped":n,"columns":{"regs":n,"ccr":n,"mem":n,"cycles":n|"not-counted","stop":n},"first":{"state","column","what","moira","translated"}|null,"first_skip":".."}`
+//!
+//! `--generators` (translator T16) prints every registered generator's name, in registry order, as
+//! one line `{"generators":["name",..]}`: the whole-tree judge's work list, read from the build
+//! rather than from `re/translate.toml`, which predates the later generator modules. Needs no disks.
 
 use std::process::ExitCode;
 
@@ -121,6 +125,13 @@ fn args() -> Result<Args, String> {
 
 fn main() -> ExitCode {
     let v: Vec<String> = std::env::args().skip(1).collect();
+    if v.len() == 1 && v[0] == "--generators" {
+        let names: Vec<String> = generators::all()
+            .map(|(n, _)| format!("\"{}\"", esc(n)))
+            .collect();
+        println!("{{\"generators\":[{}]}}", names.join(","));
+        return ExitCode::SUCCESS;
+    }
     if v.iter().any(|a| a == "--insn" || a == "--insn-all") {
         return match insn_main(&v) {
             Ok(()) => ExitCode::SUCCESS,
