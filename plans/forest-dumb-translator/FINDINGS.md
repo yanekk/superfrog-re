@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
 | 2026-11-11 | 📌 | **T11 cycles:** 279 of 290 census kinds counted, 0 cycle failures in 407 500 states. Left for T12: `mulu.w` 2 kinds, `divu.w` 2, `divs.w`, `dbf`, `movem.l` 3, `lsl.l`/`lsr.l Dn,Dn`. |
 | 2026-11-11 | 📌 | Moira counts `andi.l #imm,Dn` 16 cycles; the MC68000UM table 8-9, as T11 read it, gives 14. `pcode_rt::cycles` follows Moira. Real hardware unmeasured. |
 | 2026-11-11 | 📌 | **T11 build time**, load about 15: fd-judge `--parts 16` release best 11.2 s against 9.8 s without ticks (CPU +5%), dev 5.0 s against 3.5 s (CPU +35%). Within T04's 10.8 s, 4 to 7 s, plus 20%. |
