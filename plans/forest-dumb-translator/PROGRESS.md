@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | seam-spike | — | ✅ | |
 | T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ✅ | |
-| T03 | whole-export | T02 | ⬜ | |
+| T03 | whole-export | T02 | ✅ | |
 | T04 | census-and-split | T03 | ⬜ | |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
