@@ -14,7 +14,7 @@ use amiga_chips::to_rgb12;
 use amiga_conform::script::{self, InputScript};
 use amiga_oracle::{Amiga, OracleConfig, Rgb12Frame, kickstart_path};
 use fd_conform::{conform_dir, disks};
-use pcode_machine::{Config, Machine, Picture, custom};
+use pcode_machine::{Config, Machine, Picture, custom, irq};
 
 /// boot-to-title's disk change, which `boot-to-level1` shares.
 const SWAP: u32 = 3600;
@@ -68,16 +68,16 @@ fn the_titles_first_picture_from_a_snapshot_equals_the_originals() {
             let reg = w.reg & 0x1FE;
             regs[reg as usize >> 1] = w.value;
             match reg {
-                custom::DMACON => dmacon = custom::set_clr(dmacon, w.value),
-                custom::INTENA => intena = custom::set_clr(intena, w.value),
-                custom::INTREQ => intreq = custom::set_clr(intreq, w.value),
+                custom::DMACON => dmacon = irq::set_clear(dmacon, w.value),
+                irq::INTENA => intena = irq::set_clear(intena, w.value),
+                irq::INTREQ => intreq = irq::set_clear(intreq, w.value),
                 _ => {}
             }
         }
     }
     regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
-    regs[custom::INTENAR as usize >> 1] = intena;
-    regs[custom::INTREQR as usize >> 1] = intreq;
+    regs[irq::INTENAR as usize >> 1] = intena;
+    regs[irq::INTREQR as usize >> 1] = intreq;
     // A step ends as the next frame's vertical blank begins: the beam at line 0.
     regs[custom::VPOSR as usize >> 1] = 0x8000;
     regs[custom::VHPOSR as usize >> 1] = 0;

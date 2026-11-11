@@ -24,6 +24,9 @@ TRANSLATIONS = [(n + '.json', None, n + '.rs', []) for n in (
     'relative', 'self_call', 'mutual_call', 'call_loop', 'shared_call', 'unsupported')] + [
     ('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs', []),
     ('shared_call.json', None, 'shared_call', ['--parts', '2'])]
+# The machine's interrupt program (translator T23): its `rte` is the translator's, run against the pushed frame.
+MACHINE_FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-machine', 'tests', 'fixtures')
+TRANSLATIONS += [(os.path.join(MACHINE_FIXTURES, 'irq.json'), None, os.path.join(MACHINE_FIXTURES, 'irq.rs'), [])]
 
 
 def tree_files(path):

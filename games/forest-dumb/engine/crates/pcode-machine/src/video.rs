@@ -218,7 +218,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
                 continue;
             }
             if wr.reg == DMACON {
-                *dmacon = crate::custom::set_clr(*dmacon, wr.value);
+                *dmacon = crate::irq::set_clear(*dmacon, wr.value);
             } else if (reg::SPR0PTH..reg::SPR0PTH + 32).contains(&wr.reg) {
                 let c = &mut channels[((wr.reg - reg::SPR0PTH) / 4) as usize];
                 c.pt = if wr.reg & 2 == 0 {

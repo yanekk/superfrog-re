@@ -281,9 +281,10 @@ fn a_read_only_register_write_changes_nothing_but_the_bus() {
     assert_eq!(m.custom()[0x1C / 2], 0);
     assert_eq!(m.custom()[0x06 / 2], 0);
     assert_eq!(m.rw(0xDF_F006), 0x0003, "the beam is untouched");
-    // A readable register reads its device, at the access's cycle count.
-    assert_eq!(m.rw(0xDF_F01C), 0x101C);
-    assert_eq!(paula.take(), vec![('r', 0x01C, 0, 7)]);
+    // A readable register reads its device, at the access's cycle count (ADKCONR; INTENAR and
+    // INTREQR are the machine's own since T23).
+    assert_eq!(m.rw(0xDF_F010), 0x1010);
+    assert_eq!(paula.take(), vec![('r', 0x010, 0, 7)]);
     // The write still put its word on the bus.
     m.ww(0xDF_F01E, 0x7777);
     assert_eq!(
@@ -384,4 +385,166 @@ fn a_cia_access_puts_its_byte_on_the_bus() {
         0x0000,
         "a CIA word read, B with no device then A"
     );
+}
+
+// Translator T25: Paula's writes, CIA-A and the input.
+
+const JOY1DAT_A: u32 = 0xDF_F00C;
+const CIAA_PRA: u32 = 0xBF_E001;
+const CIAA_SDR: u32 = 0xBF_EC01;
+const CIAA_ICR: u32 = 0xBF_ED01;
+const CIAA_CRA: u32 = 0xBF_EE01;
+
+#[test]
+fn joy1dat_and_the_fire_buttons_read_as_set() {
+    let mut m = machine();
+    assert_eq!(m.rb(CIAA_PRA) & 0xC0, 0xC0, "nothing held");
+    m.set_input(&Input {
+        joy1: 0x0103,
+        fire: true,
+        keys: vec![],
+        mouse_left: false,
+    });
+    assert_eq!(m.rw(JOY1DAT_A), 0x0103);
+    assert_eq!(m.rb(JOY1DAT_A + 1), 0x03);
+    assert_eq!(m.rb(CIAA_PRA) & 0xC0, 0x40, "fire is bit 7, low");
+    // JOY1DAT is read-only: a write does not change what it reads.
+    m.ww(JOY1DAT_A, 0xFFFF);
+    assert_eq!(m.rw(JOY1DAT_A), 0x0103);
+    m.set_input(&Input {
+        mouse_left: true,
+        ..Input::default()
+    });
+    assert_eq!((m.rw(JOY1DAT_A), m.rb(CIAA_PRA) & 0xC0), (0, 0x80));
+    // The hand engine's input converts to the same.
+    use amiga_input::{FrameInput, Joy, KeySet};
+    let i = Input::from(FrameInput {
+        joy: Joy::RIGHT | Joy::UP | Joy::FIRE,
+        keys: KeySet::key(0x45).with(0x19),
+    });
+    assert_eq!(
+        i,
+        Input {
+            joy1: 0x0103,
+            fire: true,
+            keys: vec![0x19, 0x45],
+            mouse_left: false
+        }
+    );
+    assert_eq!(m.fault(), None);
+}
+
+#[test]
+fn a_key_arrives_through_sdr_with_its_interrupt_and_waits_for_the_handshake() {
+    use amiga_input::key_byte;
+    let mut m = machine();
+    // As the program's entry does: every CIA-A interrupt off, then the serial port's on.
+    m.wb(CIAA_ICR, 0x7F);
+    m.wb(CIAA_ICR, 0x88);
+    at_cycles(&mut m, 1_000);
+    m.set_input(&Input {
+        keys: vec![0x28, 0x40],
+        ..Input::default()
+    });
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+    assert_eq!(m.take_cia_interrupts(), 0);
+    // The level 2 handler: ICR's serial flag, the byte, the handshake.
+    assert_eq!(m.rb(CIAA_ICR), 0x88);
+    assert_eq!(m.rb(CIAA_SDR), key_byte(0x28, false));
+    let cra = m.rb(CIAA_CRA);
+    m.wb(CIAA_CRA, cra | 0x40);
+    m.wb(CIAA_SDR, 0);
+    // Without the handshake's end the next byte never comes.
+    at_cycles(&mut m, 500_000);
+    assert_eq!((m.take_cia_interrupts(), m.rb(CIAA_SDR)), (0, 0));
+    m.wb(CIAA_CRA, cra & !0x40);
+    at_cycles(&mut m, 500_000 + cia::KEY_BYTE_CYCLES - 1);
+    assert_eq!(m.take_cia_interrupts(), 0);
+    at_cycles(&mut m, 500_000 + cia::KEY_BYTE_CYCLES);
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+    assert_eq!(m.rb(CIAA_ICR), 0x88);
+    assert_eq!(m.rb(CIAA_SDR), key_byte(0x40, false));
+    assert_eq!(m.fault(), None);
+}
+
+#[test]
+fn a_masked_key_raises_nothing_until_unmasked() {
+    let mut m = machine();
+    m.set_input(&Input {
+        keys: vec![0x45],
+        ..Input::default()
+    });
+    assert_eq!(m.take_cia_interrupts(), 0);
+    m.wb(CIAA_ICR, 0x88);
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+    // A host starting from a snapshot sets the mask itself.
+    let mut m = machine();
+    m.cia_a_mut().set_icr_mask(0x08);
+    m.set_input(&Input {
+        keys: vec![0x45],
+        ..Input::default()
+    });
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+}
+
+#[test]
+fn paula_writes_are_kept_in_order_with_their_cycles() {
+    let mut m = machine();
+    at_cycles(&mut m, 454 * 0x2C + 2 * 0x40);
+    m.ww(0xDF_F0A8, 0x0040); // AUD0VOL
+    m.ww(0xDF_F180, 0x0FFF); // COLOR00: not Paula's
+    m.wl(0xDF_F0A0, 0x0001_2340); // AUD0LCH, AUD0LCL
+    at_cycles(&mut m, 454 * 0x2D);
+    m.ww(0xDF_F096, 0x8201); // DMACON
+    m.wb(0xDF_F09E, 0x80); // ADKCON, the byte on both halves
+    m.ww(0xDF_F09A, 0xC018); // INTENA
+    m.ww(0xDF_F09C, 0x0008); // INTREQ
+    let w = |at: u64, reg: u16, value: u16, vpos: u16, hpos: u16| {
+        (
+            at,
+            amiga_paula::PaulaWrite {
+                reg,
+                value,
+                hpos,
+                vpos,
+            },
+        )
+    };
+    let t0 = 454 * 0x2C + 2 * 0x40;
+    let t1 = 454 * 0x2D;
+    let want = [
+        w(t0, 0xA8, 0x0040, 0x2C, 0x40),
+        w(t0, 0xA0, 0x0001, 0x2C, 0x40),
+        w(t0, 0xA2, 0x2340, 0x2C, 0x40),
+        w(t1, 0x96, 0x8201, 0x2D, 0),
+        w(t1, 0x9E, 0x8080, 0x2D, 0),
+        w(t1, 0x9A, 0xC018, 0x2D, 0),
+        w(t1, 0x9C, 0x0008, 0x2D, 0),
+    ];
+    assert_eq!(m.paula_writes(), &want[..]);
+    // A read of a write-only audio register writes the bus's word into it, as on the oracle.
+    m.rw(0xDF_F0B8);
+    assert_eq!(m.paula_writes().last(), Some(&w(t1, 0xB8, 0x0008, 0x2D, 0)));
+    assert_eq!(m.take_paula_writes().len(), 8);
+    assert!(m.paula_writes().is_empty(), "the next frame starts empty");
+}
+
+#[test]
+fn a_cia_a_timer_is_a_stop_at_the_next_block() {
+    let mut m = machine();
+    let mut r = Regs::new();
+    m.wb(CIAA_CRA, 0x40);
+    m.rb(0xBF_E101); // PRB
+    assert_eq!(m.poll(&mut r, &img()), Ok(()));
+    m.wb(0xBF_E401, 0x10); // TALO
+    let want = Stop::Unsupported {
+        op: "CIA-A timer".into(),
+        at: "$bfe401".into(),
+    };
+    assert_eq!(m.poll(&mut r, &img()), Err(want));
+    // CIA-B keeps its last byte written.
+    let mut m = machine();
+    m.wb(0xBF_D100, 0x87);
+    assert_eq!(m.rb(0xBF_D100), 0x87);
+    assert_eq!(m.fault(), None);
 }

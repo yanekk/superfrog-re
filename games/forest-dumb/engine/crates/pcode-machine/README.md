@@ -14,6 +14,9 @@ let mut m = pcode_machine::Machine::from_snapshot(cfg, &chip_then_slow, &custom)
 m.attach(0x0A0..0x0E0, Box::new(paula));   // custom registers $0A0..$0DE to a Device
 m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 // m is a pcode_rt::Bus: hand it to the generated code.
+m.set_input(&pcode_machine::Input::from(frame_input));     // each frame, at its start
+let paula = m.take_paula_writes();                          // each frame, at its end: (cycle, PaulaWrite)
+let intreq = m.take_cia_interrupts();                       // after each block: INTREQ bits to set
 // When the CPU's cycle count reaches m.frame_end(), the host ends the frame:
 let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value), CPU's and copper's
 ```
@@ -42,7 +45,25 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   written value (a snapshot's, at first). Every written value is kept in `custom()`.
 - **CIAs:** register `(a >> 8) & $F`; A on odd bytes with bit 12 low, B on even bytes with bit 13
   low; a byte write reaches every selected chip, a word write gives A its low byte and B its high.
-  A CIA with no device keeps the last byte written to each register.
+  An attached device replaces either chip's model.
+- **CIA-A** (`cia.rs`), what the program uses (translator T01's OS surface names the sites): PRA reads its outputs' latch and, on inputs, fire (bit 7, port 2) and the left mouse
+  button (bit 6, port 1) low when held, the OVL, LED and disk lines high; PRB, DDRA, DDRB as
+  registers; CRA reads bits 4 and 7 as 0, CRB bit 4 (vAmiga). ICR: a write with bit 7 sets mask
+  bits, without clears them; a read returns the flags (bit 7 if the line is driven) and clears them.
+  Only that read releases the line: masking a raised interrupt and unmasking it gives no new edge. The line falling is PORTS (`$0008`) from
+  `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard (`amiga-input`
+  `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag, and
+  the next waits for the handshake (CRA bit 6 set then cleared) plus `KEY_BYTE_CYCLES` (3 405, the
+  manual's 8 bits at 60 µs, unmeasured). A keyboard never acknowledged waits for ever; the real one
+  resyncs. Reset state: all masked, all inputs; at a snapshot set the mask (`cia_a_mut`), since the
+  oracle's snapshot holds no CIA state. TOD registers keep their byte.
+- **CIA-B:** each register keeps its last byte written; the program only latches the drive motor off
+  through PRB.
+- **Input:** `set_input` sets JOY1DAT (read-only to the program), the fire buttons and the keys
+  held; `Input::from(FrameInput)` is the hand engine's input (`Joy::joydat`).
+- **Paula's writes** (`paula.rs`): every write to DMACON, INTENA, INTREQ, ADKCON and `$0A0..$0DE`
+  (`amiga_chips::is_paula`), in order, with its cycle count and beam position, including the one a
+  read of a write-only audio register makes. The host empties the list each frame.
 
 - **Blitter** (`blitter.rs`): a BLTSIZE write, the CPU's or the copper's, runs `amiga_chips::Blit`
   over chip RAM at once from the registers as last written (a channel that is off reads its
@@ -56,9 +77,10 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   not read yet runs it again, reading chip RAM as it was at each word's beam position (the frame's
   journal, `journal.rs`). A CPU strobe of COPJMP1/COPJMP2, or copper DMA switched on, starts the
   copper there (`copper::run_from`); copper DMA off drops the writes not yet made.
-- **DMACON, INTENA, INTREQ**: their set/clear state, read in DMACONR (with BBUSY, BZERO), INTENAR
-  and INTREQR unless a device is attached there; `raise(bit, at)` sets an INTREQ bit. Taking an
-  interrupt is T23's.
+- **DMACON**: its set/clear state, read in DMACONR with the blitter's BBUSY and BZERO (unless a
+  device is attached there). Copper DMA switched on or off starts or stops the copper; a blit with
+  blitter DMA off stops the run. The blitter's done raises INTREQ bit 6 through `raise`, the
+  copper's MOVE to INTREQ is an INTREQ write like the CPU's: both are taken as `irq` says.
 - **Picture** (`video.rs`, `end_frame`): the frame's custom writes in beam order, bitplanes and
   sprites (`amiga_chips::display`, `sprite`) fetched from chip RAM as it was on each line, colour 0
   outside each line's window and in the vertical blank (lines 0 to 25). The picture's window spans
@@ -83,4 +105,37 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
 - **Sprites** written by the CPU or copper through SPRxPOS/CTL/DATA (manual mode) are not drawn;
   only sprite DMA from SPRxPT. HAM and dual playfield stop the run (`unsupported: display ham`).
 - **Frames**: the host calls `end_frame` at `frame_end()`; copper writes past it wait until it does.
-- Interrupt delivery, sound, input and the OS: devices and `poll` added by translator T23, T25, T26.
+- **CIA timers:** neither CIA-A timer is modelled; reading or writing a timer register, or setting
+  CRA's or CRB's START bit, stops the run (`unsupported: CIA-A timer at $bfe401`). The program
+  touches no timer (T01). CIA-B's timers are not checked.
+- **Audio interrupts:** none is raised; the program never enables level 4 (T01). Sound is played
+  from the writes by `amiga-paula` in the app, not here.
+- The OS: translator T26.
+
+## Interrupts (`irq`)
+
+```rust
+m.set_entry(generated::entry);        // where a vector's handler is found: `entry("hN+$off")`
+m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at cycle count `at`
+```
+
+- **INTENA/INTREQ** (`$09A`, `$09C`) take set/clear writes; INTENAR and INTREQR (`$01C`, `$01E`)
+  read Paula's state, never a device's. `from_snapshot` starts both from those two entries of
+  `custom`. A request `raise`d for cycle `at` lands in INTREQ at the first INTREQR read, INTREQ write
+  or `poll` timed at `at` or later; a write clearing INTREQ clears requests already due. Paula's levels: bits 0-2
+  level 1, 3 level 2, 4-6 level 3, 7-10 level 4, 11-12 level 5, 13 and 14 level 6 (as vAmiga); nothing with
+  INTENA's bit 14 off.
+- **Taken at a block's start.** `poll` takes the highest pending level above SR's mask as the
+  68000 does: SR copied, S set, T cleared, the mask raised (A7 swapped for the system stack if in
+  user mode), 44 cycles counted, PC and SR pushed, the long at `$60 + 4 * level` read, and the
+  translated function there called. Its `rte` pops the frame; a request left pending after it is
+  taken at once, and a handler's own blocks poll too, so a higher level nests inside a lower one.
+  Why the block and not the instruction (DESIGN §2.8): generated code checks nothing between
+  instructions, and a check after every one would cost far more than the at most one block's
+  cycles it moves an interrupt, which the frame bar admits (§2.7).
+- **The pushed PC is `irq::IRQ_RETURN` (`$FFFFFF`)**, not the interrupted address: `poll` is not
+  told which block it starts, and with block delivery the original's stacked PC names another
+  instruction anyway. Odd, so it is no instruction's address. Only the stack's dead bytes differ.
+- **Stops:** a vector outside every hunk or with no translated function is `untranslated: <addr>`
+  (an OS vector is T26's); a handler coming back other than by `rte` to `IRQ_RETURN` (an `rts`, a
+  changed stacked PC) is `unsupported: interrupt handler returned to …, not by rte at <handler>`.

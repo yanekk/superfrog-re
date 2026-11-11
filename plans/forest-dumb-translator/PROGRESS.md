@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ✅ | |
 | T12 | cycles-dynamic | T11 | ✅ | |
-| T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
+| T13 | insn-gate | T07, T08, T09, T10, T12 | ✅ | |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ✅ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
@@ -37,9 +37,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
-| T23 | interrupts | T22 | ⬜ | |
+| T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ⬜ | |
-| T25 | machine-sound-input | T22 | ⬜ | |
+| T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |

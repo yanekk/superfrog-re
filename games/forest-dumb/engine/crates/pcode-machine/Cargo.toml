@@ -10,7 +10,11 @@ publish.workspace = true
 pcode-rt = { path = "../pcode-rt" }
 # The beam: a position from counted CPU cycles.
 amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
-# The blitter, the copper, the picture and the sprites (translator T24).
-amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
 # The hunk file's parser.
 amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
+# Which custom registers are Paula's; the blitter, the copper, the picture and the sprites (T24).
+amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
+# The keyboard's bytes, the joystick word and the per-frame input the hand engine also takes.
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
+# Paula's writes, as the oracle and the mixer hold them.
+amiga-paula = { path = "../../../../../toolkit/crates/amiga-paula" }

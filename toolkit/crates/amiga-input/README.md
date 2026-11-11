@@ -23,7 +23,7 @@ if kb.new { /* the game's poll reads kb.sdr ($BFEC01) and clears kb.new */ }
 ## API by job
 
 Joystick
-- `Joy(pub u8)`: `NONE`, `UP` (1), `DOWN` (2), `LEFT` (4), `RIGHT` (8), `FIRE` (16), `PORT1_BUTTON` (32, the left mouse button in port 1, which loaders and intros wait for), `ALL` (63). `contains(self, other: Joy) -> bool`, `bits(self) -> u8`, `|` combines.
+- `Joy(pub u8)`: `NONE`, `UP` (1), `DOWN` (2), `LEFT` (4), `RIGHT` (8), `FIRE` (16), `PORT1_BUTTON` (32, the left mouse button in port 1, which loaders and intros wait for), `ALL` (63). `contains(self, other: Joy) -> bool`, `bits(self) -> u8`, `joydat(self) -> u16` (the JOY1DAT word of the directions), `|` combines.
 
 Keys
 - `KeySet(pub u128)`: one bit per raw key code 0x00 to 0x7F (0x19 is P, 0x40 space). `NONE`, `key(code: u8) -> KeySet` (top bit of `code` ignored), `contains(code)`, `with(code)`, `without(code)`, `codes() -> impl Iterator<Item = u8>` (lowest first), `to_bytes() -> [u8; 16]`. Serde-serialisable: its layout is part of save states, pinned by a test.
@@ -39,6 +39,7 @@ Text form
 
 Keyboard hardware (`keyboard.rs`)
 - `key_byte(code: u8, up: bool) -> u8`: the byte the keyboard sends, `!(code << 1 | up)`.
+- `key_bytes(held: KeySet, keys: KeySet) -> Vec<u8>`: the bytes the keyboard sends between two frames, downs then ups, for a host that delivers them one handshake at a time.
 - `CiaKeyboard { pub sdr: u8, pub new: bool, .. }`: `power_on()` (`$7e` released, measured), `from_keys(key_down: u8, key_up: u8)`, `feed(&mut self, keys: KeySet)` sends a byte for each key gone down then each gone up, keeping the last. `Default` holds `$ff` with `new` false. Part of a game's saved state.
 
 ## Where the details are

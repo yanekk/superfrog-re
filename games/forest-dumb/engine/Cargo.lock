@@ -2531,6 +2531,8 @@ dependencies = [
  "amiga-chips",
  "amiga-clock",
  "amiga-disk",
+ "amiga-input",
+ "amiga-paula",
  "pcode-rt",
 ]
 

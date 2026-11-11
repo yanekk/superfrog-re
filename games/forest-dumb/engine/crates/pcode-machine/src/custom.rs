@@ -4,24 +4,14 @@
 /// VPOSR and VHPOSR: the beam, read-only.
 pub const VPOSR: u16 = 0x004;
 pub const VHPOSR: u16 = 0x006;
+/// JOY1DAT: the port-2 joystick's counters, read-only; the machine's input sets it.
+pub const JOY1DAT: u16 = 0x00C;
 
-/// DMACONR, INTENAR, INTREQR: the state DMACON, INTENA and INTREQ set, read back.
+/// DMACON's state read back (with the blitter's BBUSY, BZERO), and DMACON, set/clear (bit 15
+/// says whether the other bits written set or clear theirs; `irq::set_clear`). INTENA's and
+/// INTREQ's are in `irq`.
 pub const DMACONR: u16 = 0x002;
-pub const INTENAR: u16 = 0x01C;
-pub const INTREQR: u16 = 0x01E;
-/// Set/clear registers: bit 15 says whether the other bits written set or clear theirs.
 pub const DMACON: u16 = 0x096;
-pub const INTENA: u16 = 0x09A;
-pub const INTREQ: u16 = 0x09C;
-
-/// A set/clear register's new state after `v` is written to it.
-pub fn set_clr(old: u16, v: u16) -> u16 {
-    if v & 0x8000 != 0 {
-        old | v & 0x7FFF
-    } else {
-        old & !v
-    }
-}
 
 /// A register a CPU write changes nothing in (vAmiga `pokeCustom16`'s "READ-ONLY"): `$000..=$01E`
 /// and DENISEID; the word is still on the data bus. BLTDDAT (`$000`) is also [`write_only`]: a read

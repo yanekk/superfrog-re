@@ -154,14 +154,14 @@ fn an_area_blit_through_the_registers_is_blit_run_directly() {
             0,
             "busy a cycle before"
         );
-        assert_eq!(get(&mut m, custom::INTREQR) & INT_BLIT, 0);
+        assert_eq!(get(&mut m, irq::INTREQR) & INT_BLIT, 0);
         at(&mut m, done).unwrap();
         let dmaconr = get(&mut m, custom::DMACONR);
         assert_eq!(dmaconr & 0x4000, 0, "done");
         assert_eq!(dmaconr & 0x2000 != 0, end.zero, "BZERO");
         assert_eq!(dmaconr & 0x07FF, DMAEN | BLTEN);
         assert_eq!(
-            get(&mut m, custom::INTREQR) & INT_BLIT,
+            get(&mut m, irq::INTREQR) & INT_BLIT,
             INT_BLIT,
             "the blitter's interrupt"
         );
@@ -205,34 +205,34 @@ fn first_write_cycle(list: &[u16]) -> (u64, CopWrite) {
 
 #[test]
 fn a_copper_move_to_intreq_raises_the_copper_interrupt_at_its_line() {
-    let list = wait_move(0x40, custom::INTREQ, 0x8010);
+    let list = wait_move(0x40, irq::INTREQ, 0x8010);
     let mut m = machine(DMAEN | COPEN, 0x400, &[(0x400, &list)]);
     let (cyc, w) = first_write_cycle(&list);
     assert_eq!(w.line, 0x40);
     assert_eq!(m.frame_end(), FRAME);
     at(&mut m, cyc - 1).unwrap();
     assert_eq!(
-        get(&mut m, custom::INTREQR) & crate::copper::INT_COPER,
+        get(&mut m, irq::INTREQR) & crate::copper::INT_COPER,
         0,
         "not before its line"
     );
     at(&mut m, cyc).unwrap();
     assert_eq!(
-        get(&mut m, custom::INTREQR) & crate::copper::INT_COPER,
+        get(&mut m, irq::INTREQR) & crate::copper::INT_COPER,
         crate::copper::INT_COPER
     );
     // The handler clears it; the next frame's copper raises it again at the same place.
-    put(&mut m, custom::INTREQ, 0x0010);
+    put(&mut m, irq::INTREQ, 0x0010);
     assert_eq!(m.intreq() & crate::copper::INT_COPER, 0);
     at(&mut m, FRAME - 1).unwrap();
     let f = m.end_frame();
     assert!(
-        f.writes.contains(&(cyc, custom::INTREQ, 0x8010)),
+        f.writes.contains(&(cyc, irq::INTREQ, 0x8010)),
         "{:?}",
         f.writes
     );
     assert!(
-        f.writes.contains(&(cyc, custom::INTREQ, 0x0010)),
+        f.writes.contains(&(cyc, irq::INTREQ, 0x0010)),
         "the CPU's write, at its block"
     );
     at(&mut m, FRAME + cyc - 1).unwrap();
@@ -243,7 +243,7 @@ fn a_copper_move_to_intreq_raises_the_copper_interrupt_at_its_line() {
         crate::copper::INT_COPER
     );
     let f = m.end_frame();
-    assert_eq!(f.writes, [(FRAME + cyc, custom::INTREQ, 0x8010)]);
+    assert_eq!(f.writes, [(FRAME + cyc, irq::INTREQ, 0x8010)]);
 }
 
 #[test]
