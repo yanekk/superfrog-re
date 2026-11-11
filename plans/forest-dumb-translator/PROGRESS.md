@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T17; T02 (code-seen) heads the critical path, with T00 and T01 beside it.
+**Next `pir-work` will:** T02 (code-seen) heads the critical path, with T00 and T01 beside it.
 
 ## Tasks
 
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | run-stops | T04 | ⬜ | |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
-| T17 | haiku-backend | — | 🔍 | model.py (claude -p, call cap, calls.jsonl), judge_run.py moved verbatim; generate/reshape on Haiku with --max-calls; 19 new tests, generate/reshape tests on a fake claude. Deviations: transcript() folds tries into one prompt (claude -p is one-shot); judged tries now in tries.jsonl; `max-calls` result and `tag` arg added; translator_trial copies translate_batch.entries; translate tests' patches retargeted. |
+| T17 | haiku-backend | — | ✅ | Review: one defect fixed, a logged-out `claude` reported `fail` (now `no-model`, reproduced by a fake claude, tests lock it). Probed: real Haiku call (no tools, no CLAUDE.md leak), fake JSON against real, real generate h0+$513c covered in 1 try, entries copy equal on 87 routines; cap mutation caught by 10 tests. |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T17
+**Review queue:** empty
 
 ## Blocked on the user
 
