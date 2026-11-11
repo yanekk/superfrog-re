@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T14 caps measured:** trial routines' longest run 3 968 blocks (`h0+$b20`), `game_frame` 737, nesting 6 at most; the whole tree's call graph is 8 deep from `h0+$0`, `level3_handler` 7, no recursion. `STEP_CAP_GLOBAL` left at 10 000 000 for T16. |
+| 2026-11-11 | 📌 | The trial builds `fd-judge` unoptimised: one translated frame takes up to 49 KB of stack (`h0+$9b06`), 66 KB at `game_frame`'s depth 6. Hence `RUN_STACK` 64 MB; at 1 MB the judge's recursion test aborts (SIGABRT). |
+| 2026-11-11 | 📌 | With other workers building (load 6 to 7), one `fd-judge` binary's CPU over the trial's 85 routines varied 139 to 174 s. Compare run time by alternating several runs of each build (T14 did three and five). |
 | 2026-11-11 | 🐞 | `pcode_export.py` `--out` naming a file: `os.makedirs` raises a traceback, not exit 2 (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 🐞 | `re_listing.py` `--out` naming a file: unguarded `os.makedirs` and temp-rename write, traceback not exit 2 (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 🐞 | `translate_batch.py` `--out`: unguarded `os.makedirs` and state temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |
