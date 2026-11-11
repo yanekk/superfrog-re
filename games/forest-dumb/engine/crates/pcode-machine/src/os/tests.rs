@@ -270,9 +270,7 @@ fn exec_opens_the_three_libraries_and_stops_on_any_other() {
         r.set_a(1, lib.base());
         call(&mut m, &mut r, lvo(Library::Exec, exec::CLOSE_LIBRARY)).unwrap();
     }
-    m.chip_mut()[0x5000..0x5020].fill(0);
-    m.chip_mut()[0x5000..0x5011].copy_from_slice(b"intuition.library");
-    r.set_a(1, 0x5000);
+    r.set_a(1, name(&mut m, "intuition.library"));
     let e = call(&mut m, &mut r, lvo(Library::Exec, exec::OLD_OPEN_LIBRARY)).unwrap_err();
     assert_eq!(
         e.to_string(),
