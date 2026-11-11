@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 52 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T28; T85, then T29 once T28 and T85 are ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T85, then T29 once T85 is ✅. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | case-mechanics | T25, T45 | ✅ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ✅ | |
 | T48 | route-on-original | T27 | ✅ | |
-| T28 | finish-end-to-end | T16, T48 | 🔍 | `finish_level.rs` (full, ignored, 40 s) plays T84's route launch to restart; `finish_short.rs` (smoke, 3 s), its 600 steps; area "level 1 finishes". Deviations: fd-app gained `--capture-hashes` (test files only said; PNGs 1.7 GB); fd-e2e dev-dep `amiga-conform` reads the route. `smoke.sh`, `full.sh` not run (pir's). |
+| T28 | finish-end-to-end | T16, T48 | ✅ | Clean, no fix commit. Ran finish_short (2.6 s), finish_level (45 s), args tests; mutated key_lines' step by one, caught at step 1; probed `--capture-hashes` alone (exit 2) and its output size; PNG cost measured, 77 KB and 27 ms a frame, so 1.7 GB holds. `smoke.sh`, `full.sh` left to pir's end gate. |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
@@ -107,7 +107,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ✅ | |
 | T85 | observes-only-flake | —; blocks T29 | ⬜ | |
 
-**Review queue:** T28
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
