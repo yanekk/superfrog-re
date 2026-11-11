@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T03 (whole-export); T04 (census-and-split) follows it on the critical path.
 
 ## Tasks
 
@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | seam-spike | — | ✅ | |
 | T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ✅ | |
-| T03 | whole-export | T02 | ⬜ | |
+| T03 | whole-export | T02 | 🔍 | Whole export by default, `--routines` keeps the trial set; vector installs seeded. 6 684 instructions, 24 unresolved, all OS calls. 20 tests. Deviations: `pcode_rust.py` reads `{at,source}` entries; vector targets that are func symbols stay `symbol` (T02 order); added `check.outside`; `(d8,PC,Xn)` counted PC-relative; `tools/README.md` updated. |
 | T04 | census-and-split | T03 | ⬜ | |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T03
 
 ## Blocked on the user
 
