@@ -54,13 +54,47 @@ fn every_made_up_encoding_passes_every_column_on_moira() {
         assert_eq!(r.fail, 0, "{} {}: {:?}", s.at, s.encoding, r.first);
         assert_eq!(r.skipped, 0, "{}: {}", s.at, r.first_skip);
         assert_eq!(r.pass, STATES, "{}", s.at);
-        // The generated code counts no cycles yet (T11): reported, never failed.
-        assert!(!r.cycles_counted);
-        assert!(
-            r.json(&s, Columns::ALL)
-                .contains("\"cycles\":\"not-counted\"")
-        );
+        // Every one is fixed-time, so counted (T11) and equal to Moira's.
+        assert!(r.cycles_counted, "{}", s.at);
+        assert!(r.json(&s, Columns::ALL).contains("\"cycles\":0"));
     }
+}
+
+fn add_two_cycles_slow(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fixture::i_h0_2(r, bus, img)?;
+    r.tick(2);
+    Ok(())
+}
+
+fn add_uncounted(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fixture::i_h0_2(r, bus, img)?;
+    *r = {
+        let mut fresh = Regs::new();
+        fresh.space = r.space;
+        fresh
+    };
+    Ok(())
+}
+
+#[test]
+fn a_wrong_time_fails_the_cycles_column_and_an_uncounted_one_is_reported() {
+    let r = check(&with("h0+$2", add_two_cycles_slow), Columns::ALL);
+    assert_eq!(r.fail, STATES);
+    assert_eq!(r.cycles, STATES);
+    let first = r.first.as_ref().unwrap();
+    assert_eq!((first.column, first.moira.as_str(), first.translated.as_str()), ("cycles", "8", "10"));
+    let r = check(&with("h0+$2", add_uncounted), Columns::ALL);
+    assert_eq!(r.fail, 0);
+    assert!(!r.cycles_counted);
+    assert!(r.json(&with("h0+$2", add_uncounted), Columns::ALL).contains("\"cycles\":\"not-counted\""));
+}
+
+#[test]
+fn bne_counts_its_taken_and_its_untaken_time() {
+    // bne.b at h0+$a: 10 cycles taken, 8 not; the judge's 500 states take both paths.
+    let r = check(&site("h0+$a"), Columns::parse("cycles").unwrap());
+    assert_eq!(r.fail, 0, "{:?}", r.first);
+    assert!(r.cycles_counted);
 }
 
 fn add_with_c_flipped(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {

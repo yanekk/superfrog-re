@@ -1,6 +1,6 @@
 // Part 1 of the tree generated from shared_call.json. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP, cycles as cy};
 #[allow(unused_imports)]
 use super::{by_addr, enter};
 

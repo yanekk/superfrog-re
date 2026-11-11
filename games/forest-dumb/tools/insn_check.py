@@ -39,6 +39,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import judge_run as jr  # noqa: E402
 import pcode_census as pc  # noqa: E402
+import importlib  # noqa: E402
+# The module, not pcode_fix.cycles(), the function of the same name its package defines.
+pcycles = importlib.import_module("pcode_fix.cycles")
 
 GAME = jr.GAME
 ENGINE = jr.ENGINE
@@ -66,10 +69,7 @@ FAMILIES = [
      | {'b' + c for c in _CC} | {'db' + c for c in _CC}),
 ]
 OTHER = ('other', 'T10')
-# Kinds whose cycles depend on data (T12); every other kind's cycles are T11's.
-DYNAMIC = {'mulu', 'muls', 'divu', 'divs', 'movem', 'trap', 'chk', 'bset', 'bclr', 'bchg', 'btst', 'st', 'sf',
-           'dbra', 'dbt', 'dbf', 'bra', 'bsr'} | {'s' + c for c in _CC} | {'b' + c for c in _CC} | {'db' + c for c in _CC}
-SHIFTS = {'asl', 'asr', 'lsl', 'lsr', 'rol', 'ror', 'roxl', 'roxr'}
+# Kinds whose cycles depend on data are T12's (pcode_fix.cycles.is_dynamic); every other kind's T11's.
 
 
 class Usage(Exception):
@@ -98,9 +98,8 @@ def family_of(mnemonic, dst=None):
     return OTHER
 
 
-def cycles_task(mnemonic, src):
-    m = mnemonic.lower()
-    return 'T12' if m in DYNAMIC or (m in SHIFTS and src == 'Dn') else 'T11'
+def cycles_task(mnemonic, src, dst=None):
+    return 'T12' if pcycles.is_dynamic(mnemonic, src, dst) else 'T11'
 
 
 def order(at):
@@ -227,7 +226,7 @@ def aggregate(rows, sites, lines, columns):
     out = []
     for r in rows:
         fam, task = family_of(r['mnemonic'], r['dst'])
-        k = {'kind': r['kind'], 'family': fam, 'task': task, 'cycles_task': cycles_task(r['mnemonic'], r['src']),
+        k = {'kind': r['kind'], 'family': fam, 'task': task, 'cycles_task': cycles_task(r['mnemonic'], r['src'], r['dst']),
              'encodings': r['encodings'], 'sites': [], 'states': 0, 'pass': 0, 'fail': 0, 'skipped': 0,
              'columns': {c: (0 if c in columns else None) for c in COLUMNS + ('stop',)}, 'first': None,
              'first_skip': ''}

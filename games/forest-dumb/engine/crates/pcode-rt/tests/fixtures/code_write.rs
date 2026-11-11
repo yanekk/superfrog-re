@@ -1,7 +1,7 @@
 // Generated from code_write.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, PC, STEP_CAP, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[

@@ -6,7 +6,7 @@
 //! - `ccr`: X N Z V C;
 //! - `mem`: every byte written, and every custom-chip write in order;
 //! - `cycles`: the translated cycle counter against Moira's ([`translated_cycles`]; `not-counted`
-//!   until the generated code counts, T11);
+//!   for a kind the generated code does not count, T12's);
 //!
 //! plus `stop`, a state the translation stopped on (unsupported, write into code, a panic).
 //!
@@ -59,10 +59,11 @@ pub mod tree {
     include!(concat!(env!("OUT_DIR"), "/insn.rs"));
 }
 
-/// The translated cycle count after an instruction, or `None` while the generated code counts none.
-/// T11 gives `pcode_rt::Regs` its counter and returns it here.
-pub fn translated_cycles(_r: &pcode_rt::Regs) -> Option<u64> {
-    None
+/// The translated cycle count after one instruction, from 0, or `None` when it counted none: every
+/// 68000 instruction takes 4 cycles or more, so 0 is a kind the generated code does not count yet
+/// (`pcode_fix.cycles`' data-dependent kinds, T12), reported `not-counted`, never failed.
+pub fn translated_cycles(r: &pcode_rt::Regs) -> Option<u64> {
+    Some(r.cycles()).filter(|&c| c != 0)
 }
 
 /// One instruction to check: a row of [`tree::SITES`].
