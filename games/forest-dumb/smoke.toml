@@ -9,6 +9,8 @@ workspace = "engine"
 "crates/pcode-rt/tests/translated.rs" = "smoke"
 # Translator T22: the machine's unit tests on a made-up hunk file, no disks, under a second.
 "crates/pcode-machine/src" = "smoke"
+# Translator T23: interrupts on a made-up translated program, under a second.
+"crates/pcode-machine/tests/irq.rs" = "smoke"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [

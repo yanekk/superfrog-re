@@ -79,4 +79,32 @@ let intreq = m.take_cia_interrupts();                       // after each block:
   touches no timer (T01). CIA-B's timers are not checked.
 - **Audio interrupts:** none is raised; the program never enables level 4 (T01). Sound is played
   from the writes by `amiga-paula` in the app, not here.
-- The chips, interrupts and the OS: translator T23, T24 and T26.
+- The chips and the OS: translator T24 and T26.
+
+## Interrupts (`irq`)
+
+```rust
+m.set_entry(generated::entry);        // where a vector's handler is found: `entry("hN+$off")`
+m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at cycle count `at`
+```
+
+- **INTENA/INTREQ** (`$09A`, `$09C`) take set/clear writes; INTENAR and INTREQR (`$01C`, `$01E`)
+  read Paula's state, never a device's. `from_snapshot` starts both from those two entries of
+  `custom`. A request `raise`d for cycle `at` lands in INTREQ at the first INTREQR read, INTREQ write
+  or `poll` timed at `at` or later; a write clearing INTREQ clears requests already due. Paula's levels: bits 0-2
+  level 1, 3 level 2, 4-6 level 3, 7-10 level 4, 11-12 level 5, 13 and 14 level 6 (as vAmiga); nothing with
+  INTENA's bit 14 off.
+- **Taken at a block's start.** `poll` takes the highest pending level above SR's mask as the
+  68000 does: SR copied, S set, T cleared, the mask raised (A7 swapped for the system stack if in
+  user mode), 44 cycles counted, PC and SR pushed, the long at `$60 + 4 * level` read, and the
+  translated function there called. Its `rte` pops the frame; a request left pending after it is
+  taken at once, and a handler's own blocks poll too, so a higher level nests inside a lower one.
+  Why the block and not the instruction (DESIGN §2.8): generated code checks nothing between
+  instructions, and a check after every one would cost far more than the at most one block's
+  cycles it moves an interrupt, which the frame bar admits (§2.7).
+- **The pushed PC is `irq::IRQ_RETURN` (`$FFFFFF`)**, not the interrupted address: `poll` is not
+  told which block it starts, and with block delivery the original's stacked PC names another
+  instruction anyway. Odd, so it is no instruction's address. Only the stack's dead bytes differ.
+- **Stops:** a vector outside every hunk or with no translated function is `untranslated: <addr>`
+  (an OS vector is T26's); a handler coming back other than by `rte` to `IRQ_RETURN` (an `rts`, a
+  changed stacked PC) is `unsupported: interrupt handler returned to …, not by rte at <handler>`.
