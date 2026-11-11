@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T14 (run-stops); T06 builds beside it.
+**Next `pir-work` will:** build T06 (insn-check) and T15 (code-write-rule), now unblocked.
 
 ## Tasks
 
@@ -28,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
-| T14 | run-stops | T04 | 🔍 | Global step count and depth cap on Regs, `Hang { why: Steps\|Depth }`, `Bus::poll` per block; judge runs states on a 64 MB thread. 6 new tests, one judge case. Deviations: depth counted on function entry, covering jumps into entries too; DEPTH_CAP 32 is the static call graph's 8 x4; STEP_CAP_GLOBAL stays 10M until T16 measures frames. Trial 84/85, CPU within 1%. |
+| T14 | run-stops | T04 | ✅ | Review clean, no fix commit. Ran: task tests, trial 84/85 rerun (judge 63 s), DEPTH_CAP 5 fails `game_frame` hang (depth) and 6 passes, RUN_STACK 1 MB aborts the judge test; mutations of the depth check and the RETURN decrement go red. Static graph depth 8 read-only. STEP_CAP_GLOBAL owner gap logged. |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T14
+**Review queue:** empty
 
 ## Blocked on the user
 
