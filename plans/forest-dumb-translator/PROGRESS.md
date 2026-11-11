@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T06; then T07 to T11 (the instruction families and cycles) can run side by side, each fixing what `insn_check.py` reports.
+**Next `pir-work` will:** T07 to T11 (the instruction families and cycles) can run side by side, each fixing what `insn_check.py` reports.
 
 ## Tasks
 
@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | whole-export | T02 | ✅ | |
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
-| T06 | insn-check | T04, T05 | 🔍 | Built pcode_fix/ (trial's bcd and compare moved; four empty family modules), pcode_rust --insn, judge::insn, fd-judge --insn/--insn-all, insn_check.py; 15 Python, 5 Rust tests. Deviations: no Regs::cycles (T11's; `translated_cycles` hook reads None); extra `stop` column, PC and SR in regs; the original's exceptions skipped; census computed from pcode.json; fixture P-code hand-written. |
+| T06 | insn-check | T04, T05 | ✅ | Review: one defect, the committed insn.rs fixture was rustfmt-formatted so its currency test failed; reproduced by that test, regenerated, `#[rustfmt::skip]` locks it. Probed: whole census rerun (counts match FINDINGS), trial still 84/85, fixture P-code diffed against the real export, ccr-compare mutation caught. |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T06
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
