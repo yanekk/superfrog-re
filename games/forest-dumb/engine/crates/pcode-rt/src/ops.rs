@@ -253,6 +253,52 @@ pub fn popcount(a: u64, size: usize) -> u64 {
     (a & mask(size)).count_ones() as u64
 }
 
+// --- The status register (translator T10) ------------------------------------------------------
+//
+// Ghidra's sinc keeps T, S and the interrupt mask in bytes of their own (TF, SVF, IPL) and packs them
+// into a one-byte temporary, which drops them. Here the system byte lives in `SR`'s high byte, as the
+// instruction check seeds and reads it, and X N Z V C in their flag bytes; `pcode_fix.move_control`
+// routes every instruction that reads or writes SR or CCR through these three.
+
+/// Ghidra's `USP` and `ISP` (`68000.sinc`): the stack pointer that is not `A7` at the moment, by mode.
+pub const USP: usize = 0x11c;
+pub const ISP: usize = 0x100;
+/// The bits a 68000's SR holds: T, S, the mask, X N Z V C; the rest read 0.
+const SR_BITS: u64 = 0xa71f;
+
+/// The whole SR: the system byte from `SR`, the condition codes from their flag bytes.
+pub fn sr_get(r: &crate::Regs) -> u64 {
+    let ccr = [crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF]
+        .iter()
+        .fold(0, |v, &f| (v << 1) | (r.get(f, 1) & 1));
+    (r.get(crate::SR, 2) & 0xff00 & SR_BITS) | ccr
+}
+
+/// Writes the whole SR, as `move to SR`, `andi/ori/eori to SR` and `rte` do. A change of S swaps
+/// `A7` with the other stack pointer: leaving supervisor mode keeps the system stack in `ISP` and
+/// takes `A7` from `USP`, entering it the reverse.
+pub fn sr_set(r: &mut crate::Regs, v: u64) {
+    let v = v & SR_BITS;
+    let was = r.get(crate::SR, 2) & 0x2000 != 0;
+    let now = v & 0x2000 != 0;
+    if was != now {
+        let (save, take) = if was { (ISP, USP) } else { (USP, ISP) };
+        r.set(save, 4, r.a(7) as u64);
+        let other = r.get(take, 4) as u32;
+        r.set_a(7, other);
+    }
+    r.set(crate::SR, 2, v);
+    ccr_set(r, v);
+}
+
+/// Writes X N Z V C from the low five bits of `v`, and nothing else, as `move to CCR`,
+/// `andi/ori/eori to CCR` and `rtr` do.
+pub fn ccr_set(r: &mut crate::Regs, v: u64) {
+    for (bit, f) in [(4, crate::XF), (3, crate::NF), (2, crate::ZF), (1, crate::VF), (0, crate::CF)] {
+        r.set(f, 1, (v >> bit) & 1);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -495,5 +541,55 @@ mod tests {
         assert_eq!(signed(0x8000, 2), -32768);
         assert_eq!(signed(0x8000_0000, 4), -2_147_483_648);
         assert_eq!(signed(u64::MAX, 8), -1);
+    }
+
+    fn supervisor(sr: u64, a7: u32, usp: u32) -> crate::Regs {
+        let mut r = crate::Regs::new();
+        r.set(crate::SR, 2, sr & 0xff00);
+        ccr_set(&mut r, sr);
+        r.set_a(7, a7);
+        r.set(USP, 4, usp as u64);
+        r
+    }
+
+    #[test]
+    fn sr_get_takes_the_system_byte_from_sr_and_the_ccr_from_the_flags() {
+        let mut r = supervisor(0x2700, 0x1000, 0);
+        r.set(crate::XF, 1, 1);
+        r.set(crate::CF, 1, 1);
+        // A stale low byte in SR is not the condition codes; unused bits read 0.
+        r.set(crate::SR, 2, 0x2fff);
+        assert_eq!(sr_get(&r), 0x2711);
+    }
+
+    #[test]
+    fn sr_set_restores_the_interrupt_mask_and_every_flag() {
+        let mut r = supervisor(0x2700, 0x1000, 0);
+        sr_set(&mut r, 0x231f);
+        assert_eq!(r.get(crate::SR, 2) >> 8, 0x23);
+        assert_eq!([crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF].map(|f| r.get(f, 1)), [1; 5]);
+        assert_eq!(sr_get(&r), 0x231f);
+        assert_eq!(r.a(7), 0x1000, "S unchanged: no stack swap");
+        sr_set(&mut r, 0xffff);
+        assert_eq!(sr_get(&r), 0xa71f, "only T, S, the mask and X N Z V C are held");
+    }
+
+    #[test]
+    fn leaving_and_entering_supervisor_mode_swaps_the_stack_pointers() {
+        let mut r = supervisor(0x2700, 0x1000, 0x8000);
+        sr_set(&mut r, 0x0000);
+        assert_eq!((r.a(7), r.get(ISP, 4)), (0x8000, 0x1000));
+        r.set_a(7, 0x7ffc);
+        sr_set(&mut r, 0x2000);
+        assert_eq!((r.a(7), r.get(USP, 4)), (0x1000, 0x7ffc));
+    }
+
+    #[test]
+    fn ccr_set_touches_only_the_condition_codes() {
+        let mut r = supervisor(0x2700, 0x1000, 0x8000);
+        ccr_set(&mut r, 0x00f5);
+        assert_eq!(r.get(crate::SR, 2), 0x2700);
+        assert_eq!(r.a(7), 0x1000);
+        assert_eq!(sr_get(&r), 0x2715);
     }
 }
