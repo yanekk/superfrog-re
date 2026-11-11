@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Building; T01 implemented, awaiting review.
+**Status:** Building; T01 reviewed ✅.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T05 and T17 can run beside it; T01 awaits review.
+**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T05 and T17 can run beside it.
 
 ## Tasks
 
@@ -15,7 +15,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | seam-spike | — | ⬜ | |
-| T01 | os-surface | — | 🔍 | Built `fd-conform os-surface` (`os_surface.rs`, decoder checked against Moira), `re/os-calls.toml`, docs/15. 7 unit, 3 integration tests (1 full). Deviations: world 2 forced via `title_code_world`'s immediate, not `world_index`; three file routines asserted, `save_scores_unreferenced` never runs; stability checked against the committed file; added `[[write]]`, `[[vector]]`, `access`, an L key in play. |
+| T01 | os-surface | — | ✅ | Reviewed: one doc fix, docs/15 now says Read's length also bounds `unpack_esl`, so it must be exact. Probed: title frames run no interrupt (per-frame run), `h0+$be` is graphics FreeSprite (listing), output stable, worlds 3 and 6 load; two mutations caught. Deviations held. |
 | T02 | code-seen | — | ⬜ | |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T01
+**Review queue:** empty
 
 ## Blocked on the user
 
