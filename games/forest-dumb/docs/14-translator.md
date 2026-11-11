@@ -23,6 +23,30 @@ fails on any failing kind, column, uncounted cycles or a census other than 290 k
 `pcode_fix.shift_bit` switched off it fails on 9 kinds (33 137 states, ccr), as T09 found them.
 Cycles follow Moira; real hardware is unmeasured (the plan's FINDINGS).
 
+## Stage 2's gate: the whole tree (T16, 2026-11-12)
+
+**The tree:** the whole-program export (`pcode_export.py`, 143 entries) holds 6 684 instructions;
+`pcode_rust.py` translates every one, **0 unsupported**. **0 unresolved computed jumps**: Ghidra finds
+no jump table it cannot follow. The 24 computed sites it gives no target are all calls through a
+library base, `jsr -n(a5)` or `jsr -n(a6)` (exec, graphics and dos.library), whose target is the OS's
+jump table outside every hunk: the machine answers them (DESIGN §2.8), they are not translated. 19 are
+in `re/os-calls.toml`; the five at `h0+$943a`..`$94ae` (dos `Write`, -48, among them) are on a path
+T01's run did not take. `re/translator-hints.toml` holds **no hint**.
+
+**The routines:** `translator_trial.py --whole --cases 2000` judges every routine of
+`re/translate.toml` and every registered generator (`fd-judge --generators`, 105): 101 routines,
+**100 of 100 judgeable pass with no hand edit**, 2 000 states each, none stopped untranslated, unsupported
+or writing into code. Beyond the trial's 85: `view_tiles`, `view_tile`, `view_shapes`, `view_shape`,
+`h0_6a96`, `h0_6ae8`, `h0_6b70`, `h0_6b78`, `h0_6bc0`, `h0_6c20`, `h0_6c80`, `h0_988a`, `h0_9a34`,
+`h4+$18870` (the music player's channel tick) and `h0_3adc` (a sound routine, by the spike's
+generator). Unjudgeable: `h0_2648` (sound, no generator). Six routines have self-modifying states, 218
+in all, the six of the table below, each passing on the rest. Five spike generators named by address
+(`h0+$24ce`, `$2dd6`, `$2fae`, `$774`, `$3b2a`) duplicate a routine's own generator and are not run.
+
+The judge is built optimised: unoptimised, `view_tiles` (368 tile blits a state) took 340 s for 2 000
+translated states, past the 120 s a run, where the original alone took 5 s; optimised the whole judging
+takes about 25 s and the run about 1 minute warm. Guarded by `tools/test_translator_whole.py` (full).
+
 ## Writes into code (T15, 2026-11-11)
 
 Translated code cannot follow a write into its own instructions, so a store onto a translated

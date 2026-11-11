@@ -153,9 +153,15 @@ def muse_results(batches):
     return {}
 
 
-def generators():
+def judge_bin(release):
+    """The fd-judge `build` made: judge_run's debug binary, or the optimised one under --whole."""
+    return os.path.join(os.path.dirname(os.path.dirname(jr.judge_bin())), 'release', 'fd-judge') if release \
+        else jr.judge_bin()
+
+
+def generators(release=False):
     """Every generator name the built fd-judge registers, in registry order."""
-    argv = command('FD_TRIAL_JUDGE', [jr.judge_bin()]) + ['--generators']
+    argv = command('FD_TRIAL_JUDGE', [judge_bin(release)]) + ['--generators']
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=SURVEY_SECONDS)
     except OSError as e:
@@ -171,7 +177,8 @@ def generators():
 
 def whole_routines(rows, names, symbols_path):
     """The inventory's rows, then one row per registered generator whose routine none of them is.
-    A generator named as an inventory row is that row's (and gives one to a row without)."""
+    A routine is judged once: by the inventory's generator, else the first registered for it by
+    name or address (the spike's older `hN+$off` generators only fill a gap)."""
     with open(symbols_path, 'rb') as f:
         syms = [s for s in tomllib.load(f).get('sym', []) if s.get('exe', 'forest_dumb_forever') == 'forest_dumb_forever']
     by_label = {r['label']: r for r in rows}
@@ -195,6 +202,8 @@ def whole_routines(rows, names, symbols_path):
                  'subsystem': None, 'split_at': [], 'instructions': None}
             by_label[lab] = r
             out.append(r)
+        elif r['gen'] is None:
+            r['gen'] = n
     return sorted(out, key=lambda e: (e['hunk'], e['offset']))
 
 
@@ -277,12 +286,13 @@ def routine_at_line(tree, line):
     return found
 
 
-def build(tree):
-    """Build fd-judge with `tree` in it. A compile error is the translator's: named with its routine."""
+def build(tree, release=False):
+    """Build fd-judge with `tree` in it, optimised under --whole. A compile error is the translator's:
+    named with its routine."""
     env = dict(os.environ, FD_TRANSLATED=os.path.abspath(tree))
     env.pop('FD_PORT', None)
-    argv = command('FD_TRIAL_BUILD', ['cargo', 'build', '-q', '-p', 'fd-conform', '--bin', 'fd-judge',
-                                      '--message-format', 'short'])
+    argv = command('FD_TRIAL_BUILD', ['cargo', 'build', '-q'] + (['--release'] if release else []) +
+                   ['-p', 'fd-conform', '--bin', 'fd-judge', '--message-format', 'short'])
     try:
         p = subprocess.run(argv, cwd=ENGINE, env=env, capture_output=True, text=True, timeout=BUILD_SECONDS)
     except subprocess.TimeoutExpired:
@@ -299,10 +309,10 @@ def build(tree):
                      f"{where or 'no generated routine'}: {first}")
 
 
-def judge(routine, gen, cases, mode):
+def judge(routine, gen, cases, mode, release=False):
     """One fd-judge run (`--survey` or `--translated`) -> its JSON line, or {'outcome': ...} for a
     timeout, a crash, or exit 2 (`usage`, the stderr in `why`)."""
-    argv = command('FD_TRIAL_JUDGE', [jr.judge_bin()]) + [routine, '--gen', gen, '--cases', str(cases), mode]
+    argv = command('FD_TRIAL_JUDGE', [judge_bin(release)]) + [routine, '--gen', gen, '--cases', str(cases), mode]
     limit = SURVEY_SECONDS if mode == '--survey' else jr.JUDGE_SECONDS
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=limit)
@@ -320,12 +330,12 @@ def judge(routine, gen, cases, mode):
         return {'outcome': 'crash', 'why': f'crash ({sig}){": " + last if last else ""}'}
 
 
-def unjudgeable(r, cases):
+def unjudgeable(r, cases, release=False):
     """The routine's reason it cannot be judged, from its survey, or None. A missing disk or the like
     ends the run."""
     if r['gen'] is None:
         return f"no generator ({r['subsystem'] or 'none planned'})"
-    s = judge(r['label'], r['gen'], cases, '--survey')
+    s = judge(r['label'], r['gen'], cases, '--survey', release)
     if s.get('outcome') == 'usage':
         if 'no generator' in s['why']:
             return f"no generator registered (`{r['gen']}`)"
@@ -346,9 +356,9 @@ def flat(s, n=160):
     return s if len(s) <= n else s[:n - 1] + '…'
 
 
-def verdict(r, cases):
+def verdict(r, cases, release=False):
     """The translated tree built now, judged at the routine -> the row's half for this tree."""
-    j = judge(r['label'], r['gen'], cases, '--translated')
+    j = judge(r['label'], r['gen'], cases, '--translated', release)
     if j.get('outcome') == 'usage':
         raise StepFailed(f"judge {r['label']}: {j['why']}")
     if 'outcome' in j:
@@ -361,9 +371,9 @@ def verdict(r, cases):
             'failures': j.get('failures', 0), 'passed': j.get('passed', 0)}
 
 
-def judge_all(rows, cases, parallel=PARALLEL):
+def judge_all(rows, cases, parallel=PARALLEL, release=False):
     with cf.ThreadPoolExecutor(max_workers=parallel) as pool:
-        return dict(zip([r['label'] for r in rows], pool.map(lambda r: verdict(r, cases), rows)))
+        return dict(zip([r['label'] for r in rows], pool.map(lambda r: verdict(r, cases, release), rows)))
 
 
 # --- The table -------------------------------------------------------------------------------------
@@ -467,14 +477,16 @@ def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None,
 
         # The survey runs the original alone, but through the built binary: build the plain tree first.
         t = time.time()
-        build(trees['plain'])
+        # Optimised under --whole: unoptimised, view_tiles's 2 000 translated states took 340 s,
+        # past JUDGE_SECONDS, where the original alone took 5 s (T16).
+        build(trees['plain'], whole)
         log(f'build plain: {round(time.time() - t)} s')
         if whole:
-            names = generators()
+            names = generators(whole)
             rows_in = whole_routines(rows_in, names, paths.symbols)
             log(f'whole: {len(names)} registered generators, {len(rows_in)} routines')
         with cf.ThreadPoolExecutor(max_workers=PARALLEL) as pool:
-            reasons = dict(zip([r['label'] for r in rows_in], pool.map(lambda r: unjudgeable(r, cases), rows_in)))
+            reasons = dict(zip([r['label'] for r in rows_in], pool.map(lambda r: unjudgeable(r, cases, whole), rows_in)))
         judged = [r for r in rows_in if reasons[r['label']] is None]
         log(f'survey: {len(judged)} of {len(rows_in)} judgeable')
         results = {}
@@ -485,10 +497,10 @@ def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None,
                     log('hints: the tree is unchanged, verdicts reused')
                     continue
                 t = time.time()
-                build(trees[kind])
+                build(trees[kind], whole)
                 log(f'build {kind}: {round(time.time() - t)} s')
             t = time.time()
-            results[kind] = judge_all(judged, cases)
+            results[kind] = judge_all(judged, cases, release=whole)
             log(f'judge {kind}: {round(time.time() - t)} s')
 
         muse = muse_results(paths.batches)

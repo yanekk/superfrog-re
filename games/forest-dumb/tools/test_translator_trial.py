@@ -347,6 +347,19 @@ class Trial(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('`nowhere` is registered but names no routine', err)
 
+    def test_whole_builds_and_judges_optimised(self):
+        del os.environ['FD_TRIAL_BUILD'], os.environ['FD_TRIAL_JUDGE']
+        seen = []
+        done = mock.Mock(returncode=0, stdout='{"generators":[]}', stderr='')
+        with mock.patch.object(t.subprocess, 'run', lambda argv, **k: seen.append(argv) or done):
+            t.build('tree.rs', release=True)
+            t.build('tree.rs')
+            t.generators(release=True)
+        self.assertIn('--release', seen[0])
+        self.assertNotIn('--release', seen[1])
+        self.assertTrue(seen[2][0].endswith(os.path.join('release', 'fd-judge')), seen[2])
+        self.assertTrue(t.judge_bin(False).endswith(os.path.join('debug', 'fd-judge')))
+
     def test_a_judge_past_its_limit_fails_as_timeout(self):
         slow = self.write('slow.py', 'import time; time.sleep(5)\n')
         os.environ['FD_TRIAL_JUDGE'] = f'{shlex.quote(sys.executable)} {shlex.quote(slow)}'
