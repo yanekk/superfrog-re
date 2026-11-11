@@ -2524,6 +2524,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "pcode-machine"
+version = "0.1.0"
+dependencies = [
+ "amiga-clock",
+ "amiga-disk",
+ "pcode-rt",
+]
+
+[[package]]
 name = "pcode-rt"
 version = "0.1.0"
 

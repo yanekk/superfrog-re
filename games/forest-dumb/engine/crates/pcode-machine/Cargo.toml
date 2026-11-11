@@ -1,0 +1,14 @@
+[package]
+name = "pcode-machine"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Pure (translator DESIGN §3.1): the machine translated code runs on. Names no game; the program's
+# bytes, its hunk bases and the RAM sizes arrive as input.
+[dependencies]
+pcode-rt = { path = "../pcode-rt" }
+# The beam: a position from counted CPU cycles.
+amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
+# The hunk file's parser.
+amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
