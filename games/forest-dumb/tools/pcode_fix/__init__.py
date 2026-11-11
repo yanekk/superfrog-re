@@ -13,7 +13,9 @@ A module may define any of:
 
     correct(ins) -> ins          the instruction with its P-code corrected (unchanged when not its)
     emit(ins) -> [str] | None    Rust replacing the instruction's P-code whole, or None
-    cycles(ins) -> [str]         Rust lines run after the instruction (T11)
+    cycles(ins) -> [str]         Rust lines run before the instruction's own, counting its cycles (T11)
+    branch_cycles(ins) -> (taken, untaken) | None
+                                 a conditional branch's two `r.tick` lines, one on each path (T11)
     op_lines(op, rd, wr) -> [str] | None
                                  Rust for one op a `correct` put in the P-code in place of Ghidra's,
                                  given the translator's varnode reader `rd(v)` and writer `wr(v, expr)`;
@@ -68,3 +70,12 @@ def op_lines(op, rd, wr):
 
 def cycles(ins):
     return [l for m in MODULES if getattr(m, 'cycles', None) for l in m.cycles(ins)]
+
+
+def branch_cycles(ins):
+    for m in MODULES:
+        f = getattr(m, 'branch_cycles', None)
+        pair = f(ins) if f else None
+        if pair is not None:
+            return pair
+    return None

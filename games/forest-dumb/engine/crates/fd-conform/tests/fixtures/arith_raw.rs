@@ -1,7 +1,7 @@
 // Generated from arith.json by pcode_rust.py --insn without pcode_fix.arith; never committed when made from a game.
 // Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every emitted instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -38,6 +38,7 @@ pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[
 pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$0 addx.l
     {
+        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let mut u_af80: u64 = 0;
         let mut u_b000: u64 = 0;
         let mut u_b080: u64 = 0;
@@ -90,6 +91,7 @@ pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2 subx.l
     {
+        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let mut u_c000: u64 = 0;
         let mut u_c080: u64 = 0;
         let mut u_c100: u64 = 0;
@@ -135,6 +137,7 @@ pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4 negx.l
     {
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::Dn, cy::Ea::None) });
         let mut u_d000: u64 = 0;
         let mut u_d080: u64 = 0;
         let mut u_e600: u64 = 0;
@@ -275,6 +278,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$10 clr.w
     {
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::AbsL, cy::Ea::None) });
         let v = 0x0u64;
         store(bus, img, 0xdff0a8, 2, v)?;
         let v = 0x0u64;
@@ -294,6 +298,7 @@ pub fn i_h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_18(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$18 clr.l
     {
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::AbsL, cy::Ea::None) });
         let v = 0x0u64;
         store(bus, img, 0xdff0a8, 4, v)?;
         let v = 0x0u64;
@@ -313,6 +318,7 @@ pub fn i_h0_18(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$20 clr.w
     {
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::Ind, cy::Ea::None) });
         let mut u_4f00: u64 = 0;
         let v = 0x0u64;
         u_4f00 = v & 0xffff;

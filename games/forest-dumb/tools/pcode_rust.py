@@ -182,8 +182,11 @@ def load_export(path):
             raise BadInput(f'{where}: "targets" must be a list')
         targets = [parse_addr(t, f'{where} flow') for t in flow.get('targets', [])]
         raw = ins.get('bytes')
+        text = ins.get('operands')
         insns[a] = {'at': a, 'len': ins['len'], 'mnem': str(ins.get('mnem', '')), 'ops': ops,
-                    'targets': targets, 'bytes': raw if isinstance(raw, str) else None}
+                    'targets': targets, 'bytes': raw if isinstance(raw, str) else None,
+                    # Ghidra's operand text, which pcode_fix.cycles reads modes from (since T04)
+                    'operands': text if isinstance(text, list) else None}
     return {'sizes': [h['size'] for h in hunks], 'entries': entries, 'insns': insns}
 
 
@@ -343,6 +346,7 @@ class Emit:
         self.insns = insns
         self.part_of = part_of   # entry -> part, when the tree is split into modules
         self.part = None         # the part being written
+        self.taken_tick = None   # the instruction being written's taken-branch `r.tick`, if a bcc
 
     def callee(self, c):
         """The path to function `c` from the part being written."""
@@ -469,6 +473,9 @@ class Emit:
                 raise Unsupported(f'{o} to {t[0]} space')
             if o == 'BRANCH':
                 return [jump]
+            if t[0] == 'ram' and self.taken_tick:
+                # A conditional branch's taken time, counted on its jump (T11).
+                jump = f'{self.taken_tick} {jump}'
             return [f'if {self.rd(op["in"][1])} != 0 {{ {jump} }}']
         if o == 'BRANCHIND':
             return [self.goto_abs(self.rd(op['in'][0]))]
@@ -501,6 +508,12 @@ class Emit:
         head = f'// {fmt_addr(a)} {ins["mnem"]}'.rstrip()
         # Ghidra's P-code is wrong for some instructions: corrected by family in tools/pcode_fix/.
         ins = pcode_fix.correct(ins)
+        # Its cycles, counted before its own lines so a jump or return out of it has counted them;
+        # a conditional branch counts on each path instead (pcode_fix.cycles).
+        ticks = pcode_fix.cycles(ins)
+        branch = pcode_fix.branch_cycles(ins)
+        self.taken_tick, untaken = branch if branch else (None, None)
+        tail = [untaken] if untaken else []
         whole, family = pcode_fix.emit(ins)
         if whole is not None:
             # A line may be a P-code op (a dict), written as any other instruction's; such ops
@@ -517,7 +530,7 @@ class Emit:
                               for v in (l.get('in', []) + [l.get('out')]) if v and v[0] == 'unique'})
             return ([head + f' (corrected: pcode_fix.{family})', '{']
                     + [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
-                    + ['    ' + l for l in body] + ['}'], False)
+                    + ['    ' + l for l in ticks + body + tail] + ['}'], False)
         try:
             bodies = [[x for l in self.op_lines(op, j, a, ins) for x in l.split('\n')]
                       for j, op in enumerate(ins['ops'])]
@@ -527,7 +540,7 @@ class Emit:
             return [head, stop], True
         uniques = sorted({v[1] for op in ins['ops'] for v in (op.get('in', []) + [op.get('out')])
                           if v and v[0] == 'unique'})
-        lines = [head, '{']
+        lines = [head, '{'] + ['    ' + l for l in ticks]
         lines += [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
         if any(is_relative(op) for op in ins['ops']):
             # P-code branches within the instruction: its ops become arms of a loop of their own.
@@ -540,6 +553,7 @@ class Emit:
         else:
             for body in bodies:
                 lines += ['    ' + l for l in body]
+        lines += ['    ' + l for l in tail]
         lines.append('}')
         return lines, False
 
@@ -599,7 +613,7 @@ def stats_of(funcs, insns):
 
 
 IMPORTS = ['#[allow(unused_imports)]',
-           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};']
+           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};']
 
 
 def head(export, funcs, source_name, path=lambda e: fn_name(e)):

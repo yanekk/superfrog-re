@@ -185,7 +185,9 @@ class KnownDefects(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             start = read(os.path.join(d, 'tree.rs')).split('pub fn h0_0(')[1].split('\n}\n')[0]
         bra = start[start.index('// h0+$4a bra.w'):]
-        self.assertTrue(bra.split('\n')[2].strip().startswith("pc = (0, 0x52); continue 'b;"), bra[:200])
+        # Line 2 counts its cycles (translator T11); the jump follows.
+        self.assertTrue(bra.split('\n')[2].strip().startswith('r.tick(const { cy::of(cy::Op::Bra,'), bra[:200])
+        self.assertTrue(bra.split('\n')[3].strip().startswith("pc = (0, 0x52); continue 'b;"), bra[:200])
         self.assertIn('(0, 0x52) => {', start)
         self.assertNotIn('h0_52(r, bus, img)', start)
 
@@ -433,7 +435,7 @@ class Check(unittest.TestCase):
         k = self.results()
         self.assertEqual(k['add.l Dn,Dn']['family'], 'arith')
         self.assertEqual(k['abcd Dn,Dn']['task'], 'T07')
-        self.assertEqual(k['bne.b label']['cycles_task'], 'T12')
+        self.assertEqual(k['bne.b label']['cycles_task'], 'T11')
         self.assertEqual(k['moveq #imm,Dn']['cycles_task'], 'T11')
         md = read(os.path.join(self.out, 'insn.md'))
         self.assertIn('| arith | T08 | 1 | 0 |', md)
@@ -497,6 +499,15 @@ class Families(unittest.TestCase):
         self.assertEqual(ic.cycles_task('lsl', 'Dn'), 'T12')
         self.assertEqual(ic.cycles_task('lsl', '#imm'), 'T11')
         self.assertEqual(ic.cycles_task('mulu', 'Dn'), 'T12')
+        self.assertEqual(ic.cycles_task('dbf', 'Dn', 'label'), 'T12')
+        self.assertEqual(ic.cycles_task('movem', 'list', '-(An)'), 'T12')
+        self.assertEqual(ic.cycles_task('bset', 'Dn', 'Dn'), 'T12')
+        self.assertEqual(ic.cycles_task('sne', 'Dn'), 'T12')
+        # Fixed per instruction: the branch's two paths, an immediate bit number, scc on memory.
+        self.assertEqual(ic.cycles_task('beq', 'label'), 'T11')
+        self.assertEqual(ic.cycles_task('bsr', 'label'), 'T11')
+        self.assertEqual(ic.cycles_task('bset', '#imm', 'Dn'), 'T11')
+        self.assertEqual(ic.cycles_task('sne', 'abs.l'), 'T11')
 
 
 if __name__ == '__main__':

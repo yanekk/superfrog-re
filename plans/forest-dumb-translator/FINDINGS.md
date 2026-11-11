@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
+| 2026-11-11 | 📌 | **T11 cycles:** 279 of 290 census kinds counted, 0 cycle failures in 407 500 states. Left for T12: `mulu.w` 2 kinds, `divu.w` 2, `divs.w`, `dbf`, `movem.l` 3, `lsl.l`/`lsr.l Dn,Dn`. |
+| 2026-11-11 | 📌 | Moira counts `andi.l #imm,Dn` 16 cycles; the MC68000UM table 8-9, as T11 read it, gives 14. `pcode_rt::cycles` follows Moira. Real hardware unmeasured. |
+| 2026-11-11 | 📌 | **T11 build time**, load about 15: fd-judge `--parts 16` release best 11.2 s against 9.8 s without ticks (CPU +5%), dev 5.0 s against 3.5 s (CPU +35%). Within T04's 10.8 s, 4 to 7 s, plus 20%. |
+| 2026-11-11 | 📌 | A `pcode_fix.emit` instruction (T09's register shifts) gets its `cycles(ins)` tick first, as any other (T11); T12's register-count shift cost needs the count `cnt` the emit computes. |
 | 2026-11-11 | 📌 | **T10 move_control check:** 129 kinds; before, only `rte` failed (regs 238, ccr 230); after, 0 in regs, ccr, mem. Whole census: 14 kinds fail (regs 593, ccr 9 521, mem 500), T08 and T09's. Trial 84 of 85. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 sinc: `packflags` ORs T, S and the mask into a one-byte temporary; CCR ops and `rtr` write all of SR; `rte` is `return [0]`; `movem.w -(An)` steps 4. Corrected by pattern in `pcode_fix/move_control.py` (T10). |
 | 2026-11-11 | 📌 | T10 rig: `judge/insn.rs` starts pcode-rt's `USP` at a7, as Moira's step does, and compares the stack pointer not in a7. States always start supervisor, so `sr_set` entering supervisor mode is unit-tested only. |
@@ -19,7 +24,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | Moira's `clr.l` writes the low word before the high (custom writes `(aa,0)` then `(a8,0)`); the sinc's long store is high first, so arith emits clr.l as two word stores. |
 | 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |
 | 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
-| 2026-11-11 | 📌 | `pcode_rust.instruction` returns early for a `pcode_fix.emit` instruction (T09's register shifts), so T11/T12 must add `cycles(ins)` lines on that path too; T12's shift cost needs the count `cnt` the emit computes. Left alone (T09 review). |
 | 2026-11-11 | 📌 | **T09 shift_bit census:** 9 kinds, 8 268 of 41 500 states failing (all ccr V) before; 0 after. Trial `--skip-export` still 84 of 85 (write_into_code 1). |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
 | 2026-11-11 | 📌 | `insn_shift_bit.rs` runs about 9 s unoptimised (the rig, about 0.4 ms a state, 200 states over 190 sites), so labelled full; `test_shift_bit.py` is smoke. |

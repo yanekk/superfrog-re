@@ -1,7 +1,7 @@
 // Generated from pushed_return.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -53,7 +53,8 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
             (0, 0x0) => {
                 // h0+$0 beq h0+$8
                 {
-                    if r.get(0x45, 1) != 0 { pc = (0, 0x8); continue 'b; }
+                    if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::L) }); pc = (0, 0x8); continue 'b; }
+                    r.tick(const { cy::bcc(false, cy::Size::L) });
                 }
                 pc = (0, 0x2);
             }

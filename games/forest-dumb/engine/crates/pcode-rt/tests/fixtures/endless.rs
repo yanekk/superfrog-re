@@ -1,7 +1,7 @@
 // Generated from endless.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[

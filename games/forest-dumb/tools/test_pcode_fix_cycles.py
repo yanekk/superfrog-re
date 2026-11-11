@@ -1,0 +1,82 @@
+"""pcode_fix.cycles (translator T11): which `r.tick` lines the translator writes, and where. Whether
+the times are right is judged on Moira: `fd-conform/tests/insn_cycles.rs`, `insn_check.rs`,
+`insn_defects.rs`, and `insn_check.py --columns cycles` on the game's census.
+
+    python3 -m unittest tools/test_pcode_fix_cycles.py      (from games/forest-dumb/)
+"""
+import importlib
+import os
+import sys
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import pcode_rust as pr  # noqa: E402
+import test_shift_bit as tsb  # noqa: E402
+
+cy = importlib.import_module('pcode_fix.cycles')
+FIXTURES = os.path.join(os.path.dirname(HERE), 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures')
+
+
+def shift_bit(text):
+    """The shift_bit fixture's instruction written `text`, in the translator's form."""
+    at = next(a for a, t in tsb.sites().items() if t == text)
+    return tsb.at(tsb.load(), at)
+
+
+def tick(op, size, src, dst):
+    return f'r.tick(const {{ cy::of(cy::Op::{op}, cy::Size::{size}, cy::Ea::{src}, cy::Ea::{dst}) }});'
+
+
+class Kinds(unittest.TestCase):
+    def test_fixed_kinds_name_their_row(self):
+        for text, want in [
+            ('lsl.l #8,d0', ('Shift(8)', 'L', 'Imm', 'Dn')),
+            ('asl.b #1,d0', ('Shift(1)', 'B', 'Imm', 'Dn')),
+            ('asl.w (a0)', ('Shift(1)', 'W', 'Ind', 'None')),
+            ('bset #33,d0', ('Bset(1)', 'L', 'Imm', 'Dn')),   # the bit number modulo 32
+            ('bclr #9,(a0)', ('Bclr(9)', 'B', 'Imm', 'Ind')),
+            ('btst d1,d0', ('Btst', 'L', 'Dn', 'Dn')),
+            ('st (a0)', ('Scc', 'B', 'Ind', 'None')),         # a byte, though Ghidra writes no suffix
+            ('tas (a0)', ('Tas', 'B', 'Ind', 'None')),
+            ('swap d0', ('Swap', 'L', 'Dn', 'None')),
+        ]:
+            self.assertEqual(cy.kind(shift_bit(text)), want, text)
+
+    def test_data_dependent_kinds_are_left_to_t12(self):
+        for text in ('lsl.l d1,d0', 'roxr.w d1,d0', 'bset d1,d0', 'bclr d1,d0', 'st d0', 'sne d0'):
+            ins = shift_bit(text)
+            self.assertIsNone(cy.kind(ins), text)
+            self.assertEqual(cy.cycles(ins), [], text)
+        self.assertTrue(cy.is_dynamic('mulu', '#imm', 'Dn'))
+        self.assertTrue(cy.is_dynamic('dbf', 'Dn', 'label'))
+        self.assertFalse(cy.is_dynamic('bne', 'label', None))
+
+    def test_an_instruction_without_its_text_counts_nothing(self):
+        ins = dict(shift_bit('swap d0'), operands=None)
+        self.assertEqual(cy.cycles(ins), [])
+
+
+class Emitted(unittest.TestCase):
+    def test_a_corrected_shift_counts_first_as_any_instruction(self):
+        lines, _ = pr.Emit({}, {}).instruction((0, 0x4c), shift_bit('lsl.l #8,d0'))
+        self.assertIn('(corrected: pcode_fix.shift_bit)', lines[0])
+        self.assertEqual(lines[2].strip(), tick('Shift(8)', 'L', 'Imm', 'Dn'))
+        # A register count is emitted by shift_bit too, with no tick: T12's.
+        lines, _ = pr.Emit({}, {}).instruction((0, 0x48), shift_bit('lsl.l d1,d0'))
+        self.assertFalse(any('r.tick' in l for l in lines))
+
+    def test_a_conditional_branch_counts_each_path_on_its_own(self):
+        doc = pr.load_export(os.path.join(FIXTURES, 'flags_call.json'))
+        text, _ = pr.render(doc, 'flags_call.json')
+        body = text[text.index('beq.b'):]
+        taken = "if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x8); continue 'b; }"
+        self.assertEqual(body.split('\n')[2].strip(), taken)
+        self.assertEqual(body.split('\n')[3].strip(), 'r.tick(const { cy::bcc(false, cy::Size::B) });')
+        self.assertEqual(cy.branch_cycles({'mnem': 'bra.w', 'ops': []}), None)
+        self.assertEqual(cy.branch_cycles({'mnem': 'bne.w', 'ops': []})[1],
+                         'r.tick(const { cy::bcc(false, cy::Size::W) });')
+
+
+if __name__ == '__main__':
+    unittest.main()
