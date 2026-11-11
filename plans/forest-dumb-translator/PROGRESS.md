@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T08 (flags-arith); the other phase 1 fix tasks run beside it.
+**Next `pir-work` will:** the other phase 1 fix tasks (T07, T09, T10) and T11.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
 | T07 | known-defects | T06 | ⬜ | |
-| T08 | flags-arith | T06 | 🔍 | pcode_fix/arith.py: addx X=C; divu/divs via ops::divu_w/divs_w (overflow, zero divisor is new Stop::Trap vector 5); clr.w/l writes the prefetch to write-only registers, clr.l low word first. Arith 0 fails. 19 tests. Deviations: pcode_rust.py gives emit `at` and P-code op lines; lib.rs Stop::Trap, judge counts traps; subx/negx flags uncorrected, not in census. |
+| T08 | flags-arith | T06 | ✅ | Review clean, no fix commit. Reran insn_check --kinds arith on the real export (0 fails, 12 corrected sites) and the trial (84 of 85). Mutating divu_w overflow N turned insn_arith red. Byte and mixed-pair clr held against the shim. Trap stop proven on made-up code only; machine handling is T22/T23. |
 | T09 | flags-shift-bit | T06 | ⬜ | |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
