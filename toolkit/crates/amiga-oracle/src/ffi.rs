@@ -141,6 +141,7 @@ unsafe extern "C" {
     pub fn amiga_cpu(a: *const RawAmiga, out: *mut RawCpuRegs);
     pub fn amiga_blit_starts(a: *const RawAmiga, out: *mut *const RawCustomWrite) -> usize;
     pub fn amiga_set_profile(a: *mut RawAmiga, on: c_int);
+    pub fn amiga_das_table_whole() -> c_int;
     pub fn amiga_watch_pcs(a: *mut RawAmiga, pcs: *const u32, n: usize);
     pub fn amiga_pc_hits(a: *const RawAmiga, pcs: *mut *const u32, counts: *mut *const u32) -> usize;
     pub fn amiga_line_samples(a: *const RawAmiga, out: *mut *const RawLineSample) -> usize;

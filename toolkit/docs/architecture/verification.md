@@ -40,7 +40,7 @@ the workspace files, `toolkit/tools/`, `amiga-app` and `amiga-disk`. Those two c
 `toolkit/README.md`.
 
 - **`amiga-oracle`** (`toolkit/crates/amiga-oracle/`): the original, run on vAmiga (MPL-2.0) at a pinned
-  commit (`VAMIGA_COMMIT`) with five core patches (`patches/`), built outside the repo by
+  commit (`VAMIGA_COMMIT`) with seven core patches (`patches/`), built outside the repo by
   `toolkit/tools/setup/oracle.sh` and linked through a C shim (`shim/shim.cpp`, `shim/shim.h`,
   `src/ffi.rs`). `Amiga` steps one PAL frame per `Amiga::step` with the engine's own `FrameInput` and
   returns a `FrameCapture` (the display window's picture as 12-bit colour, the Paula writes with their
@@ -91,9 +91,9 @@ Paula writes or an adapter.
 
 ## The vAmiga patches
 
-Six patches to the core at `VAMIGA_COMMIT`, applied by `toolkit/tools/setup/oracle.sh`; their SHA-1 is
+Seven patches to the core at `VAMIGA_COMMIT`, applied by `toolkit/tools/setup/oracle.sh`; their SHA-1 is
 part of the build path and of `amiga_oracle::BUILD`, so every trace and snapshot cache key changes with
-them. Each hook is a null function pointer in the core that the shim installs.
+them. Each hook is a null function pointer in the core that the shim installs; 0007 is a fix, not a hook.
 
 | Patch | Hook or access | What it exposes | Why |
 |---|---|---|---|
@@ -103,6 +103,7 @@ them. Each hook is a null function pointer in the core that the shim installs.
 | `0004-audio-sample-hook.patch` | `vamiga_audio_sample_hook` in Paula's state machine (`penhi`, `penlo`) | each new DAC value per channel, with volume and beam position | `FrameCapture::taps`, the original's channel output |
 | `0005-irq-entry-hook.patch` | `vamiga_irq_hook` in `Moira::willInterrupt`, `vamiga_blit_hook` in the blitter's begin, busy-clear and end | interrupts taken and blitter events with their beam position | `Amiga::irqs`, `Amiga::blit_events` |
 | `0006-exec-hook.patch` | `vamiga_exec_hook` in `Moira::execute`, defined in `Moira.cpp` so the routine runner's private copy still links | each instruction the CPU executes, by its address | `Amiga::watch_pcs`, `Amiga::pc_hits`: proof a ported routine ran in play |
+| `0007-das-table-once.patch` | `Sequencer::initDasEventTable` fills its table under a `std::once_flag` | nothing | the table of a line's disk, audio and sprite slots is one for every machine in the process and each set-up wiped and refilled it; a machine stepped on another thread meanwhile copied an empty line and ran a few instructions early. Machines may run on several threads only with this |
 
 The shim adds what needs no patch: snapshots, RAM reads and pokes, the CPU's registers at the frame
 boundary (`Amiga::cpu`), per-line CPU samples for profiling (`Amiga::line_samples`), and RAM copied at
@@ -172,6 +173,7 @@ the per-instruction opcode test, the per-call branch table and the read bitmap. 
 | The oracle's determinism (patch 0002) | The same inputs from the same start give the same frames | `a_disk_less_boot_reaches_the_insert_disk_screen_the_same_way_twice` (`toolkit/crates/amiga-oracle/tests/boot.rs`) |
 | Snapshot restore | A restored snapshot continues as the run that made it | `a_snapshot_taken_mid_boot_continues_as_the_uninterrupted_run` (same file) |
 | Instruction counts (patch 0006) | The hook only observes; a pre-empted instruction counts once; a restored run counts as the one that made the snapshot | `watching_does_not_change_the_run`, `an_instruction_an_interrupt_pre_empts_counts_once`, `a_restored_run_counts_as_the_run_that_took_the_snapshot` (`toolkit/crates/amiga-oracle/tests/exec_counts.rs`) |
+| Machines on several threads (patch 0007) | Setting a machine up never wipes the slot table running machines share | `setting_a_machine_up_never_wipes_the_table_running_machines_share` (`toolkit/crates/amiga-oracle/tests/machines_apart.rs`) |
 | `Cpu68k` | A routine touching the chipset is refused outside hardware mode; relocations, timeouts and exceptions behave | `custom_chip_and_cia_accesses_are_errors_with_the_pc`, `max_instr_stops_an_infinite_loop`, `relocation_points_an_absolute_reference_at_the_relocated_target` (`toolkit/crates/amiga-oracle/tests/routine.rs`) |
 | `Cpu68k` tracing | Off by default and changes no result; branches and their ways, data reads only, the static walk's reach | `tracing_changes_nothing_a_call_returns_and_is_off_by_default`, `states_setting_one_condition_leave_exactly_the_others_uncovered`, `reads_are_data_space_only`, `the_walk_follows_direct_calls_and_not_indirect_jumps` (`toolkit/crates/amiga-oracle/tests/routine_branches.rs`) |
 | Paula latching in `sound_events` | Writes reduce to the same events whatever their order in a frame; a sample's address and length latch at its start | `sound_events_from_writes`, `sound_events_reordered_in_a_frame_or_shifted_2_frames_match`, `sound_events_3_frames_apart_or_a_different_sample_fail`, `a_change_just_before_its_channel_stops_need_not_be_met` (`toolkit/crates/amiga-conform/tests/faithful.rs`) |

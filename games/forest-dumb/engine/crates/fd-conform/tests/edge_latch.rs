@@ -17,7 +17,7 @@ use std::path::Path;
 
 use amiga_chips::Picture;
 use amiga_conform::Mode;
-use amiga_oracle::FrameInput;
+use amiga_oracle::{Amiga, FrameInput};
 use fd_conform::case::Exclusion;
 use fd_conform::{
     Case, Engine, Inputs, Live, Options, Outcome, PASS_END, STATUS_REDRAW, Sampler, Verdict,
@@ -27,6 +27,10 @@ use fd_core::level::{EdgesCut, Event, ROW_BOBS_CUT};
 use fd_core::{Game, HUNK_BASES, Mem, Transplant, Var, layout_var};
 
 const CASE: &str = "cases/edge-latch-route.toml";
+
+/// A chip RAM byte to change on the sampled side. Any would do: the comparison stops at the step
+/// it changes in.
+const CHANGED_BYTE: u32 = 0x7_F000;
 
 /// The case without its goal: the measurements below run the original a little short of its frames.
 fn route() -> Case {
@@ -309,6 +313,17 @@ fn a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one() {
 /// many steps were sampled. The sampled side's creature cuts are read every step as the runner
 /// reads them (T80), from what the oracle keeps of each step whether read or not.
 fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, u32) {
+    sampled_against_alone_with(case, steps, every, |_, _| {})
+}
+
+/// [`sampled_against_alone`], handing the sampled side to `after_sampled` after each step it
+/// sampled, with the step, before the two sides are compared.
+fn sampled_against_alone_with(
+    case: &Case,
+    steps: u32,
+    every: bool,
+    mut after_sampled: impl FnMut(&mut Amiga, u32),
+) -> (Option<u32>, u32) {
     let inputs = Inputs::load(case).unwrap_or_else(|e| panic!("{e}"));
     let mut alone = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
     let mut seen = reach_case(case, 0).unwrap_or_else(|e| panic!("{e}"));
@@ -333,6 +348,9 @@ fn sampled_against_alone(case: &Case, steps: u32, every: bool) -> (Option<u32>, 
         let a = alone.step(input).unwrap_or_else(|e| panic!("{e}"));
         let s = seen.step(input).unwrap_or_else(|e| panic!("{e}"));
         std::hint::black_box(fd_conform::creature_cuts(&seen));
+        if sample {
+            after_sampled(&mut seen, step);
+        }
         if a.picture != s.picture || alone.cpu() != seen.cpu() || alone.memory() != seen.memory() {
             return (Some(step), sampled);
         }
@@ -388,6 +406,32 @@ fn sampling_for_the_edge_cut_leaves_the_original_unchanged_every_frame() {
     for n in ["enemy-route", "enemy-contact", "edge-latch-route"] {
         assert!(sampled.contains(&n), "{n} not sampled: {sampled:?}");
     }
+}
+
+/// The check above can fail (T85): one byte of the sampled side changed after a sampled step is
+/// that step's difference, and the same steps undisturbed have
+/// none. The check's own failures were never the sampling's: the oracle's core wiped a table every
+/// machine shares whenever a machine was set up, under machines running on other threads (core
+/// patch 0007, `amiga-oracle`'s `tests/machines_apart.rs`).
+#[test]
+fn a_sampled_step_made_to_differ_is_caught_at_that_step() {
+    let case = Case::load(Path::new("cases/stretch-pit.toml")).unwrap();
+    // The third sampled step: later than the first, so the steps before it are held equal too.
+    let mut nth = 0;
+    let mut changed = None;
+    let (differs, _) = sampled_against_alone_with(&case, u32::MAX, false, |seen, step| {
+        nth += 1;
+        if nth == 3 {
+            let byte = seen.peek(CHANGED_BYTE, 1)[0];
+            seen.poke(CHANGED_BYTE, &[byte ^ 1]);
+            changed = Some(step);
+        }
+    });
+    assert!(changed.is_some(), "fewer than three sampled steps");
+    assert_eq!(differs, changed);
+    let (differs, sampled) = sampled_against_alone(&case, u32::MAX, false);
+    assert_eq!(differs, None, "undisturbed");
+    assert!(sampled >= 3);
 }
 
 /// With creatures live, sampling every step leaves the original as it runs alone, every frame: before

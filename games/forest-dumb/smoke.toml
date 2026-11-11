@@ -224,13 +224,15 @@ workspace = "engine"
 # the route's case on every latch; T74: the two mechanic cases with the runner's measured cut dropped
 # or changed; T78: enemy-contact and enemy-route sampled every step equal the original alone (6 s):
 # about 12 s warm from the cached sync point. The check that sampling leaves every level case's
-# original unchanged (about 5 min, death-countdown's 62 900 frames run twice) is full.
+# original unchanged (about 5 min, death-countdown's 62 900 frames run twice) is full; T85: that the
+# check catches a sampled step made to differ, on stretch-pit, 3 s.
 "crates/fd-conform/tests/edge_latch.rs" = [
     "live_no_row_reaches_the_bob_rule_and_the_cut_rows_are_the_long_passes",
     "the_routes_first_1300_steps_agree_on_the_right_edge_latch",
     "the_engine_fails_without_the_measured_cut_or_the_scan_it_stopped",
     "a_resumed_redraw_half_clears_every_later_latch_and_no_earlier_one",
     "sampling_every_step_leaves_the_original_unchanged_where_creatures_are_live",
+    "a_sampled_step_made_to_differ_is_caught_at_that_step",
 ]
 # T80: a creature the original cuts behind the beam, handed to the engine: mechanic-spring's first
 # 500 steps with and without the hand-over, a creature left out on unmeasured frames, and

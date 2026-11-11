@@ -19,7 +19,7 @@ mod trace;
 
 pub use amiga::{
     Amiga, AmigaMemory, AudioTap, BlitEvent, BlitEventKind, CpuRegs, CpuWrite, FrameCapture, Irq,
-    LineSample, MIX_RATE, Rgb12Frame, SLOW_BASE, Snapshot, hash_memory,
+    LineSample, MIX_RATE, Rgb12Frame, SLOW_BASE, Snapshot, das_table_whole, hash_memory,
 };
 pub use amiga_input::{FrameInput, Joy, KeySet};
 pub use amiga_paula::PaulaWrite;

@@ -5,6 +5,8 @@
 //   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception, and
 //        `vamiga_blit_hook`, called as a blit begins, frees the busy flag and ends;
 //   0006 installs `vamiga_exec_hook`, called once per instruction the CPU executes, with its address;
+//   0007 fills the sequencer's shared slot table once, so setting a machine up never wipes it under
+//        one running on another thread;
 //   0002 makes `AmigaShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -104,6 +106,14 @@ struct OwnersTag {
     friend type get(OwnersTag);
 };
 template struct Rob<OwnersTag, &DmaDebugger::busOwner>;
+
+// The sequencer's table of each line's disk, audio and sprite slots, one for every machine in the
+// process (private to it), for amiga_das_table_whole.
+struct DasTag {
+    using type = EventID (*)[64][HPOS_CNT];
+    friend type get(DasTag);
+};
+template struct Rob<DasTag, &Sequencer::dasDMA>;
 
 // The registers kept from the write hook (DESIGN §2.1 (2), FINDINGS 2026-10-11).
 bool isPaulaReg(u32 reg)
@@ -422,6 +432,16 @@ amiga_machine *amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t e
         return nullptr;
     }
     return a.release();
+}
+
+int amiga_das_table_whole(void)
+{
+    // Each row's first and last entries: a wipe clears them all, a refill sets them row by row.
+    auto &t = *get(DasTag());
+    for (int row = 0; row < 64; row++) {
+        if (t[row][0x01] != DAS_REFRESH || t[row][0xE3] != DAS_EOL) return 0;
+    }
+    return 1;
 }
 
 void amiga_free(amiga_machine *a)
