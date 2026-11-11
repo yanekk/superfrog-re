@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | `os-surface --worlds 1,3,6` (T01 review) lists `lea $0.l` to `$3.l` at `h0+$691e`..`$6930`, constants in play, as `[[read]]` OS memory with access `address`. Not in the committed worlds 1,2 file; not OS use. |
+| 2026-11-11 | 📌 | docs/07 says the file routines open dos.library by `OpenLibrary`; they call `OldOpenLibrary` (-408), as `entry` does for graphics (T01 review, listing). docs/15 is right; docs/07 left alone. |
+| 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |
+| 2026-11-11 | 📌 | Not in docs/07 (T01): `entry` opens graphics.library, calls `OpenFont` topaz (result read, never used) and graphics `FreeSprite` (-414) where `CloseLibrary` was meant; `h0+$51a` writes `ciab_prb` to latch the motor off. T26 answers these. |
+| 2026-11-11 | 📌 | `world_index` cannot be poked before `load_world`: `title_code_world` writes it in the same step. T01 sets the immediate at `h0+$778e` (the no-code branch `h0+$778c`) instead; T33's `set` meets the same step. |
 | 2026-11-11 | 🐞 | `translate.py` turns a Muse call error on every try into `fail`, not a missing-model result: the class T17's review fixed in generate and reshape (`no-model`). Left alone; T18 deletes Muse's translate.py. |
 | 2026-11-11 | 📌 | `claude -p --tools ""` from a temp folder (claude 2.1.322): no tools, 631 input tokens, no user CLAUDE.md in context. `--max-turns` works though `claude --help` does not list it. |
 | 2026-11-11 | 📌 | First real `generate.py` on Haiku: `h0+$513c` covered, 4 of 4 branches, 2 000 returns, 2 tries (the first left its name out of `ALL`), 22 s, $0.011 list. `claude -p` keeps no conversation; retries go as one transcript prompt. |
