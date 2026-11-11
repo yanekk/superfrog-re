@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Building; T02 awaiting review.
+**Status:** Building; T02 done.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T02; then T03 (whole-export); T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** T03 (whole-export); T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
 
@@ -16,7 +16,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 |---|---|---|---|---|
 | T00 | seam-spike | — | ⬜ | |
 | T01 | os-surface | — | ⬜ | |
-| T02 | code-seen | — | 🔍 | `fd-conform code-seen`, `re/entries.toml` (135 entries, 0 trace); 8 unit tests, 1 full. Deviations: world starts via level-end case and `next_world` (pre-Start poke is reset); direct call targets not starts, a reachability closure adds starts instead; `--out`, `--worlds none` added; full test compares one fresh run with the committed file. |
+| T02 | code-seen | — | ✅ | `fd-conform code-seen`, `re/entries.toml` (135 entries, 0 trace). Review: one fix, a test locking the local-start fall-through rule (its mutation survived). Ran the full test (fresh run equals committed), an independent Python closure (6 380 of 6 380 instructions reached from entries), `--worlds 7` exit 2, `--out`. Pre-Start `world_index` reset claim read-only. |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
 | T05 | oracle-step | — | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** empty
 
 ## Blocked on the user
 
