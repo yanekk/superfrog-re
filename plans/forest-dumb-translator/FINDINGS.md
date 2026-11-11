@@ -6,6 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T08 arith check**: before, 5 of 111 kinds failed, 1 807 states (regs 593, ccr 1 253, mem 500); after, 0 in each, 288 skipped (odd `(d8,An,Xn)` index 274, zero divisor 14). Trial: 84 of 85. |
+| 2026-11-11 | 📌 | The T06 `clr.w` row was COPJMP1 (`$dff088`), a translation gap: the 68000's clr reads first, and a write-only register's read writes the next instruction word. The music player's `clr.w AUDxVOL` (`h4+$184e2`..) does it too; `pcode_fix.arith` emits it. |
+| 2026-11-11 | 📌 | Moira's `clr.l` writes the low word before the high (custom writes `(aa,0)` then `(a8,0)`); the sinc's long store is high first, so arith emits clr.l as two word stores. |
+| 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |
+| 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
 | 2026-11-11 | 📌 | `pcode_rust.instruction` returns early for a `pcode_fix.emit` instruction (T09's register shifts), so T11/T12 must add `cycles(ins)` lines on that path too; T12's shift cost needs the count `cnt` the emit computes. Left alone (T09 review). |
 | 2026-11-11 | 📌 | **T09 shift_bit census:** 9 kinds, 8 268 of 41 500 states failing (all ccr V) before; 0 after. Trial `--skip-export` still 84 of 85 (write_into_code 1). |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
@@ -16,7 +21,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | After T06 moved the trial's corrections into `pcode_fix/`, the whole tree differs only in comments, and `translator_trial.py --skip-export` still passes 84 of 85 (write_into_code 1, as before). |
 | 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
 | 2026-11-11 | 📌 | T06 fails by owner (`build/translator/insn.md`): T09 nine shift kinds (lsl/lsr V set where Moira clears it, asl.l V); T08 five (addx.l X, divu/divs registers and flags, clr.w abs.l); T10 rte (PC, flags). |
-| 2026-11-11 | 🐞 | `clr.w` at BLTSIZE (`h0+$2a`): Moira's clr reads first, and its shim answers a write-only register's read by writing the bus's last word, an extra custom write the judge's `Mem` does not model. Judge gap or translation: T08 decides. |
 | 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |
 | 2026-11-11 | 🐞 | `pcode_export.py` `--out` naming a file: `os.makedirs` raises a traceback, not exit 2 (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 🐞 | `re_listing.py` `--out` naming a file: unguarded `os.makedirs` and temp-rename write, traceback not exit 2 (T04 review sweep, read-only). Left alone. |
