@@ -20,7 +20,7 @@
  "insns": {
   "h0+$0": {
    "len": 2,
-   "mnem": "moveq #-1,d0",
+   "mnem": "moveq",
    "bytes": "70ff",
    "operands": [
     "#-1",
@@ -119,7 +119,7 @@
   },
   "h0+$2": {
    "len": 2,
-   "mnem": "add.l d1,d0",
+   "mnem": "add.l",
    "bytes": "d081",
    "operands": [
     "D1",
@@ -248,7 +248,7 @@
   },
   "h0+$4": {
    "len": 2,
-   "mnem": "abcd d1b,d0b",
+   "mnem": "abcd",
    "flow": {
     "kind": "fallthrough"
    },
@@ -457,7 +457,7 @@
   },
   "h0+$6": {
    "len": 4,
-   "mnem": "cmpi.b #1,d3b",
+   "mnem": "cmpi.b",
    "flow": {
     "kind": "fallthrough"
    },
@@ -601,7 +601,7 @@
   },
   "h0+$a": {
    "len": 2,
-   "mnem": "bne.b h0+$0",
+   "mnem": "bne.b",
    "bytes": "66f4",
    "operands": [
     "0x0"
@@ -647,7 +647,7 @@
   },
   "h0+$c": {
    "len": 2,
-   "mnem": "move.w d0w,(a0)+",
+   "mnem": "move.w",
    "bytes": "30c0",
    "operands": [
     "D0w",
@@ -786,7 +786,7 @@
   },
   "h0+$e": {
    "len": 6,
-   "mnem": "move.l d0,(h1+$4).l",
+   "mnem": "move.l",
    "bytes": "23c000000004",
    "operands": [
     "D0",

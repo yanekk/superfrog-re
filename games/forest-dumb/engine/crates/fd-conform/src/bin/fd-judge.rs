@@ -22,10 +22,19 @@
 //!
 //! `outside` counts the poked (or hardware-read) bytes the original never read, `first_outside`
 //! names the first. A `base` is reported, not judged: the reviewer reads it.
+//!
+//! `--insn <encoding> --at 'hN+$off'` (translator T06, `judge::insn`) checks one instruction of the
+//! module built in from `FD_INSN` (`pcode_rust.py --insn`) against Moira's step on `--states N`
+//! generated states (500 unless set), comparing `--columns` (default `regs,ccr,mem,cycles`);
+//! `--insn-all [--shard K/N]` checks every site of the module, or every Nth from the Kth. `--seed S`
+//! changes the states. One line a site:
+//!
+//! `{"encoding":..,"at":..,"states":n,"pass":n,"fail":n,"skipped":n,"columns":{"regs":n,"ccr":n,"mem":n,"cycles":n|"not-counted","stop":n},"first":{"state","column","what","moira","translated"}|null,"first_skip":".."}`
 
 use std::process::ExitCode;
 
 use fd_conform::generators;
+use fd_conform::judge::insn::{self, Columns, InsnRig, Site};
 use fd_conform::judge::translated::{self, Stops, tree};
 use fd_conform::judge::{self, port};
 use fd_conform::routine::{Coverage, Gen, Generator, Rig, RigReport, STACK_AREA, h, seed};
@@ -108,6 +117,16 @@ fn args() -> Result<Args, String> {
 }
 
 fn main() -> ExitCode {
+    let v: Vec<String> = std::env::args().skip(1).collect();
+    if v.iter().any(|a| a == "--insn" || a == "--insn-all") {
+        return match insn_main(&v) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("fd-judge: {e}");
+                ExitCode::from(2)
+            }
+        };
+    }
     let a = match args() {
         Ok(a) => a,
         Err(e) => {
@@ -245,4 +264,103 @@ fn cover_line(a: &Args, rig: &Rig, generator: &Generator, c: &Coverage) -> Strin
         branches.join(","),
         esc(&first)
     )
+}
+
+const INSN_USAGE: &str = "usage: fd-judge --insn <encoding> --at 'hN+$off' | --insn-all [--shard K/N] \
+                          [--states N] [--columns regs,ccr,mem,cycles] [--seed S]";
+
+/// `--insn` and `--insn-all`: the instruction check over the module `FD_INSN` built in.
+fn insn_main(v: &[String]) -> Result<(), String> {
+    let (mut enc, mut at, mut all, mut states, mut cols, mut seed, mut shard) = (
+        None,
+        None,
+        false,
+        500usize,
+        Columns::ALL,
+        String::new(),
+        (0usize, 1usize),
+    );
+    let mut it = v.iter();
+    while let Some(a) = it.next() {
+        let mut val = || {
+            it.next()
+                .cloned()
+                .ok_or(format!("`{a}` takes a value: {INSN_USAGE}"))
+        };
+        match a.as_str() {
+            "--insn" => enc = Some(val()?.to_lowercase()),
+            "--at" => at = Some(val()?),
+            "--insn-all" => all = true,
+            "--states" => {
+                states = val()?
+                    .parse()
+                    .ok()
+                    .filter(|&n| n > 0)
+                    .ok_or("--states takes a whole number above 0")?
+            }
+            "--columns" => cols = Columns::parse(&val()?)?,
+            "--seed" => seed = val()?,
+            "--shard" => {
+                let s = val()?;
+                shard = s
+                    .split_once('/')
+                    .and_then(|(k, n)| Some((k.parse().ok()?, n.parse().ok()?)))
+                    .filter(|&(k, n): &(usize, usize)| n > 0 && k < n)
+                    .ok_or(format!("--shard `{s}` is not K/N with K below N"))?;
+            }
+            other => return Err(format!("`{other}`: {INSN_USAGE}")),
+        }
+    }
+    if all == enc.is_some() || enc.is_some() != at.is_some() {
+        return Err(INSN_USAGE.into());
+    }
+    let rows: Vec<Site> = match (&enc, &at) {
+        (Some(e), Some(at)) => {
+            let key = parse_routine(at)
+                .ok_or_else(|| format!("`{at}` is not `hN+$off` with N a hunk 0-4"))?;
+            let row = insn::tree::SITES
+                .iter()
+                .find(|r| (r.2 as usize, r.3) == key && r.0 == e)
+                .ok_or_else(|| {
+                    format!(
+                        "{e} at {at} is not in the --insn module built in (FD_INSN names \
+                         build/translator/insn.rs, written by pcode_rust.py --insn)"
+                    )
+                })?;
+            vec![Site::of(row)]
+        }
+        _ => insn::tree::SITES
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| i % shard.1 == shard.0)
+            .map(|(_, r)| Site::of(r))
+            .collect(),
+    };
+    let dir = fd_tools::disk_dir()?;
+    let exe = fd_tools::game_file(&dir, fd_conform::routine::PROGRAM)?;
+    let (mem, spans) = fd_conform::routine::load_program(&exe)?;
+    let sizes: Vec<u32> = spans.iter().map(|&(_, n)| n).collect();
+    if !insn::tree::HUNK_SIZES.is_empty() && insn::tree::HUNK_SIZES != sizes.as_slice() {
+        return Err(format!(
+            "the --insn module's hunk sizes {:x?} are not the program's {sizes:x?}: an export of another program",
+            insn::tree::HUNK_SIZES
+        ));
+    }
+    for s in &rows {
+        let a = (fd_conform::HUNK_BASES[s.hunk as usize] + s.off) as usize;
+        let word = format!("{:02x}{:02x}", mem[a], mem[a + 1]);
+        if word != s.encoding {
+            return Err(format!(
+                "{}: the program holds {word} there, not {}: the export is of another program",
+                s.at, s.encoding
+            ));
+        }
+    }
+    let mut rig = InsnRig::new(mem, &fd_conform::HUNK_BASES, &sizes);
+    std::panic::set_hook(Box::new(|_| {}));
+    for s in &rows {
+        let r = rig.check(s, states, &seed, cols);
+        println!("{}", r.json(s, cols));
+    }
+    Ok(())
 }

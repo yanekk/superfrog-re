@@ -129,7 +129,12 @@ impl Columns {
                 _ => return Err(format!("`{w}` is no column: regs, ccr, mem, cycles")),
             }
         }
-        if c == (Columns { regs: false, ccr: false, mem: false, cycles: false }) {
+        if c == (Columns {
+            regs: false,
+            ccr: false,
+            mem: false,
+            cycles: false,
+        }) {
             return Err("--columns names none of regs, ccr, mem, cycles".into());
         }
         Ok(c)
@@ -210,7 +215,13 @@ impl InsnRig {
 
     /// Run `site` from `states` generated states, seeded by `seed_text` and the site, and compare
     /// the columns `cols`.
-    pub fn check(&mut self, site: &Site, states: usize, seed_text: &str, cols: Columns) -> InsnReport {
+    pub fn check(
+        &mut self,
+        site: &Site,
+        states: usize,
+        seed_text: &str,
+        cols: Columns,
+    ) -> InsnReport {
         let at = self.bases[site.hunk as usize].wrapping_add(site.off);
         let own = at..at + site.len;
         let code = [(site.hunk, site.off, site.off + site.len)];
@@ -519,11 +530,22 @@ fn compare(
         // T, S and the interrupt mask; the low byte is the ccr column's.
         let (ms, ts) = (m.regs.sr >> 8 & 0xa7, (t.r.get(SR, 2) >> 8) as u16 & 0xa7);
         if ms != ts {
-            diff("regs", "sr".into(), format!("{ms:02x}xx"), format!("{ts:02x}xx"));
+            diff(
+                "regs",
+                "sr".into(),
+                format!("{ms:02x}xx"),
+                format!("{ts:02x}xx"),
+            );
         }
     }
     if cols.ccr {
-        for (bit, off, f) in [(4, XF, "X"), (3, NF, "N"), (2, ZF, "Z"), (1, VF, "V"), (0, CF, "C")] {
+        for (bit, off, f) in [
+            (4, XF, "X"),
+            (3, NF, "N"),
+            (2, ZF, "Z"),
+            (1, VF, "V"),
+            (0, CF, "C"),
+        ] {
             let (mf, tf) = ((m.regs.sr >> bit) & 1, t.r.get(off, 1) as u16);
             if mf != tf {
                 diff("ccr", f.into(), mf.to_string(), tf.to_string());
@@ -564,7 +586,12 @@ fn compare(
         && let Some(c) = t.cycles
         && c != m.cycles as u64
     {
-        diff("cycles", "cycles".into(), m.cycles.to_string(), c.to_string());
+        diff(
+            "cycles",
+            "cycles".into(),
+            m.cycles.to_string(),
+            c.to_string(),
+        );
     }
 }
 

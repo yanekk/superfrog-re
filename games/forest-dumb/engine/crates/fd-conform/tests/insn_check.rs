@@ -54,7 +54,10 @@ fn every_made_up_encoding_passes_every_column_on_moira() {
         assert_eq!(r.pass, STATES, "{}", s.at);
         // The generated code counts no cycles yet (T11): reported, never failed.
         assert!(!r.cycles_counted);
-        assert!(r.json(&s, Columns::ALL).contains("\"cycles\":\"not-counted\""));
+        assert!(
+            r.json(&s, Columns::ALL)
+                .contains("\"cycles\":\"not-counted\"")
+        );
     }
 }
 
@@ -68,7 +71,10 @@ fn add_with_c_flipped(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<()
 fn a_wrong_carry_fails_every_state_in_the_ccr_column_naming_c() {
     let s = with("h0+$2", add_with_c_flipped);
     let r = check(&s, Columns::ALL);
-    assert_eq!((r.fail, r.ccr, r.regs, r.mem, r.stop), (STATES, STATES, 0, 0, 0));
+    assert_eq!(
+        (r.fail, r.ccr, r.regs, r.mem, r.stop),
+        (STATES, STATES, 0, 0, 0)
+    );
     let first = r.first.as_ref().unwrap();
     assert_eq!((first.column, first.what.as_str()), ("ccr", "C"));
     assert_ne!(first.moira, first.translated);
@@ -139,6 +145,10 @@ fn the_absolute_operand_is_seeded_and_written_where_the_original_writes() {
 #[test]
 fn columns_parse_and_refuse_what_is_not_a_column() {
     assert_eq!(Columns::parse("regs,ccr,mem,cycles"), Ok(Columns::ALL));
-    assert!(Columns::parse("regs,flags").unwrap_err().contains("`flags`"));
+    assert!(
+        Columns::parse("regs,flags")
+            .unwrap_err()
+            .contains("`flags`")
+    );
     assert!(Columns::parse("").is_err());
 }
