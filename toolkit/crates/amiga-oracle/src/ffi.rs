@@ -206,6 +206,14 @@ pub struct RawRegs {
     pub sr: u16,
 }
 
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct RawStepRegs {
+    pub pc: u32,
+    pub usp: u32,
+    pub ssp: u32,
+}
+
 pub const AMIGA_CALL_RETURNED: u32 = 0;
 pub const AMIGA_CALL_TIMEOUT: u32 = 1;
 pub const AMIGA_CALL_CUSTOM: u32 = 2;
@@ -233,6 +241,14 @@ unsafe extern "C" {
         regs: *mut RawRegs,
         sentinel: u32,
         max_instr: u64,
+        out: *mut RawCallStatus,
+    );
+    pub fn amiga_cpu68k_step(
+        c: *mut RawCpu,
+        pc: u32,
+        regs: *mut RawRegs,
+        other_sp: u32,
+        ext: *mut RawStepRegs,
         out: *mut RawCallStatus,
     );
     pub fn amiga_cpu68k_journal(c: *const RawCpu, addrs: *mut *const u32, olds: *mut *const u8) -> usize;

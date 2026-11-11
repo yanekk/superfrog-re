@@ -215,7 +215,7 @@ def routine_block(r):
     if not f:
         parts.append('No translation folder: run `tools/translate.py` on it, or port it by hand.')
         return '\n\n'.join(parts)
-    res = reshape.tr.read_result(f) or {}
+    res = reshape.jr.read_result(f) or {}
     port = os.path.join(f, 'port.rs')
     parts.append(f"Literal port: {res.get('result', 'none')}"
                  + (f" (`{rel(port)}`: Muse's input, which reshape.py sends; read it only to check one)"

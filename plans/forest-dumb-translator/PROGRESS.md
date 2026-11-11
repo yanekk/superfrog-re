@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Building; T01 reviewed ✅.
+**Status:** Building; T00, T01, T05 and T17 ✅.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T05 and T17 can run beside it.
+**Next `pir-work` will:** T02 (code-seen), the head of the critical path.
 
 ## Tasks
 
@@ -14,12 +14,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | seam-spike | — | ⬜ | |
+| T00 | seam-spike | — | ✅ | |
 | T01 | os-surface | — | ✅ | Reviewed: one doc fix, docs/15 now says Read's length also bounds `unpack_esl`, so it must be exact. Probed: title frames run no interrupt (per-frame run), `h0+$be` is graphics FreeSprite (listing), output stable, worlds 3 and 6 load; two mutations caught. Deviations held. |
 | T02 | code-seen | — | ⬜ | |
 | T03 | whole-export | T02 | ⬜ | |
 | T04 | census-and-split | T03 | ⬜ | |
-| T05 | oracle-step | — | ⬜ | |
+| T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
 | T07 | known-defects | T06 | ⬜ | |
 | T08 | flags-arith | T06 | ⬜ | |
@@ -31,7 +31,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T14 | run-stops | T04 | ⬜ | |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
-| T17 | haiku-backend | — | ⬜ | |
+| T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
