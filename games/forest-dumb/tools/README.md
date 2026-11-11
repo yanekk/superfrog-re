@@ -138,7 +138,11 @@ function per opcode word (its first site, or the sites given) that runs that ins
 the next address in `PC`, and `SITES` (encoding, site, hunk, offset, length, absolute operands, function).
 Corrections to Ghidra's P-code live in `pcode_fix/`, one module per instruction family (`bcd`, `compare`,
 `arith`, `shift_bit`, `move_control`, `cycles`), by mnemonic and P-code pattern, never by address; its
-`__init__.py` says what a module may define.
+`__init__.py` says what a module may define. Ghidra 12.0's known defects (abcd, sbcd and nbcd's decimal
+adjust, X on compares, `cmpm.b (a7)+`, a `bra.w` marked `CALL_RETURN`, the empty relocation table) are
+proven one instruction at a time on Moira by `fd-conform/tests/insn_defects.rs`, on a made-up program
+Ghidra exports to `tests/fixtures/defects.json` (`python3 -I games/forest-dumb/tools/test_pcode_export_ghidra.py
+--write-defects` rewrites it; `ghidra/SetFlowOverride.java` sets the override first, test only).
 
 ### pcode_census.py (stdlib)
 Every instruction kind `pcode.json` holds, the instruction check's work list (translator DESIGN §2.6).

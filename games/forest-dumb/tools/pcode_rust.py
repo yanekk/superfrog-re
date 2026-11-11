@@ -441,6 +441,10 @@ class Emit:
 
     def op_lines(self, op, j, a, ins):
         o = op['op']
+        # An op a correction put in place of Ghidra's (pcode_fix's `op_lines`), e.g. nbcd's NBCD.
+        fixed = pcode_fix.op_lines(op, self.rd, self.wr)
+        if fixed is not None:
+            return fixed
         nxt = (a[0], a[1] + ins['len'])
         if o == 'STORE':
             v = op['in']

@@ -1,9 +1,11 @@
-"""abcd and sbcd (nbcd: T07), emitted from their operands with Moira's arithmetic.
+"""abcd, sbcd and nbcd, carried out with Moira's arithmetic (pcode-rt's `bcd` module).
 
-Ghidra 12.0's 68000.sinc writes abcd/sbcd's decimal adjust as a CALLOTHER to a user op no emulator
-defines, and around it gets the instruction wrong (pcode-rt's `bcd` module lists how). An
-instruction of that mnemonic whose P-code has the shape the sinc produces is emitted from its
-operands instead; any other shape stays an unsupported stop.
+Ghidra 12.0's 68000.sinc writes their decimal adjust as a CALLOTHER to a user op no emulator
+defines, and around it gets the instruction wrong (pcode-rt's `bcd` module lists how). abcd and sbcd
+have two forms only, so one whose P-code has the shape the sinc produces is emitted from its operands
+(`emit`). nbcd takes any alterable data address, so its P-code keeps Ghidra's addressing, load and
+store, and only the arithmetic and flags are replaced by one NBCD op (`correct`, `op_lines`). Any
+other shape under these mnemonics stays an unsupported stop.
 """
 from . import base_mnemonic
 
@@ -74,4 +76,50 @@ def emit(ins):
             'let d = load(bus, ax, 1);',
             f'let (v, x, o) = {fn}(s, d, r.get({hex_lit(XF_OFF)}, 1));',
             'store(bus, img, ax, 1, v)?;',
+            'pcode_rt::bcd::bcd_flags(r, v, x, o);']
+
+
+# nbcd: `tmp = <ea>; CF = ..; tmp = 0 - tmp - XF; <ea> = bcdAdjust(tmp); XF = CF; ZF = ..` in the sinc.
+NBCD = 'NBCD'
+
+
+def correct(ins):
+    """nbcd with the sinc's arithmetic and flags replaced by one NBCD op: (out = the destination the
+    CALLOTHER wrote, in = [the byte read]). Any other instruction, or another shape, unchanged."""
+    if base_mnemonic(ins) != 'nbcd':
+        return ins
+    ops = ins['ops']
+    calls = [k for k, op in enumerate(ops) if op['op'] == 'CALLOTHER']
+    if len(calls) != 1:
+        return ins
+    c = calls[0]
+    adj = ops[c]
+    if len(adj['in']) != 2 or not adj.get('out') or adj['out'][2] != 1:
+        return ins
+    tmp = adj['in'][1]
+    # The read: the first COPY into the CALLOTHER's input, a byte.
+    read = next((k for k, op in enumerate(ops[:c]) if op['op'] == 'COPY' and op['out'] == tmp), None)
+    if read is None or tmp[:1] != ['unique'] or tmp[2] != 1:
+        return ins
+    # Between the read and the CALLOTHER only the sinc's carry and `0 - tmp - XF`; after it only its
+    # store of the result and the flags.
+    middle = {op['op'] for op in ops[read + 1:c]}
+    if not middle <= {'INT_NOTEQUAL', 'INT_EQUAL', 'BOOL_OR', 'INT_SUB'}:
+        return ins
+    tail = ops[c + 1:]
+    stores = [op for op in tail if op['op'] == 'STORE']
+    if any(op['op'] not in ('STORE', 'COPY', 'INT_EQUAL', 'INT_MULT', 'INT_NOTEQUAL', 'INT_ADD') for op in tail) \
+            or any(op['in'][2] != adj['out'] for op in stores) \
+            or any(op['op'] != 'STORE' and op['out'][0] == 'ram' for op in tail):
+        return ins
+    nbcd = {'op': NBCD, 'out': adj['out'], 'in': [tmp]}
+    return dict(ins, ops=ops[:read + 1] + [nbcd] + stores)
+
+
+def op_lines(op, rd, wr):
+    """`0 - byte - X`, decimal, as Moira's nbcd does it (its `bcd<SBCD>(byte, 0)`), and its flags."""
+    if op['op'] != NBCD:
+        return None
+    return [f'let (v, x, o) = pcode_rt::bcd::bcd_sub({rd(op["in"][0])}, 0, r.get({hex_lit(XF_OFF)}, 1));',
+            wr(op['out'], 'v'),
             'pcode_rt::bcd::bcd_flags(r, v, x, o);']

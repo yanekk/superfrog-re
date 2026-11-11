@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** the other phase 1 fix tasks (T07, T09, T10) and T11.
+**Next `pir-work` will:** T10 (flags-move-control) and T11 (cycles-static), the rest of phase 1.
 
 ## Tasks
 
@@ -21,9 +21,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
-| T07 | known-defects | T06 | ⬜ | |
+| T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ✅ | Review clean, no fix commit. Reran insn_check --kinds arith on the real export (0 fails, 12 corrected sites) and the trial (84 of 85). Mutating divu_w overflow N turned insn_arith red. Byte and mixed-pair clr held against the shim. Trap stop proven on made-up code only; machine handling is T22/T23. |
-| T09 | flags-shift-bit | T06 | ⬜ | |
+| T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |

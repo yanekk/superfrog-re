@@ -304,6 +304,74 @@ pub fn custom_write_only(a: u32) -> bool {
     !((0x002..=0x01E).contains(&reg) || reg == 0x07C || (0x180..=0x1BE).contains(&reg))
 }
 
+/// The kinds of a 68000 shift or rotate, as the opcode's type field numbers them.
+pub const SHIFT_AS: u8 = 0;
+pub const SHIFT_LS: u8 = 1;
+pub const SHIFT_ROX: u8 = 2;
+pub const SHIFT_RO: u8 = 3;
+
+/// One 68000 shift or rotate of a `size`-byte `data` by `cnt` steps, one step at a time as Moira's
+/// `shift` does: `[result, X, N, Z, V, C]`, the result masked to `size`.
+///
+/// Ghidra 12.0's sinc gets these wrong (translator T09): V from the sign before and after (a logical
+/// shift always clears V, `asl` sets it when the sign changes at any step), rotates by a register
+/// count past the size, and X on `asr` by a register. `cnt` is the count already taken mod 64 (a
+/// register count) or 1..8 (an immediate). A count of 0 clears C and leaves X, except `roxl`/`roxr`,
+/// which copy X to C; `rol`/`ror` never touch X.
+pub fn shift68k(kind: u8, left: bool, size: usize, cnt: u64, data: u64, x: u64) -> [u64; 6] {
+    let top = bits(size) - 1;
+    let msb = |d: u64| (d >> top) & 1;
+    let m = mask(size);
+    let mut d = data & m;
+    let mut carry = if kind == SHIFT_ROX { x & 1 } else { 0 };
+    let mut changed = 0u64;
+    for _ in 0..cnt {
+        let next = match (kind, left) {
+            (SHIFT_AS | SHIFT_LS, true) => {
+                carry = msb(d);
+                (d << 1) & m
+            }
+            (SHIFT_AS, false) => {
+                carry = d & 1;
+                (signed(d, size) >> 1) as u64 & m
+            }
+            (SHIFT_LS, false) => {
+                carry = d & 1;
+                d >> 1
+            }
+            (SHIFT_RO, true) => {
+                carry = msb(d);
+                ((d << 1) | carry) & m
+            }
+            (SHIFT_RO, false) => {
+                carry = d & 1;
+                (d >> 1) | (carry << top)
+            }
+            (SHIFT_ROX, true) => {
+                let ext = carry;
+                carry = msb(d);
+                ((d << 1) | ext) & m
+            }
+            (SHIFT_ROX, false) => {
+                let ext = carry;
+                carry = d & 1;
+                (d >> 1) | (ext << top)
+            }
+            _ => panic!("shift kind {kind}"),
+        };
+        changed |= d ^ next;
+        d = next;
+    }
+    let x = match kind {
+        SHIFT_RO => x & 1,
+        SHIFT_ROX => carry,
+        _ if cnt == 0 => x & 1,
+        _ => carry,
+    };
+    let v = if kind == SHIFT_AS { msb(changed) } else { 0 };
+    [d, x, msb(d), b(d == 0), v, carry]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -597,5 +665,95 @@ mod tests {
         }
         // The top byte of a 32-bit address is not on the 68000's bus.
         assert!(custom_write_only(0xFFDFF088));
+    }
+
+    // [result, X, N, Z, V, C]
+    #[test]
+    fn shift_by_zero_clears_c_and_keeps_x_but_roxl_copies_x_to_c() {
+        for kind in [SHIFT_AS, SHIFT_LS, SHIFT_RO] {
+            for left in [true, false] {
+                assert_eq!(
+                    shift68k(kind, left, 4, 0, 0x8000_0001, 1),
+                    [0x8000_0001, 1, 1, 0, 0, 0]
+                );
+                assert_eq!(shift68k(kind, left, 1, 0, 0x100, 0), [0, 0, 0, 1, 0, 0]);
+            }
+        }
+        for left in [true, false] {
+            assert_eq!(
+                shift68k(SHIFT_ROX, left, 2, 0, 0x1234, 1),
+                [0x1234, 1, 0, 0, 0, 1]
+            );
+            assert_eq!(
+                shift68k(SHIFT_ROX, left, 2, 0, 0x1234, 0),
+                [0x1234, 0, 0, 0, 0, 0]
+            );
+        }
+    }
+
+    #[test]
+    fn asl_sets_v_when_the_sign_changes_at_any_step() {
+        // $40 << 2 in a byte: positive before and after, negative after the first step.
+        assert_eq!(shift68k(SHIFT_AS, true, 1, 2, 0x40, 0), [0, 1, 0, 1, 1, 1]);
+        assert_eq!(
+            shift68k(SHIFT_AS, true, 1, 1, 0xc0, 0),
+            [0x80, 1, 1, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_AS, true, 4, 40, 0xffff_ffff, 0),
+            [0, 0, 0, 1, 1, 0]
+        );
+        assert_eq!(shift68k(SHIFT_AS, true, 4, 40, 0, 1), [0, 0, 0, 1, 0, 0]);
+        // A logical shift of the same never sets V.
+        assert_eq!(shift68k(SHIFT_LS, true, 1, 2, 0x40, 0), [0, 1, 0, 1, 0, 1]);
+    }
+
+    #[test]
+    fn asr_keeps_the_sign_and_its_last_bit_out_is_x_and_c() {
+        assert_eq!(
+            shift68k(SHIFT_AS, false, 2, 3, 0x8004, 0),
+            [0xf000, 1, 1, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_AS, false, 2, 63, 0x8000, 0),
+            [0xffff, 1, 1, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_LS, false, 2, 63, 0x8000, 1),
+            [0, 0, 0, 1, 0, 0]
+        );
+        assert_eq!(
+            shift68k(SHIFT_LS, false, 4, 32, 0x8000_0000, 0),
+            [0, 1, 0, 1, 0, 1]
+        );
+    }
+
+    #[test]
+    fn rotates_past_the_size_wrap_and_roxl_goes_through_x() {
+        assert_eq!(
+            shift68k(SHIFT_RO, true, 1, 9, 0x81, 0),
+            [0x03, 0, 0, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_RO, false, 2, 17, 0x0001, 1),
+            [0x8000, 1, 1, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_RO, true, 4, 32, 0x1234_5678, 0),
+            [0x1234_5678, 0, 0, 0, 0, 0]
+        );
+        // roxl is a 9-bit rotate of a byte: 9 steps bring it back, with X where it was.
+        assert_eq!(
+            shift68k(SHIFT_ROX, true, 1, 9, 0xa5, 1),
+            [0xa5, 1, 1, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_ROX, true, 1, 1, 0x80, 1),
+            [0x01, 1, 0, 0, 0, 1]
+        );
+        assert_eq!(
+            shift68k(SHIFT_ROX, false, 1, 1, 0x01, 0),
+            [0x00, 1, 0, 1, 0, 1]
+        );
     }
 }
