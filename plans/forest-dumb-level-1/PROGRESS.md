@@ -68,7 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | case-mechanics | T25, T45 | ✅ | |
 | T27 | full-route | T20, T26, T45, T46, T47 | ✅ | |
 | T48 | route-on-original | T27 | ✅ | |
-| T28 | finish-end-to-end | T16, T48 | ⬜ | |
+| T28 | finish-end-to-end | T16, T48 | ✅ | |
 | T29 | level-drill | T15, T28 | ⬜ | |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
