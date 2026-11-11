@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | insn-check | T04, T05 | ✅ | |
 | T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ⬜ | |
-| T09 | flags-shift-bit | T06 | ⬜ | |
+| T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
