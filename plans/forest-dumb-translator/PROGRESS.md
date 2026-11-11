@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T22 (machine-core); T23 to T26 build on it once reviewed.
+**Next `pir-work` will:** T23 to T26 (interrupts, machine-chips, machine-sound-input, os-answers), unblocked by T22.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
-| T22 | machine-core | T11, T14 | 🔍 | New crate pcode-machine, 19 unit tests, smoke, in PURE. Deviations: new `Stop::Outside` in pcode-rt (judge counts it), since the bus cannot fail; accesses timed at block start; `Device: Send`; `Config::a500`, `attach`, `attach_cia`, `sync_beam` added; snapshot mem is chip then slow; VPOSW not moving the beam. |
+| T22 | machine-core | T11, T14 | ✅ | Review: two defects fixed with tests: `$D80000-$DBFFFF` now custom (A500 bank map, was `Stop::Outside`) and CIA reads and writes now set the bus's last word, both against vAmiga 899da5d source. Probed: the real program loads byte-equal to `load_program` (744 588 bytes); five core mutations caught. Block-start timing admitted by DESIGN §2.7, read-only. |
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T22
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
