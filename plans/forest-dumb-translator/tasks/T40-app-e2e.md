@@ -1,6 +1,6 @@
 # T40 — app-e2e
 
-**Phase:** 7 · **Depends on:** T38, T39 · **Weight:** medium
+**Phase:** 7 · **Depends on:** T33, T38, T39 · **Weight:** medium
 
 ## Goal
 

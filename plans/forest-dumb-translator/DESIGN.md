@@ -82,6 +82,7 @@ A hand-written routine replaces a translated one by address. The list is `fd-cor
 
 - It runs the translated program from power-on: the program's entry, the title, the menus, the levels (owner, 2026-11-11). `--level 1` starts at level 1, reached by running the translated program headless through the title with Start pressed, so the start is the program's own and not a separate path. The boot block and the crack are not run (§8).
 - Level 1 runs with the hand engine mounted (§2.9).
+- `--engine hand` starts today's hand engine instead, as before this plan (owner, plan review 2026-11-11): it keeps the two side by side for comparison, and lets the existing app tests run where no translation is generated.
 - It plays sound: Paula's writes go through `amiga-paula` to `amiga-app`'s audio, as Superfrog's app does (owner, 2026-11-11).
 - On a stop (§2.4) the game freezes, a line names the stop and its address, and a bug recording of the play from its start is saved to the bug folder automatically, in the existing bug zip format; the player can then quit (owner, 2026-11-11). The reason: the original would have carried on, so a stop is always a translator or machine defect, and the recording is what a session needs to fix it.
 - Only the owner runs it (owner, 2026-11-11): the translated code is generated on the owner's machine from the owner's disks into `build/` and never committed or distributed. Built where no translation exists, the app says which command generates it and exits non-zero.
@@ -220,7 +221,7 @@ Never run the unbounded version of any of these to find something out.
 | Fetch a crates.io dependency already on the policy | `cargo build` | `worker` | Public read-only fetch | Revert the lockfile | none | none |
 | Ask Haiku for a generator or a draft rewrite | `python3 -I games/forest-dumb/tools/generate.py …`, `… reshape.py …` (through `tools/model.py`) | `worker` | Subscription usage, capped at 40 calls a run; about $0.003 a call at list price | none needed, nothing outside changes | small share of the owner's subscription | `claude auth status` |
 | Haiku trial batch (T19) | `python3 -I games/forest-dumb/tools/haiku_trial.py` | `worker` | 26 tasks, capped at 3 tries each | none needed | under 100 Haiku calls | `claude auth status` |
-| Run the stage 7 check | `python3 -I games/forest-dumb/tools/default_check.py` | `ask` | Three full sessions on the default model through the owner's subscription, a larger share than a Haiku call | none needed | three short sessions, 15 turns each at most | `claude auth status` |
+| Run the stage 7 check | `python3 -I games/forest-dumb/tools/default_check.py` | `worker` | Exception (owner, plan review 2026-11-11): moved down from `ask` by the owner's choice. Three full sessions on the default model through the owner's subscription, a larger share than a Haiku call, bounded by §5.2 | none needed | three short sessions, 15 turns each at most | `claude auth status` |
 
 Nothing here touches a cloud account, a domain or a device. Revoking the OpenRouter key at the provider is the owner's own and is not a task.
 

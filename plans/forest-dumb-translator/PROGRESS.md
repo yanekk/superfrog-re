@@ -2,7 +2,7 @@
 
 Update this whenever a task changes state; it is the handoff between sessions. What the build taught is in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted, flat prose; whoever writes a cell fixes the over-budget cell they walk past.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
@@ -51,10 +51,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | generated-purity | T28 | ⬜ | |
 | T35 | seam | T00, T28 | ⬜ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
-| T37 | app-translated | T32, T36 | ⬜ | |
+| T37 | app-translated | T18, T32, T36 | ⬜ | |
 | T38 | app-sound | T37 | ⬜ | |
 | T39 | app-stop | T37 | ⬜ | |
-| T40 | app-e2e | T38, T39 | ⬜ | |
+| T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 

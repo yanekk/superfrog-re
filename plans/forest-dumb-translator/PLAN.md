@@ -113,10 +113,10 @@ T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worke
 
 | # | Task | Depends on |
 |---|---|---|
-| [T37](tasks/T37-app-translated.md) | app-translated | T32, T36 |
+| [T37](tasks/T37-app-translated.md) | app-translated | T18, T32, T36 |
 | [T38](tasks/T38-app-sound.md) | app-sound | T37 |
 | [T39](tasks/T39-app-stop.md) | app-stop | T37 |
-| [T40](tasks/T40-app-e2e.md) | app-e2e | T38, T39 |
+| [T40](tasks/T40-app-e2e.md) | app-e2e | T33, T38, T39 |
 | [T41](tasks/T41-app-drill.md) | app-drill | T40 |
 | [T42](tasks/T42-close.md) | close | T21, T33, T34, T41 |
 
@@ -144,7 +144,7 @@ T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worke
 T02 → T03 → T04 → T06 → T11 → T12 → T13 → T16 → T27 → T28 → T29 → T30 → T36 → T37 → T38 → T40 → T41 → T42
 ```
 
-Off it: phase 3 (T18 to T21), T01 and T26 (must finish before T28), T00, T34, T32 and T33.
+Off it: phase 3 (T18 to T21; T18 must finish before T37), T01 and T26 (must finish before T28), T00, T34, T32 and T33 (T33 before T40).
 
 Leaves: only T42.
 
@@ -156,7 +156,7 @@ Leaves: only T42.
 
 | Weight | Tasks |
 |---|---|
-| **Heavy** | T03, T06, T12, T22, T23, T24, T26, T28, T30, T31, T32, T35, T36, T37 |
+| **Heavy** | T03, T06, T12, T22, T23, T24, T26, T28, T30, T31, T32 (with the toolkit move), T35, T36, T37 |
 | **Medium** | T00, T01, T02, T04, T07, T08, T09, T10, T11, T14, T15, T16, T18, T19, T20, T25, T27, T29, T33, T38, T39, T40, T41 |
 | **Light** | T05, T13, T17, T21, T34, T42 |
 

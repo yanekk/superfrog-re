@@ -27,7 +27,7 @@ fd-conform code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6]
 
 ## How
 
-Run level 1's 33 cases unfrozen, the power-on run through the title into level 1, and each world 2 to 6 start (poke `world_index`, as T01) for a bounded number of frames. Union the executed addresses; reduce to run starts.
+Run level 1's 42 cases (every `engine/conform/cases/` file but `first-case`) unfrozen, the power-on run through the title into level 1, and each world 2 to 6 start (poke `world_index`, as T01) for a bounded number of frames. Union the executed addresses; reduce to run starts.
 
 ## Tests
 

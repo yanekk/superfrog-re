@@ -4,7 +4,7 @@
 
 ## Goal
 
-Run the conformance cases with the translated engine and compare what the frame bar asks (DESIGN §2.7): state, picture and the frame's custom writes, Paula's in order. Then a first reading of all 33 level 1 cases, sorted by first failure, which T30 and T31 work from.
+Run the conformance cases with the translated engine and compare what the frame bar asks (DESIGN §2.7): state, picture and the frame's custom writes, Paula's in order. Then a first reading of all 42 level 1 cases, sorted by first failure, which T30 and T31 work from.
 
 ## Design sections this implements
 
@@ -12,7 +12,7 @@ DESIGN §2.7.
 
 ## Files
 
-- `fd-conform/src/main.rs`, `lib.rs`, `case.rs`: `--engine hand|translated`, a `writes` comparison channel for Paula, `engine/conform/README.md`.
+- `fd-conform/src/main.rs`, `lib.rs`, `case.rs`: `--engine hand|translated`, a `writes` comparison channel for Paula, `engine/conform/README.md`. The Paula comparison reuses `amiga-conform`'s (`compare.rs`, `sound_events.rs`, `channels.rs`, as `sf-conform/src/case.rs` uses it), not a new one (plan review, 2026-11-11).
 
 ## Interface
 

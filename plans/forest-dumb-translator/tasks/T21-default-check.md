@@ -30,7 +30,7 @@ The scratch worktree is removed after each run, pass or fail.
 
 ## Outside actions
 
-- Run the stage 7 check — `ask`.
+- Run the stage 7 check — `worker` (owner's exception, plan review 2026-11-11, DESIGN §5.3).
 
 ## Tests
 

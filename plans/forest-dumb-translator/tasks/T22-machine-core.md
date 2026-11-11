@@ -13,6 +13,7 @@ DESIGN §2.8, §3.1.
 ## Files
 
 - `games/forest-dumb/engine/crates/pcode-machine/` (new crate, pure, names no game): `lib.rs`, `mem.rs`, `custom.rs`, `beam.rs`, `README.md`.
+- Built on what exists (plan review, 2026-11-11): the hunk file is parsed and relocated with `amiga-disk`'s `hunk` module as `fd-conform/src/routine.rs` `load_program` does, and the beam position comes from `amiga-clock`'s `Clock` (`cpu`, `pos`); `beam.rs` only encodes VPOSR/VHPOSR from it. A gap is closed in the toolkit crate, naming no game, not by a second copy.
 - `fd-conform/tests/purity.rs`: add `pcode-machine` to `PURE`. Workspace `Cargo.toml`. `smoke.toml` labels.
 
 ## Interface

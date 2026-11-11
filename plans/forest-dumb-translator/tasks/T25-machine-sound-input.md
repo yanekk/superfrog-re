@@ -12,7 +12,7 @@ DESIGN §2.7 (Paula's writes in order), §2.8.
 
 ## Files
 
-- `crates/pcode-machine/src/{paula,cia,input}.rs` (new).
+- `crates/pcode-machine/src/{paula,cia,input}.rs` (new). The keyboard's serial path is `amiga-input`'s `CiaKeyboard` and the input types its `FrameInput`/`Joy`, extended there (naming no game) if they lack something; Paula's writes use `amiga-paula`'s `PaulaWrite` (plan review, 2026-11-11).
 
 ## Interface
 

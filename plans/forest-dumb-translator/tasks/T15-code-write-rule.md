@@ -12,7 +12,7 @@ DESIGN §2.5.
 
 ## Files
 
-- `fd-conform/src/judge/translated.rs` (classify), `fd-conform/src/code_writes.rs` (power-on and worlds 2 to 6 starts, the runs T02 defines), tests.
+- `fd-conform/src/judge/translated.rs` (classify), `fd-conform/src/code_writes.rs` (power-on and worlds 2 to 6 starts, the runs T02 defines), `fd-conform/src/main.rs` (`code-writes --all`; today `--cases` covers level cases only), tests.
 - `tools/translator_trial.py` table column `self-modifying`.
 
 ## Tests

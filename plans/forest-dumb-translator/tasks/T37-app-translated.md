@@ -1,6 +1,6 @@
 # T37 — app-translated
 
-**Phase:** 7 · **Depends on:** T32, T36 · **Weight:** heavy
+**Phase:** 7 · **Depends on:** T18, T32, T36 · **Weight:** heavy
 
 ## Goal
 
@@ -29,4 +29,5 @@ DESIGN §2.10.
 ## Done when
 
 - [ ] The three end-to-end tests pass in full; a smoke test runs the app on the stub tree and checks the message and exit code.
-- [ ] `CLAUDE.md` "Playing it" describes the new start.
+- [ ] `CLAUDE.md` "Playing it" describes the new start and `--engine hand`.
+- [ ] The existing `fd-e2e` tests still pass: those that run without a generated tree pass `--engine hand` (owner, plan review 2026-11-11), so smoke never needs the tree.
