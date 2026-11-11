@@ -17,6 +17,8 @@ m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 m.set_input(&pcode_machine::Input::from(frame_input));     // each frame, at its start
 let paula = m.take_paula_writes();                          // each frame, at its end: (cycle, PaulaWrite)
 let intreq = m.take_cia_interrupts();                       // after each block: INTREQ bits to set
+// When the CPU's cycle count reaches m.frame_end(), the host ends the frame:
+let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value), CPU's and copper's
 ```
 
 - `poll` (called at every translated block's start) takes the cycle count from `Regs`; every
@@ -63,6 +65,28 @@ let intreq = m.take_cia_interrupts();                       // after each block:
   (`amiga_chips::is_paula`), in order, with its cycle count and beam position, including the one a
   read of a write-only audio register makes. The host empties the list each frame.
 
+- **Blitter** (`blitter.rs`): a BLTSIZE write, the CPU's or the copper's, runs `amiga_chips::Blit`
+  over chip RAM at once from the registers as last written (a channel that is off reads its
+  BLTxDAT); the pointers are left where the blit ends. DMACONR's BBUSY stays set until
+  `amiga_clock::word_times` gives the last word, then INTREQ's BLIT bit is set; BZERO is the blit's.
+  Line and fill mode, and a blit with blitter DMA off, stop the run (`unsupported: blit line at
+  cycle N`).
+- **Copper** (`copper.rs`): at each frame's start the list at COP1LC is run for the frame
+  (`copper::run_bus`); its writes go through the registers at their cycles as `poll` passes them,
+  so a MOVE to INTREQ raises the interrupt at its line. A chip write to a list word the copper has
+  not read yet runs it again, reading chip RAM as it was at each word's beam position (the frame's
+  journal, `journal.rs`). A CPU strobe of COPJMP1/COPJMP2, or copper DMA switched on, starts the
+  copper there (`copper::run_from`); copper DMA off drops the writes not yet made.
+- **DMACON**: its set/clear state, read in DMACONR with the blitter's BBUSY and BZERO (unless a
+  device is attached there). Copper DMA switched on or off starts or stops the copper; a blit with
+  blitter DMA off stops the run. The blitter's done raises INTREQ bit 6 through `raise`, the
+  copper's MOVE to INTREQ is an INTREQ write like the CPU's: both are taken as `irq` says.
+- **Picture** (`video.rs`, `end_frame`): the frame's custom writes in beam order, bitplanes and
+  sprites (`amiga_chips::display`, `sprite`) fetched from chip RAM as it was on each line, colour 0
+  outside each line's window and in the vertical blank (lines 0 to 25). The picture's window spans
+  every line shown, so a frame that reloads DIW keeps both windows. Hires as the oracle's lores
+  capture keeps it.
+
 ## What is not
 
 - **DMA contention:** no cycle is lost to bitplane, copper, blitter, sprite or audio DMA
@@ -74,12 +98,19 @@ let intreq = m.take_cia_interrupts();                       // after each block:
 - **VPOSW/VHPOSW** are kept as values; they do not move the beam.
 - **Odd word addresses**: a word access at an odd address is made at it, byte by byte; the 68000
   would take an address error.
+- **Copper jumps**: a MOVE to COPJMP1/COPJMP2 in a list stops the run (`unsupported: copper
+  jump`); copper DMA switched off and on again restarts at COP1LC, not where it stopped.
+- **Blitter timing against memory**: the blit's memory is whole at the BLTSIZE write; only BBUSY
+  and the interrupt wait. BLTxDAT is not left holding the last word fetched.
+- **Sprites** written by the CPU or copper through SPRxPOS/CTL/DATA (manual mode) are not drawn;
+  only sprite DMA from SPRxPT. HAM and dual playfield stop the run (`unsupported: display ham`).
+- **Frames**: the host calls `end_frame` at `frame_end()`; copper writes past it wait until it does.
 - **CIA timers:** neither CIA-A timer is modelled; reading or writing a timer register, or setting
   CRA's or CRB's START bit, stops the run (`unsupported: CIA-A timer at $bfe401`). The program
   touches no timer (T01). CIA-B's timers are not checked.
 - **Audio interrupts:** none is raised; the program never enables level 4 (T01). Sound is played
   from the writes by `amiga-paula` in the app, not here.
-- The chips and the OS: translator T24 and T26.
+- The OS: translator T26.
 
 ## Interrupts (`irq`)
 

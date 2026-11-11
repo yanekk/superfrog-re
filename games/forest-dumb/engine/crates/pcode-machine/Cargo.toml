@@ -12,7 +12,7 @@ pcode-rt = { path = "../pcode-rt" }
 amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
 # The hunk file's parser.
 amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
-# Which custom registers are Paula's.
+# Which custom registers are Paula's; the blitter, the copper, the picture and the sprites (T24).
 amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
 # The keyboard's bytes, the joystick word and the per-frame input the hand engine also takes.
 amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }

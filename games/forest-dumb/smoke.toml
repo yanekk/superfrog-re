@@ -202,6 +202,9 @@ workspace = "engine"
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
 "crates/fd-conform/tests/play_picture.rs" = "full"
+# Translator T24: one boot to the title (about 10 s, needs the disks): the machine's title picture
+# from a snapshot against the original's.
+"crates/fd-conform/tests/machine_title.rs" = "full"
 "crates/fd-assets/src" = "smoke"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"

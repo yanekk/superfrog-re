@@ -157,6 +157,33 @@ pub fn run_beam(
 pub fn run_bus(
     word: &dyn Fn(u32, u16, u16) -> u16,
     start: u32,
+    fetch: Fetch,
+    frame_lines: u16,
+    bus: &mut Vec<Beam>,
+) -> Vec<Write> {
+    // The vertical blank restarts the copper at COP1LC, taking cycle 0; its first fetch is two
+    // cycles later.
+    bus.push(Beam::from_slot(0, 0));
+    run_loop(word, start, Beam::from_slot(0, 2), fetch, frame_lines, bus)
+}
+
+/// [`run_beam`] for a copper started inside the frame, at `start` with its first fetch asked for
+/// at `from`: a CPU strobe of COPJMP1 or COPJMP2, or copper DMA switched on, part way down. Runs to
+/// the frame's end; the caller says when the first fetch is (the strobe's own latency is its).
+pub fn run_from(
+    word: &dyn Fn(u32, u16, u16) -> u16,
+    start: u32,
+    from: Beam,
+    fetch: Fetch,
+    frame_lines: u16,
+) -> Vec<Write> {
+    run_loop(word, start, from, fetch, frame_lines, &mut Vec::new())
+}
+
+fn run_loop(
+    word: &dyn Fn(u32, u16, u16) -> u16,
+    start: u32,
+    from: Beam,
     mut fetch: Fetch,
     frame_lines: u16,
     bus: &mut Vec<Beam>,
@@ -188,10 +215,7 @@ pub fn run_bus(
         b
     };
     let mut pc = start;
-    // The vertical blank restarts the copper at COP1LC, taking cycle 0; its first fetch is two
-    // cycles later.
-    bus.push(Beam::from_slot(0, 0));
-    let mut b = Beam::from_slot(0, 2);
+    let mut b = from;
     let mut skip = false;
     for _ in 0..8192 {
         b = next_free(&fetch, b, bus);
@@ -338,6 +362,23 @@ mod tests {
                 },
             ]
         );
+    }
+
+    #[test]
+    fn a_copper_started_mid_frame_runs_from_there_to_the_frame_end() {
+        let w = [
+            0x0180, 0x0123, 0x2001, 0xFF00, 0x0182, 0x0456, 0xFFFF, 0xFFFE,
+        ];
+        let word = |a: u32, _: u16, _: u16| list(&w)(a);
+        let from = |line, h| run_from(&word, 0, Beam::from_slot(line, h), Fetch::default(), FRAME_LINES);
+        // Started on line $10: the first MOVE lands two cycles after its first fetch, as at the
+        // vertical blank, and the WAIT still holds to line $20.
+        let out: Vec<_> = from(0x10, 0x40).iter().map(|w| (w.line, w.h, w.reg)).collect();
+        assert_eq!(out, [(0x10, 0x42, 0x180), (0x20, 4, 0x182)]);
+        // Started past the WAIT's line, it does not wait.
+        assert_eq!(from(0x30, 0)[1].line, 0x30);
+        // run_bus from the top is run_from (0, 2) after taking cycle 0.
+        assert_eq!(from(0, 2), run(&list(&w), 0, Fetch::default(), FRAME_LINES));
     }
 
     #[test]
