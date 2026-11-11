@@ -1,7 +1,9 @@
 //! The machine translated 68000 code runs on (translator DESIGN §2.8): memory laid out as the
 //! oracle's A500, the program's hunks at given bases, a `pcode_rt::Bus` that routes custom-register
-//! and CIA addresses to devices, and the beam from counted cycles. The chips, interrupts, sound,
-//! input and OS plug in as [`Device`]s and through `poll` (translator T23 to T26).
+//! and CIA addresses to devices, and the beam from counted cycles. The blitter, the copper and the
+//! picture are the machine's own (T24: [`blitter`], [`copper`], [`video`], frames through
+//! [`Machine::end_frame`]); interrupts, sound, input and the OS plug in as [`Device`]s and through
+//! `poll` (translator T23, T25, T26).
 //!
 //! Pure: no clock, I/O, floats or hash maps. Names no game: the program's bytes, its hunk bases and
 //! the RAM sizes are input.
@@ -9,12 +11,21 @@
 use std::fmt;
 use std::ops::Range;
 
+use amiga_chips::copper::Fetch;
 use pcode_rt::{Bus, Image, Regs, Stop};
 
-pub mod beam;
-pub mod custom;
-pub mod mem;
+use blitter::Blitter;
+use journal::{Journal, Watch};
 
+pub mod beam;
+pub mod blitter;
+pub mod copper;
+pub mod custom;
+pub mod journal;
+pub mod mem;
+mod video;
+
+pub use amiga_chips::Picture;
 pub use custom::Cia;
 use mem::{Region, SLOW_BASE};
 
@@ -107,6 +118,16 @@ pub trait Device: Send {
     fn write(&mut self, reg: u16, v: u16, at: u64);
 }
 
+/// One frame as the machine ran it ([`Machine::end_frame`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Frame {
+    /// What the frame showed.
+    pub picture: Picture,
+    /// Every custom-register write of the frame, the CPU's and the copper's, in order: (cycle,
+    /// register offset from `$DFF000`, word). A copper interrupt is its MOVE to INTREQ here.
+    pub writes: Vec<(u64, u16, u16)>,
+}
+
 /// The machine: memory, the custom registers' last written values, the beam and the devices.
 pub struct Machine {
     cfg: Config,
@@ -132,6 +153,21 @@ pub struct Machine {
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
+    /// DMACON, INTENA and INTREQ as their set/clear writes leave them (DMACONR, INTENAR, INTREQR).
+    dmacon: u16,
+    intena: u16,
+    intreq: u16,
+    blitter: Blitter,
+    /// The current frame's copper; `None` until the first access to time starts it.
+    copper: Option<copper::Copper>,
+    /// The current frame's chip writes, and the chip words the copper's run reads.
+    journal: Journal,
+    watch: Watch,
+    /// The current frame's custom writes, in order.
+    log: Vec<(u64, u16, u16)>,
+    /// The registers and DMACON as the current frame found them.
+    frame_custom: [u16; 256],
+    frame_dmacon: u16,
 }
 
 impl Machine {
@@ -150,6 +186,16 @@ impl Machine {
             phase: 0,
             bus: 0,
             fault: None,
+            dmacon: 0,
+            intena: 0,
+            intreq: 0,
+            blitter: Blitter::default(),
+            copper: None,
+            journal: Journal::default(),
+            watch: Watch::default(),
+            log: Vec::new(),
+            frame_custom: [0; 256],
+            frame_dmacon: 0,
         }
     }
 
@@ -225,6 +271,11 @@ impl Machine {
         m.chip.copy_from_slice(&mem[..chip]);
         m.slow.copy_from_slice(&mem[chip..]);
         m.custom = *custom;
+        // The status registers give the set/clear registers' state; BBUSY and BZERO are the
+        // blitter's, which has no blit running here.
+        m.dmacon = custom[custom::DMACONR as usize >> 1] & 0x07FF;
+        m.intena = custom[custom::INTENAR as usize >> 1] & 0x7FFF;
+        m.intreq = custom[custom::INTREQR as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
         m
@@ -269,7 +320,121 @@ impl Machine {
         self.now
     }
     pub fn set_cycles(&mut self, cycles: u64) {
+        self.advance(cycles);
         self.now = cycles;
+    }
+
+    /// Set INTREQ bit `bit`, as a chip does at cycle `at` (the blitter's done, the copper's MOVE
+    /// goes through INTREQ itself). Taking the interrupt is `poll`'s (translator T23).
+    pub fn raise(&mut self, bit: u16, _at: u64) {
+        self.intreq |= bit & 0x7FFF;
+    }
+
+    /// DMACON, INTENA and INTREQ as they stand.
+    pub fn dmacon(&self) -> u16 {
+        self.dmacon
+    }
+    pub fn intena(&self) -> u16 {
+        self.intena
+    }
+    pub fn intreq(&self) -> u16 {
+        self.intreq
+    }
+
+    /// The cycle the current frame ends at: the host calls [`Machine::end_frame`] when the CPU's
+    /// count reaches it. Until then the copper's writes past it wait.
+    pub fn frame_end(&mut self) -> u64 {
+        self.ensure_frame();
+        let c = self.copper.as_ref().expect("started");
+        (c.frame_start + beam::frame_cycles(self.cfg.frame_lines) as i64).max(0) as u64
+    }
+
+    /// End the current frame: the copper's and the blitter's events up to its end happen, its
+    /// picture is drawn, and the next frame starts (the copper restarted at COP1LC). Returns the
+    /// picture and the frame's custom writes. A picture the machine cannot draw (HAM, dual
+    /// playfield) is empty, and the run stops at the next `poll`.
+    pub fn end_frame(&mut self) -> Frame {
+        let end = self.frame_end();
+        let saved = self.now;
+        self.advance(end.saturating_sub(1));
+        self.now = saved;
+        let c = self.copper.as_ref().expect("started");
+        let history = self.journal.history();
+        let drawn = video::draw(&video::FrameIn {
+            chip: &self.chip,
+            history: &history,
+            frame_start: c.frame_start,
+            frame_lines: self.cfg.frame_lines,
+            start: &self.frame_custom,
+            dmacon: self.frame_dmacon,
+            writes: &self.log,
+        });
+        let picture = drawn.unwrap_or_else(|op| {
+            self.unsupported(op);
+            Picture::blank(0, 0, 0, 0)
+        });
+        let writes = std::mem::take(&mut self.log);
+        self.start_frame(end as i64, end as i64);
+        Frame { picture, writes }
+    }
+
+    /// Start the frame the beam is in now, if none is: a machine's first access to time.
+    fn ensure_frame(&mut self) {
+        if self.copper.is_none() {
+            let into = self.phase.wrapping_add(self.now) % beam::frame_cycles(self.cfg.frame_lines);
+            self.start_frame(self.now as i64 - into as i64, self.now as i64);
+        }
+    }
+
+    /// Make every chip event due by cycle `t`, in time order: the copper's writes and the end of a
+    /// blit. Leaves the access time at `t`'s caller's to set.
+    fn advance(&mut self, t: u64) {
+        self.ensure_frame();
+        loop {
+            if self.watch.dirty {
+                self.copper_rerun();
+            }
+            let cop = self
+                .copper
+                .as_ref()
+                .and_then(|c| c.next_at())
+                .filter(|&c| c <= t as i64);
+            let blit = self.blitter.busy_until.filter(|&b| b <= t);
+            // The earlier first; a blit ending on a copper write's cycle ends before it.
+            match (cop, blit) {
+                (Some(c), Some(b)) if c < b as i64 => self.copper_deliver(),
+                (_, Some(b)) => {
+                    self.now = b;
+                    self.blitter.busy_until = None;
+                    self.raise(blitter::INT_BLIT, b);
+                }
+                (Some(_), None) => self.copper_deliver(),
+                (None, None) => break,
+            }
+        }
+    }
+
+    /// The bitplane set-up the registers hold now.
+    pub(crate) fn fetch(&self) -> Fetch {
+        let g = |reg: u16| self.custom[reg as usize >> 1];
+        use amiga_chips::copper::reg;
+        Fetch {
+            bplcon0: g(reg::BPLCON0),
+            diwstrt: g(reg::DIWSTRT),
+            diwstop: g(reg::DIWSTOP),
+            ddfstrt: g(reg::DDFSTRT),
+            ddfstop: g(reg::DDFSTOP),
+        }
+    }
+
+    /// Stop the run at the next `poll`: the machine does not do `op`.
+    pub(crate) fn unsupported(&mut self, op: &str) {
+        if self.fault.is_none() {
+            self.fault = Some(Stop::Unsupported {
+                op: op.into(),
+                at: format!("cycle {}", self.now),
+            });
+        }
     }
 
     /// The beam's `(line, h)` at cycle count `cycles`: h in DMA slots (colour clocks), 227 a line.
@@ -341,7 +506,16 @@ impl Machine {
 
     fn ram_write(&mut self, a: u32, v: u8) -> bool {
         match self.region(a) {
-            Region::Chip(i) => self.chip[i] = v,
+            Region::Chip(i) => {
+                // Journalled for the copper and the picture, which read chip RAM as of a beam
+                // position; an unchanged byte changes no reading.
+                let old = self.chip[i];
+                if old != v {
+                    self.journal.record(self.now, i as u32, old);
+                    self.watch.written(i as u32, self.now);
+                    self.chip[i] = v;
+                }
+            }
             Region::Slow(i) => self.slow[i] = v,
             _ => return false,
         }
@@ -355,7 +529,16 @@ impl Machine {
             self.custom_write(reg, w);
             return w;
         }
+        let routed = self.route[reg as usize >> 1] != 0;
         let v = match reg {
+            // A device given these registers answers them; otherwise the machine's own state.
+            custom::DMACONR if !routed => {
+                let busy = if self.blit_busy() { 0x4000 } else { 0 };
+                let zero = if self.blitter.zero { 0x2000 } else { 0 };
+                self.dmacon | busy | zero
+            }
+            custom::INTENAR if !routed => self.intena,
+            custom::INTREQR if !routed => self.intreq,
             custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),
             custom::VHPOSR => {
                 let (line, h) = self.beam(self.now);
@@ -370,12 +553,45 @@ impl Machine {
         v
     }
 
+    /// A CPU write: on the data bus, then the register.
     fn custom_write(&mut self, reg: u16, v: u16) {
         self.bus = v;
+        self.reg_write(reg, v, true);
+    }
+
+    /// A write to custom register `reg` by the CPU (`cpu`) or the copper, at the access time.
+    pub(crate) fn reg_write(&mut self, reg: u16, v: u16, cpu: bool) {
+        self.log.push((self.now, reg, v));
         if custom::read_only(reg) {
             return;
         }
         self.custom[reg as usize >> 1] = v;
+        match reg {
+            custom::DMACON => {
+                let old = self.dmacon;
+                self.dmacon = custom::set_clr(old, v) & 0x07FF;
+                let on = |d: u16| d & copper::COPPER_DMA == copper::COPPER_DMA;
+                match (on(old), on(self.dmacon)) {
+                    (false, true) => self.copper_on(),
+                    (true, false) => self.copper_stop(),
+                    _ => {}
+                }
+            }
+            custom::INTENA => self.intena = custom::set_clr(self.intena, v),
+            custom::INTREQ => self.intreq = custom::set_clr(self.intreq, v),
+            blitter::BLTSIZE => self.start_blit(),
+            copper::COPJMP1 | copper::COPJMP2 if cpu => {
+                let lc = if reg == copper::COPJMP1 {
+                    copper::COP1LC
+                } else {
+                    copper::COP2LC
+                };
+                self.copper_strobe(lc);
+            }
+            // A list that jumps is not followed (`run_bus` reads on past the MOVE).
+            copper::COPJMP1 | copper::COPJMP2 => self.unsupported("copper jump"),
+            _ => {}
+        }
         if let id @ 1.. = self.route[reg as usize >> 1] {
             self.devices[id as usize - 1].write(reg, v, self.now);
         }
@@ -399,6 +615,7 @@ impl Machine {
 impl Bus for Machine {
     /// Times the block's accesses, and ends the run on an access outside memory made since.
     fn poll(&mut self, r: &mut Regs, _img: &Image) -> Result<(), Stop> {
+        self.advance(r.cycles());
         self.now = r.cycles();
         match &self.fault {
             Some(f) => Err(f.clone()),
@@ -527,3 +744,5 @@ impl Bus for Machine {
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_chips;

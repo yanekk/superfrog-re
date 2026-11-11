@@ -10,5 +10,7 @@ publish.workspace = true
 pcode-rt = { path = "../pcode-rt" }
 # The beam: a position from counted CPU cycles.
 amiga-clock = { path = "../../../../../toolkit/crates/amiga-clock" }
+# The blitter, the copper, the picture and the sprites (translator T24).
+amiga-chips = { path = "../../../../../toolkit/crates/amiga-chips" }
 # The hunk file's parser.
 amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }

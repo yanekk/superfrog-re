@@ -2527,6 +2527,7 @@ dependencies = [
 name = "pcode-machine"
 version = "0.1.0"
 dependencies = [
+ "amiga-chips",
  "amiga-clock",
  "amiga-disk",
  "pcode-rt",
