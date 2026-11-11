@@ -6,6 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
+| 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |
+| 2026-11-11 | 📌 | Call graph: 197 of 199 functions form one component, so components alone give one part. Single-caller folding capped at a part's share; 358 of 558 call sites cross parts. Runtime cost unmeasured; T06's judge runs show it. |
+| 2026-11-11 | 📌 | Ghidra's operand text loses modes: movem `-(An)`/`(An)+` print as bare `SP`, `jsr -n(a6)` as two operands, absolute `jsr` as a number. `pcode_census.py` reads those from the opcode word. |
 | 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` crashes with a bare `KeyError` traceback on a `symbols.toml` row missing `hunk`, `offset`, `name` or `kind`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 🐞 | `pcode_export.py` `load_entries` (`--routines`, `translate.toml`) crashes with a bare `KeyError` traceback on a routine row missing `hunk` or `offset`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 📌 | **T03 whole export:** 6 684 instructions (h0 5 774, h4 910), 143 entries (program-entry 1, symbol 142), vectors `h0+$1eda`, `$1f7a` (both symbols); 24 `unresolved_computed`, every one an OS call `jsr -n(a5|a6)`. Trial on it: 84 of 85. |

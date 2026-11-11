@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T04; then T06 (insn-check) and T14 (run-stops), which wait on it.
 
 ## Tasks
 
@@ -18,7 +18,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ✅ | |
 | T03 | whole-export | T02 | ✅ | |
-| T04 | census-and-split | T03 | ⬜ | |
+| T04 | census-and-split | T03 | 🔍 | Census tool (290 kinds) and directory tree, 16 parts default; 11 census tests, 7 split tests, 1 pcode-rt split test, 1 full build test. Deviations: exporter gains `operands`/`bytes` (mnemonic alone hides modes); `--out x.rs` kept for the trial; folding capped at a part's share, so most calls cross parts (build time decides, FINDINGS). |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
 | T07 | known-defects | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T04
 
 ## Blocked on the user
 
