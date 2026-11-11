@@ -88,9 +88,41 @@ fn every_census_kind_passes_every_column_on_fresh_states() {
     for col in ["regs", "ccr", "mem", "cycles", "stop"] {
         assert_eq!(field(s, col), 0, "{col}: {s}");
     }
-    // Every kind's cycles counted (a "not-counted" kind would hide its cycle failures, FINDINGS), and
-    // every kind judged on most of its states: the original's exceptions skip at most about half.
+    // Every kind's cycles counted (a "not-counted" kind would hide its cycle failures, FINDINGS).
     let json = std::fs::read_to_string(game().join("build/translator/insn.json")).unwrap();
     assert!(!json.contains("not-counted"), "a kind's cycles not counted");
     assert!(field(s, "skipped") * 50 < field(s, "states"), "{s}");
+    // And every kind judged on a quarter of its states at least: the total above would hide one kind
+    // skipped whole, which then "passes" on nothing. The original's exceptions skip at most about half
+    // of a kind's states (`move.l (d8,An,Xn),(An)`, 1 051 of 2 000, from a random odd index).
+    let kinds = per_kind(&json);
+    assert_eq!(kinds.len(), 290);
+    for (kind, states, pass) in kinds {
+        assert!(
+            pass * 4 >= states,
+            "{kind}: judged on {pass} of {states} states"
+        );
+    }
+}
+
+/// `(kind, states, pass)` for each record of `insn.json`, a pretty-printed list of flat-keyed kinds.
+fn per_kind(json: &str) -> Vec<(String, u64, u64)> {
+    let num = |rec: &str, key: &str| -> u64 {
+        let pat = format!("\"{key}\":");
+        let at = rec.find(&pat).unwrap_or_else(|| panic!("{key} in {rec}")) + pat.len();
+        let digits: String = rec[at..]
+            .trim_start()
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .collect();
+        digits.parse().unwrap_or_else(|_| panic!("{key} in {rec}"))
+    };
+    json.split("\"kind\":")
+        .skip(1)
+        .map(|rec| {
+            let name = rec.trim_start().trim_start_matches('"');
+            let name = name[..name.find('"').unwrap()].to_string();
+            (name, num(rec, "states"), num(rec, "pass"))
+        })
+        .collect()
 }
