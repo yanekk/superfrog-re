@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T24, T25, T26 and T13 can run; T27 needs T16, T24 and T25.
+**Next `pir-work` will:** T24, T26 and T13 can run; T27 needs T16 and T24.
 
 ## Tasks
 
