@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
+**Status:** Building; 83 of 86 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
 **Last updated:** 2026-11-10
-**Next `pir-work` will:** review T84, then T85, T28, T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Next `pir-work` will:** T85, T28, then T29. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
 
 ## Tasks
 
@@ -104,10 +104,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T81 | creature-start-pass-early | T79; blocks T27, T48 | ✅ | |
 | T82 | route-picture | T48; blocks T29 | ✅ | |
 | T83 | red-cut-tests | —; blocks T29 | ✅ | |
-| T84 | one-route-both-sides | T48, T82; blocks T28, T29 | 🔍 | One route found: `routes/W1-1.txt`, case `route-both-W1-1`, 22 464 steps, both sides to the level's end, no life lost, whole picture. 3 new tests (2 smoke), 2 more in fd-plan. Deviations: the planner's route kept as `W1-1-planned.txt` for the planner's test; an engine difference met four times was gone round, not fixed (FINDINGS); no `fd-core` change. |
+| T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ✅ | Review: holds; both whole runs and T48's ran green on the original (73 s). Mutated one input in either file: the same-inputs test and the engine-alone guard go red. Replayed the left creature-slot difference: differs at runner pass 1 904, docs said 1 905, fixed with the full run's time. Difference stays open (FINDINGS). |
 | T85 | observes-only-flake | —; blocks T29 | ⬜ | |
 
-**Review queue:** T84
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
