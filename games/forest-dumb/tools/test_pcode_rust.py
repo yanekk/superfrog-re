@@ -21,7 +21,7 @@ FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fi
 # (export, hints or None, committed translation, extra arguments): a `.rs` is one module, else a directory
 TRANSLATIONS = [(n + '.json', None, n + '.rs', []) for n in (
     'bcd', 'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
-    'relative', 'self_call', 'mutual_call', 'call_loop', 'shared_call', 'unsupported')] + [
+    'relative', 'self_call', 'mutual_call', 'call_loop', 'shared_call', 'unsupported', 'os_call')] + [
     ('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs', []),
     ('shared_call.json', None, 'shared_call', ['--parts', '2'])]
 
@@ -118,7 +118,7 @@ class OpMapping(unittest.TestCase):
             ({'op': 'BRANCHIND', 'in': [D0]}, "Some(k) => { pc = k; continue 'b; }"),
             ({'op': 'RETURN', 'in': [['register', 80, 4]]}, 'r.set(PC, 4, v);\n    r.depth -= 1;\n    return Ok(());'),
             ({'op': 'CALL', 'in': [['ram', 'h0+$40', 4]]}, 'return Err(Stop::Untranslated("h0+$40".into()));'),
-            ({'op': 'CALLIND', 'in': [D0]}, 'match img.hunk_of(a).and_then(by_addr)'),
+            ({'op': 'CALLIND', 'in': [D0]}, 'None => bus.call_outside(a, r, img)?'),
         ]
         for name, helper in pr.BINARY.items():
             cases.append(({'op': name, 'out': D0, 'in': [D0, D1]}, f'{helper}(r.get(0x0, 4), r.get(0x4, 4), 4)'))

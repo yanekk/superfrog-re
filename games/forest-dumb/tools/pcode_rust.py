@@ -27,7 +27,8 @@ count for the whole run (`STEP_CAP_GLOBAL`), and calls the bus's `poll`, where a
 interrupt (translator T14). An address that is no
 block of the function falls to the last arm, which enters the translated function there (a jump
 into another routine's entry runs it; its return is checked by our caller) or stops with
-`Untranslated`. A `RETURN` writes the popped address into `PC` and returns; the caller compares it
+`Untranslated`. A computed call to an address outside every hunk goes to the bus's `call_outside`,
+where a machine answers the OS (translator T26). A `RETURN` writes the popped address into `PC` and returns; the caller compares it
 with the address after its call and, on a mismatch, jumps there the same way, since 68000 code may
 return to an address it pushed. An op the translator does not carry out makes its whole
 instruction `Stop::Unsupported`, and only that instruction.
@@ -490,9 +491,13 @@ class Emit:
                 return [f'return Err(Stop::Untranslated({json.dumps(fmt_addr(c))}.into()));']
             return [f'{self.callee(c)}(r, bus, img)?;', self.ret_check(nxt)]
         if o == 'CALLIND':
+            # A target outside every hunk is the bus's to answer (a machine's OS vectors, T26); one
+            # inside a hunk with no translated function there stops.
             return [f'let a = ({self.rd(op["in"][0])}) as u32;',
-                    'match img.hunk_of(a).and_then(by_addr) {\n    Some(f) => f(r, bus, img)?,\n'
-                    '    None => return Err(Stop::Untranslated(img.describe(a))),\n}',
+                    'match img.hunk_of(a) {\n'
+                    '    Some(k) => match by_addr(k) {\n        Some(f) => f(r, bus, img)?,\n'
+                    '        None => return Err(Stop::Untranslated(img.describe(a))),\n    },\n'
+                    '    None => bus.call_outside(a, r, img)?,\n}',
                     self.ret_check(nxt)]
         if o == 'RETURN':
             return [f'let v = {self.rd(op["in"][0])};', 'r.set(PC, 4, v);', 'r.depth -= 1;', 'return Ok(());']
