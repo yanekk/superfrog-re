@@ -4,6 +4,8 @@
 /// VPOSR and VHPOSR: the beam, read-only.
 pub const VPOSR: u16 = 0x004;
 pub const VHPOSR: u16 = 0x006;
+/// JOY1DAT: the port-2 joystick's counters, read-only; the machine's input sets it.
+pub const JOY1DAT: u16 = 0x00C;
 
 /// A register a CPU write changes nothing in (vAmiga `pokeCustom16`'s "READ-ONLY"): `$000..=$01E`
 /// and DENISEID; the word is still on the data bus. BLTDDAT (`$000`) is also [`write_only`]: a read

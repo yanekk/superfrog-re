@@ -4,6 +4,25 @@ What the static translator (plan `plans/forest-dumb-translator/`) was measured t
 dated. How to run it: `tools/README.md` (`translator_trial.py`) and
 `engine/crates/fd-conform/README.md` (`fd-judge --translated`, `fd-conform code-writes`).
 
+## Stage 1's gate: every instruction kind (T13, 2026-11-11)
+
+**The census:** 290 instruction kinds (mnemonic, size, source and destination mode) over the 6 684
+instructions of the whole-program export (`pcode_export.py --whole`), 815 distinct opcode words, one
+site each (`pcode_census.py`, T04).
+
+**The reading:** `insn_check.py --states 2000 --seed insn-gate-T13`, every kind translated alone and
+stepped on Moira from 2 000 generated states a site: 1 630 000 states, **0 failing** in every column
+(registers, X N Z V C, memory and custom-chip writes, cycles, stops), every kind's cycles counted.
+26 780 states (1.6%) are skipped, each one the original taking an exception: an odd address from a
+random `(d8,An,Xn)` index or a popped return address, or a zero divisor. The kind skipping most,
+`move.l (d8,An,Xn),(An)`, still judges 949 of its 2 000. About 26 s from a cold optimised build.
+
+The gate is guarded by `fd-conform`'s `insn_gate.rs` (full, `cargo test --release -p fd-conform
+--test insn_gate -- --ignored`, about 20 s warm), which exports, runs the check with this seed and
+fails on any failing kind, column, uncounted cycles or a census other than 290 kinds. With
+`pcode_fix.shift_bit` switched off it fails on 9 kinds (33 137 states, ccr), as T09 found them.
+Cycles follow Moira; real hardware is unmeasured (the plan's FINDINGS).
+
 ## Writes into code (T15, 2026-11-11)
 
 Translated code cannot follow a write into its own instructions, so a store onto a translated
