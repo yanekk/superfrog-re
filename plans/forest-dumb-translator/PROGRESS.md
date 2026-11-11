@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T24 (machine-chips).
+**Next `pir-work` will:** work T16 (whole-tree-judge) and T26 (os-answers), whose dependencies are done.
 
 ## Tasks
 
@@ -38,7 +38,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
-| T24 | machine-chips | T22 | 🔍 | Blitter, copper, picture on the machine (`blitter.rs`, `copper.rs`, `video.rs`, `end_frame`); 11 unit tests, 1 full (title snapshot, frames 4923-4924 pixel-equal). Deviations: added `journal.rs` (memory as of the beam); amiga-chips gained `Blit::run_with`, `copper::run_from`; DMACON modelled here; snapshot at 4922 not the first title frame (CPU still draws in 4922). |
+| T24 | machine-chips | T22 | ✅ | Reviewed: blit end underflowed in a snapshot's first frame (reproduced by unit test, fixed, test locks it); added a test for colour 0 outside a narrowed window (mutation survived). Probed: full title test, SNAP 4921 fails at (280,195) as recorded, two core mutations caught. BZERO and line/fill absence read-only. |
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T24
+**Review queue:** empty
 
 ## Blocked on the user
 
