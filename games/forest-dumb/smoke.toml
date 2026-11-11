@@ -42,6 +42,7 @@ workspace = "engine"
 # from the cached sync point. lagged_input_is_measured (12 s, 4 000 steps) is #[ignore]d for full.
 # T75 review: two recordings through a late creature start, about 1 s more.
 # T80 review: a recording through creatures cut behind the beam, about 4 s more.
+# T29: a recording through a cut status redraw, about 2 s more.
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
@@ -443,6 +444,7 @@ covers = [
     "crates/fd-conform/tests/recording_compare.rs::the_command_compares_a_zip_and_writes_both_pictures",
     "crates/fd-conform/tests/recording_compare.rs::a_recording_through_a_late_creature_start_stays_in_step",
     "crates/fd-conform/tests/recording_compare.rs::a_recording_through_a_creature_cut_behind_the_beam_stays_in_step",
+    "crates/fd-conform/tests/recording_compare.rs::a_recording_through_a_cut_status_redraw_stays_in_step",
 ]
 
 [[area]]
