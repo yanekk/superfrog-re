@@ -6,6 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 🐞 | `pcode_export.py` `--out` naming a file: `os.makedirs` raises a traceback, not exit 2 (T04 review sweep, read-only). Left alone. |
+| 2026-11-11 | 🐞 | `re_listing.py` `--out` naming a file: unguarded `os.makedirs` and temp-rename write, traceback not exit 2 (T04 review sweep, read-only). Left alone. |
+| 2026-11-11 | 🐞 | `translate_batch.py` `--out`: unguarded `os.makedirs` and state temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |
+| 2026-11-11 | 🐞 | `translator_trial.py` `--out`: unguarded `os.makedirs` and temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |
 | 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
 | 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |
 | 2026-11-11 | 📌 | Call graph: 197 of 199 functions form one component, so components alone give one part. Single-caller folding capped at a part's share; 358 of 558 call sites cross parts. Runtime cost unmeasured; T06's judge runs show it. |

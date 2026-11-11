@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Planned 2026-11-11; nothing built.
+**Status:** Building; T00 to T05 and T17 done.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T04; then T06 (insn-check) and T14 (run-stops), which wait on it.
+**Next `pir-work` will:** T06 (insn-check) and T14 (run-stops), which T04 unblocked.
 
 ## Tasks
 
@@ -18,7 +18,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | os-surface | — | ✅ | |
 | T02 | code-seen | — | ✅ | |
 | T03 | whole-export | T02 | ✅ | |
-| T04 | census-and-split | T03 | 🔍 | Census tool (290 kinds) and directory tree, 16 parts default; 11 census tests, 7 split tests, 1 pcode-rt split test, 1 full build test. Deviations: exporter gains `operands`/`bytes` (mnemonic alone hides modes); `--out x.rs` kept for the trial; folding capped at a part's share, so most calls cross parts (build time decides, FINDINGS). |
+| T04 | census-and-split | T03 | ✅ | Reviewed, one fix: an unwritable `--out` gave a traceback in both tools, now exit 2, tests lock it. Probed: census rerun identical, modes checked against opcode bits on 1 734 moves; whole tree rebuilt, release 12.2 s split against 23.3 s one module; two routines judge alike both forms. Three mutations caught. Cross-part call cost unmeasured. |
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ⬜ | |
 | T07 | known-defects | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
