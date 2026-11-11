@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T25 CIA-A:** its interrupt reaches INTREQ only via `Machine::take_cia_interrupts()` (PORTS `$0008`); T23's interrupts or T27 must set it. A snapshot start must set the ICR mask (`cia_a_mut().set_icr_mask(0x08)`): the oracle exposes no CIA state. |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
 | 2026-11-11 | 📌 | **T12 cycles:** all 290 census kinds counted, 0 failures in 407 500 states, every column. The 11 data-dependent kinds (`mulu.w`, `divu.w`, `divs.w`, `dbf`, `movem.l`, `lsl.l`/`lsr.l Dn,Dn`) tick from the registers before the instruction. |
 | 2026-11-11 | 📌 | T12 timings follow Moira (`cyclesMul`, `cyclesDiv`, `cyclesBit`); none known to differ from a real 68000, unmeasured. Divide by zero (38), `trap` (34), `chk` trapping (40) are the manual's, unjudged: Moira's step reports exceptions without a time. |
@@ -43,8 +44,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |
 | 2026-11-11 | 📌 | Call graph: 197 of 199 functions form one component, so components alone give one part. Single-caller folding capped at a part's share; 358 of 558 call sites cross parts. Runtime cost unmeasured; T06's judge runs show it. |
 | 2026-11-11 | 📌 | Ghidra's operand text loses modes: movem `-(An)`/`(An)+` print as bare `SP`, `jsr -n(a6)` as two operands, absolute `jsr` as a number. `pcode_census.py` reads those from the opcode word. |
-| 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` crashes with a bare `KeyError` traceback on a `symbols.toml` row missing `hunk`, `offset`, `name` or `kind`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
-| 2026-11-11 | 🐞 | `pcode_export.py` `load_entries` (`--routines`, `translate.toml`) crashes with a bare `KeyError` traceback on a routine row missing `hunk` or `offset`, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
+| 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` (`symbols.toml`) and `load_entries` (`--routines`, `translate.toml`) crash with a bare `KeyError` traceback on a row missing a key, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 📌 | **T03 whole export:** 6 684 instructions (h0 5 774, h4 910), 143 entries (program-entry 1, symbol 142), vectors `h0+$1eda`, `$1f7a` (both symbols); 24 `unresolved_computed`, every one an OS call `jsr -n(a5|a6)`. Trial on it: 84 of 85. |
 | 2026-11-11 | 📌 | **T02 code-seen:** 48 runs, 6 380 instructions, 135 entries (program-entry 1, symbol 134, vector 0, trace 0); every computed target is a named symbol. `world_index` poked before Start is reset to 0, so world starts use `next_world`. |
 | 2026-11-11 | 📌 | `os-surface --worlds 1,3,6` (T01 review) lists `lea $0.l` to `$3.l` at `h0+$691e`..`$6930`, constants in play, as `[[read]]` OS memory with access `address`. Not in the committed worlds 1,2 file; not OS use. |

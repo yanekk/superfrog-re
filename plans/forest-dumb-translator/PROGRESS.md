@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T25 (machine-sound-input); T23, T24 and T26 build beside it, then T27 wires CIA-A's interrupt into INTREQ.
 
 ## Tasks
 
@@ -39,7 +39,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
-| T25 | machine-sound-input | T22 | ⬜ | |
+| T25 | machine-sound-input | T22 | 🔍 | Paula log, CIA-A (fire and mouse on PRA, ICR, keyboard queue with the CRA bit 6 handshake), `set_input`, `Input::from(FrameInput)`; amiga-input `key_bytes`, `Joy::joydat`. 19 new tests. Deviations: `paula_writes` gives `(u64, PaulaWrite)` per plan review; CIA-A's interrupt via `take_cia_interrupts`, as T23 owns INTREQ; no audio interrupt or timers (T01: unused), timers stop. |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T25
 
 ## Blocked on the user
 
