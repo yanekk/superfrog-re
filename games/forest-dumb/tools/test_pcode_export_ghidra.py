@@ -249,7 +249,7 @@ class MovesExport(unittest.TestCase):
     def test_the_committed_fixture_is_current_and_holds_every_instruction(self):
         with tempfile.TemporaryDirectory() as d:
             doc = export_moves(d)
-        self.assertEqual(len(doc['insns']), 50)
+        self.assertEqual(len(doc['insns']), 46)
         with open(MOVES_FIXTURE, encoding='utf-8') as f:
             self.assertEqual(f.read(), defects_text(doc), 'regenerate it: --write-moves')
 

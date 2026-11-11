@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T10 move_control check:** 129 kinds; before, only `rte` failed (regs 238, ccr 230); after, 0 in regs, ccr, mem. Whole census: 14 kinds fail (regs 593, ccr 9 521, mem 500), T08 and T09's. Trial 84 of 85. |
+| 2026-11-11 | 🐞 | Ghidra 12.0 sinc: `packflags` ORs T, S and the mask into a one-byte temporary; CCR ops and `rtr` write all of SR; `rte` is `return [0]`; `movem.w -(An)` steps 4. Corrected by pattern in `pcode_fix/move_control.py` (T10). |
+| 2026-11-11 | 📌 | T10 rig: `judge/insn.rs` starts pcode-rt's `USP` at a7, as Moira's step does, and compares the stack pointer not in a7. States always start supervisor, so `sr_set` entering supervisor mode is unit-tested only. |
 | 2026-11-11 | 📌 | **T07 bcd and compare check:** 25 kinds, 65 words, 32 500 states, 0 fail in regs, ccr, mem; 506 skipped. Game has no `nbcd` or `cmpm`; whole translation byte-identical to T06's, unsupported 0. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |

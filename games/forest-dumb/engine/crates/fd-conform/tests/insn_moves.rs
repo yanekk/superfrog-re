@@ -18,7 +18,9 @@ mod fixture;
 
 const BASES: [u32; 1] = [0x1000];
 const SIZES: [u32; 1] = [0x88];
-const STATES: usize = 500;
+// 300, not the census check's 500, keeps the file under smoke's 10 s; every form still meets S and the mask
+// both ways many times.
+const STATES: usize = 300;
 
 /// `MOVES_H0`, as test_insn_check.py checks against the Python original.
 const H0: [&str; 5] = [
@@ -57,7 +59,10 @@ fn every_move_and_control_form_passes_regs_ccr_and_memory_on_moira() {
     for row in fixture::SITES {
         let r = check(&mut rig, row.1);
         if r.fail > 0 {
-            bad.push(format!("{} {}: {} fail, {:?}", row.1, row.0, r.fail, r.first));
+            bad.push(format!(
+                "{} {}: {} fail, {:?}",
+                row.1, row.0, r.fail, r.first
+            ));
         }
         if RETURNS.contains(&row.1) {
             assert!(r.pass > STATES / 3, "{}: {} judged", row.1, r.pass);

@@ -294,7 +294,13 @@ pub fn sr_set(r: &mut crate::Regs, v: u64) {
 /// Writes X N Z V C from the low five bits of `v`, and nothing else, as `move to CCR`,
 /// `andi/ori/eori to CCR` and `rtr` do.
 pub fn ccr_set(r: &mut crate::Regs, v: u64) {
-    for (bit, f) in [(4, crate::XF), (3, crate::NF), (2, crate::ZF), (1, crate::VF), (0, crate::CF)] {
+    for (bit, f) in [
+        (4, crate::XF),
+        (3, crate::NF),
+        (2, crate::ZF),
+        (1, crate::VF),
+        (0, crate::CF),
+    ] {
         r.set(f, 1, (v >> bit) & 1);
     }
 }
@@ -567,11 +573,18 @@ mod tests {
         let mut r = supervisor(0x2700, 0x1000, 0);
         sr_set(&mut r, 0x231f);
         assert_eq!(r.get(crate::SR, 2) >> 8, 0x23);
-        assert_eq!([crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF].map(|f| r.get(f, 1)), [1; 5]);
+        assert_eq!(
+            [crate::XF, crate::NF, crate::ZF, crate::VF, crate::CF].map(|f| r.get(f, 1)),
+            [1; 5]
+        );
         assert_eq!(sr_get(&r), 0x231f);
         assert_eq!(r.a(7), 0x1000, "S unchanged: no stack swap");
         sr_set(&mut r, 0xffff);
-        assert_eq!(sr_get(&r), 0xa71f, "only T, S, the mask and X N Z V C are held");
+        assert_eq!(
+            sr_get(&r),
+            0xa71f,
+            "only T, S, the mask and X N Z V C are held"
+        );
     }
 
     #[test]
