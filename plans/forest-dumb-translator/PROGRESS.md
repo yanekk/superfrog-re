@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** build T15 (code-write-rule), unblocked by T14; T08, T10 and T11 beside it.
+**Next `pir-work` will:** build T15 (code-write-rule), unblocked by T14; T10 and T11 beside it.
 
 ## Tasks
 
