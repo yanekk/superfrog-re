@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Have Muse write one routine's generator, judged on the original (plans/forest-dumb-level-1 T61,
-DESIGN §4.3, §5.2, §5.3; docs/11-translation.md).
+"""Have Haiku write one routine's generator, judged on the original (plans/forest-dumb-level-1 T61,
+DESIGN §4.3, §5.2, §5.3; docs/11-translation.md; plans/forest-dumb-translator T17).
 
-    python3 -I games/forest-dumb/tools/generate.py 'h0+$5462' --name <generator> [--tries 3] [--max-usd 0.10] [--out build/generate]
+    python3 -I games/forest-dumb/tools/generate.py 'h0+$5462' --name <generator> [--tries 3] [--max-calls 40] [--out build/generate]
 
 Prints one JSON line and nothing else on stdout:
 
-    {"routine":"h0+$5462","result":"covered|partial|fail|no-oracle|no-key","tries":n,"usd":x,"branches":n,
+    {"routine":"h0+$5462","result":"covered|partial|fail|no-oracle|no-model","tries":n,"usd":x,"branches":n,
      "uncovered":[{"at":"h0+$5470","never":"taken|not-taken|either","reason":".."}],"returns":n,
      "base":bool,"gen":"<out>/<name>.rs" or null}
 
@@ -18,13 +18,16 @@ states: it compiles and lists `<name>`; the original returns on at least 95% of 
 no fault past that and no line or fill blit; and every byte a state pokes (or makes a hardware
 register read) is one the original read on some state, or on the rig's stack. A try failing any of
 these gets the reason back. A valid one is then measured by `Rig::coverage`: a `Bcc`/`DBcc` of the
-routine's listing (translate.flow_text, callees included) some way of which no state took is
-uncovered, and goes back to Muse with its listing lines, up to --tries answers. Muse may answer that
+routine's listing (judge_run.flow_text, callees included) some way of which no state took is
+uncovered, and goes back to the model with its listing lines, up to --tries answers. The model may answer that
 a branch cannot be reached, with a reason: that is passed through to the reviewer and not asked
 again. The result is the valid try with the fewest uncovered ways; `base` says it lays one, which the
 reviewer reads (a base is shown, not judged).
 
-The key, the model call and its waits, the spend guard and <out>/calls.jsonl are translate.py's. The
+The model call is model.py's: Haiku through `claude -p`, at most --max-calls calls a run (`stopped`:
+"max-calls" when the cap ends it), a line a call in <out>/calls.jsonl; a judged try is a line in
+<out>/tries.jsonl. `no-model`: no `claude` on PATH, nothing asked. `usd` is `claude`'s list-price
+figure, not a bill. The
 listing, prompts and answers derive from the game's code and stay under build/; the generator is code
 written from the listing, as the hand-written ones are, and the builder commits it into
 fd-conform/src/gen/ after reading it. Python's standard library only, so it runs under `python3 -I`.
@@ -33,23 +36,24 @@ import argparse, fcntl, json, os, re, subprocess, sys, time, tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import translate as tr  # noqa: E402
+import judge_run as jr  # noqa: E402
+import model  # noqa: E402
 
-GAME = tr.GAME
-ENGINE = tr.ENGINE
+GAME = jr.GAME
+ENGINE = jr.ENGINE
 GEN_DIR = os.path.join(ENGINE, 'crates', 'fd-conform', 'src', 'gen')
 OUT = os.path.join(GAME, 'build', 'generate')
-# The judge binary is one for both services: translate.py's default lock serialises every build and
-# run of it, whatever --out either was given.
-LOCK = os.path.join(tr.OUT, 'judge.lock')
-CASES = tr.CASES
+# The judge binary is one for every service: judge_run's default lock serialises every build and
+# run of it, whatever --out each was given.
+LOCK = os.path.join(jr.JUDGE_DIR, 'judge.lock')
+CASES = jr.CASES
 RETURNS = 0.95
 # A traced run of 2 000 states, with a state that runs to the rig's hang limit now and then.
 JUDGE_SECONDS = 300
 EXAMPLES = 3
 UNREACHABLE_RE = re.compile(r'^\s*UNREACHABLE\s+(h[0-4]\+\$[0-9a-fA-F]+)(?:\s+(taken|not-taken|either))?\s*:\s*(.+?)\s*$', re.M)
 # Bcc and DBcc, what Rig::coverage counts: not bra or bsr.
-COND_RE = re.compile(rf'^(b({tr._CC})|db(ra|t|f|{tr._CC}))(\.[bsw])?$')
+COND_RE = re.compile(rf'^(b({jr._CC})|db(ra|t|f|{jr._CC}))(\.[bsw])?$')
 
 SYSTEM = """You write the test-state generator for one routine of an Amiga game, from its 68000 disassembly, in Rust.
 
@@ -103,15 +107,15 @@ the game can be in, say so after the code block, one line per branch way:
 Answer with the whole file in one ```rust block, then any UNREACHABLE lines, and nothing else."""
 
 
-Usage = tr.Usage
+Usage = jr.Usage
 
 
 # --- What the prompt is made of -------------------------------------------------------------------
 
 def inventory():
-    if not os.path.exists(tr.INVENTORY):
+    if not os.path.exists(jr.INVENTORY):
         return []
-    with open(tr.INVENTORY, 'rb') as f:
+    with open(jr.INVENTORY, 'rb') as f:
         return tomllib.load(f).get('routine', [])
 
 
@@ -126,13 +130,13 @@ def gen_files():
 
 
 def examples(hunk, off, name, files=None, inv=None):
-    """Up to EXAMPLES committed generator modules to show Muse: those registering the most routines of
+    """Up to EXAMPLES committed generator modules to show the model: those registering the most routines of
     this routine's subsystem in re/translate.toml, then the smallest, never one registering `name`,
     the routine's own label or its re/translate.toml name (it would be the answer, whatever --name)."""
     files = gen_files() if files is None else files
     inv = inventory() if inv is None else inv
     row = next((r for r in inv if r.get('hunk') == hunk and r.get('offset') == off), {})
-    own = {f'"{name}"', f'"{tr.label(hunk, off)}"', f'"h{hunk}_{off:x}"'}
+    own = {f'"{name}"', f'"{jr.label(hunk, off)}"', f'"h{hunk}_{off:x}"'}
     if row.get('name'):
         own.add(f'"{row["name"]}"')
     allowed = {f: s for f, s in files.items() if not any(o in s for o in own)}
@@ -156,7 +160,7 @@ def cond_branches(text):
 def listing_bases():
     """Each hunk's base in the listing (`;;; hunk N ... @ $base`): a listing address is base + offset."""
     bases = {}
-    with open(tr.LISTING, encoding='utf-8') as f:
+    with open(jr.LISTING, encoding='utf-8') as f:
         for l in f:
             m = re.match(r'^;;; hunk (\d+)\b.*@ \$([0-9a-fA-F]+)', l)
             if m:
@@ -173,13 +177,13 @@ def to_listing(at, bases):
 def to_label(addr, bases):
     """A listing address -> `hN+$off`, by the nearest base at or below it."""
     h, b = max(((h, b) for h, b in bases.items() if b <= addr), key=lambda x: x[1], default=(0, 0))
-    return tr.label(h, addr - b)
+    return jr.label(h, addr - b)
 
 
 def prompt(hunk, off, name, text, n, shown, syms=None):
-    sym = {(s['hunk'], s['offset']): s['name'] for s in (syms if syms is not None else tr.symbols())}.get((hunk, off))
+    sym = {(s['hunk'], s['offset']): s['name'] for s in (syms if syms is not None else jr.symbols())}.get((hunk, off))
     ex = '\n\n'.join(f'Example, `{f}`:\n```rust\n{s}```' for f, s in shown)
-    return (f"Write the generator `{name}` for the routine at {tr.label(hunk, off)}{f' ({sym})' if sym else ''} "
+    return (f"Write the generator `{name}` for the routine at {jr.label(hunk, off)}{f' ({sym})' if sym else ''} "
             f"({n} instructions with what it calls).\n\n"
             f"These are generators written for other routines of the game; follow their shape:\n\n{ex}\n\n"
             f"The routine:\n\n```\n{text}\n```")
@@ -203,7 +207,7 @@ def run_cover(path, hunk, off, name, out):
             errs = [re.sub(r'\S*/candidate\.rs', 'your file', l) for l in b.stderr.splitlines()
                     if 'error' in l or l.startswith(' ')][:60]
             return {'outcome': 'compile', 'feedback': 'It did not compile:\n' + '\n'.join(errs)}
-        argv = [tr.judge_bin(), tr.label(hunk, off), '--gen', name, '--cases', str(CASES), '--cover']
+        argv = [jr.judge_bin(), jr.label(hunk, off), '--gen', name, '--cases', str(CASES), '--cover']
         try:
             r = subprocess.run(argv, capture_output=True, text=True, timeout=JUDGE_SECONDS, env=env)
         except subprocess.TimeoutExpired:
@@ -280,21 +284,20 @@ def cover_feedback(un, listed, text):
 
 # --- The service ----------------------------------------------------------------------------------
 
-def generate(routine, name, tries=3, max_usd=0.10, out=OUT):
+def generate(routine, name, tries=3, out=OUT):
     """-> the result line as a dict. Raises Usage."""
-    hunk, off = tr.resolve(routine)
+    hunk, off = jr.resolve(routine)
     out = os.path.abspath(out)
     if not re.fullmatch(r'[A-Za-z0-9_+$]+', name):
         raise Usage(f'`{name}` is not a generator name (letters, digits, `_`, `+`, `$`)')
-    res = {'routine': tr.label(hunk, off), 'result': None, 'tries': 0, 'usd': 0.0, 'branches': 0,
+    res = {'routine': jr.label(hunk, off), 'result': None, 'tries': 0, 'usd': 0.0, 'branches': 0,
            'uncovered': [], 'returns': 0, 'base': False, 'gen': None}
 
-    key, looked = tr.find_key()
-    if not key:
-        print(f'generate: no OpenRouter key: looked in {looked}', file=sys.stderr)
-        return dict(res, result='no-key')
+    if not model.available():
+        print('generate: no `claude` on PATH: the model is asked through `claude -p`', file=sys.stderr)
+        return dict(res, result='no-model')
 
-    text, n = tr.flow_text(hunk, off)
+    text, n = jr.flow_text(hunk, off)
     listed = cond_branches(text)
     bases = listing_bases()
     d = os.path.join(out, re.sub(r'[^A-Za-z0-9_]', '_', name))
@@ -305,9 +308,9 @@ def generate(routine, name, tries=3, max_usd=0.10, out=OUT):
     user = prompt(hunk, off, name, text, n, examples(hunk, off, name))
     with open(os.path.join(d, 'prompt.md'), 'w', encoding='utf-8') as f:
         f.write(user)
-    per_in, per_out = tr.price(key)
-    messages = [{'role': 'system', 'content': SYSTEM}]
-    log_path = os.path.join(out, 'calls.jsonl')
+    messages = []
+    calls_log = os.path.join(out, 'calls.jsonl')
+    log_path = os.path.join(out, 'tries.jsonl')
     best = None  # (uncovered ways, try, path, cover line, reasons)
     judged = []  # each judged try's outcome: whether the original could be judged at all
     reasons = {}  # (at, never) -> reason, from UNREACHABLE lines
@@ -318,26 +321,25 @@ def generate(routine, name, tries=3, max_usd=0.10, out=OUT):
 
     for n_try in range(1, tries + 1):
         messages.append({'role': 'user', 'content': user})
-        worst = sum(len(m['content']) for m in messages) / 3 * per_in + tr.MAX_TOKENS * per_out
-        if res['usd'] + worst > max_usd:
-            res['stopped'] = 'max-usd'
-            print(f"generate: stopped before try {n_try}: it could cost ${worst:.4f}, which would take "
-                  f"${res['usd']:.4f} past --max-usd {max_usd}", file=sys.stderr)
+        rec = {'time': time.strftime('%Y-%m-%dT%H:%M:%S'), 'routine': res['routine'], 'gen': name,
+               'try': n_try, 'service': 'generate'}
+        r = model.ask(SYSTEM, model.transcript(messages), log=calls_log, tag=rec)
+        if r['result'] == 'max-calls':
+            messages.pop()
+            res['stopped'] = 'max-calls'
+            print(f'generate: stopped before try {n_try}: the run has made its --max-calls {model.MAX_CALLS} calls',
+                  file=sys.stderr)
             break
         res['tries'] = n_try
-        t0 = time.time()
-        rec = {'time': time.strftime('%Y-%m-%dT%H:%M:%S'), 'routine': res['routine'], 'gen': name,
-               'model': tr.MODEL, 'try': n_try, 'service': 'generate'}
-        try:
-            answer, usage = tr.call_model(messages, key)
-        except tr.CallError as e:
+        rec.update(secs=r['secs'], tokens_in=r['tokens_in'], tokens_out=r['tokens_out'], usd=r['usd'])
+        if r['result'] != 'ok':
+            # A lost try, as a broken answer is; the question stands for the next.
             messages.pop()
-            log(dict(rec, outcome='error', error=str(e), secs=round(time.time() - t0)))
+            log(dict(rec, outcome=r['result']))
             continue
+        answer = r['text']
         messages.append({'role': 'assistant', 'content': answer})
-        res['usd'] += usage['cost']
-        rec.update(secs=round(time.time() - t0), tokens_in=usage['in'], tokens_out=usage['out'],
-                   reasoning=usage['reasoning'], usd=usage['cost'], finish=usage.get('finish'))
+        res['usd'] += r['usd']
         with open(os.path.join(d, f'answer{n_try}.md'), 'w', encoding='utf-8') as f:
             f.write(answer)
         blocks = re.findall(r'```rust\n(.*?)```', answer, re.S)
@@ -400,11 +402,12 @@ def main(argv=None):
     ap.add_argument('routine', help="`hN+$off` (quoted) or a name from re/symbols.toml")
     ap.add_argument('--name', required=True, help='the name the generator is registered under')
     ap.add_argument('--tries', type=int, default=3)
-    ap.add_argument('--max-usd', type=float, default=0.10)
+    ap.add_argument('--max-calls', type=int, default=model.MAX_CALLS, help='calls to the model this run, at most')
     ap.add_argument('--out', default=OUT)
     a = ap.parse_args(argv)
+    model.set_max_calls(a.max_calls)
     try:
-        res = generate(a.routine, a.name, a.tries, a.max_usd, a.out)
+        res = generate(a.routine, a.name, a.tries, a.out)
     except Usage as e:
         print(f'generate: {e}', file=sys.stderr)
         return 2
