@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** build T06 (insn-check) and T15 (code-write-rule), now unblocked.
+**Next `pir-work` will:** build T15 (code-write-rule), unblocked by T14; T08, T10 and T11 beside it.
 
 ## Tasks
 
@@ -20,15 +20,15 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | whole-export | T02 | ✅ | |
 | T04 | census-and-split | T03 | ✅ | |
 | T05 | oracle-step | — | ✅ | |
-| T06 | insn-check | T04, T05 | ⬜ | |
-| T07 | known-defects | T06 | ⬜ | |
-| T08 | flags-arith | T06 | ⬜ | |
-| T09 | flags-shift-bit | T06 | ⬜ | |
+| T06 | insn-check | T04, T05 | ✅ | |
+| T07 | known-defects | T06 | ✅ | |
+| T08 | flags-arith | T06 | ✅ | |
+| T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
-| T14 | run-stops | T04 | ✅ | Review clean, no fix commit. Ran: task tests, trial 84/85 rerun (judge 63 s), DEPTH_CAP 5 fails `game_frame` hang (depth) and 6 passes, RUN_STACK 1 MB aborts the judge test; mutations of the depth check and the RETURN decrement go red. Static graph depth 8 read-only. STEP_CAP_GLOBAL owner gap logged. |
+| T14 | run-stops | T04 | ✅ | Review clean. Merge fix: `--insn` rts dropped depth, panicking (reproduced by a probe, fixed, test locks it). Ran: trial 84/85 rerun, DEPTH_CAP 5 fails `game_frame` hang (depth) and 6 passes, RUN_STACK 1 MB aborts the judge test; depth-check and RETURN mutations go red. Static depth 8 read-only. STEP_CAP_GLOBAL owner gap logged. |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** empty
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

@@ -111,6 +111,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | `cargo run --release -p fd-conform -- code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6\|none] [--out FILE]` | Every instruction the original runs over the level cases, power-on and the world 2 to 6 starts, reduced to entries in `re/entries.toml`; JSON lines per run and a total; about 5 minutes |
 | `cargo run --release -p fd-conform -- os-surface [--frames N] [--worlds 1,2] [--out FILE]` | The program's OS calls, OS memory, interrupts and CIA accesses on the original, written to `re/os-calls.toml`; about 25 s |
 | `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --gen <name> [--cases N] [--survey \| --cover]` | One routine against the built-in port; prints one JSON line |
+| `cargo run -p fd-conform --bin fd-judge -- --insn <word> --at 'hN+$off' \| --insn-all [--shard K/N] [--states N] [--columns ..]` | One instruction (or every one) of `FD_INSN`'s module against Moira's step (`judge::insn`, `tools/insn_check.py`); one JSON line a site |
 
 Output formats: the `//!` headers of `src/main.rs` and `src/bin/fd-judge.rs`.
 

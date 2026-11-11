@@ -36,6 +36,10 @@ Python's standard library only, so it runs under `python3 -I`.
 """
 import argparse, json, os, re, sys, tomllib
 
+# `python3 -I` leaves the script's folder off the path; the corrections live beside it.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pcode_fix  # noqa: E402
+
 U32 = (1 << 32) - 1
 ADDR = re.compile(r'^h(\d+)\+\$([0-9a-fA-F]+)$')
 
@@ -177,8 +181,9 @@ def load_export(path):
         if not isinstance(flow.get('targets', []), list):
             raise BadInput(f'{where}: "targets" must be a list')
         targets = [parse_addr(t, f'{where} flow') for t in flow.get('targets', [])]
+        raw = ins.get('bytes')
         insns[a] = {'len': ins['len'], 'mnem': str(ins.get('mnem', '')), 'ops': ops,
-                    'targets': targets}
+                    'targets': targets, 'bytes': raw if isinstance(raw, str) else None}
     return {'sizes': [h['size'] for h in hunks], 'entries': entries, 'insns': insns}
 
 
@@ -330,91 +335,6 @@ def translate(export):
 
 
 # ---------------------------------------------------------------------------------------------
-# Instructions whose P-code Ghidra gets wrong, recognised by mnemonic and P-code pattern
-
-# Ghidra 12.0's 68000.sinc writes abcd/sbcd's decimal adjust as a CALLOTHER to a user op no emulator
-# defines, and around it gets the instruction wrong (pcode-rt's `bcd` module lists how). An
-# instruction of that mnemonic whose P-code has the shape the sinc produces is emitted from its
-# operands with Moira's arithmetic instead; any other shape stays an unsupported stop.
-BCD = {'abcd': ('INT_ADD', 'bcd_add'), 'sbcd': ('INT_SUB', 'bcd_sub')}
-DATA_BYTES = {4 * n + 3 for n in range(8)}     # Dn's low byte in Ghidra's register space
-ADDR_REGS = {32 + 4 * n: n for n in range(8)}   # An
-XF_OFF = 67
-
-
-def bcd_operands(ins):
-    """('reg', dst, src) register offsets, ('mem', ax, ay) address-register offsets, or None."""
-    mnem = ins['mnem'].split(' ')[0].lower()
-    if mnem not in BCD:
-        return None
-    ops = ins['ops']
-    if sum(op['op'] == 'CALLOTHER' for op in ops) != 1:
-        return None
-    arith = next((op for op in ops if op['op'] == BCD[mnem][0] and len(op['in']) == 2
-                  and all(v[2] == 1 for v in op['in']) and op['in'][1][:2] != ['register', XF_OFF]), None)
-    if arith is None:
-        return None
-    dst, src = arith['in']
-    if dst[0] == src[0] == 'register' and {dst[1], src[1]} <= DATA_BYTES:
-        return ('reg', dst[1], src[1])
-    if dst[0] == src[0] == 'unique':
-        # Memory form: each operand is a byte loaded through an address register that the
-        # instruction predecrements, and the result is stored through the destination's.
-        loaded = {}
-        for op in ops:
-            if op is arith:
-                break
-            if op['op'] == 'LOAD' and op['in'][1][0] == 'register' and op['in'][1][2] == 4:
-                loaded[op['out'][1]] = op['in'][1][1]
-        ax, ay = loaded.get(dst[1]), loaded.get(src[1])
-        dec = {op['in'][0][1] for op in ops if op['op'] == 'INT_SUB' and op['out'] == op['in'][0]
-               and op['in'][0][0] == 'register' and op['in'][1][:2] == ['const', 1]}
-        stores = {op['in'][1][1] for op in ops if op['op'] == 'STORE' and op['in'][1][0] == 'register'}
-        if ax in ADDR_REGS and ay in ADDR_REGS and {ax, ay} <= dec and stores == {ax}:
-            return ('mem', ax, ay)
-    return None
-
-
-# The sinc's `subflags` macro, shared by sub and the compares, ends `XF = CF`; on the 68000 cmp, cmpa,
-# cmpi and cmpm leave X alone, and abcd, sbcd, addx and subx after a compare read the X from before it.
-COMPARES = {'cmp', 'cmpa', 'cmpi', 'cmpm'}
-CF_OFF = 71
-
-
-def without_compare_x(ins):
-    """`ins` with a compare's copy of C into X removed; any other instruction unchanged."""
-    if ins['mnem'].split(' ')[0].split('.')[0].lower() not in COMPARES:
-        return ins
-    ops = [op for op in ins['ops'] if not (op['op'] == 'COPY' and op['out'] == ['register', XF_OFF, 1]
-                                           and op['in'] == [['register', CF_OFF, 1]])]
-    return dict(ins, ops=ops) if len(ops) != len(ins['ops']) else ins
-
-
-def bcd_lines(ins, form):
-    fn = 'pcode_rt::bcd::' + BCD[ins['mnem'].split(' ')[0].lower()][1]
-    kind, x, y = form
-    if kind == 'reg':
-        return [f'let (v, x, o) = {fn}(r.get({hex_lit(y)}, 1), r.get({hex_lit(x)}, 1), r.get({hex_lit(XF_OFF)}, 1));',
-                f'r.set({hex_lit(x)}, 1, v);',
-                'pcode_rt::bcd::bcd_flags(r, v, x, o);']
-
-    def step(a):
-        # The 68000 keeps A7 even: a byte predecrement of it steps 2 (Ghidra's sinc steps 1).
-        return 2 if ADDR_REGS[a] == 7 else 1
-    # The source is decremented and read first, then the destination, as the 68000 does; Ghidra
-    # does the destination first, which differs when both are the same register.
-    return [f'let ay = (r.get({hex_lit(y)}, 4) as u32).wrapping_sub({step(y)});',
-            f'r.set({hex_lit(y)}, 4, ay as u64);',
-            'let s = load(bus, ay, 1);',
-            f'let ax = (r.get({hex_lit(x)}, 4) as u32).wrapping_sub({step(x)});',
-            f'r.set({hex_lit(x)}, 4, ax as u64);',
-            'let d = load(bus, ax, 1);',
-            f'let (v, x, o) = {fn}(s, d, r.get({hex_lit(XF_OFF)}, 1));',
-            'store(bus, img, ax, 1, v)?;',
-            'pcode_rt::bcd::bcd_flags(r, v, x, o);']
-
-
-# ---------------------------------------------------------------------------------------------
 # Rust
 
 class Emit:
@@ -524,6 +444,10 @@ class Emit:
 
     def op_lines(self, op, j, a, ins):
         o = op['op']
+        # An op a correction put in place of Ghidra's (pcode_fix's `op_lines`), e.g. nbcd's NBCD.
+        fixed = pcode_fix.op_lines(op, self.rd, self.wr)
+        if fixed is not None:
+            return fixed
         nxt = (a[0], a[1] + ins['len'])
         if o == 'STORE':
             v = op['in']
@@ -575,10 +499,11 @@ class Emit:
     def instruction(self, a, ins):
         """The Rust for one instruction, and whether it is an unsupported stop."""
         head = f'// {fmt_addr(a)} {ins["mnem"]}'.rstrip()
-        ins = without_compare_x(ins)
-        form = bcd_operands(ins)
-        if form:
-            return [head + ' (corrected: Ghidra\'s P-code is wrong)', '{']+ ['    ' + l for l in bcd_lines(ins, form)] + ['}'], False
+        # Ghidra's P-code is wrong for some instructions: corrected by family in tools/pcode_fix/.
+        ins = pcode_fix.correct(ins)
+        whole, family = pcode_fix.emit(ins)
+        if whole is not None:
+            return [head + f' (corrected: pcode_fix.{family})', '{'] + ['    ' + l for l in whole] + ['}'], False
         try:
             bodies = [[x for l in self.op_lines(op, j, a, ins) for x in l.split('\n')]
                       for j, op in enumerate(ins['ops'])]
@@ -812,21 +737,159 @@ def write_tree(files, out):
             os.remove(os.path.join(out, name))
 
 
+# ---------------------------------------------------------------------------------------------
+# --insn: one instruction alone, for the instruction check (translator T06)
+
+class InsnEmit(Emit):
+    """One instruction as a function of its own: control leaving it, by any op, writes the address
+    it goes to into `PC` and returns, and falling off its end writes the next instruction's. The
+    instruction check compares that `PC` with the one Moira's step reports."""
+
+    def __init__(self, insns):
+        super().__init__({}, insns)
+
+    def goto(self, off):
+        if isinstance(off, str):
+            h, o = parse_addr(off, 'target')
+            return f'r.set(PC, 4, img.h({h}, {hex_lit(o)}) as u64); return Ok(());'
+        return f'r.set(PC, 4, {hex_lit(off & U32)}u64); return Ok(());'
+
+    @staticmethod
+    def goto_abs(expr):
+        return f'r.set(PC, 4, ({expr}) as u32 as u64); return Ok(());'
+
+    def op_lines(self, op, j, a, ins):
+        o = op['op']
+        if o == 'CALL':
+            # The sinc pushes the return address itself before its CALL, so only the target is left.
+            t = op['in'][0]
+            if t[0] != 'ram':
+                raise Unsupported(f'CALL to {t[0]} space')
+            return [self.goto(t[1])]
+        if o == 'CALLIND':
+            return [self.goto_abs(self.rd(op['in'][0]))]
+        if o == 'RETURN':
+            # No `fn_entry` here, so no `r.depth -= 1` either: from a fresh `Regs` it underflows.
+            return [f'let v = {self.rd(op["in"][0])};', 'r.set(PC, 4, v);', 'return Ok(());']
+        return super().op_lines(op, j, a, ins)
+
+    def function(self, a):
+        ins = self.insns[a]
+        body, stop = self.instruction(a, ins)
+        nxt = (a[0], a[1] + ins['len'])
+        lines = [ALLOW, f'pub fn {insn_fn(a)}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{']
+        lines += ['    ' + l for l in body]
+        lines += [f'    r.set(PC, 4, img.h({nxt[0]}, {hex_lit(nxt[1])}) as u64);', '    Ok(())', '}']
+        return lines, stop
+
+
+def insn_fn(a):
+    return 'i_' + fn_name(a)
+
+
+def encoding(a, ins):
+    raw = ins.get('bytes')
+    if not raw or len(raw) < 4 or not re.fullmatch(r'[0-9a-fA-F]+', raw):
+        raise BadInput(f'{fmt_addr(a)}: no "bytes" (an export from before translator T04?)')
+    return raw[:4].lower()
+
+
+def insn_sites(export, wanted=None):
+    """The sites to emit: `wanted` (addresses), or the first instruction of each opcode word."""
+    insns = export['insns']
+    if wanted is not None:
+        for a in wanted:
+            if a not in insns:
+                raise BadInput(f'--sites: {fmt_addr(a)} is no instruction of the export')
+        return sorted(set(wanted))
+    first = {}
+    for a in sorted(insns):
+        first.setdefault(encoding(a, insns[a]), a)
+    return sorted(first.values())
+
+
+def seeds(ins):
+    """The hunk-relative addresses an instruction's P-code names as data, not as a jump's target:
+    where the instruction check seeds memory for an absolute operand."""
+    out = set()
+    for op in ins['ops']:
+        skip_first = op['op'] in ('BRANCH', 'CBRANCH', 'CALL')
+        for k, v in enumerate(op['in'] + ([op['out']] if op.get('out') else [])):
+            if skip_first and k == 0:
+                continue
+            if v[0] in ('ram', 'const') and isinstance(v[1], str):
+                out.add(parse_addr(v[1], 'varnode'))
+    return sorted(out)
+
+
+def render_insn(export, source_name, wanted=None):
+    """`--insn`: one function per site and the table the instruction check reads, as one module.
+
+    SITES holds (encoding, "hN+$off", hunk, offset, length, seeds, function) per site."""
+    insns = export['insns']
+    sites = insn_sites(export, wanted)
+    em = InsnEmit(insns)
+    code = [(a[0], a[1], a[1] + insns[a]['len']) for a in sites]
+    out = [f'// Generated from {source_name} by pcode_rust.py --insn; never committed when made from a game.',
+           '// Do not edit: regenerate.'] + IMPORTS + [
+           '', '/// The bytes of every emitted instruction, (hunk, start, end exclusive), sorted.',
+           'pub const CODE: &[(u32, u32, u32)] = &[']
+    out += [f'    ({h}, 0x{s:x}, 0x{e:x}),' for h, s, e in code]
+    out += ['];', '', '/// Each hunk\'s length, as the export gives it.',
+            'pub const HUNK_SIZES: &[u32] = &[' + ', '.join(hex_lit(s) for s in export['sizes']) + '];', '',
+            'pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;', '',
+            '/// (encoding, site, hunk, offset, length, hunk-relative data addresses, function), by site.',
+            'pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[']
+    for a in sites:
+        ins = insns[a]
+        sd = ', '.join(f'({h}, {hex_lit(o)})' for h, o in seeds(ins))
+        out.append(f'    ({json.dumps(encoding(a, ins))}, {json.dumps(fmt_addr(a))}, {a[0]}, {hex_lit(a[1])}, '
+                   f'{ins["len"]}, &[{sd}], {insn_fn(a)}),')
+    out.append('];')
+    unsupported = 0
+    for a in sites:
+        lines, stop = em.function(a)
+        unsupported += stop
+        out += [''] + lines
+    return '\n'.join(out) + '\n', {'sites': len(sites), 'unsupported': unsupported}
+
+
+def read_sites(arg):
+    if not arg:
+        return None
+    if arg.startswith('@'):
+        try:
+            with open(arg[1:], encoding='utf-8') as f:
+                arg = f.read()
+        except OSError as e:
+            raise BadInput(f'{arg[1:]}: cannot read: {e.strerror}')
+    return [parse_addr(x.strip(), '--sites') for x in re.split(r'[,\s]+', arg) if x.strip()]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     p.add_argument('pcode')
     p.add_argument('--out', required=True)
     p.add_argument('--hints')
     p.add_argument('--parts', type=int, default=DEFAULT_PARTS)
+    p.add_argument('--insn', action='store_true',
+                   help='one function per opcode word, each running its instruction alone (one .rs file)')
+    p.add_argument('--sites', help='with --insn: the instructions to emit, hN+$off comma-separated or @file')
     args = p.parse_args(argv)
     if args.parts < 1:
         p.error('--parts must be 1 or more')
+    if args.insn and not args.out.endswith('.rs'):
+        p.error('--insn writes one module: --out must end in .rs')
+    if args.sites and not args.insn:
+        p.error('--sites goes with --insn')
     single = args.out.endswith('.rs')
     try:
         export = load_export(args.pcode)
         if args.hints:
             export = apply_hints(export, *load_hints(args.hints))
-        if single:
+        if args.insn:
+            text, stats = render_insn(export, os.path.basename(args.pcode), read_sites(args.sites))
+        elif single:
             text, stats = render(export, os.path.basename(args.pcode))
         else:
             files, stats = render_tree(export, os.path.basename(args.pcode), args.parts)

@@ -133,6 +133,16 @@ part's share, packed largest first. `FD_TRANSLATED=<dir or .rs>` builds the tree
 one JSON line (`functions`, `blocks`, `unsupported`, `computed_unresolved`, `parts`); exit 2 on a bad
 input, named on stderr. After a translator change, `python3 tools/test_pcode_rust.py --regen` rewrites
 the committed fixtures in `pcode-rt/tests/fixtures/`.
+`--insn --out x.rs [--sites hN+$off,…|@file]` (translator T06) writes, for the instruction check, one
+function per opcode word (its first site, or the sites given) that runs that instruction alone and leaves
+the next address in `PC`, and `SITES` (encoding, site, hunk, offset, length, absolute operands, function).
+Corrections to Ghidra's P-code live in `pcode_fix/`, one module per instruction family (`bcd`, `compare`,
+`arith`, `shift_bit`, `move_control`, `cycles`), by mnemonic and P-code pattern, never by address; its
+`__init__.py` says what a module may define. Ghidra 12.0's known defects (abcd, sbcd and nbcd's decimal
+adjust, X on compares, `cmpm.b (a7)+`, a `bra.w` marked `CALL_RETURN`, the empty relocation table) are
+proven one instruction at a time on Moira by `fd-conform/tests/insn_defects.rs`, on a made-up program
+Ghidra exports to `tests/fixtures/defects.json` (`python3 -I games/forest-dumb/tools/test_pcode_export_ghidra.py
+--write-defects` rewrites it; `ghidra/SetFlowOverride.java` sets the override first, test only).
 
 ### pcode_census.py (stdlib)
 Every instruction kind `pcode.json` holds, the instruction check's work list (translator DESIGN §2.6).
@@ -145,6 +155,22 @@ Each row: `kind`, `mnemonic`, `size` (1/2/4 or null), `src`, `dst` (operand orde
 `count`, `encodings` (distinct opcode words), `sites` (first five); commonest first. Modes Ghidra's text
 hides (movem's `-(An)`/`(An)+`, `jsr`/`jmp`/`pea`) come from the opcode word. Prints
 `{"kinds","instructions"}`; exit 2 naming an operand it cannot place, or an export without `operands`.
+
+### insn_check.py (stdlib)
+The instruction check (translator DESIGN §2.6): every census kind, translated alone (`pcode_rust.py
+--insn`), against Moira's one-instruction step on generated states, in columns `regs` (d0-d7, a0-a7, PC,
+SR's system byte), `ccr` (X N Z V C), `mem` (bytes and custom-chip writes), `cycles`, and `stop`.
+```
+python3 -I games/forest-dumb/tools/insn_check.py [--kinds k,…] [--states 500] [--columns regs,ccr,mem,cycles] [--seed S]
+```
+`--kinds` takes census kinds (`add.w Dn,(An)+`), mnemonics (`add.w`, `add`) and families (`bcd`,
+`compare`, `arith`, `shift_bit`, `move_control`, `other`). Needs `build/translator/pcode.json`; builds
+`fd-judge` optimised with `FD_INSN=build/translator/insn.rs` and runs `fd-judge --insn-all` in four
+shards (the whole census: about 10 s). Writes `build/translator/insn.json` and `insn.md` (by family with
+the task owning it, then one row per kind by fail count) and prints the summary line. `cycles` reads
+`not-counted` until the generated code counts (T11). A state the original takes an exception on (an odd
+address, a division by zero) is skipped and counted. One kind alone: `fd-judge --insn <word> --at
+'hN+$off'`. Holds `build/translate/judge.lock`; exit 0 when written, 1 when a step failed, 2 on usage.
 
 ### translator_trial.py (stdlib)
 The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a
