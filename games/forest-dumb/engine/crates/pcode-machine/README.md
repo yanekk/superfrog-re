@@ -11,6 +11,7 @@ let cfg = pcode_machine::Config::a500(hunk_bases.to_vec());   // 512 KB chip, 51
 let mut m = pcode_machine::Machine::new(cfg, &program_bytes)?; // hunks placed and relocated
 // or, at a case's sync point: chip RAM then slow RAM, and the custom registers by reg / 2
 let mut m = pcode_machine::Machine::from_snapshot(cfg, &chip_then_slow, &custom);
+m.insert(pcode_machine::Disks { df0: adf });              // the disk every Open reads
 m.attach(0x0A0..0x0E0, Box::new(paula));   // custom registers $0A0..$0DE to a Device
 m.attach_cia(pcode_machine::Cia::A, Box::new(cia_a));
 // m is a pcode_rt::Bus: hand it to the generated code.
@@ -63,6 +64,42 @@ let intreq = m.take_cia_interrupts();                       // after each block:
   (`amiga_chips::is_paula`), in order, with its cycle count and beam position, including the one a
   read of a write-only audio register makes. The host empties the list each frame.
 
+## The OS (translator T26)
+
+No Kickstart code runs (DESIGN §2.8). ExecBase, the libraries and their jump tables are made-up
+structures in Kickstart's ROM window (`$F80000`, `os::layout`); a `jsr` through a vector leaves the
+hunks, so the generated code hands it to `Bus::call_outside`, the machine answers it in Rust
+(`os/`), pops the return address into `PC` as `rts` would, and the caller's return check goes on.
+Nothing is checked or guessed beyond what is listed: any other vector stops the run as
+`os: unknown <lib> LVO <n> at <site>` (`Stop::Os`), the site being the `jsr` read back from the
+return address; an argument an answer cannot honour stops naming it. Calls take no cycles and loads
+finish at once (owner, 2026-11-11). d1, a0 and a1, scratch to the real OS, are left as they were.
+
+| Call | Answer | Why a program needs it (`games/…/docs/15-os-surface.md`) |
+|---|---|---|
+| exec `OldOpenLibrary` (-408) | `d0` = the base of `exec.library`, `graphics.library` or `dos.library`; any other name stops | graphics' base is read and called at start; dos' is `a5` for every file call |
+| exec `OpenLibrary` (-552) | as `OldOpenLibrary`; `d0` = 0 for a version over 34 (Kickstart 1.3) | not used by the measured program; its newer form |
+| exec `CloseLibrary` (-414) | nothing; a base that is no library's stops | after each file |
+| graphics `OpenFont` (-72) | `d0` = a TextFont for `topaz.font` size 8, any other stops | `tf_CharData` (+$22) and `tf_Modulo` (+$26) are copied, never used |
+| graphics `CloseFont` (-78) | nothing | at start |
+| graphics `FreeSprite` (-414) | nothing | called where `CloseLibrary` was meant; changes nothing a program sees |
+| dos `Open` (-30) | `d0` = a handle (a BPTR into the ROM window), or 0 for a file df0's disk lacks; the name may start `df0:` or `<volume>:`; another device, a mode but `MODE_OLDFILE` ($3ED), more than 16 open, or no OFS disk stops | every load; zero sends a program to its insert-disk prompt |
+| dos `Read` (-42) | the next bytes, at most `d3`, into RAM at `d2`; `d0` = how many (0 at the end). A buffer over translated code stops as `write-into-code`, outside RAM, an unknown handle or a negative length as `os:` | `d0` must be the file's exact length: the unpacker finds the data's end by it |
+| dos `Close` (-36) | frees the handle; an unknown one stops | after each file |
+
+OS memory: `$4` holds ExecBase, set by `new` (power-on) and by `from_snapshot` (whose own ExecBase
+would lead into a Kickstart not here; a program reads `$4` afresh before its calls). `new` also points
+the autovectors `$64..$7C` at the OS's interrupt handlers (`os::irq_handler(n)`), so a program can
+save them and put them back; entering one stops (`os: the OS's level n interrupt handler, not
+modelled`): the measured program takes every interrupt it needs through its own handlers, and the
+OS's run only during loads, which finish at once. GfxBase's `copinit` (+$26) and `LOFlist` (+$32) point
+at a copper list that only ends. The structures are readable; a write into the ROM window, or a read
+past the structures, is `outside-memory`. Values a program copies from them (the library bases, the
+handle, the font's fields, the saved vectors) are the machine's, not Kickstart's.
+
+Not answered: a `jmp` (rather than `jsr`) through a vector, and a `jsr` to an absolute ROM address,
+stop as `untranslated`; the measured program makes neither.
+
 ## What is not
 
 - **DMA contention:** no cycle is lost to bitplane, copper, blitter, sprite or audio DMA
@@ -79,4 +116,4 @@ let intreq = m.take_cia_interrupts();                       // after each block:
   touches no timer (T01). CIA-B's timers are not checked.
 - **Audio interrupts:** none is raised; the program never enables level 4 (T01). Sound is played
   from the writes by `amiga-paula` in the app, not here.
-- The chips, interrupts and the OS: translator T23, T24 and T26.
+- The chips and interrupts: translator T23 and T24.

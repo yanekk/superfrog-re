@@ -29,3 +29,7 @@ amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }
 
 # The runtime a translated tree (`FD_TRANSLATED`, translator-trial T04) is written against.
 pcode-rt = { path = "../pcode-rt" }
+
+[dev-dependencies]
+# The machine's OS answers, held against the measured OS surface (translator T26, tests/os_answers.rs).
+pcode-machine = { path = "../pcode-machine" }

@@ -78,6 +78,8 @@ workspace = "engine"
 # T01 (translator): the OS survey's input checks, under a second; the run on the original (about 56 s)
 # is #[ignore]d for full.
 "crates/fd-conform/tests/os_surface.rs" = ["a_missing_kickstart_names_the_path", "a_world_out_of_range_is_refused"]
+# Translator T26: the machine's OS answers against the measured surface and its README, no disks: under 1 s.
+"crates/fd-conform/tests/os_answers.rs" = "smoke"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
