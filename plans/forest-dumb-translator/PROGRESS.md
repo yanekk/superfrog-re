@@ -26,10 +26,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ✅ | |
-| T12 | cycles-dynamic | T11 | ⬜ | |
+| T12 | cycles-dynamic | T11 | ✅ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ✅ | |
-| T15 | code-write-rule | T02, T14 | ⬜ | |
+| T15 | code-write-rule | T02, T14 | ✅ | |
 | T16 | whole-tree-judge | T13, T15 | ⬜ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |

@@ -17,8 +17,14 @@
 //!   before the instruction first ran, the sync point's boot included.
 //! - `since = "run"`: every later frame, its bytes against the last bytes seen.
 //!
+//! Over every path (translator DESIGN §2.5, T15, `code-writes --all`): level 1's cases, the
+//! power-on run through the title into level 1 and each world 2 to 6 start, the runs `code_seen`
+//! makes ([`run_power_on_in`], [`run_world_in`]). On the power-on run the crack's own programs run
+//! in the program's memory before it loads, so the watch is armed only at the step that runs the
+//! program's entry `h0+$0`: before it nothing is recorded, after it the comparisons above hold.
+//!
 //! What it cannot see, and the report says so ([`MISSES`]): a write restored within one frame,
-//! code run outside the program's hunks, and paths the cases do not take. The cases run without
+//! code run outside the program's hunks, and paths the runs do not take. The cases run without
 //! their `freeze`: the freeze is the harness patching code, and the check is about the game's own
 //! path. Their `set` writes (data) are applied, since a case's path depends on them.
 
@@ -32,7 +38,7 @@ use crate::routine::{PROGRAM, load_program};
 use crate::{address, sync};
 
 /// What a run cannot see, printed on the total line.
-pub const MISSES: &str = "a write restored within one frame; code run outside the program's hunks; paths the cases do not take";
+pub const MISSES: &str = "a write restored within one frame; code run outside the program's hunks; code run before the program's entry on the power-on run; paths the runs do not take";
 
 /// The longest 68000 instruction.
 pub(crate) const MAX_LEN: usize = 10;
@@ -118,6 +124,8 @@ struct Watch {
     cpu: Cpu68k,
     /// Every executed instruction start, its bytes as last seen; ascending by address.
     seen: std::collections::BTreeMap<u32, Vec<u8>>,
+    /// Whether the program has been entered; steps before are not recorded.
+    armed: bool,
 }
 
 pub(crate) fn read(mem: &AmigaMemory, addr: u32, len: usize) -> Vec<u8> {
@@ -138,8 +146,14 @@ pub(crate) fn read(mem: &AmigaMemory, addr: u32, len: usize) -> Vec<u8> {
 
 impl Watch {
     fn new(exe: &[u8]) -> Result<Watch, String> {
+        Watch::armed(exe, true)
+    }
+
+    /// A watch that records nothing until a step runs the program's entry, unless `armed`.
+    fn armed(exe: &[u8], armed: bool) -> Result<Watch, String> {
         let (loaded, hunks) = load_program(exe)?;
         Ok(Watch {
+            armed,
             loaded,
             hunks,
             cpu: Cpu68k::new(AmigaMemory {
@@ -148,6 +162,16 @@ impl Watch {
             }),
             seen: Default::default(),
         })
+    }
+
+    fn report(&self, case: String, frames: u32, changed: Vec<Change>) -> Report {
+        Report {
+            case,
+            frames,
+            executed: self.seen.len(),
+            executed_bytes: self.seen.values().map(Vec::len).sum(),
+            changed,
+        }
     }
 
     /// Every even address of every hunk.
@@ -172,6 +196,13 @@ impl Watch {
     /// After the step that started at `frame`: add the instructions `hits` says ran, compare every
     /// instruction seen with `mem`.
     fn after_step(&mut self, frame: u32, hits: &[(u32, u32)], mem: &AmigaMemory) -> Vec<Change> {
+        if !self.armed {
+            let entry = self.hunks[0].0;
+            if !hits.iter().any(|&(a, n)| a == entry && n > 0) {
+                return Vec::new();
+            }
+            self.armed = true;
+        }
         let mut changes = Vec::new();
         // Compare what was already seen first, so an instruction first run in this step is not
         // also compared with itself.
@@ -279,14 +310,46 @@ pub fn run_case_seen_in(
         am.step(inputs.at(frame)).map_err(|e| e.to_string())?;
         changed.extend(watch.after_step(frame, am.pc_hits(), &am.memory()));
     }
-    let report = Report {
-        case: case.name.clone(),
-        frames: steps,
-        executed: watch.seen.len(),
-        executed_bytes: watch.seen.values().map(Vec::len).sum(),
-        changed,
-    };
+    let report = watch.report(case.name.clone(), steps, changed);
     Ok((report, watch.seen))
+}
+
+/// The power-on run on `boot-to-level1` for `frames` steps (`code_seen::POWER_ON_FRAMES` by
+/// default), reported as case `power-on` with frames counted from power-on.
+pub fn run_power_on_in(kickstart: &Path, disk_dir: &Path, frames: u32) -> Result<Report, String> {
+    let disks = crate::disks::read(disk_dir)?;
+    let cfg = amiga_oracle::OracleConfig::new(kickstart.to_path_buf(), disks, frames + 10);
+    let exe = fd_tools::game_file(disk_dir, PROGRAM)?;
+    let mut watch = Watch::armed(&exe, false)?;
+    let mut changed = Vec::new();
+    crate::code_seen::drive_power_on(&cfg, &watch.pcs(), frames, |am, frame| {
+        changed.extend(watch.after_step(frame, am.pc_hits(), &am.memory()));
+    })?;
+    if !watch.armed {
+        return Err(format!(
+            "power-on: the program's entry did not run in {frames} frames"
+        ));
+    }
+    Ok(watch.report("power-on".into(), frames, changed))
+}
+
+/// World `world`'s start (2 to 6) as `code_seen` runs it, reported as case `world-N`, frames from
+/// the level sync point.
+pub fn run_world_in(
+    kickstart: &Path,
+    disk_dir: &Path,
+    cache: &Path,
+    world: u32,
+) -> Result<Report, String> {
+    let exe = fd_tools::game_file(disk_dir, PROGRAM)?;
+    let mut watch = Watch::new(&exe)?;
+    let mut changed = Vec::new();
+    let pcs = watch.pcs();
+    let steps =
+        crate::code_seen::drive_world((kickstart, disk_dir, cache), &pcs, world, |am, frame| {
+            changed.extend(watch.after_step(frame, am.pc_hits(), &am.memory()));
+        })?;
+    Ok(watch.report(format!("world-{world}"), steps, changed))
 }
 
 /// `*` and `?` over a case's file stem.
@@ -301,4 +364,63 @@ pub fn glob_match(pattern: &str, name: &str) -> bool {
         }
     }
     go(pattern.as_bytes(), name.as_bytes())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A made-up program: hunk 0 at $1000, `nop`s; memory holding other code at $1010 until the
+    /// program is in place, as the crack's programs are on the power-on run.
+    fn watch(armed: bool) -> Watch {
+        let mut loaded = vec![0u8; 0x2000];
+        for a in (0x1000..0x1100).step_by(2) {
+            loaded[a..a + 2].copy_from_slice(&[0x4e, 0x71]);
+        }
+        Watch {
+            loaded,
+            hunks: vec![(0x1000, 0x100)],
+            cpu: Cpu68k::new(AmigaMemory {
+                chip: vec![],
+                slow: vec![],
+            }),
+            seen: Default::default(),
+            armed,
+        }
+    }
+
+    fn mem(at_1010: [u8; 2]) -> AmigaMemory {
+        let mut chip = vec![0u8; 0x2000];
+        for a in (0x1000..0x1100).step_by(2) {
+            chip[a..a + 2].copy_from_slice(&[0x4e, 0x71]);
+        }
+        chip[0x1010..0x1012].copy_from_slice(&at_1010);
+        AmigaMemory { chip, slow: vec![] }
+    }
+
+    #[test]
+    fn an_unarmed_watch_records_nothing_before_the_program_entry_runs() {
+        let foreign = mem([0x70, 0x01]); // moveq #1, d0: not the program's nop
+        let mut w = watch(false);
+        assert!(w.after_step(0, &[(0x1010, 1)], &foreign).is_empty());
+        assert!(w.seen.is_empty());
+        // The program in place and its entry run: armed, nothing changed.
+        let program = mem([0x4e, 0x71]);
+        assert!(
+            w.after_step(1, &[(0x1000, 1), (0x1010, 1)], &program)
+                .is_empty()
+        );
+        assert!(w.armed && w.seen.contains_key(&0x1010));
+        // A later write into an executed instruction is seen.
+        let c = w.after_step(2, &[], &mem([0x4e, 0x75]));
+        assert_eq!(
+            (c.len(), c[0].at.as_str(), c[0].since),
+            (1, "h0+$10", "run")
+        );
+
+        // Armed from the start, the foreign code is a change against the loaded program.
+        let mut w = watch(true);
+        let c = w.after_step(0, &[(0x1010, 1)], &foreign);
+        assert_eq!((c.len(), c[0].since), (1, "load"));
+    }
 }

@@ -12,7 +12,10 @@
 //! `judge::translated`) entered at the routine, instead of `FD_PORT`'s port; one build serves every
 //! routine of the tree. The line gains the stops, one per failed state, by kind, and the first:
 //!
-//! `..,"first_failure":"..","untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."}`
+//! `..,"first_failure":"..","self_modifying":n,"untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."}`
+//!
+//! `self_modifying` counts the states on which the original changed a byte of the tree's `CODE`
+//! (translator DESIGN §2.5): not judged, and out of `passed` and `failures`.
 //!
 //! `--cover` judges the generator, not a port (T61, `tools/generate.py`): the original alone,
 //! traced ([`Rig::coverage`]), then each state's pokes and hardware reads against the bytes the
@@ -194,7 +197,8 @@ fn main() -> ExitCode {
     let pass = !a.survey && failures == 0 && report.passed > 0;
     let stops = stops.map_or(String::new(), |s| {
         format!(
-            ",\"untranslated\":{},\"write_into_code\":{},\"unsupported\":{},\"stopped_hangs\":{},\"first_stop\":\"{}\"",
+            ",\"self_modifying\":{},\"untranslated\":{},\"write_into_code\":{},\"unsupported\":{},\"stopped_hangs\":{},\"first_stop\":\"{}\"",
+            report.self_modifying,
             s.untranslated,
             s.write_into_code,
             s.unsupported,

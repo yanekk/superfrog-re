@@ -14,10 +14,12 @@ its verdicts are reused rather than built and judged again.
 Writes build/translator/trial.json and build/translator/table.md (through a temporary file and a
 rename) and prints one line:
 
-    {"judgeable":n,"pass":n,"pass_pct":x,"pass_with_hints":n,"unjudgeable":n,"unsupported":n,"untranslated":n,"write_into_code":n}
+    {"judgeable":n,"pass":n,"pass_pct":x,"pass_with_hints":n,"unjudgeable":n,"unsupported":n,"untranslated":n,"write_into_code":n,"self_modifying":n}
 
 `unsupported`, `untranslated` and `write_into_code` count routines, without hints, with at least one
-state stopped that way. Exit 0 when the table was written, whatever the verdicts; 1 when a step
+state stopped that way. `self_modifying` counts routines with at least one state on which the
+original itself changed a translated instruction's byte: those states are out of the routine's count
+and not judged (translator DESIGN §2.5), and the table's column gives how many. Exit 0 when the table was written, whatever the verdicts; 1 when a step
 failed (named on stderr: a tree that does not compile names the compiler's first error and the
 routine it came from; a second run names the lock); 2 on usage.
 
@@ -51,7 +53,7 @@ SURVEY_SECONDS = jr.JUDGE_SECONDS
 # loaded machine does not push an honest routine past its wall-clock limit.
 PARALLEL = 4
 SUMMARY_KEYS = ('judgeable', 'pass', 'pass_pct', 'pass_with_hints', 'unjudgeable', 'unsupported',
-                'untranslated', 'write_into_code')
+                'untranslated', 'write_into_code', 'self_modifying')
 
 
 class Usage(Exception):
@@ -245,11 +247,13 @@ def verdict(r, cases):
     if j.get('outcome') == 'usage':
         raise StepFailed(f"judge {r['label']}: {j['why']}")
     if 'outcome' in j:
-        return {'verdict': 'fail', 'first': j['why'], 'untranslated': 0, 'write_into_code': 0, 'unsupported': 0}
+        return {'verdict': 'fail', 'first': j['why'], 'untranslated': 0, 'write_into_code': 0, 'unsupported': 0,
+                'self_modifying': 0}
     return {'verdict': 'pass' if j['pass'] else 'fail',
             'first': j.get('first_stop') or j.get('first_failure') or '',
             'untranslated': j.get('untranslated', 0), 'write_into_code': j.get('write_into_code', 0),
-            'unsupported': j.get('unsupported', 0), 'failures': j.get('failures', 0), 'passed': j.get('passed', 0)}
+            'unsupported': j.get('unsupported', 0), 'self_modifying': j.get('self_modifying', 0),
+            'failures': j.get('failures', 0), 'passed': j.get('passed', 0)}
 
 
 def judge_all(rows, cases, parallel=PARALLEL):
@@ -266,7 +270,7 @@ def summary(rows):
             'pass_with_hints': sum(1 for x in judged if x['hints']['verdict'] == 'pass'),
             'unjudgeable': len(rows) - n,
             **{k: sum(1 for x in judged if x['plain'].get(k, 0) > 0)
-               for k in ('unsupported', 'untranslated', 'write_into_code')}}
+               for k in ('unsupported', 'untranslated', 'write_into_code', 'self_modifying')}}
 
 
 def cell(s):
@@ -275,23 +279,24 @@ def cell(s):
 
 def table(rows, s, cases):
     lines = ['| Routine | Subsystem | Instructions | Without hints | First difference or stop | Untranslated '
-             '| Write into code | Unsupported | With hints | Muse |',
-             '|---|---|---|---|---|---|---|---|---|---|']
+             '| Write into code | Self-modifying | Unsupported | With hints | Muse |',
+             '|---|---|---|---|---|---|---|---|---|---|---|']
     for x in rows:
         name = f" `{x['name']}`" if x['name'] != x['routine'] else ''
         if x['unjudgeable']:
             v = f"unjudgeable: {x['unjudgeable']}"
             lines.append(f"| `{x['routine']}`{name} | {x['subsystem'] or ''} | {x['instructions'] or ''} | {cell(v)} "
-                         f"|  |  |  |  | {cell(v)} | {x['muse']} |")
+                         f"|  |  |  |  |  | {cell(v)} | {x['muse']} |")
             continue
         p, h = x['plain'], x['hints']
         lines.append(f"| `{x['routine']}`{name} | {x['subsystem'] or ''} | {x['instructions'] or ''} | {p['verdict']} "
-                     f"| {cell(p['first'])} | {p['untranslated']} | {p['write_into_code']} | {p['unsupported']} "
+                     f"| {cell(p['first'])} | {p['untranslated']} | {p['write_into_code']} | {p.get('self_modifying', 0)} | {p['unsupported']} "
                      f"| {h['verdict']} | {x['muse']} |")
     met = 'met' if s['judgeable'] and s['pass_pct'] >= GATE_PCT else 'not met'
     lines += ['', f"Gate: {s['pass']} of {s['judgeable']} judgeable routines pass with no hand edit "
                   f"({s['pass_pct']}%), against {GATE_PCT:g}%: {met}. With hints {s['pass_with_hints']} pass; "
-                  f"{s['unjudgeable']} unjudgeable, left out of the count. {cases} states a routine."]
+                  f"{s['unjudgeable']} unjudgeable, left out of the count. {cases} states a routine; "
+                  f"{s['self_modifying']} routine(s) with self-modifying states, each judged on the rest."]
     return '\n'.join(lines) + '\n'
 
 
