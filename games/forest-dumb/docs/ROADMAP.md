@@ -32,7 +32,8 @@ merges, before level 2.
 The trial (stage 0, plan `forest-dumb-translator-trial`, [13-translator-trial.md](13-translator-trial.md)):
 84 of 85 judgeable routines pass with no hand edit (98.8% against 90%) and level 1's path writes into
 no executed code. Owner's go, 2026-11-07: the second plan, `forest-dumb-translator` (stages 1 to 6), is
-next once level 1 merges.
+next once level 1 merges. Level 1 merged 2026-11-11; the brief was rewritten that day for stages 1 to 6
+plus stage 7, which makes the translator the default first pass for new sessions instead of Muse.
 
 ## After level 1
 
