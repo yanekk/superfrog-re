@@ -171,7 +171,8 @@ python3 -I games/forest-dumb/tools/insn_check.py [--kinds k,…] [--states 500] 
 `fd-judge` optimised with `FD_INSN=build/translator/insn.rs` and runs `fd-judge --insn-all` in four
 shards (the whole census: about 10 s). Writes `build/translator/insn.json` and `insn.md` (by family with
 the task owning it, then one row per kind by fail count) and prints the summary line. `cycles` reads
-`not-counted` for a kind the generated code does not count (T12's, `pcode_fix.cycles.is_dynamic`); a state
+`not-counted` for a kind the generated code does not count (none of the census since T12; the data-dependent
+kinds, `pcode_fix.cycles.is_dynamic`, tick from the registers before the instruction); a state
 counting none fails when another state of its site counted. A state the original takes an exception on (an odd
 address, a division by zero) is skipped and counted. One kind alone: `fd-judge --insn <word> --at
 'hN+$off'`. Holds `build/translate/judge.lock`; exit 0 when written, 1 when a step failed, 2 on usage.

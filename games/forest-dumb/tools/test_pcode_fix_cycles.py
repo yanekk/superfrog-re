@@ -1,4 +1,4 @@
-"""pcode_fix.cycles (translator T11): which `r.tick` lines the translator writes, and where. Whether
+"""pcode_fix.cycles (translator T11, T12): which `r.tick` lines the translator writes, and where. Whether
 the times are right is judged on Moira: `fd-conform/tests/insn_cycles.rs`, `insn_check.rs`,
 `insn_defects.rs`, and `insn_check.py --columns cycles` on the game's census.
 
@@ -43,11 +43,21 @@ class Kinds(unittest.TestCase):
         ]:
             self.assertEqual(cy.kind(shift_bit(text)), want, text)
 
-    def test_data_dependent_kinds_are_left_to_t12(self):
-        for text in ('lsl.l d1,d0', 'roxr.w d1,d0', 'bset d1,d0', 'bclr d1,d0', 'st d0', 'sne d0'):
+    def test_data_dependent_kinds_tick_from_the_registers_before(self):
+        # Not fixed-time rows, so no `kind`; T12 counts them at run time (test_cycles_dynamic.py has
+        # the multiply, divide, dbcc and movem forms).
+        for text, want in [
+            ('lsl.l d1,d0', 'r.tick(cy::shift_cycles(cy::Size::L, r.d(1)));'),
+            ('roxr.w d1,d0', 'r.tick(cy::shift_cycles(cy::Size::W, r.d(1)));'),
+            ('bset d1,d0', 'r.tick(cy::of(cy::Op::Bset(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
+            ('bchg d1,d0', 'r.tick(cy::of(cy::Op::Bset(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
+            ('bclr d1,d0', 'r.tick(cy::of(cy::Op::Bclr(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
+            ('st d0', 'r.tick(cy::scc_reg(cy::cc_holds(0, r)));'),
+            ('sne d0', 'r.tick(cy::scc_reg(cy::cc_holds(6, r)));'),
+        ]:
             ins = shift_bit(text)
             self.assertIsNone(cy.kind(ins), text)
-            self.assertEqual(cy.cycles(ins), [], text)
+            self.assertEqual(cy.cycles(ins), [want], text)
         self.assertTrue(cy.is_dynamic('mulu', '#imm', 'Dn'))
         self.assertTrue(cy.is_dynamic('dbf', 'Dn', 'label'))
         self.assertFalse(cy.is_dynamic('bne', 'label', None))
@@ -62,9 +72,10 @@ class Emitted(unittest.TestCase):
         lines, _ = pr.Emit({}, {}).instruction((0, 0x4c), shift_bit('lsl.l #8,d0'))
         self.assertIn('(corrected: pcode_fix.shift_bit)', lines[0])
         self.assertEqual(lines[2].strip(), tick('Shift(8)', 'L', 'Imm', 'Dn'))
-        # A register count is emitted by shift_bit too, with no tick: T12's.
+        # A register count is emitted by shift_bit too, its tick computed from d1 before (T12).
         lines, _ = pr.Emit({}, {}).instruction((0, 0x48), shift_bit('lsl.l d1,d0'))
-        self.assertFalse(any('r.tick' in l for l in lines))
+        self.assertEqual(lines[2].strip(), 'r.tick(cy::shift_cycles(cy::Size::L, r.d(1)));')
+        self.assertTrue(lines[3].strip().startswith('let cnt'))
 
     def test_a_conditional_branch_counts_each_path_on_its_own(self):
         doc = pr.load_export(os.path.join(FIXTURES, 'flags_call.json'))

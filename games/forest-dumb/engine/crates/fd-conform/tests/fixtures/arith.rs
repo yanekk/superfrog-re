@@ -177,6 +177,7 @@ pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
+        r.tick(cy::divu_cycles(r.d(0), r.d(1) as u16));
         let v = int_zext(r.get(0x6, 2), 2);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
@@ -200,6 +201,7 @@ pub fn i_h0_8(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
+        r.tick(cy::divs_cycles(r.d(0) as i32, 0x0003u16 as i16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });
         let v = int_sext(0x3u64, 2, 4);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
@@ -223,6 +225,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
+        r.tick(cy::divu_cycles(r.d(0), 0x0000u16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });
         let v = int_zext(0x0u64, 2);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
