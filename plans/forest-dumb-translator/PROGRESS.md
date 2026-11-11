@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T10; T08, T09 and T11 run beside it.
+**Next `pir-work` will:** T08, T09 and T11 (T13 waits on them and T12).
 
 ## Tasks
 
@@ -24,7 +24,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | known-defects | T06 | ✅ | |
 | T08 | flags-arith | T06 | ⬜ | |
 | T09 | flags-shift-bit | T06 | ⬜ | |
-| T10 | flags-move-control | T06 | 🔍 | `pcode_fix/move_control.py`: SR/CCR pack and unpack, `rte`, `rtr`, `movem.w -(An)`; `ops::sr_get`/`sr_set`/`ccr_set`; 46-instruction made-up program on Moira (`insn_moves.rs`, 4 tests), 8 Python, 4 Rust unit tests. Deviations: rig change in `judge/insn.rs` (USP, other stack pointer); `insn_moves.rs` at 300 states for smoke. |
+| T10 | flags-move-control | T06 | ✅ | Review clean, no fix commit. Reproduced insn_check move_control at 0 fails on two seeds and the before count (rte 238) on base code; trial 84 of 85; `moves.json` matches a fresh Ghidra export. Mutations caught: no stack swap in `sr_set`, CCR writes routed to `sr_set`. User-mode `rte` or move to SR unjudged (states start supervisor). |
 | T11 | cycles-static | T06 | ⬜ | |
 | T12 | cycles-dynamic | T11 | ⬜ | |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T10
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
