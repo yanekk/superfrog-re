@@ -281,9 +281,10 @@ fn a_read_only_register_write_changes_nothing_but_the_bus() {
     assert_eq!(m.custom()[0x1C / 2], 0);
     assert_eq!(m.custom()[0x06 / 2], 0);
     assert_eq!(m.rw(0xDF_F006), 0x0003, "the beam is untouched");
-    // A readable register reads its device, at the access's cycle count.
-    assert_eq!(m.rw(0xDF_F01C), 0x101C);
-    assert_eq!(paula.take(), vec![('r', 0x01C, 0, 7)]);
+    // A readable register reads its device, at the access's cycle count (ADKCONR; INTENAR and
+    // INTREQR are the machine's own since T23).
+    assert_eq!(m.rw(0xDF_F010), 0x1010);
+    assert_eq!(paula.take(), vec![('r', 0x010, 0, 7)]);
     // The write still put its word on the bus.
     m.ww(0xDF_F01E, 0x7777);
     assert_eq!(

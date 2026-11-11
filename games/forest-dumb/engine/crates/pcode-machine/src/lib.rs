@@ -1,7 +1,8 @@
 //! The machine translated 68000 code runs on (translator DESIGN §2.8): memory laid out as the
 //! oracle's A500, the program's hunks at given bases, a `pcode_rt::Bus` that routes custom-register
-//! and CIA addresses to devices, and the beam from counted cycles. The chips, interrupts, sound,
-//! input and OS plug in as [`Device`]s and through `poll` (translator T23 to T26).
+//! and CIA addresses to devices, and the beam from counted cycles. Interrupts are taken in `poll`,
+//! at a translated block's start (`irq`); the chips, sound, input and OS plug in as [`Device`]s
+//! and raise requests with [`Machine::raise`] (translator T24 to T26).
 //!
 //! Pure: no clock, I/O, floats or hash maps. Names no game: the program's bytes, its hunk bases and
 //! the RAM sizes are input.
@@ -9,13 +10,15 @@
 use std::fmt;
 use std::ops::Range;
 
-use pcode_rt::{Bus, Image, Regs, Stop};
+use pcode_rt::{Bus, Image, PC, Regs, Stop, ops};
 
 pub mod beam;
 pub mod custom;
+pub mod irq;
 pub mod mem;
 
 pub use custom::Cia;
+pub use irq::{Entry, Routine};
 use mem::{Region, SLOW_BASE};
 
 /// The machine's shape.
@@ -132,6 +135,13 @@ pub struct Machine {
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
+    /// INTENA and INTREQ as Paula holds them (bit 15 never set).
+    intena: u16,
+    intreq: u16,
+    /// Requests raised for a cycle count not yet reached: (INTREQ bit, at).
+    raised: Vec<(u16, u64)>,
+    /// The translated program's `entry`, where `poll` finds a vector's handler.
+    entry: Option<Entry>,
 }
 
 impl Machine {
@@ -150,6 +160,10 @@ impl Machine {
             phase: 0,
             bus: 0,
             fault: None,
+            intena: 0,
+            intreq: 0,
+            raised: Vec::new(),
+            entry: None,
         }
     }
 
@@ -207,7 +221,8 @@ impl Machine {
 
     /// A case's sync point: `mem` is chip RAM then slow RAM, as the oracle's `AmigaMemory` holds
     /// them, `custom` the registers by `reg / 2`. VPOSR and VHPOSR (`custom[2]`, `custom[3]`) place
-    /// the beam at cycle 0; the rest are the registers' values. Hunk sizes are unknown here.
+    /// the beam at cycle 0; INTENAR and INTREQR (`custom[0x0E]`, `custom[0x0F]`) are INTENA's and
+    /// INTREQ's state; the rest are the registers' values. Hunk sizes are unknown here.
     ///
     /// Panics on an impossible `cfg` or on `mem` not `cfg.chip + cfg.slow` bytes: both are the
     /// host's own facts, not the program's.
@@ -225,6 +240,8 @@ impl Machine {
         m.chip.copy_from_slice(&mem[..chip]);
         m.slow.copy_from_slice(&mem[chip..]);
         m.custom = *custom;
+        m.intena = custom[irq::INTENAR as usize >> 1] & 0x7FFF;
+        m.intreq = custom[irq::INTREQR as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
         m
@@ -270,6 +287,88 @@ impl Machine {
     }
     pub fn set_cycles(&mut self, cycles: u64) {
         self.now = cycles;
+    }
+
+    /// Hand the machine the translated program's `entry`, so `poll` can call the handler an
+    /// interrupt vector points at. Without one, a taken interrupt stops the run as untranslated.
+    pub fn set_entry(&mut self, entry: Entry) {
+        self.entry = Some(entry);
+    }
+
+    /// INTENA as Paula holds it (what INTENAR reads).
+    pub fn intena(&self) -> u16 {
+        self.intena
+    }
+
+    /// INTREQ as Paula holds it, with every request raised for a count up to `cycles()`.
+    pub fn intreq(&mut self) -> u16 {
+        self.settle();
+        self.intreq
+    }
+
+    /// A device sets INTREQ bit `bit` (0 to 13) at cycle count `at`: seen from the first INTREQR
+    /// read, INTREQ write or block start timed at `at` or later. Panics on a bit that raises no interrupt.
+    pub fn raise(&mut self, bit: u16, at: u64) {
+        irq::level_of(bit);
+        self.raised.push((bit, at));
+    }
+
+    /// The level to take now, with the status register `sr`: INTENA & INTREQ with the master
+    /// enable on, above SR's mask.
+    fn pending(&self, sr: u16) -> Option<u8> {
+        irq::above_mask(irq::ipl(self.intena, self.intreq), sr)
+    }
+
+    /// Move into INTREQ the requests raised for a count up to now.
+    fn settle(&mut self) {
+        let now = self.now;
+        let mut due = 0;
+        self.raised.retain(|&(bit, at)| {
+            let d = at <= now;
+            if d {
+                due |= 1 << bit;
+            }
+            !d
+        });
+        self.intreq |= due;
+    }
+
+    /// Take a level `level` interrupt as the 68000 does: SR copied, S set, T cleared and the mask
+    /// raised (A7 becomes the system stack if it was the user's), PC and the old SR pushed, then
+    /// the handler at the vector's address called. Its `rte` pops the frame; anything else coming
+    /// back stops the run, since control cannot follow it.
+    fn take(&mut self, level: u8, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let old = ops::sr_get(r) as u16;
+        // The interrupted code's PC register is not the 68000's PC (generated code keeps that in
+        // a local), but it holds a call's return address between `rts` and its check: keep it.
+        let pc = r.get(PC, 4);
+        ops::sr_set(r, irq::handler_sr(old, level) as u64);
+        r.tick(irq::IRQ_CYCLES);
+        self.now = r.cycles();
+        let sp = r.a(7).wrapping_sub(6);
+        pcode_rt::store(self, img, sp.wrapping_add(2), 4, irq::IRQ_RETURN as u64)?;
+        pcode_rt::store(self, img, sp, 2, old as u64)?;
+        r.set_a(7, sp);
+        let at = self.rl(irq::vector(level)) & 0xFF_FFFF;
+        let handler = img
+            .hunk_of(at)
+            .and(self.entry)
+            .and_then(|entry| entry(&img.describe(at)))
+            .ok_or_else(|| Stop::Untranslated(img.describe(at)))?;
+        handler(r, self, img)?;
+        let back = r.get(PC, 4) as u32;
+        if back != irq::IRQ_RETURN {
+            return Err(Stop::Unsupported {
+                op: format!(
+                    "interrupt handler returned to {}, not by rte",
+                    img.describe(back)
+                ),
+                at: img.describe(at),
+            });
+        }
+        r.set(PC, 4, pc);
+        self.now = r.cycles();
+        Ok(())
     }
 
     /// The beam's `(line, h)` at cycle count `cycles`: h in DMA slots (colour clocks), 227 a line.
@@ -356,6 +455,8 @@ impl Machine {
             return w;
         }
         let v = match reg {
+            irq::INTENAR => self.intena,
+            irq::INTREQR => self.intreq(),
             custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),
             custom::VHPOSR => {
                 let (line, h) = self.beam(self.now);
@@ -376,6 +477,15 @@ impl Machine {
             return;
         }
         self.custom[reg as usize >> 1] = v;
+        match reg {
+            irq::INTENA => self.intena = irq::set_clear(self.intena, v),
+            irq::INTREQ => {
+                // A request raised before this write is cleared by it like any other.
+                self.settle();
+                self.intreq = irq::set_clear(self.intreq, v);
+            }
+            _ => {}
+        }
         if let id @ 1.. = self.route[reg as usize >> 1] {
             self.devices[id as usize - 1].write(reg, v, self.now);
         }
@@ -397,12 +507,24 @@ impl Machine {
 }
 
 impl Bus for Machine {
-    /// Times the block's accesses, and ends the run on an access outside memory made since.
-    fn poll(&mut self, r: &mut Regs, _img: &Image) -> Result<(), Stop> {
+    /// Times the block's accesses, ends the run on an access outside memory made since, and takes
+    /// every interrupt pending above SR's mask, highest first: a handler's own blocks poll too, so
+    /// a higher level nests inside it, and one left pending after its `rte` is taken here at once,
+    /// as a 68000 takes it before the next instruction.
+    fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.now = r.cycles();
-        match &self.fault {
-            Some(f) => Err(f.clone()),
-            None => Ok(()),
+        if let Some(f) = &self.fault {
+            return Err(f.clone());
+        }
+        loop {
+            self.settle();
+            match self.pending(ops::sr_get(r) as u16) {
+                Some(level) => self.take(level, r, img)?,
+                None => return Ok(()),
+            }
+            if let Some(f) = &self.fault {
+                return Err(f.clone());
+            }
         }
     }
 
