@@ -179,7 +179,9 @@ tree, survey and judge every routine of `re/translate.toml` (DESIGN §2.1 to §2
 python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,…] [--skip-export] [--cases N]
 ```
 Writes `build/translator/trial.json` and `table.md` (with Muse's `batch.json` results beside, from this
-checkout or the main one), prints the gate summary line. Holds `build/translate/judge.lock` for the run and
+checkout or the main one), prints the gate summary line. A state on which the original itself
+changes a translated instruction's byte is not judged: the table's `Self-modifying` column counts them
+and the summary's `self_modifying` the routines that have any (translator DESIGN §2.5). Holds `build/translate/judge.lock` for the run and
 refuses a second. Exit 0 when the table was written, 1 when a step failed (named), 2 on usage.
 
 ## Assets

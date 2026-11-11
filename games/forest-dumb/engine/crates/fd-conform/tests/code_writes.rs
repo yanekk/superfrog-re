@@ -1,5 +1,9 @@
 //! T05 (translator trial DESIGN §2.6): changes to the bytes of executed instructions, on level 1's
 //! cases on the original. `w1-idle` from the cached level sync point, a few seconds warm.
+//!
+//! Translator T15 (DESIGN §2.5): `fd-conform code-writes --all`, every case, the power-on run and the
+//! world 2 to 6 starts, changes no executed instruction. About 3 minutes in release, longer
+//! unoptimised, so `#[ignore]`d for full.
 
 use std::path::{Path, PathBuf};
 
@@ -120,4 +124,35 @@ fn missing_disks_name_the_path() {
     std::fs::create_dir_all(&empty.0).unwrap();
     let err = run_case_in(&rom, &empty.0, &cache.0, &idle(), Some(1), |_, _| {}).unwrap_err();
     assert!(err.contains(&empty.0.display().to_string()), "{err}");
+}
+
+#[test]
+#[ignore = "full: every case, the power-on run and five world starts on the original, minutes"]
+fn every_path_changes_no_executed_instruction() {
+    let out = std::process::Command::new(env!("CARGO_BIN_EXE_fd-conform"))
+        .args(["code-writes", "--all"])
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success(),
+        "{text}{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let lines: Vec<&str> = text.lines().collect();
+    for run in [
+        "power-on", "world-2", "world-3", "world-4", "world-5", "world-6",
+    ] {
+        let line = lines
+            .iter()
+            .find(|l| l.contains(&format!(r#""case":"{run}""#)))
+            .unwrap_or_else(|| panic!("no {run} line in {text}"));
+        assert!(line.contains(r#""changed":[]"#), "{line}");
+    }
+    // 42 level cases, the power-on run and five world starts.
+    let total = lines.last().unwrap();
+    assert!(
+        total.starts_with(r#"{"total":{"cases":48,"#) && total.contains(r#""changed":0,"#),
+        "{text}"
+    );
 }

@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T15 code-writes total:** `fd-conform code-writes --all` over level 1's 42 cases, power-on (7 000 frames) and the world 2 to 6 starts: 48 runs, 153 600 frames, 0 changed instructions. The power-on watch arms at `h0+$0`. |
+| 2026-11-11 | 📌 | **T15 trial:** 85 of 85 judgeable pass. `self_modifying` states: `h0_6852` 35; blits landing in code on generated states `h0_a06` 47, `h0_ce4` 67, `h0_29ca` 65, `h0_21c0` 3, `h0_26ec` 1. The blit shim writes memory past the code check. |
+| 2026-11-11 | 📌 | Self-modifying is seen only where a code byte's value changed (`CallResult::writes`): an original storing the value a code byte already held is judged and fails on `write-into-code`. No trial routine does. |
 | 2026-11-11 | 📌 | No task measures whole frames' steps: T14's interface sets `STEP_CAP_GLOBAL` from T16, whose doc judges routines only. The cap stays 10 000 000; no task owns resetting `Regs::steps` per frame either. Left for the plan. |
 | 2026-11-11 | 📌 | `DEPTH_CAP` 32 rests on static call depth. A return outside its caller (`ret_check`, then `enter`) nests a Rust frame the original lacks, so running depth can exceed 8 (T14 review, read-only). T16/T28 should record the deepest `Regs::depth`. |
 | 2026-11-11 | 📌 | **T14 caps measured:** trial routines' longest run 3 968 blocks (`h0+$b20`), `game_frame` 737, nesting 6 at most; the whole tree's call graph is 8 deep from `h0+$0`, `level3_handler` 7, no recursion. `STEP_CAP_GLOBAL` left at 10 000 000 for T16. |

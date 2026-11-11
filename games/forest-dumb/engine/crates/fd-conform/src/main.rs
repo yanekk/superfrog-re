@@ -13,14 +13,17 @@
 //! pictures at Stop as `original-stop.png` and `engine-stop.png`, and the original's inputs as a
 //! case script, `original-inputs.txt`, and the case that runs it, `bug-case.toml`, in `--out`, else the game's `build/bugs/<zip stem>/`. Exit 0 only for `same`. Procedure: `games/forest-dumb/docs/BUG-FIX.md`.
 //!
-//! `fd-conform code-writes [--cases <glob>] [--max-frames N]`: every level case under
+//! `fd-conform code-writes [--cases <glob>] [--max-frames N] [--all]`: every level case under
 //! `engine/conform/cases/` whose stem matches the glob (default all) run on the original from the
 //! level sync point, reporting each change to the bytes of an instruction it executed
 //! (`fd_conform::code_writes`, translator trial DESIGN §2.6). One JSON line per case,
 //! `{"case","frames","executed","executed_bytes","changed":[{"at","frame","from","to","since"}]}`,
 //! then `{"total":{"cases","frames","changed","misses"}}`. A case that does not start at level 1
-//! is skipped with a line on stderr. Exit 0 when every case ran, changes or not; 1 for a missing
-//! input; 2 for a wrong command line.
+//! is skipped with a line on stderr. `--all` adds every other path the translator covers (translator
+//! DESIGN §2.5, T15): the power-on run through the title into level 1 (`power-on`, 7 000 frames) and
+//! each world 2 to 6 start (`world-2` .. `world-6`), as `code-seen` runs them, after the cases;
+//! `--max-frames` bounds only the cases. Exit 0 when every run ran, changes or not; 1 for a
+//! missing input; 2 for a wrong command line.
 //!
 //! `fd-conform code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE]`:
 //! every instruction the original executes over the level cases in DIR (default
@@ -43,14 +46,14 @@ use std::process::ExitCode;
 
 use fd_conform::{Case, run};
 
-const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
+const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let outcome = match &args[..] {
         [cmd, path] if cmd == "run" => run_case(Path::new(path)),
         [cmd, rest @ ..] if cmd == "code-writes" => match code_writes_args(rest) {
-            Some((glob, max)) => code_writes(&glob, max),
+            Some((glob, max, all)) => code_writes(&glob, max, all),
             None => {
                 eprintln!("{USAGE}");
                 return ExitCode::from(2);
@@ -208,22 +211,27 @@ fn os_surface(
     Ok(true)
 }
 
-fn code_writes_args(rest: &[String]) -> Option<(String, Option<u32>)> {
-    let (mut glob, mut max) = ("*".to_string(), None);
+fn code_writes_args(rest: &[String]) -> Option<(String, Option<u32>, bool)> {
+    let (mut glob, mut max, mut all) = ("*".to_string(), None, false);
     let mut it = rest.iter();
     while let Some(flag) = it.next() {
         match flag.as_str() {
             "--cases" => glob = it.next()?.clone(),
             "--max-frames" => max = Some(it.next()?.parse().ok()?),
+            "--all" => all = true,
             _ => return None,
         }
     }
-    Some((glob, max))
+    Some((glob, max, all))
 }
 
-/// The level cases matching `glob`, in parallel (each case its own oracle), printed in name order.
-fn code_writes(glob: &str, max: Option<u32>) -> Result<bool, String> {
-    use fd_conform::code_writes::{glob_match, run_case, total_json};
+/// The level cases matching `glob`, and with `all` the power-on run and the world starts, in
+/// parallel (each run its own oracle), printed cases in name order first.
+fn code_writes(glob: &str, max: Option<u32>, all: bool) -> Result<bool, String> {
+    use fd_conform::code_seen::POWER_ON_FRAMES;
+    use fd_conform::code_writes::{
+        glob_match, run_case, run_power_on_in, run_world_in, total_json,
+    };
     let dir = fd_conform::conform_dir().join("cases");
     let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
         .map_err(|e| format!("{}: {e}", dir.display()))?
@@ -250,29 +258,55 @@ fn code_writes(glob: &str, max: Option<u32>) -> Result<bool, String> {
             dir.display()
         ));
     }
+    enum Job<'c> {
+        Case(&'c Case),
+        PowerOn,
+        World(u32),
+    }
+    let mut jobs: Vec<Job> = cases.iter().map(Job::Case).collect();
+    if all {
+        jobs.push(Job::PowerOn);
+        jobs.extend((2..=6).map(Job::World));
+    }
+    let name = |j: &Job| match j {
+        Job::Case(c) => c.name.clone(),
+        Job::PowerOn => "power-on".to_string(),
+        Job::World(w) => format!("world-{w}"),
+    };
+    let (kickstart, disks) = if all {
+        let k = amiga_oracle::kickstart_path().map_err(|e| e.to_string())?;
+        (k, fd_tools::disk_dir()?)
+    } else {
+        Default::default()
+    };
+    let cache = fd_conform::sync::cache_dir();
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let next = std::sync::atomic::AtomicUsize::new(0);
     let results: Vec<std::sync::Mutex<Option<Result<_, String>>>> =
-        cases.iter().map(|_| std::sync::Mutex::new(None)).collect();
+        jobs.iter().map(|_| std::sync::Mutex::new(None)).collect();
     std::thread::scope(|s| {
-        for _ in 0..workers.min(cases.len()) {
+        for _ in 0..workers.min(jobs.len()) {
             s.spawn(|| {
                 loop {
                     let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let Some(c) = cases.get(i) else { break };
-                    let r = run_case(c, max, |_, _| {});
+                    let Some(job) = jobs.get(i) else { break };
+                    let r = match job {
+                        Job::Case(c) => run_case(c, max, |_, _| {}),
+                        Job::PowerOn => run_power_on_in(&kickstart, &disks, POWER_ON_FRAMES),
+                        Job::World(w) => run_world_in(&kickstart, &disks, &cache, *w),
+                    };
                     *results[i].lock().unwrap() = Some(r);
                 }
             });
         }
     });
     let mut reports = Vec::new();
-    for (c, r) in cases.iter().zip(results) {
+    for (j, r) in jobs.iter().zip(results) {
         let r = r
             .into_inner()
             .unwrap()
             .unwrap()
-            .map_err(|e| format!("{}: {e}", c.name))?;
+            .map_err(|e| format!("{}: {e}", name(j)))?;
         println!("{}", r.json());
         reports.push(r);
     }

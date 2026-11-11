@@ -290,7 +290,15 @@ fn always_into_code(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), 
 }
 
 fn judge_self(r: &mut Rig, run: Entry, code: &[(u32, u32, u32)]) -> translated::Judged {
-    translated::check(r, "self-writer", 200, SELF_AT, &SELF_WRITER, Some(run), code)
+    translated::check(
+        r,
+        "self-writer",
+        200,
+        SELF_AT,
+        &SELF_WRITER,
+        Some(run),
+        code,
+    )
 }
 
 #[test]
