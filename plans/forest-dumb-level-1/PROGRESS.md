@@ -10,9 +10,9 @@
 
 **Amended mid-run:** 2026-11-06 — cost per step (DESIGN §4.4): task packs first in every pending task, a smaller start for workers, Muse writes porting tasks' engine code with a quality loop; T66 answered (owner). Run stopped for the edit.
 
-**Status:** Building; 51 of 70 tasks ✅. Pending tasks start from their pack (`tools/task_pack.py`).
-**Last updated:** 2026-11-06
-**Next `pir-work` will:** T42 and T68 (resumed), then T11 and T22 as their dependencies finish. Start the run with `ENABLE_CLAUDEAI_MCP_SERVERS=false pir start forest-dumb-level-1`.
+**Status:** Building; 85 of 86 tasks ✅, T29 in review. Pending tasks start from their pack (`tools/task_pack.py`).
+**Last updated:** 2026-11-11
+**Next `pir-work` will:** review T29, then finish the plan (follow-up: opposite keys, FINDINGS 2026-11-11).
 
 ## Tasks
 
@@ -69,7 +69,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T27 | full-route | T20, T26, T45, T46, T47 | ✅ | |
 | T48 | route-on-original | T27 | ✅ | |
 | T28 | finish-end-to-end | T16, T48 | ✅ | |
-| T29 | level-drill | T15, T28 | ⬜ | |
+| T29 | level-drill | T15, T28 | 🔍 | `level_drill.rs`, 3 tests: stretches and route in the app, recorded, zips judged by `bug compare`; unlisted inputs. Fixed `Owners` `cut_redraw` (Escape T71). Deviations: script layer, not OS (exact steps; `drill_os.rs` holds real keys); oracle judged by `bug compare`, not frames (scripts drift). Opposite keys left (answer, FINDINGS). Owner removed the deny list. |
 | T50 | sf-menus-os-test-stale | — | ✅ | |
 | T51 | character-anim-input | T07, T40; blocks T08 | ✅ | |
 | T52 | creature-drawing | T10, T22; blocks T46 | ✅ | |
@@ -107,7 +107,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T84 | one-route-both-sides | T48, T82; blocks T28, T29 | ✅ | |
 | T85 | observes-only-flake | —; blocks T29 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T29
 
 ## Blocked on the user
 
