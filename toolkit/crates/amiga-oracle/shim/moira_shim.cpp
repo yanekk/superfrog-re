@@ -223,7 +223,8 @@ public:
         jold.clear();
     }
 
-    void call(u32 entry, amiga_regs *r, u32 sentinel, u64 max_instr, amiga_call_status *out) {
+    // Reset the CPU and set it up at `entry` with `r`: what a call and a step share.
+    void begin(u32 entry, const amiga_regs *r) {
         status = {};
         hwWrites.clear();
         std::fill(std::begin(blt), std::end(blt), u16(0));
@@ -245,6 +246,10 @@ public:
         for (int n = 0; n < 8; n++) setD(n, r->d[n]);
         for (int n = 0; n < 8; n++) setA(n, r->a[n]);
         setPC0(getPC());
+    }
+
+    void call(u32 entry, amiga_regs *r, u32 sentinel, u64 max_instr, amiga_call_status *out) {
+        begin(entry, r);
 
         u64 n = 0;
         traced = trace;
@@ -281,6 +286,31 @@ public:
             for (auto &[at, ways] : branchWays) branchOut.push_back({ at, u8(ways & 1), u8(ways >> 1) });
             std::sort(reads.begin(), reads.end());
         }
+    }
+
+    // One instruction at `pc`. Nothing is pushed; the stack pointer SR does not select starts at
+    // `other_sp`. An exception the instruction takes is reported, not followed.
+    void step(u32 pc, amiga_regs *r, u32 other_sp, amiga_step_regs *ext, amiga_call_status *out) {
+        begin(pc, r);
+        if (reg.sr.s) setUSP(other_sp); else setISP(other_sp);
+        // A step is never traced: its reads would land in the bitmap with nothing to clear them.
+        bool wasTracing = trace;
+        trace = false;
+        execute();
+        trace = wasTracing;
+        if (isHalted() && status.status == AMIGA_CALL_RETURNED) {
+            status.status = AMIGA_CALL_HALTED;
+            status.pc = getPC0();
+        }
+        status.instr = 1;
+        status.cycles = u64(getClock());
+        for (int i = 0; i < 8; i++) r->d[i] = getD(i);
+        for (int i = 0; i < 8; i++) r->a[i] = getA(i);
+        r->sr = getSR();
+        ext->pc = getPC();
+        ext->usp = getUSP();
+        ext->ssp = getISP();
+        *out = status;
     }
 };
 
@@ -366,6 +396,12 @@ void amiga_cpu68k_call(amiga_cpu68k *c, uint32_t entry, amiga_regs *regs, uint32
                  amiga_call_status *out)
 {
     c->cpu.call(entry, regs, sentinel, max_instr, out);
+}
+
+void amiga_cpu68k_step(amiga_cpu68k *c, uint32_t pc, amiga_regs *regs, uint32_t other_sp, amiga_step_regs *ext,
+                       amiga_call_status *out)
+{
+    c->cpu.step(pc, regs, other_sp, ext, out);
 }
 
 size_t amiga_cpu68k_journal(const amiga_cpu68k *c, const uint32_t **addrs, const uint8_t **olds)

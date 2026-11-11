@@ -57,6 +57,21 @@ uint8_t *amiga_cpu68k_mem(amiga_cpu68k *c);
 void amiga_cpu68k_call(amiga_cpu68k *c, uint32_t entry, amiga_regs *regs, uint32_t sentinel, uint64_t max_instr,
                  amiga_call_status *out);
 
+/* What a step leaves besides D0-D7/A0-A7 and SR: the next PC and both stack pointers (a 68000 has
+ * no master stack pointer, so `ssp` is Moira's ISP). */
+typedef struct {
+    uint32_t pc;
+    uint32_t usp;
+    uint32_t ssp;
+} amiga_step_regs;
+
+/* Reset the CPU as amiga_cpu68k_call does and execute exactly one instruction at `pc`. Nothing is
+ * pushed; the stack pointer SR does not select starts at `other_sp`. `out->status` is RETURNED when
+ * the instruction completed, else what stopped it (an exception it took, a custom-chip access, a
+ * halt); `out->instr` is 1. Writes are journalled as in a call. */
+void amiga_cpu68k_step(amiga_cpu68k *c, uint32_t pc, amiga_regs *regs, uint32_t other_sp, amiga_step_regs *ext,
+                       amiga_call_status *out);
+
 /* The bytes written since the last rollback: each address once, in first-write order, with the value
  * it held before. Valid until the next call or rollback. */
 size_t amiga_cpu68k_journal(const amiga_cpu68k *c, const uint32_t **addrs, const uint8_t **olds);
