@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T12; then T13 (insn-gate), whose dependencies T07 to T10 are done.
+**Next `pir-work` will:** T13 (insn-gate), whose dependencies T07 to T10 and T12 are done.
 
 ## Tasks
 
@@ -26,7 +26,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | flags-shift-bit | T06 | ✅ | |
 | T10 | flags-move-control | T06 | ✅ | |
 | T11 | cycles-static | T06 | ✅ | |
-| T12 | cycles-dynamic | T11 | 🔍 | Moira's rules for mul, div, register shifts, register bit ops, scc Dn, dbcc, movem in `pcode_rt::cycles`; ticks from registers before. Census 290 kinds, 0 fail, none not-counted; 20 new tests. Deviations: memory-source mul/div stop the run; exception times are the manual's, unjudged (Moira reports none); bset Dn,Dn and scc Dn also counted. |
+| T12 | cycles-dynamic | T11 | ✅ | Review clean, no fix commit. Reran census check: 290 kinds, 0 fail, none not-counted. Probed 60 000 divides and 5 000 random dbcc/mul states against Moira, all equal; memory-source mul/div emit the Unsupported stop. Mutations of divu step, cc_holds ge, movem extra read and the dbcc counter field all caught. Exception times manual's, unjudged; census holds no trap or chk. |
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ⬜ | |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T12
+**Review queue:** empty
 
 ## Blocked on the user
 
