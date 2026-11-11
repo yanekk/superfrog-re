@@ -46,8 +46,9 @@ let intreq = m.take_cia_interrupts();                       // after each block:
   An attached device replaces either chip's model.
 - **CIA-A** (`cia.rs`), what the program uses (translator T01's OS surface names the sites): PRA reads its outputs' latch and, on inputs, fire (bit 7, port 2) and the left mouse
   button (bit 6, port 1) low when held, the OVL, LED and disk lines high; PRB, DDRA, DDRB as
-  registers. ICR: a write with bit 7 sets mask bits, without clears them; a read returns the flags
-  (bit 7 if the line is driven) and clears them. The line falling is PORTS (`$0008`) from
+  registers; CRA reads bits 4 and 7 as 0, CRB bit 4 (vAmiga). ICR: a write with bit 7 sets mask
+  bits, without clears them; a read returns the flags (bit 7 if the line is driven) and clears them.
+  Only that read releases the line: masking a raised interrupt and unmasking it gives no new edge. The line falling is PORTS (`$0008`) from
   `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard (`amiga-input`
   `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag, and
   the next waits for the handshake (CRA bit 6 set then cleared) plus `KEY_BYTE_CYCLES` (3 405, the

@@ -121,8 +121,9 @@ impl CiaA {
                 self.line = false;
                 v
             }
-            CRA => self.cra,
-            CRB => self.crb,
+            // LOAD (bit 4) is a strobe and CRA's bit 7 unused: both read 0 (vAmiga `peek`).
+            CRA => self.cra & !0x90,
+            CRB => self.crb & !0x10,
             0x8..=0xB => self.tod[reg as usize - 8],
             _ => self.unsupported(reg),
         }
@@ -191,12 +192,14 @@ impl CiaA {
         }
     }
 
+    /// Drives the line if a flag is set whose mask bit is set. Only a read of ICR releases it:
+    /// vAmiga's ICR write pulls the line and never lets it go, so masking a raised interrupt and
+    /// unmasking it again (the program's `system_off`, `$7f` then `$88`) gives no second edge.
     fn update_line(&mut self) {
-        let l = self.icr_data & self.icr_mask != 0;
-        if l && !self.line {
+        if self.icr_data & self.icr_mask != 0 && !self.line {
+            self.line = true;
             self.edge = true;
         }
-        self.line = l;
     }
 
     fn unsupported(&mut self, reg: u16) -> u8 {
@@ -275,6 +278,22 @@ mod tests {
     }
 
     #[test]
+    fn masking_does_not_release_the_line_only_reading_icr_does() {
+        // vAmiga `CIA::poke` ICR only ever pulls the line; `spypeek`/`peek` ICR releases it. The
+        // program's `system_off` writes `$7f` then `$88` with a key possibly pending.
+        let mut c = CiaA::default();
+        c.set_icr_mask(ICR_SP);
+        c.set_keys(KeySet::key(0x45), 0);
+        assert!(c.take_interrupt());
+        c.write(ICR, 0x7F, 10);
+        assert!(c.line(), "a mask write leaves the line driven");
+        c.write(ICR, 0x80 | ICR_SP, 20);
+        assert!(!c.take_interrupt(), "no second edge");
+        assert_eq!(c.read(ICR, 30), 0x80 | ICR_SP);
+        assert!(!c.line());
+    }
+
+    #[test]
     fn the_next_byte_waits_for_the_handshake() {
         let mut c = CiaA::default();
         c.set_icr_mask(ICR_SP);
@@ -305,6 +324,16 @@ mod tests {
         c.set_keys(KeySet::NONE, 30_000);
         assert_eq!(c.read(SDR, 0), key_byte(0x10, true));
         assert_eq!(c.keys_queued(), 1);
+    }
+
+    #[test]
+    fn cra_and_crb_read_their_strobe_bits_as_zero() {
+        // vAmiga `CIA::peek`: CRA without bits 4 and 7, CRB without bit 4 (LOAD is a strobe).
+        let mut c = CiaA::default();
+        c.write(CRA, 0xD0, 0);
+        c.write(CRB, 0x10, 0);
+        assert_eq!((c.read(CRA, 0), c.read(CRB, 0)), (0x40, 0x00));
+        assert_eq!(c.fault(), None);
     }
 
     #[test]
