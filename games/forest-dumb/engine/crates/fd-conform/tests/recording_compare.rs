@@ -78,6 +78,49 @@ fn a_lag_free_stretch_stays_in_step() {
     );
 }
 
+/// A recording through a creature start the next pass cut (T75): `enemy-hop`'s first 150 steps
+/// and `collect-ledge`'s first 120, where the original starts a creature after pass 93 and pass
+/// 58. The compare hands the owner's game each measured cut as a case does, so the slots, judged
+/// since T75, agree; without it they differ at steps 92 and 57.
+#[test]
+fn a_recording_through_a_late_creature_start_stays_in_step() {
+    for (name, steps) in [("enemy-hop", 150), ("collect-ledge", 120)] {
+        let rec = recording(&script_steps(name, steps), name);
+        let c = compare(&rec);
+        assert!(c.same(), "{name}: {}", c.report());
+        let v = c.verdict.as_ref().expect("judged");
+        assert!(v.edge_cuts > 0, "{name}: {}", c.report());
+        assert!(v.passes > steps - 10, "{name}: {}", c.report());
+    }
+}
+
+/// A recording through creatures the original cuts behind the beam (T80): `mechanic-spring`'s first
+/// 500 steps, five creatures in view from pass 475. The compare hands the owner's game the measured
+/// rows as a case does (`Owners` forwards `creatures_uncut`); without it the picture differs at
+/// frame 6779.
+#[test]
+fn a_recording_through_a_creature_cut_behind_the_beam_stays_in_step() {
+    let rec = recording(&script_steps("mechanic-spring", 500), "spring");
+    let c = compare(&rec);
+    assert!(c.same(), "{}", c.report());
+    let v = c.verdict.as_ref().expect("judged");
+    assert!(v.creature_cuts >= 15, "{}", c.report());
+    assert!(v.pictures > 490, "{}", c.report());
+}
+
+/// A recording through a status bar redraw the original cut short (T71), met by T29's drill in the
+/// app: `mechanic-vanish`'s first 140 steps, the score's redraw at frame 6432 (`death-water`'s
+/// hearts at frame 7872 the same). `Owners` hands the owner's game the measured cut as a case does
+/// (`cut_redraw`); without it the bar differs there three frames in a row.
+#[test]
+fn a_recording_through_a_cut_status_redraw_stays_in_step() {
+    let rec = recording(&script_steps("mechanic-vanish", 140), "vanish");
+    let c = compare(&rec);
+    assert!(c.same(), "{}", c.report());
+    let v = c.verdict.as_ref().expect("judged");
+    assert!(v.cut_redraws > 0, "{}", c.report());
+}
+
 /// 4 000 steps of running, jumping and dying both ways: retimed by pass, the original runs a pass
 /// a frame over the whole of it and two passes read the joystick in the frame of the pass before
 /// (measured 2026-11-06, T15 FINDINGS). The pairing also holds across a read cut by the frame's end

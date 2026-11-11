@@ -55,9 +55,6 @@ impl Transplant for StartStep {
 }
 
 impl Engine for StartStep {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
     fn pass(&mut self, _read: FrameInput) {
         let input = self.inputs.at(sync::LEVEL_1_SYNC + self.next - 2);
         self.next += 1;

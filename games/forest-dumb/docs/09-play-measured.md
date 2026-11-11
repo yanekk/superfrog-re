@@ -349,6 +349,46 @@ before porting; the cut was then measured.
   the second redraw and equalled the engine's one pass later. The engine runs the foreground whole, so a
   pass in such a frame sees a whole edge where the original's `char_probe` could see half of one. Not
   modelled: it needs the foreground's timing against the raster (T41 to T43 show whether a case meets it).
+  Where it changes a latch, it is modelled since T73, and a case hands the engine the measured cut
+  since T74 (next section).
+
+### The edge redraws and the next pass (T73)
+
+**Re-measured live, T79, 2026-11-10** (`edge_latch.rs`, creatures running): the same 1 300 steps hold
+166 row redraws, none of more than 5 bobs; 4 are cut by the next pass (passes 344, 348, 352 and 633),
+each a row of no bobs, the longer pass deciding and not the row; the engine alone cuts none. The rows
+of 8 and 9 bobs below were creature cells: the frozen `h0_681c` left them in the object map and the
+scan cut each as a bob. No live row of W1-1 measured reaches `ROW_BOBS_CUT`; the rule stays for the
+engine alone. What follows is the frozen measurement, kept for the window and the order of events.
+
+Measured 2026-11-09 on T24's planner route (`fd-plan level W1-1`, seed 1, 100 rounds, at `0c06449a`),
+frozen as `fd_plan::confirm` plays it; its first 1 300 steps are `cases/edge-latch-route.toml`, held by
+`fd-conform/tests/edge_latch.rs`.
+
+- **The window.** `h0_3ac2` starts no blit outside lines 103 to 230, and the next pass comes at line
+  233. A frozen pass ends near line 311 or within the next frame's first lines, so the foreground's
+  blits always start at line 103: a row's 23 tiles (`BLTSIZE $1401`, A to D) end near line 161, its
+  shapes and scan follow, and its first bob (A to D through a mask) starts near line 197, a bob every
+  5 lines. A column's 16 tiles take about 3 lines each.
+- **When the latch after a row is cleared.** `main_loop` clears a latch just before its redraw, so the
+  pass after a two-edge pass (always a row and then a column) still holds the column's latch only when
+  the row's redraw has not returned by line 233. Rows of 9 bobs or more never return in time (all 17 of
+  the 1 300 steps; pass 1211's up row had 9, so its right latch stayed `$ffff` through pass 1212); rows
+  of 7 or fewer always do (the 7th bob at line 227); of two rows of 8, pass 893's was cut (still in its
+  scan at `h0+$ca6`) and pass 899's was not. A row finished, the column is cut instead, its latch already
+  clear: 103 frames of 36 tiles, no latch differing.
+- **What follows a cut row.** After the next pass `main_loop` finishes the row, tests the latches after
+  it as they then stand, and clears `frame_flag`; a latch that pass set earlier in the order (a row
+  again) waits for the pass after, when the level-3 handler has set `frame_flag` again.
+- **The engine alone** (`level::main_loop_redraws`, `Cut::Rows`, `ROW_BOBS_CUT` = 8) stops its redraw
+  half after a row of 8 bobs or more and resumes it from `State::edges_resume` before the following
+  pass. It draws the cut row whole, so the row's last bobs land in the edge row outside the view one
+  pass early. Kept for the app and the planner's search (T74, below): it is right for every row of 8 or
+  more bobs and every row of 7 or fewer but one, and the cuts it misses depend on cycles.
+- **Unfrozen.** With creatures drawn and `h0_6882` running, a pass can end as late as line 132 of the
+  next frame, which shrinks the window, and the scan's animated cells cost time: on the same route
+  unfrozen, the pass after pass 343 found a row with no bobs still running (in `h0_6882`), and 6 cuts
+  in all left a column latch set, some after a status bar redraw.
 - Each redraw draws a row of 23 tiles or a column of 16 into its 16-line band of the play screen (the program's
   pointer tables at `h0+$1496` and `h0+$18d6` are 16 rotations of the bands; tile row `r` lands in band
   `r & 15`), the same cells' shapes into `collision_map`, then scans 20 (rows) or 13 (columns) object-map
@@ -359,6 +399,54 @@ before porting; the cut was then measured.
 - The rows' scans load only `d0`'s low word before a bob, so after a creature that found no slot (`d0 = -1`)
   the next bob's column is `$1fffxxxx` and its blit, masked to chip RAM, lands far off the screen. The
   engine lists it as the original computes it; T10 decides what the picture does with it.
+
+#### Every cut, measured, and `frame_flag` swallowed (T74, 2026-11-09)
+
+Measured since T47 runs the springs and the animated cells in every case (creatures frozen), with the
+line samples of each step: where the interrupt took the foreground, and, inside a redraw, `main_loop`'s
+return address (`h0+$2da`, `$302`, `$32a`, `$352`) on the user stack of the last sample taken in user
+mode (the exception frame is on the supervisor stack). `fd_conform::edges_cut` reads it.
+
+- **When a pass swallows `frame_flag`.** `main_loop` clears `frame_flag` (`clr.w` at `h0+$352`) after
+  its last redraw, whatever has set it since its test at `$2a0`. A pass that comes before that `clr.w`
+  (inside any redraw, or between the latches' tests) sets its latches and `frame_flag`, and when it ends
+  `main_loop` finishes its redraw, tests the latches after it in the order and clears `frame_flag`: a
+  latch the pass set earlier in the order waits a pass. Cut inside `redraw_edge_d` (`$352` on the stack)
+  every latch the pass sets waits. `mechanic-vanish` pass 293 (frame 6592, in `h0_6882` from the right
+  column's scan) set `edge_latch_down`, which stays `$ffff` through pass 294; `mechanic-spring` and
+  `camera-bottom-right` pass 495 (frame 6794) the same. Passes cut so: 20 of `mechanic-vanish`'s 1 608,
+  39 of `mechanic-spring`'s 2 598, 50 of `edge-latch-route`'s 1 208 (25 in or just after the right
+  column, 6 in the left, 19 in the up row).
+- **Rows, re-measured.** On `edge-latch-route` with the animated cells running: all 17 rows of 9 bobs
+  cut, 1 of the 2 rows of 8 (pass 893), and 1 of the 142 rows of 7 or fewer, one of no bobs (pass 328,
+  in `h0_6882`). `edge_latch.rs` holds it.
+- **The scan cut.** The list `h0_6882` gives a new animated cell is the one with the fewest cells, and
+  the pass's `h0_62b6` changes the counts, so a cell the scan reaches after the pass can join another
+  list: pass 495 of `mechanic-spring` came as `h0_6882` returned (`$69a4`) in the right column, whose
+  later coins joined other lists than with the scan whole, and from frame 6845 spun out of step. The
+  scan's cell is `a2` (`h0+$cb38` plus `d5` and `d6`), which no routine the scan calls writes; it is
+  read from `level3_handler`'s `movem.l` of the foreground's registers. Before the scan's first
+  loop `a2` is still the scan's before it: whether the scan has started is the PC's place (T81,
+  docs/10, "A creature the engine starts a pass early").
+- **What the runner and the engine do.** The runner samples a step's lines only where its pass may find
+  the foreground in the redraws (`frame_flag` or a latch set at the step's start, or the last pass still
+  running and short of `camera_update`), hands the cut to the engine before it runs that pass
+  (`Engine::foreground_cut`, `level::Cut::At`, `level::EdgesCut`), and the engine stops its redraws at
+  the latch not yet tested, holds the interrupted scan's later animated cells (`Edges::deferred`) and
+  adds them before resuming after the pass. Its own rule is then off. Sub-frame timing stays out of the
+  engine (DESIGN §2.1): which pass is cut is the original's cycles, handed over as T67 hands the input
+  each pass read. A creature the cut scan starts after the pass is held the same way since T75
+  (docs/10, "A creature start the next pass cuts"). Not handed: a pass that
+  ends within the few dozen cycles before line 233 that four clear latches' tests take.
+- **In every level case since T78** (2026-11-09). Sampling a step's lines (`Amiga::set_profile`)
+  changed the original with creatures live (`enemy-route`, `enemy-contact`: a pass a step later from
+  step 336 and 377), so T74's review limited it to cases freezing `h0_681c`. Measured cause: a drawn
+  creature's blit held the CPU across the frame's end, the line pause landed in line 0 short of slot
+  `$12`, where the vertical sync's flag comes, and the shim ended the step an instruction early. The
+  shim now waits for the vertical sync (`amiga-oracle` `tests/line_samples.rs`); every level case
+  sampled as the runner samples it equals the original alone every frame (`edge_latch.rs`), and
+  `records_edge_cuts` holds for all. Fifteen more cases are handed cuts, all still agree;
+  `enemy-route` compares `edge_latch_right` again.
 
 ## What this changes for later tasks
 

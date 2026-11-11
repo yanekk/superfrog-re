@@ -108,12 +108,15 @@ pub struct Game {
     /// redraw after pass `32k` reads when that pass cuts it short ([`Game::cut_redraw`], T71).
     /// Picture state, left out of equality.
     late: Option<Shown>,
-    /// `Some` when a conformance case froze the original: the hunk 0 offsets of the routines the
-    /// engine leaves out, from `level::FROZEN_IN_A_CASE` less those the case thaws (T72). `Some` even
-    /// when every one is thawed, since a frozen case also skips the creature drawing (T52). Set only
-    /// by [`Game::freeze_as_a_case`] and [`Game::thaw_in_a_case`]; the app and the planner never do
-    /// (`fd-conform/tests/mechanic_routines.rs`).
-    frozen: Option<Vec<u32>>,
+    /// The status bar as it stood before the redraw after the last pass `32k`, until the next:
+    /// what the original still shows when `main_loop` never reached that redraw
+    /// ([`Game::redraw_skipped`], T82). Picture state, left out of equality.
+    bar_before: Option<render::status::Status>,
+    /// `Some` once a conformance case hands the engine where the original's next pass cut
+    /// `main_loop`'s redraw half ([`Game::cut_foreground`], T74): the cut for the next step's
+    /// foreground. `None` alone, where the engine's own rule decides (`level::Cut::Rows`). Left out
+    /// of equality.
+    foreground_cut: Option<Option<level::EdgesCut>>,
 }
 
 impl Game {
@@ -123,7 +126,7 @@ impl Game {
                 let mut state = State::level_1();
                 state.object_map = data.level.objects.cells.clone();
                 let mut plane = CollisionPlane::new(&data.program);
-                let image = Arc::new(LevelImage::new(&data.level));
+                let image = Arc::new(LevelImage::new(&data.level, &data.program));
                 let mut blits = Vec::new();
                 level::start::lay_title_song(&mut plane, &data.title_song);
                 // `level_init` (T65): the first view's tiles and shapes, before the first pass.
@@ -132,6 +135,13 @@ impl Game {
                     objects: &mut state.object_map,
                     collision: &mut plane,
                     blits: &mut blits,
+                    defer_from: None,
+                    add_cut: level::AddCut::Whole,
+                    bob_late: false,
+                    late_bobs: Vec::new(),
+                    late_from: None,
+                    written: 0,
+                    late: Vec::new(),
                 });
                 // `view_tile` copies by CPU what `h0_774` would blit (docs/12), so the play screen
                 // takes the first view's tiles as it takes an edge redraw's.
@@ -164,7 +174,8 @@ impl Game {
                     events: Vec::new(),
                     blits,
                     late: None,
-                    frozen: None,
+                    bar_before: None,
+                    foreground_cut: None,
                 }
             }
         }
@@ -187,6 +198,8 @@ impl Game {
     /// DESIGN §2.5).
     pub fn step(&mut self, i: FrameInput) {
         self.blits.clear();
+        // A step that cuts no creature leaves none for `creatures_uncut`.
+        self.display.cuts.clear();
         // `level2_handler` takes key events whatever the scene.
         self.state.keys.feed(i.keys);
         match self.scene {
@@ -211,30 +224,12 @@ impl Game {
                 self.foreground();
                 // `level3_handler`: `addi.w #1, irq_count`, then `game_frame` while the game runs.
                 self.state.irq_count = self.state.irq_count.wrapping_add(1);
-                let mut ctx = LevelCtx {
-                    state: &mut self.state,
-                    level: &self.data.level,
-                    program: &self.data.program,
-                    anim: &self.data.anim,
-                    plane: &mut self.plane,
-                    image: &self.image,
-                    display: &mut self.display,
-                    display_data: &self.data.display,
-                    clxdat,
-                    frozen: self.frozen.as_deref(),
-                };
-                level::game_frame(
-                    &mut ctx,
-                    &mut self.objects,
-                    &self.dispatch,
-                    &mut self.events,
-                    i,
-                );
+                self.game_frame_on(i, clxdat, &mut level::InPlay);
                 // `level3_handler` after `game_frame`: `move.w #$ffff, frame_flag`.
                 self.state.frame_flag = 0xffff;
                 match self.state.irq_count & 0x1f {
                     1 => self.late = Some(self.numbers()),
-                    0 => self.late = None,
+                    0 => (self.late, self.bar_before) = (None, None),
                     _ => {}
                 }
             }
@@ -259,6 +254,32 @@ impl Game {
         }
     }
 
+    /// `game_frame` alone on this game's state, with `clxdat` as `char_hit_check` reads it and what
+    /// lies outside the typed state through `pass` (`level::game_frame_with`): no foreground, no
+    /// level-3 handler count. [`Game::step`] runs it with `level::InPlay`; the routine rig runs it
+    /// against the original's `game_frame` (T63).
+    pub fn game_frame_on(&mut self, i: FrameInput, clxdat: u16, pass: &mut dyn level::Pass) {
+        let mut ctx = LevelCtx {
+            state: &mut self.state,
+            level: &self.data.level,
+            program: &self.data.program,
+            anim: &self.data.anim,
+            plane: &mut self.plane,
+            image: &self.image,
+            display: &mut self.display,
+            display_data: &self.data.display,
+            clxdat,
+        };
+        level::game_frame_with(
+            &mut ctx,
+            &mut self.objects,
+            &self.dispatch,
+            &mut self.events,
+            i,
+            pass,
+        );
+    }
+
     /// Whether the level's end has been reached: `next_world` has run and "Level 1 complete" shows
     /// or is about to, until fire restarts the level.
     pub fn finished(&self) -> bool {
@@ -275,32 +296,27 @@ impl Game {
 
     /// Where the original enters its high scores, or fire ends "Level 1 complete": the level again
     /// from its start, lives full and score zero (DESIGN §2.4, §2.5). Events not yet taken are kept.
-    /// For a conformance case that freezes the original (`fd-conform`'s `Engine::freeze`, and
-    /// nothing else): from now on the engine leaves out what `level::FROZEN_IN_A_CASE` names, as the
-    /// frozen original does. A restart keeps it.
-    pub fn freeze_as_a_case(&mut self) {
-        self.frozen = Some(level::FROZEN_IN_A_CASE.iter().map(|f| f.offset).collect());
+    /// For a conformance case (`fd-conform`'s `Engine::foreground_cut`, and nothing else): where the
+    /// original's pass that the next [`Game::step`] runs cut `main_loop`'s redraw half, measured on
+    /// the original (`level::Cut::At`); `None` when it did not. From the first call on, the engine's
+    /// own rule (`level::ROW_BOBS_CUT`) is off: the original's cuts depend on the cycles each pass
+    /// took, which the engine does not model (DESIGN §2.1; T74, docs/09).
+    pub fn cut_foreground(&mut self, at: Option<level::EdgesCut>) {
+        self.foreground_cut = Some(at);
     }
 
-    /// For a frozen case that thaws the routine at hunk 0 `offset` (a case's `thaw`, T72): the
-    /// engine runs it again, as the original does. False when it was not left out.
-    pub fn thaw_in_a_case(&mut self, offset: u32) -> bool {
-        let Some(frozen) = &mut self.frozen else {
-            return false;
-        };
-        let before = frozen.len();
-        frozen.retain(|&f| f != offset);
-        frozen.len() < before
+    /// Back to the engine's own rule after [`Game::cut_foreground`]: for a forecast, on the engine
+    /// alone, from the state a conformance case's engine holds (T48: the route planned from the
+    /// original's states, docs/13).
+    pub fn own_cuts(&mut self) {
+        self.foreground_cut = None;
     }
 
     fn restart(&mut self) {
-        let (events, frozen) = (
-            std::mem::take(&mut self.events),
-            std::mem::take(&mut self.frozen),
-        );
+        let (events, cut) = (std::mem::take(&mut self.events), self.foreground_cut);
         *self = Game::new(self.data.clone(), Start::Level1);
         self.events = events;
-        self.frozen = frozen;
+        self.foreground_cut = cut;
         self.events.push(Event::Restart);
     }
 
@@ -329,14 +345,22 @@ impl Game {
                         shown,
                     },
                 );
+                if self.state.irq_count & 0x1f == 0 {
+                    self.bar_before = Some(status.clone());
+                }
                 self.status_redraw(&mut status);
                 self.display.status = status;
                 let from = self.blits.len();
+                let cut = match self.foreground_cut {
+                    Some(at) => level::Cut::At(at),
+                    None => level::Cut::Rows,
+                };
                 level::main_loop_redraws(
                     &mut self.state,
                     &mut self.plane,
                     &self.image,
                     &mut self.blits,
+                    cut,
                 );
                 let data = &self.data.display;
                 for b in &self.blits[from..] {
@@ -424,6 +448,51 @@ impl Game {
         ))
     }
 
+    /// [`Game::picture`] as the original shows it through passes `32k` to `32k + 31` when
+    /// `main_loop` never reached its status bar redraw after pass `32k`: the bar as it stood
+    /// before. `None` out of play, or when the redraw drew nothing.
+    ///
+    /// `main_loop` reads `irq_count` once a turn and redraws the bar only on a turn that reads a
+    /// multiple of 32. A turn still in its edge redraws when pass `32k + 1` comes read the count
+    /// before pass `32k` and reads it next after pass `32k + 1`, so that redraw never runs and the
+    /// numbers wait for the next (measured, T82: pass 12 064 of the route,
+    /// `engine/conform/README.md`, "A status bar redraw never reached"). How long the edge redraws take is the cycles they cost, which
+    /// nothing here counts. A case counts the redraw's calls on the original and takes this
+    /// picture for that period (`fd-conform`). With `uncut`, the play area is
+    /// [`Game::creatures_uncut`]'s for those rows, where the same frame saw a creature cut behind
+    /// the beam; `None` if that cannot be drawn.
+    pub fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        if self.scene != Scene::Level {
+            return None;
+        }
+        if let Some(rows) = uncut {
+            let data = &self.data.display;
+            let screen = self
+                .display
+                .cuts
+                .uncut(&self.display.screen, &|a| data.byte(a), rows)?;
+            let mut shown = self.clone();
+            shown.display.screen = screen;
+            return shown.redraw_skipped(None);
+        }
+        let c = &self.state.camera;
+        let draw =
+            |d: &Display| render::picture(&self.data.display, d, (c.x, c.y), &self.data.program);
+        if self.state.irq_count & 0x1f == 0 {
+            // The frame showing pass `32k`: [`Game::picture`] already draws the redraw into it.
+            let mut status = self.display.status.clone();
+            self.status_redraw(&mut status);
+            return (status.bytes != self.display.status.bytes).then(|| draw(&self.display));
+        }
+        let before = self.bar_before.as_ref()?;
+        (before.bytes != self.display.status.bytes).then(|| {
+            draw(&Display {
+                status: before.clone(),
+                ..self.display.clone()
+            })
+        })
+    }
+
     /// The frame the original shows after this step, in the play area and status bar's window
     /// (`render::WINDOW`), drawn as Denise would from the display's memory (T10).
     ///
@@ -462,6 +531,30 @@ impl Game {
             status,
             ..self.display.clone()
         })
+    }
+
+    /// For a conformance case (`fd-conform`'s `Engine::creatures_uncut`, and nothing else):
+    /// [`Game::picture`] as the original shows it when the beam had passed the first `rows[k]` blit
+    /// rows of the `k`th creature the last pass cut before the blitter wrote them (a row is one
+    /// plane of one line, from the creature's top): there the frame still shows what the cut drew
+    /// over. `None` out of play, or unless `rows` has one count for each creature cut.
+    ///
+    /// The engine cannot know `rows`: a pass with several creatures runs past the play area's first
+    /// lines, and how far depends on the cycles it took, which nothing here counts (measured, T80:
+    /// docs/10, "A creature cut behind the beam"). A case reads the cuts' beam positions off the
+    /// original and accepts this picture for that frame.
+    pub fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        if self.scene != Scene::Level {
+            return None;
+        }
+        let data = &self.data.display;
+        let screen = self
+            .display
+            .cuts
+            .uncut(&self.display.screen, &|a| data.byte(a), rows)?;
+        let mut shown = self.clone();
+        shown.display.screen = screen;
+        Some(shown.picture())
     }
 
     /// CLXDAT as the frame [`Game::picture`] draws in play sets it: the character's sprites against
@@ -565,6 +658,8 @@ impl Game {
         let word = |b: &[u8], i: usize| u16::from_be_bytes([b[i], b[i + 1]]);
         let s = &mut self.state;
         s.frame_flag = word(&mem.read(0, 0x519e, 2), 0);
+        s.edges_resume = None;
+        s.edges.deferred.clear();
         // `h3+$fa50` less BEFORE: the map, the tail the probes reach and the slack the redraws write.
         let kept = self.plane.kept_mut();
         kept.copy_from_slice(&mem.read(3, collision::MAP - BEFORE, kept.len()));
@@ -595,6 +690,27 @@ impl Game {
         d.drawn.copy_from_slice(&mem.read(0, 0x67e6, 5));
         let last = mem.read(0, 0x687e, 4);
         c.last = u32::from_be_bytes([last[0], last[1], last[2], last[3]]);
+        // What `game_frame`'s callees keep outside `LAYOUT` (T63): each is written in a pass before
+        // it is read, so a case runs the same without them, but the routine rig compares every byte.
+        let long = |o: u32| {
+            let b = mem.read(0, o, 4);
+            u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+        };
+        // Its low word is `LAYOUT`'s `char_screen_x`, already taken.
+        s.camera.screen_x = long(0x4d76) & 0xffff_0000 | s.camera.screen_x & 0xffff;
+        s.camera.screen_y = long(0x4d7a);
+        let crossed = mem.read(0, 0x51f8, 4);
+        s.camera.edges.crossed = std::array::from_fn(|i| crossed[i] != 0);
+        s.collect = crate::objects::Collect {
+            score_add: long(0x2a6a),
+            row: long(0x2692),
+            taken: long(0x29c6),
+        };
+        s.moving = crate::objects::creature::Moving {
+            slot: long(0x2fe6),
+            stomped: word(&mem.read(0, 0x306e, 2), 0),
+        };
+        s.edges.creatures.index = long(0x2faa);
         let used = mem.read(2, 0x1680, 48);
         let cells = mem.read(2, 0x16b0, 384);
         for n in 0..48 {
@@ -652,7 +768,7 @@ impl Transplant for Game {
         }
         self.transplant_play(mem);
         self.transplant_display(mem);
-        self.late = None;
+        (self.late, self.bar_before) = (None, None);
     }
 
     fn probe(&self, v: &Var) -> u32 {
@@ -1035,6 +1151,15 @@ mod tests {
                 Width::Byte => 0x01,
                 Width::Word => 0x0102,
                 Width::Long => 0x0102_0304,
+            };
+            // A creature slot's field (T46) comes from the slots' own read, the whole symbol at
+            // once, so its bytes are those at its offset into it.
+            let want = match v.name.split_once("+$") {
+                Some((_, off)) => {
+                    let off = u32::from_str_radix(off, 16).unwrap();
+                    (1..=v.width.bytes() as u32).fold(0, |a, k| a << 8 | (off + k))
+                }
+                None => want,
             };
             assert_eq!(g.probe(v), want, "{}", v.name);
         }

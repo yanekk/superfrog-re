@@ -1,0 +1,17 @@
+# T46: creatures live on both sides, nothing frozen, over T24's planner route (scripts/enemy-route.txt):
+# kinds 0, 3 (hopping) and 5 start from the edge redraws, walk, turn, are written back as they leave
+# the view and start again when it comes back (W1-1:26,19's kind 0 at irq_count 80 and 151), five
+# are stomped (kind 7, +250; irq_count 171, 282, 437, 732, 989) and four lives are lost to contact
+# (irq_count 372, 727, 872, 1074, the first two under a creature), each the third contact pass.
+# Every creature slot and flag compared on every pass with the character, camera and status, the
+# route's 1 300 steps. The picture is not: from irq_count 346 it differs where 343's right column
+# redraw, cut by the next pass, lands a pass late; enemy-contact compares it with creatures drawn.
+# edge_latch_right is compared since the runner hands T74's measured cut with creatures live (T78).
+# Goal: score $3150 and lives $28. At irq_count 1250 a redraw the late pass cut starts a creature a
+# pass later in the original: the runner hands the cut and the engine starts it then too (T75).
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "enemy-route"
+frames = 1308
+compare = ["vars"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "clxdat_copy", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "score", value = 0x3150 }, { var = "lives", value = 0x28 }], by_frame = 7541 }

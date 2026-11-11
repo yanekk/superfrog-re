@@ -38,6 +38,7 @@ From `amiga_e2e::App` (through deref):
 - OS layer: `start_os()` (or `LaunchOpts { os: true, .. }`), `os_key(Key)`, `os_key_down`, `os_key_up`, `os_key_with(Mods, Key)`, `os_menu(&["Game", "Controls…"])`, `os_menu_items`, `os_press_button(title)`, `os_press_id(id)`, `os_close_window`, `os_window`, `os_windows`, `os_activate`.
 
 `LaunchOpts` defaults: `max_frames: 100`, `timeout_s: 60`, `scale: Some(1)`, `os: false`, `extra_args: []`.
+A long run passes `extra_args: vec!["--capture-hashes".into()]`: hashes and inputs, no frame PNGs.
 Every launch passes `--home`, `--max-frames` and `--timeout` and runs in its own process group.
 `Captured` holds `frames` (empty when unread), `exit`, `inputs` (`inputs.txt` text), `stderr`,
 `prompts`, `audio_wav`, `dir`; `read_shot(n)` gives a `shot`'s window image and its `Shot`.
@@ -46,14 +47,17 @@ Every launch passes `--home`, `--max-frames` and `--timeout` and runs in its own
 
 `UP`, `DOWN`, `LEFT`, `RIGHT`, `FIRE` joystick bits; `inputs(c)` and `joy(c, from, to)`; `hashes(c)`;
 `data()` (the game's data, once a process); `headless()` (a `Game` at `Start::Level1`); `hash(g)` and
-`picture(g)` (as the capture holds them); `said(c)` (the Controls window's `fd-app: controls: ` lines).
+`picture(g)` (as the capture holds them); `shown(c, n, w, h)` (a shot's viewport back at 1×); `route()` and `key_lines(inputs)` (T84's route as the default keys' script lines); `said(c)` (the Controls window's `fd-app: controls: ` lines).
 
 ## Tests
 
 `smoke.rs` frames and hashes; `controls.rs` rebinding and settings; `disks.rs` missing disks;
 `window.rs` scale, quitting, the watchdog, the lock; `recorder_app.rs`, `recorder_replay.rs` bug zips;
-`game_over.rs`, `level_end.rs`; `drill.rs` (smoke) and `drill_sizes.rs` (full) the script-layer drill;
-`drill_os.rs` the OS layer (full, writes window captures to `$TMPDIR/fd-drill-os`). Labels are in
+`game_over.rs`, `level_end.rs`; `finish_level.rs` (full) the one route from launch to "Level 1 complete", `finish_short.rs` (smoke) its first 600 steps; `drill.rs` (smoke) and `drill_sizes.rs` (full) the script-layer drill;
+`drill_os.rs` the OS layer (full, writes window captures to `$TMPDIR/fd-drill-os`); `level_drill.rs` (T29)
+the level's drill: case stretches and the route played as keys with the recorder on, each zip judged on
+the original by `bug compare` (full, about 15 min), and keys held, opposite keys, blur, resize and a pad
+unplugged (smoke); pictures to `$TMPDIR/fd-level-drill`. Labels are in
 `games/forest-dumb/smoke.toml`.
 
 ## Where the details are

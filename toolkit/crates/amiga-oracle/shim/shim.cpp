@@ -5,6 +5,8 @@
 //   0005 installs `vamiga_irq_hook`, called as the CPU starts an interrupt's exception, and
 //        `vamiga_blit_hook`, called as a blit begins, frees the busy flag and ends;
 //   0006 installs `vamiga_exec_hook`, called once per instruction the CPU executes, with its address;
+//   0007 fills the sequencer's shared slot table once, so setting a machine up never wipes it under
+//        one running on another thread;
 //   0002 makes `AmigaShimAccess` a friend of `Emulator`, so the emulator can be stepped without its thread.
 
 #include "shim.h"
@@ -104,6 +106,14 @@ struct OwnersTag {
     friend type get(OwnersTag);
 };
 template struct Rob<OwnersTag, &DmaDebugger::busOwner>;
+
+// The sequencer's table of each line's disk, audio and sprite slots, one for every machine in the
+// process (private to it), for amiga_das_table_whole.
+struct DasTag {
+    using type = EventID (*)[64][HPOS_CNT];
+    friend type get(DasTag);
+};
+template struct Rob<DasTag, &Sequencer::dasDMA>;
 
 // The registers kept from the write hook (DESIGN §2.1 (2), FINDINGS 2026-10-11).
 bool isPaulaReg(u32 reg)
@@ -225,6 +235,7 @@ struct amiga_machine {
     std::vector<float> mixed;
     int lines = 0;
     bool profile = false;
+    bool xray = false;
     std::vector<amiga_line_sample> samples;
     std::vector<amiga_custom_write> blits;
     std::vector<amiga_custom_write> cpuWrites;
@@ -298,18 +309,29 @@ struct amiga_machine {
     }
 
     // One frame with the CPU paused at the end of every line to be sampled (amiga_set_profile).
-    // The end-of-line trap pauses the core between two instructions; it goes on from there. No trap
-    // is set on the frame's last lines, so a pause never falls between the frame's end and the
-    // vertical sync's flag; one that lands past the frame's end swallowed that flag (both raised
-    // within one long instruction, a blit holding the bus) and ends the step there.
+    // The end-of-line trap pauses the core between two instructions; it goes on from there, so the
+    // run is the plain step's (tests/line_samples.rs, sampling_does_not_change_the_run).
+    //
+    // A pause clears every run-loop flag (Amiga::computeFrame), the vertical sync's SYNC_THREAD
+    // too, which ends a plain step. That flag is raised at line 0's HSYNC (h $12), not at the
+    // frame's end, so an instruction the blitter holds across the frame's end can pause either
+    // before it (the step must go on to it) or after it, the flag swallowed (the step ends there).
+    // Which one is read off Denise's vertical sync, which swaps the working texture and stamps it
+    // with the frame number just before raising the flag: never off the beam, as before T78, when
+    // a pause landing at line 0 short of $12 ended the step an instruction or two early (measured
+    // on a game's long blits, learned on: forest-dumb T78). Warp is never on, so every vertical
+    // sync swaps. No trap is set from line 309 or once the frame has wrapped, so no sample is taken
+    // in the next frame.
     void profiledFrame()
     {
         samples.clear();
         auto &m = amiga();
-        bool first = true;
+        auto &pixels = m.denise.pixelEngine;
+        auto synced = pixels.getWorkingBuffer().nr;
+        bool first = true, wrapped = false;
         isize last = -1;
         for (;;) {
-            m.agnus.dmaDebugger.eolTrap = m.agnus.pos.v < 309;
+            m.agnus.dmaDebugger.eolTrap = !wrapped && m.agnus.pos.v < 309;
             try {
                 if (first) {
                     first = false;
@@ -319,7 +341,9 @@ struct amiga_machine {
                 }
                 break;
             } catch (StateChangeException &) {
-                if (m.agnus.pos.v < last) break;
+                if (pixels.getWorkingBuffer().nr != synced) break;
+                if (m.agnus.pos.v < last) wrapped = true;
+                if (wrapped) continue;
                 last = m.agnus.pos.v;
                 amiga_line_sample s { u16(m.agnus.pos.v), u16(m.agnus.pos.h), m.cpu.getPC0(),
                                    u32(m.cpu.getSR()), m.cpu.getSP(), { } };
@@ -408,6 +432,16 @@ amiga_machine *amiga_new(const uint8_t *rom, size_t rom_len, char *err, size_t e
         return nullptr;
     }
     return a.release();
+}
+
+int amiga_das_table_whole(void)
+{
+    // Each row's first and last entries: a wipe clears them all, a refill sets them row by row.
+    auto &t = *get(DasTag());
+    for (int row = 0; row < 64; row++) {
+        if (t[row][0x01] != DAS_REFRESH || t[row][0xE3] != DAS_EOL) return 0;
+    }
+    return 1;
 }
 
 void amiga_free(amiga_machine *a)
@@ -553,7 +587,13 @@ size_t amiga_pc_hits(const amiga_machine *a, const uint32_t **pcs, const uint32_
 void amiga_set_profile(amiga_machine *a, int on)
 {
     a->profile = on != 0;
-    a->emu().set(Opt::XRAY_MODE, (i64)(on > 1 ? XRayMode::XRAY_DMA : XRayMode::XRAY_NONE));
+    // Setting the X-ray mode clears the texture, the frame just drawn, even to the mode it had:
+    // set only when it changes, so line sampling alone leaves picture_in as it was (T78).
+    bool xray = on > 1;
+    if (xray != a->xray) {
+        a->emu().set(Opt::XRAY_MODE, (i64)(xray ? XRayMode::XRAY_DMA : XRayMode::XRAY_NONE));
+        a->xray = xray;
+    }
     a->samples.clear();
 }
 

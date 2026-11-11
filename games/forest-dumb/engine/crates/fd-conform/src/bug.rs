@@ -28,6 +28,7 @@ use amiga_chips::Picture;
 use amiga_conform::bug_compare::{Left, verdict_line};
 use amiga_conform::script::InputScript;
 use amiga_oracle::{FrameInput, Rgb12Frame};
+use fd_core::level::EdgesCut;
 use fd_core::recording::{ForestDumb, Location, Recording, ZIP_SCREENSHOT, check_build};
 use fd_core::{Event, Game, GameData, Mem, Start, Transplant, Var, layout_var};
 
@@ -87,20 +88,13 @@ const STALL: u32 = 64;
 /// Frames the original is given past twice the recording's steps.
 const SLACK: u32 = 2_000;
 
-/// What a bug compare does not judge yet, and the task that makes it judged (DESIGN §2.2: no gap
-/// is silent): CLXDAT as `char_hit_check` copies it and the `hits_taken` it counts. T70 models contact
-/// from the engine's own frame, but in play that frame lacks the creatures and animated items the
-/// original draws (T22, T52, T24), so the two differ there until then. Read and counted, printed in
-/// the report. The countdown, its digits, `give_up` and `paused` are judged since T23.
+/// What a bug compare does not judge yet, each with the task that makes it judged (DESIGN §2.2: no
+/// gap is silent). None since T75: the creature slots, CLXDAT as `char_hit_check` copies it and the
+/// `hits_taken` it counts are compared, the runner handing the engine each edge redraw the next
+/// pass cut short, where the original starts a creature a pass later (docs/10). A gap added here
+/// is read and counted, and printed in the report.
 fn known_gaps() -> Vec<Exclusion> {
-    let var = |name: &str, task: &str| Exclusion {
-        rows: 0..0,
-        cols: None,
-        var: Some(name.to_string()),
-        what: format!("var {name}"),
-        task: task.to_string(),
-    };
-    vec![var("hits_taken", "T24"), var("clxdat_copy", "T24")]
+    Vec::new()
 }
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
@@ -350,6 +344,30 @@ impl Engine for Owners<'_> {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
+
+    /// Without it the owner's game keeps its own rule and has a creature a pass before the
+    /// original wherever a pass cut the redraw that starts it (T75: `enemy-hop`'s inputs, step 92).
+    fn foreground_cut(&mut self, at: Option<EdgesCut>) {
+        self.game.cut_foreground(at);
+    }
+
+    /// Without it a recording differs at the first run of frames showing a creature the original
+    /// cut behind the beam (T80).
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
+
+    /// Without it a recording differs at the first status bar redraw the original cut short (T71):
+    /// three frames of the old bar (T29's drill: `mechanic-vanish`'s score, `death-water`'s hearts).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        self.game.cut_redraw(cut)
+    }
+
+    /// A status period whose redraw the original never reached (T82); forwarded as the trait asks,
+    /// no recording here has met one yet.
+    fn redraw_skipped(&self, uncut: Option<&[u16]>) -> Option<Picture> {
+        self.game.redraw_skipped(uncut)
+    }
 }
 
 /// A recording compared with the original ([`compare`]).
@@ -505,7 +523,7 @@ impl Compared {
 }
 
 /// `rec` compared with the original: retimed ([`retime`]), then run as a level case from the sync
-/// point, unfrozen, every play variable at each pass end and the picture each frame within the
+/// point, every play variable at each pass end and the picture each frame within the
 /// owner's tolerance, less the known gaps. A picture difference's PNG goes to `diff_dir`.
 pub fn compare(
     data: Arc<GameData>,
@@ -538,8 +556,6 @@ pub fn compare_with(
         vars: compared_vars(),
         goal: None,
         exclude: known_gaps(),
-        freeze: false,
-        thaw: Vec::new(),
         set: Vec::new(),
     };
     let mut start_differs = Vec::new();
@@ -572,7 +588,7 @@ pub fn compare_with(
 
 impl Compared {
     /// The level case that runs what this compare judged (`conform/cases/<name>.toml`, its
-    /// `input` the script `<name>`, which is [`Retimed::script`]): unfrozen, every compared
+    /// `input` the script `<name>`, which is [`Retimed::script`]): every compared
     /// variable and the picture, the known gaps that differed here excluded (one that hid nothing
     /// would fail the case), its goal the original character's place at the last pass end judged. The engine side is fd-core's `Game` transplanted at the first pass
     /// end, as in the compare, but stepped on the inputs the original read: the same as the
@@ -597,7 +613,7 @@ impl Compared {
         let mut text = format!(
             "# {note}\n\
              # From a bug zip (`fd-conform bug compare`, games/forest-dumb/docs/BUG-FIX.md): the\n\
-             # recording's inputs on the original's frames from the level sync point, unfrozen.\n\
+             # recording's inputs on the original's frames from the level sync point.\n\
              sync = {{ script = \"{}\", frame = {} }}\n\
              input = \"{name}\"\n\
              frames = {}\n\
@@ -664,9 +680,11 @@ mod tests {
         ] {
             assert!(vars.iter().any(|n| n == v), "{v}");
         }
-        for v in ["hits_taken", "clxdat_copy", "mt_counter"] {
-            assert!(!vars.iter().any(|n| n == v), "{v}");
+        // The creatures and contact, judged since T75.
+        for v in ["hits_taken", "clxdat_copy", "creature_slots+$0"] {
+            assert!(vars.iter().any(|n| n == v), "{v}");
         }
+        assert!(!vars.iter().any(|n| n == "mt_counter"));
         // Every gap names its task.
         assert!(known_gaps().iter().all(|g| g.task.starts_with('T')));
     }

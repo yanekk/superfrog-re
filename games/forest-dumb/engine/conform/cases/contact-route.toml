@@ -1,11 +1,14 @@
 # T70: the collision model frame by frame over W1-1 (scripts/contact-route.txt, fd-plan's route to the
-# exit's cells), frozen as freeze.rs says: CLXDAT as char_hit_check copies it (clxdat_copy) and what contact
-# counts, with the character, on all of the route's passes. The water (W1-1:136,66) is not on it, and
-# frozen it is never drawn (h0_62b6 is T25's), so water contact waits for T72.
+# exit's cells), nothing frozen: CLXDAT as char_hit_check copies it (clxdat_copy) and what contact
+# counts, with the character, on all of the route's passes. Since T47 the water is drawn in every case,
+# and with creatures live (T75) contact with them costs six lives: the goal, lives $26 with score $690
+# after the third stomp. It no longer reaches the pool at W1-1:195..197,94 or the exit's cells.
+# Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
+# a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
+# Creatures cost six lives and three are stomped; the route no longer reaches the pool.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "contact-route"
 frames = 1300
 compare = ["vars"]
-vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_anim_ptr", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown"]
-goal = { all = [{ var = "char_x", value = 0xce2 }, { var = "char_y", value = 0x597 }], by_frame = 7601 }
-freeze = true
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_anim_ptr", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "irq_count", "countdown", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "lives", value = 0x26 }, { var = "score", value = 0x690 }], by_frame = 7601 }

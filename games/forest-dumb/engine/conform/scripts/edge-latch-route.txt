@@ -1,0 +1,31 @@
+# T73: the first 1 300 steps of T24's planner route (fd-plan level W1-1, seed 1, 100 rounds, at commit
+# 0c06449a: 7 600 frames, ends W1-1:173,58), from the level sync point, then idle. The original keeps
+# edge_latch_right set at pass 1211 where the engine had cleared it.
+0: U
+28: U R
+124: L
+140: -
+144: U L
+148: R
+156: U
+164: D
+228: U R
+236: D
+240: R
+304: U R
+424: U
+512: L
+520: U L
+556: D
+604: U
+628: R
+660: L
+676: U R
+908: D
+924: U
+988: L
+1024: D
+1032: R
+1092: L
+1156: R
+1300: -

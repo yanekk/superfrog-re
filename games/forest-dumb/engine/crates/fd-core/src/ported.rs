@@ -32,7 +32,7 @@ pub const PORTED: &[Ported] = &[
         0x8dfc,
         "character::JoyFlags::read_joystick",
     ),
-    // T08: the movement. `game_frame` is T63's, once every routine it calls is ported.
+    // T08: the movement.
     port("char_update", 0x3e0c, "character::Character::update"),
     port("char_step", 0x3e30, "character::Character::step"),
     port("h0_3ea8", 0x3ea8, "character::Character::idle"),
@@ -154,11 +154,7 @@ pub const PORTED: &[Ported] = &[
     port("h0_62b6", 0x62b6, "objects::MapObjects::animate"),
     // T70: contact and the life it costs. The creature stomp inside it (`h0_3dd8`'s loop,
     // `character::Play::stomp`) is T24's to port.
-    port(
-        "char_hit_check",
-        0x3b2a,
-        "character::Play::char_hit_check",
-    ),
+    port("char_hit_check", 0x3b2a, "character::Play::char_hit_check"),
     // T24: the creatures' movement and sort (objects/creature.rs), and the stomp's box test.
     port("h0_2fae", 0x2fae, "objects::creature::Creatures::move_all"),
     port("h0_2fea", 0x2fea, "objects::creature::Creatures::move_slot"),
@@ -185,6 +181,8 @@ pub const PORTED: &[Ported] = &[
     port("h0_2d4c", 0x2d4c, "render::objects::Creatures::cut_all"),
     port("h0_5820", 0x5820, "render::objects::Creatures::cut"),
     port("h0_5e44", 0x5e44, "render::objects::Creatures::restore"),
+    // T63: the pass itself, once every routine it calls was ported (`level::game_frame_with`).
+    port("game_frame", 0x1fec, "level::game_frame"),
 ];
 
 /// A hunk 0 routine's entry.

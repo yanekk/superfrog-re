@@ -59,6 +59,9 @@ pub struct Exclusion {
     /// Columns of those rows (`"rows A..B cols C..D"`), so the rest of the rows is still compared;
     /// `None` for whole rows (T44: the countdown's digits share rows with the items').
     pub cols: Option<Range<u16>>,
+    /// The oracle frames a box is left out on (`"rows A..B cols C..D frames F..G"`, T48): on every
+    /// other frame it is compared. `None` leaves it out on every frame.
+    pub frames: Option<Range<u32>>,
     /// A `LAYOUT` variable read each pass and counted where it differs (`what = "var NAME"`).
     pub var: Option<String>,
     /// As the case file wrote it.
@@ -83,11 +86,6 @@ pub struct Case {
     pub vars: Vec<String>,
     pub goal: Option<Goal>,
     pub exclude: Vec<Exclusion>,
-    /// Freeze what `freeze.rs` lists in the original at the sync point.
-    pub freeze: bool,
-    /// Entries of `freeze.rs` this frozen case leaves running on both sides, by name
-    /// (`thaw = ["h0_6882"]`, T72): the water a case needs drawn while creatures stay frozen.
-    pub thaw: Vec<String>,
     /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
     /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
     /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
@@ -185,29 +183,6 @@ impl Case {
             Some(v) => var_values(v, "set")?,
             None => Vec::new(),
         };
-        let freeze = match get("freeze") {
-            Some(Value::Bool(b)) => *b,
-            Some(other) => return Err(format!("freeze = {other:?}: expected true or false")),
-            None => false,
-        };
-        let thaw = match get("thaw") {
-            Some(v) => v.strings("thaw")?,
-            None => Vec::new(),
-        };
-        if !thaw.is_empty() && !freeze {
-            return Err(
-                "`thaw` names entries of a freeze, but the case has no `freeze = true`".into(),
-            );
-        }
-        for (k, name) in thaw.iter().enumerate() {
-            if crate::freeze::named(name).is_none() {
-                return Err(format!("thaw `{name}`: not an entry of freeze.rs"));
-            }
-            if thaw[..k].contains(name) {
-                return Err(format!("thaw `{name}` is given twice"));
-            }
-        }
-
         if goal == Some(Goal::Idle) && !compare.vars {
             return Err(
                 "goal `idle = true` is judged on the case's `vars`, but `compare` has \
@@ -265,7 +240,6 @@ impl Case {
             for (taken, key) in [
                 (goal.is_some(), "goal"),
                 (compare.picture, "compare = [\"picture\"]"),
-                (freeze, "freeze"),
                 (!set.is_empty(), "set"),
             ] {
                 if taken {
@@ -292,16 +266,15 @@ impl Case {
             vars,
             goal,
             exclude,
-            freeze,
-            thaw,
             set,
         })
     }
 }
 
-const KEYS: [&str; 11] = [
-    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "freeze", "thaw",
-    "set",
+// No `freeze` or `thaw`: T79 removed the last frozen routine (docs/10, "Freezing objects"), so a
+// case naming either is refused as any unknown key is.
+const KEYS: [&str; 9] = [
+    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "set",
 ];
 
 fn known(var: &str) -> Result<(), String> {
@@ -643,18 +616,26 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
             .and_then(|(a, b)| Some(a.trim().parse::<u16>().ok()?..b.trim().parse::<u16>().ok()?))
             .filter(|r| r.start < r.end)
     };
-    let (rows, cols) = if var.is_some() {
-        (0..0, None)
+    let frame_range = |r: &str| {
+        r.split_once("..")
+            .and_then(|(a, b)| Some(a.trim().parse::<u32>().ok()?..b.trim().parse::<u32>().ok()?))
+            .filter(|r| r.start < r.end)
+    };
+    let (rows, cols, frames) = if var.is_some() {
+        (0..0, None, None)
     } else {
         what.strip_prefix("rows ")
             .and_then(|r| match r.split_once(" cols ") {
-                Some((r, c)) => Some((range(r)?, Some(range(c)?))),
-                None => Some((range(r)?, None)),
+                Some((r, c)) => match c.split_once(" frames ") {
+                    Some((c, f)) => Some((range(r)?, Some(range(c)?), Some(frame_range(f)?))),
+                    None => Some((range(r)?, Some(range(c)?), None)),
+                },
+                None => Some((range(r)?, None, None)),
             })
             .ok_or_else(|| {
                 format!(
                     "exclude what = \"{what}\": expected \"rows A..B\", \"rows A..B cols C..D\", \
-                     each A below B, or \"var NAME\""
+                     \"rows A..B cols C..D frames F..G\", each A below B, or \"var NAME\""
                 )
             })?
     };
@@ -670,6 +651,7 @@ fn exclusion(v: &Value) -> Result<Exclusion, String> {
     Ok(Exclusion {
         rows,
         cols,
+        frames,
         var,
         what,
         task,
@@ -687,8 +669,7 @@ mod tests {
                          input = \"w1\"\ncompare = [\"vars\", \"picture\"]\n\
                          vars = [\"char_x\", \"camera_x\"]\n\
                          goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }\n\
-                         exclude = [{ what = \"rows 180..250\", task = \"T10\" }]\n\
-                         freeze = false\n";
+                         exclude = [{ what = \"rows 180..250\", task = \"T10\" }]\n";
 
     #[test]
     fn a_whole_title_case_parses() {
@@ -708,8 +689,6 @@ mod tests {
                 vars: vec!["mt_counter".into()],
                 goal: None,
                 exclude: vec![],
-                freeze: false,
-                thaw: Vec::new(),
                 set: vec![],
             }
         );
@@ -739,6 +718,7 @@ mod tests {
             vec![Exclusion {
                 rows: 180..250,
                 cols: None,
+                frames: None,
                 var: None,
                 what: "rows 180..250".into(),
                 task: "T10".into()
@@ -813,7 +793,7 @@ mod tests {
             ("frames = 9", "frames = 9\nframes = 8", "twice"),
             ("frame = 3,", "frame = 7,", "before the sync frame"),
             ("frames = 9", "frames = 4294967295", "frame cap"),
-            ("frames = 9", "frames = 9\nfreeze = true", "level cases"),
+            ("frames = 9", "frames = 9\nfreeze = true", "not a case key"),
             (
                 "frames = 9",
                 "frames = 9\ngoal = { idle = true }",
@@ -823,18 +803,6 @@ mod tests {
         ] {
             refused(TITLE, from, to, says);
         }
-    }
-
-    /// A frozen case thaws an entry by name: the original's patch list leaves it out (T72).
-    #[test]
-    fn a_frozen_case_thaws_an_entry_by_name() {
-        let text = LEVEL.replace("freeze = false", "freeze = true\nthaw = [\"h0_6882\"]");
-        let case = Case::parse("l", &text).unwrap();
-        assert_eq!(case.thaw, ["h0_6882"]);
-        let patched = crate::freeze::for_case(&case.thaw);
-        assert_eq!(patched.len(), crate::freeze::FROZEN.len() - 1);
-        assert!(patched.iter().all(|f| f.offset != 0x6882));
-        assert_eq!(crate::freeze::for_case(&[]), crate::freeze::FROZEN);
     }
 
     #[test]
@@ -885,21 +853,16 @@ mod tests {
             ("task = \"T10\"", "task = \"later\"", "name the task"),
             (", task = \"T10\"", "", "no `task`"),
             ("[\"vars\", \"picture\"]", "[\"vars\"]", "no \"picture\""),
-            ("freeze = false", "freeze = 1", "true or false"),
+            // T79: nothing is frozen any more, so the keys are gone.
             (
-                "freeze = false",
-                "freeze = false\nthaw = [\"h0_6882\"]",
-                "no `freeze = true`",
+                "frames = 100",
+                "frames = 100\nfreeze = true",
+                "not a case key",
             ),
             (
-                "freeze = false",
-                "freeze = true\nthaw = [\"h0_1234\"]",
-                "not an entry of freeze.rs",
-            ),
-            (
-                "freeze = false",
-                "freeze = true\nthaw = [\"h0_6882\", \"h0_6882\"]",
-                "given twice",
+                "frames = 100",
+                "frames = 100\nthaw = [\"h0_681c\"]",
+                "not a case key",
             ),
             (
                 "[\"vars\", \"picture\"]\nvars = [\"char_x\", \"camera_x\"]\ngoal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }",
@@ -921,11 +884,38 @@ mod tests {
             vec![Exclusion {
                 rows: 223..231,
                 cols: Some(152..176),
+                frames: None,
                 var: None,
                 what: "rows 223..231 cols 152..176".into(),
                 task: "T10".into()
             }]
         );
+    }
+
+    /// T48: a box left out on the frames named only; a frame range needs the box.
+    #[test]
+    fn a_box_is_excluded_on_the_frames_it_names() {
+        let what = "rows 226..228 cols 162..166 frames 18364..18397";
+        let c = Case::parse("l", &LEVEL.replace("rows 180..250", what)).unwrap();
+        assert_eq!(
+            c.exclude,
+            vec![Exclusion {
+                rows: 226..228,
+                cols: Some(162..166),
+                frames: Some(18364..18397),
+                var: None,
+                what: what.into(),
+                task: "T10".into()
+            }]
+        );
+        for bad in [
+            "rows 226..228 frames 18364..18397",
+            "rows 226..228 cols 162..166 frames 18397..18364",
+            "rows 226..228 cols 162..166 frames",
+        ] {
+            let e = Case::parse("l", &LEVEL.replace("rows 180..250", bad)).unwrap_err();
+            assert!(e.contains("frames F..G"), "{bad}: {e}");
+        }
     }
 
     #[test]
@@ -937,6 +927,7 @@ mod tests {
             vec![Exclusion {
                 rows: 0..0,
                 cols: None,
+                frames: None,
                 var: Some("countdown".into()),
                 what: "var countdown".into(),
                 task: "T10".into()

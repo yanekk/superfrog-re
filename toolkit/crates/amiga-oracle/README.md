@@ -50,7 +50,8 @@ The machine, `Amiga` (`amiga.rs`): an A500, OCS, 512K chip + 512K slow, PAL, det
 - Disks: `insert_disk(drive: usize, disk: usize)` and `eject_disk(drive: usize)` panic on an unconnected drive; `df0() -> Option<usize>`.
 - Timing evidence from the last step: `frame_lines()` (313 or 312), `frames_run()` (normally 1; a blit can carry a step into the next frame), `cpu_writes() -> Vec<CpuWrite>`, `irqs() -> Vec<Irq>`, `blit_events() -> Vec<BlitEvent>` (`BlitEventKind::{Begin, Free, End}`), `blit_starts() -> Vec<(u16, u16, u16)>`.
 - Watches: `watch_write(Option<(u16, u16)>)` then `watched_memory() -> Option<AmigaMemory>` (RAM at the CPU's first write of a value to a register); `watch_pcs(&[u32])` then `pc_hits() -> &[(u32, u32)]` (execution counts, run unchanged).
-- Profiling: `set_profile(bool)`, `set_dma_profile()`, `line_samples() -> Vec<LineSample>`. DMA profiling draws over the picture: never use it in a comparison.
+- Threads: machines may be set up and stepped on several threads at once, each machine on one thread at a time (core patch 0007, `tests/machines_apart.rs`; `das_table_whole()` is that test's look at the core's shared table).
+- Profiling: `set_profile(bool)`, `set_dma_profile()`, `line_samples() -> Vec<LineSample>`. Line sampling leaves the run unchanged, switched between any steps (`tests/line_samples.rs`); DMA profiling draws over the picture: never use it in a comparison.
 
 Cached runs (`trace.rs`)
 - `SyncPoint::{PowerOn, Snapshot(Snapshot)}`; `InputScript::new(Vec<(u32, FrameInput)>)`, `idle()`, `input_at(frame)`, `canonical()`.

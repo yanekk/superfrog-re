@@ -30,6 +30,8 @@ pub const SHAPE_MAP: u32 = 0x2_8f18;
 /// Bytes a map column, tile map (words) and the byte maps.
 const TILE_COLUMN: u32 = 0xc0;
 const BYTE_COLUMN: u32 = 0x60;
+use super::AddCut;
+
 /// Bytes a `collision_map` row.
 const ROW_BYTES: u32 = 0x2e;
 /// A play screen line: five interleaved planes of `$2e` bytes.
@@ -87,6 +89,19 @@ pub trait Io {
     fn blit(&mut self, b: Blit);
     /// A word written to `collision_map` at `at` bytes from `h3+$fa50`, wrapping.
     fn collision_word(&mut self, at: u32, v: u16);
+    /// Whether the animated cell or creature the scan found at object map cell `cell` (hunk 0
+    /// offset) is added or started after the next pass: that pass cut the scan before it (T74, T75,
+    /// [`PlayIo::defer_from`]).
+    fn defers(&self, _cell: u32) -> bool {
+        false
+    }
+    /// The scan is about to cut the bob of object map cell `cell`: a pass that cut the scan
+    /// before it leaves its blit for after that pass (T82, [`PlayIo::bob_late`]).
+    fn bob_cell(&mut self, _cell: u32) {}
+    /// How far `h0_6882` had got with `cell` when the next pass cut the scan (T82).
+    fn add_cut(&self, _cell: u32) -> AddCut {
+        AddCut::Whole
+    }
 
     fn rw(&self, a: u32) -> u16 {
         u16::from_be_bytes([self.rb(a), self.rb(a.wrapping_add(1))])
@@ -188,14 +203,45 @@ impl AnimatedCells {
     /// `h0_6882`: the cell at (`x`, `y`) with object value `code` joins the list with the fewest
     /// cells in use (the first such), at its first free entry; a full list takes nothing.
     pub fn add(&mut self, x: u16, y: u16, code: u8) {
+        let g = self.fewest();
+        if let Some(i) = self.free(g) {
+            let cell = AnimCell {
+                x,
+                y,
+                code,
+                ..self.cells[g][i]
+            };
+            self.put(g, i, cell);
+        }
+    }
+
+    /// The list `h0_6882` chooses: the one with the fewest cells in use, the first such.
+    pub fn fewest(&self) -> usize {
         let count = |g: usize| self.used[g].iter().filter(|&&f| f != 0).count();
         // The original sorts the four counts with a stable bubble sort and takes the first.
-        let g = (1..4).fold(0, |best, g| if count(g) < count(best) { g } else { best });
-        if let Some(i) = self.used[g].iter().position(|&f| f == 0) {
-            let c = &mut self.cells[g][i];
-            (c.x, c.y, c.code) = (x, y, code);
-            self.used[g][i] = 0xff;
+        (1..4).fold(0, |best, g| if count(g) < count(best) { g } else { best })
+    }
+
+    /// List `g`'s first free entry.
+    pub fn free(&self, g: usize) -> Option<usize> {
+        self.used[g].iter().position(|&f| f == 0)
+    }
+
+    /// A cut add finished after the pass ([`Deferred::CellIn`]): into `list`, at `entry` or, cut
+    /// before its search, at the list's first free entry as the pass left it; none free, nothing.
+    pub fn add_chosen(&mut self, cell: AnimCell, list: u8, entry: Option<u8>) {
+        let g = list as usize;
+        if let Some(i) = entry.map(usize::from).or_else(|| self.free(g)) {
+            self.put(g, i, cell);
         }
+    }
+
+    /// `h0+$6984`: `cell`'s place and value written to entry `i` of list `g`, which is marked
+    /// used; the entry's other bytes stay.
+    pub fn put(&mut self, g: usize, i: usize, cell: AnimCell) {
+        let c = &mut self.cells[g][i];
+        (c.x, c.y, c.code) = (cell.x, cell.y, cell.code);
+        self.used[g][i] = 0xff;
     }
 }
 
@@ -211,6 +257,40 @@ pub struct Edges {
     pub p83c: Ptr,
     pub creatures: CreatureSlots,
     pub cells: AnimatedCells,
+    /// The animated cells and creature cells a redraw's scan found after the pass that cut it, in
+    /// the order found: `main_loop` adds them (`h0_6882`) and starts them (`h0_681c`) once that
+    /// pass has ended, before it tests the next latch (T74, T75, `level::main_loop_redraws`). Empty
+    /// but for the pass after such a cut.
+    pub deferred: Vec<Deferred>,
+}
+
+/// What a cut scan does after the pass that cut it ([`Edges::deferred`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Deferred {
+    /// `h0_6882` for this cell.
+    Cell(AnimCell),
+    /// `h0_6882` for this cell, cut by the pass after it had chosen `list` from the counts as they
+    /// then were, and `entry` too if it had found one (T82, `level::AddCut`).
+    CellIn {
+        cell: AnimCell,
+        list: u8,
+        entry: Option<u8>,
+    },
+    /// `h0_681c` for the creature at object map cell `cell` (hunk 0 offset), which is cleared if a
+    /// slot takes it. Which slot is free is decided then: the pass between can free one.
+    Creature {
+        cell: u32,
+        x: u16,
+        y: u16,
+        kind: u16,
+        facing: u8,
+    },
+    /// A bob of the cut scan, from the cell the pass cut it at on: its blit starts after the pass
+    /// (T82).
+    Bob(Blit),
+    /// The cut redraw's `n`th `collision_map` word, `word` at `at` bytes from the map's first: the
+    /// pass came before `h0_7cc` copied it (T48, `level::EdgesCut::shape_words`).
+    Collision { n: u16, at: u32, word: u16 },
 }
 
 /// N after `cmpi.w #imm, v`.
@@ -379,15 +459,72 @@ fn creature(b: u8, y: u32) -> (u16, u32) {
 }
 
 impl Edges {
-    /// Start a creature from cell `cell` (hunk 0 offset), clearing it if a slot took it. Returns the
-    /// original's `d0`: 0 taken, -1 not.
-    fn start(&mut self, io: &mut impl Io, cell: u32, x: u16, y: u16, kind: u16, facing: u8) -> u32 {
-        if self.creatures.start(x, y, kind, facing) {
+    /// `bsr.w h0_6882` for the scan's cell `cell`, now or, when the next pass cut the scan before
+    /// it, after that pass ([`Edges::deferred`]). The list a cell joins depends on how many cells
+    /// each holds, which that pass's `h0_62b6` changes.
+    fn add_cell(&mut self, io: &impl Io, cell: u32, x: u16, y: u16, code: u8) {
+        if !io.defers(cell) {
+            self.cells.add(x, y, code);
+            return;
+        }
+        let c = AnimCell {
+            x,
+            y,
+            code,
+            rest: [0; 3],
+        };
+        // What `h0_6882` had settled before the pass is settled now, from the lists as they are.
+        let list = self.cells.fewest();
+        match (io.add_cut(cell), self.cells.free(list)) {
+            (AddCut::Whole, _) => self.deferred.push(Deferred::Cell(c)),
+            (AddCut::List, _) => self.deferred.push(Deferred::CellIn {
+                cell: c,
+                list: list as u8,
+                entry: None,
+            }),
+            (AddCut::Entry, Some(i)) => self.deferred.push(Deferred::CellIn {
+                cell: c,
+                list: list as u8,
+                entry: Some(i as u8),
+            }),
+            // Past the search with no entry found is past `h0_6882`'s `rts`: nothing is added.
+            (AddCut::Entry, None) => {}
+        }
+    }
+
+    /// Start a creature from cell `cell` (hunk 0 offset), clearing it if a slot took it. `d0` is the
+    /// long the scan passes in d0, x in its low word. Returns the original's `d0`: 0 taken, -1 not.
+    fn start(
+        &mut self,
+        io: &mut impl Io,
+        cell: u32,
+        d0: u32,
+        y: u16,
+        kind: u16,
+        facing: u8,
+    ) -> u32 {
+        let d0 = if io.defers(cell) {
+            // The next pass cut the scan before this cell (T75): the original starts the creature
+            // after that pass, so it misses the pass's move and is not drawn in it. The scan's later
+            // bobs are listed as after a start that found a slot; one finding none (`d0 = -1`) only
+            // moves a bob's blit off the screen.
+            self.deferred.push(Deferred::Creature {
+                cell,
+                x: d0 as u16,
+                y,
+                kind,
+                facing,
+            });
+            return 0;
+        } else if self.creatures.start(d0 as u16, y, kind, facing) {
             0xffff_ffff
         } else {
-            io.clear_object(cell);
             0
+        };
+        if d0 == 0 {
+            io.clear_object(cell);
         }
+        d0
     }
 
     /// `redraw_edge_a` (`h0+$844`): the row below the view, `y + $d0`, while y is under `$53c`.
@@ -419,16 +556,19 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_below(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_below(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     d0 = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14)) & 0xfff0;
-                    self.cells.add(d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
+                    self.add_cell(io, cell, d0 as u16, y.wrapping_add(0xc1) & 0xfff0, b);
                 }
                 Code::Creature => {
                     let cx = (x as u32).wrapping_add(step(d4, 0x14));
                     let (kind, cy) = creature(b, (y.wrapping_add(0xc1) & 0xfff0) as u32);
                     let facing = if minus(d4 as u16, 0xa) { 0xff } else { 1 };
-                    d0 = self.start(io, cell, cx as u16, cy as u16, kind, facing);
+                    d0 = self.start(io, cell, cx, cy as u16, kind, facing);
                 }
             }
         }
@@ -466,18 +606,21 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => d0 = bob_above(io, b, (x, y), d4, d0),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    d0 = bob_above(io, b, (x, y), d4, d0);
+                }
                 Code::Animated => {
                     // `andi.w`: the high word stays.
                     let sum = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
                     d0 = (sum & 0xffff_0000) | (sum & 0xfff0);
-                    self.cells.add(d0 as u16, y8 & 0xfff0, b);
+                    self.add_cell(io, cell, d0 as u16, y8 & 0xfff0, b);
                 }
                 Code::Creature => {
                     let cx = ((d0 & 0xffff_0000) | x as u32).wrapping_add(step(d4, 0x14));
                     let (kind, cy) = creature(b, (y.wrapping_sub(1) & 0xfff0) as u32);
                     let facing = if minus(d4 as u16, 0xa) { 0xff } else { 1 };
-                    d0 = self.start(io, cell, cx as u16, cy as u16, kind, facing);
+                    d0 = self.start(io, cell, cx, cy as u16, kind, facing);
                 }
             }
         }
@@ -520,15 +663,18 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_left(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_left(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
-                    self.cells.add(x & 0xfff0, cy, b);
+                    self.add_cell(io, cell, x & 0xfff0, cy, b);
                 }
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
                     let (kind, cy) = creature(b, cy);
-                    self.start(io, cell, x.wrapping_sub(7), cy as u16, kind, 1);
+                    self.start(io, cell, x.wrapping_sub(7) as u32, cy as u16, kind, 1);
                 }
             }
         }
@@ -565,15 +711,18 @@ impl Edges {
             match code(b) {
                 Code::End => return,
                 Code::Skip => {}
-                Code::Bob => bob_right(io, b, (x, y), d4),
+                Code::Bob => {
+                    io.bob_cell(cell);
+                    bob_right(io, b, (x, y), d4);
+                }
                 Code::Animated => {
                     let cy = (y as u32).wrapping_add(step(d4, 0xd)) as u16 & 0xfff0;
-                    self.cells.add(xr & 0xfff0, cy, b);
+                    self.add_cell(io, cell, xr & 0xfff0, cy, b);
                 }
                 Code::Creature => {
                     let cy = ((y & 0xfff0) as u32).wrapping_add(step(d4, 0xd));
                     let (kind, cy) = creature(b, cy);
-                    self.start(io, cell, xr.wrapping_sub(7), cy as u16, kind, 0xff);
+                    self.start(io, cell, xr.wrapping_sub(7) as u32, cy as u16, kind, 0xff);
                 }
             }
         }
@@ -586,13 +735,20 @@ pub const IMAGE_END: u32 = SHAPE_MAP + 0x7800;
 /// The level buffers of hunk 0 as the original lays them out, `h0+$bda0` to [`IMAGE_END`]: what a
 /// redraw reads of the level in play. What lies between the buffers (program data) reads 0, which only
 /// positions past the camera's clamps reach. The object map is play state, kept apart ([`PlayIo`]).
+///
+/// Past [`IMAGE_END`] a redraw reads the program itself: with the camera in the map's top two rows
+/// `redraw_edge_b`'s `subi.w #2` takes the shape row to `$ffff` or `$fffe`, 64 KB past the shape
+/// map, in hunk 0's tables (`h0+$38eb7` on), and copies the shapes those bytes name into the band
+/// the row below the view probes (T48, measured on the route at pass 13 941: a creature turned at
+/// the ledge they left).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelImage {
     bytes: Vec<u8>,
+    program: crate::program::Program,
 }
 
 impl LevelImage {
-    pub fn new(level: &fd_assets::Level) -> LevelImage {
+    pub fn new(level: &fd_assets::Level, program: &crate::program::Program) -> LevelImage {
         let mut bytes = vec![0; (IMAGE_END - SHAPES) as usize];
         let mut put = |a: u32, v: &[u8]| {
             let at = (a - SHAPES) as usize;
@@ -616,13 +772,20 @@ impl LevelImage {
             .collect();
         put(TILE_MAP, &tiles);
         put(SHAPE_MAP, &level.collision.cells);
-        LevelImage { bytes }
+        LevelImage {
+            bytes,
+            program: program.clone(),
+        }
     }
 
-    /// The byte at hunk 0 offset `a`; 0 outside the buffers.
+    /// The byte at hunk 0 offset `a`: the level's from [`SHAPES`] to [`IMAGE_END`], the program's
+    /// outside them.
     pub fn byte(&self, a: u32) -> u8 {
         let i = a.wrapping_sub(SHAPES) as usize;
-        self.bytes.get(i).copied().unwrap_or(0)
+        match self.bytes.get(i) {
+            Some(b) => *b,
+            None => self.program.byte(a),
+        }
     }
 }
 
@@ -634,6 +797,27 @@ pub struct PlayIo<'a> {
     pub objects: &'a mut [u8],
     pub collision: &'a mut super::collision::CollisionPlane,
     pub blits: &'a mut Vec<Blit>,
+    /// The object map cell (hunk 0 offset) from which the scan's animated cells are added and its
+    /// creatures started after the next pass, which cut the scan there (T74, `level::EdgesCut`); `None` adds each at once.
+    /// The scans walk the map upward, rows `$60` bytes a cell and columns 1, so a later cell is a
+    /// higher one.
+    pub defer_from: Option<u32>,
+    /// Where the pass cut `h0_6882` for the cell at `defer_from` (T82, `level::AddCut`).
+    pub add_cut: AddCut,
+    /// The bob being cut belongs to a cell from `defer_from` on: its blit goes to `late_bobs`,
+    /// started after the next pass, a frame later than the row's first bobs (T82, measured on
+    /// the route: a row of ten, eight cut at lines 197 to 231 and two at lines 103 to 108 of the
+    /// next frame, past the view's top lines, so those two show a frame after).
+    pub bob_late: bool,
+    pub late_bobs: Vec<Blit>,
+    /// The redraw's `collision_map` words from this one on are kept in `late` for after the next
+    /// pass, which came before `h0_7cc` copied them (T48, `level::EdgesCut::shape_words`); `None`
+    /// writes each at once.
+    pub late_from: Option<u16>,
+    /// The words the redraw running has written or kept so far.
+    pub written: u16,
+    /// (its place in the redraw's order, bytes from the map's first, the word) of each word kept.
+    pub late: Vec<(u16, u32, u16)>,
 }
 
 impl PlayIo<'_> {
@@ -656,16 +840,207 @@ impl Io for PlayIo<'_> {
         }
     }
     fn blit(&mut self, b: Blit) {
-        self.blits.push(b);
+        if self.bob_late && matches!(b, Blit::Bob { .. }) {
+            self.late_bobs.push(b);
+        } else {
+            self.blits.push(b);
+        }
+    }
+    fn bob_cell(&mut self, cell: u32) {
+        self.bob_late = self.defers(cell);
     }
     fn collision_word(&mut self, at: u32, v: u16) {
-        self.collision.set_word(at, v);
+        let n = self.written;
+        self.written = n.saturating_add(1);
+        if self.late_from.is_some_and(|f| n >= f) {
+            self.late.push((n, at, v));
+        } else {
+            self.collision.set_word(at, v);
+        }
+    }
+    fn defers(&self, cell: u32) -> bool {
+        self.defer_from.is_some_and(|f| cell >= f)
+    }
+    fn add_cut(&self, cell: u32) -> AddCut {
+        if self.defer_from == Some(cell) {
+            self.add_cut
+        } else {
+            AddCut::Whole
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// T48: the up row's shape row is `$ffff` with the camera in the map's second row, far past
+    /// the shape map: the byte there is the program's, not 0.
+    #[test]
+    fn past_the_level_buffers_a_redraw_reads_the_program() {
+        let mut program = vec![0u8; (IMAGE_END + 0x1_0000) as usize];
+        program[(SHAPE_MAP + 0xffff) as usize] = 0x32;
+        program[(SHAPES + 1) as usize] = 0x77;
+        let image = LevelImage {
+            bytes: vec![1, 2, 3],
+            program: crate::program::Program::hunk0(program),
+        };
+        // Inside the buffers the level's bytes win over whatever the program's file holds there.
+        assert_eq!(image.byte(SHAPES + 1), 2);
+        assert_eq!(image.byte(SHAPE_MAP + 0xffff), 0x32);
+        assert_eq!(image.byte(SHAPE_MAP + 0xfffe), 0);
+    }
+
+    /// What an add reads of the scan: only where the pass cut it.
+    struct CutAt(u32, AddCut);
+
+    impl Io for CutAt {
+        fn rb(&self, _: u32) -> u8 {
+            0
+        }
+        fn clear_object(&mut self, _: u32) {}
+        fn blit(&mut self, _: Blit) {}
+        fn collision_word(&mut self, _: u32, _: u16) {}
+        fn defers(&self, cell: u32) -> bool {
+            cell >= self.0
+        }
+        fn add_cut(&self, cell: u32) -> AddCut {
+            if cell == self.0 {
+                self.1
+            } else {
+                AddCut::Whole
+            }
+        }
+    }
+
+    /// The lists as pass 12 569 of the route found them (T82): 3, 3, 2 and 2 cells in use, list
+    /// 1's second entry about to leave the view.
+    fn lists() -> Edges {
+        let mut e = Edges::default();
+        for (g, n) in [3, 3, 2, 2].into_iter().enumerate() {
+            e.cells.used[g][..n].fill(0xff);
+        }
+        e
+    }
+
+    /// Where the cell the cut add was adding ends up once `after` has run in place of the pass.
+    fn added(cut: AddCut, after: impl Fn(&mut AnimatedCells)) -> Option<(usize, usize)> {
+        let mut e = lists();
+        e.add_cell(&CutAt(0x100, cut), 0x100, 0x720, 0x20, 0x21);
+        assert!(
+            e.cells.cells.iter().flatten().all(|c| c.x == 0),
+            "added before the pass"
+        );
+        after(&mut e.cells);
+        for d in std::mem::take(&mut e.deferred) {
+            match d {
+                Deferred::Cell(c) => e.cells.add(c.x, c.y, c.code),
+                Deferred::CellIn { cell, list, entry } => e.cells.add_chosen(cell, list, entry),
+                other => panic!("{other:?}"),
+            }
+        }
+        (0..4)
+            .flat_map(|g| (0..12).map(move |i| (g, i)))
+            .find(|&(g, i)| e.cells.used[g][i] != 0 && e.cells.cells[g][i].x == 0x720)
+    }
+
+    /// T82: a pass that cuts `h0_6882` after its counts leaves the list chosen. The pass drops a
+    /// cell of list 1, which then holds the fewest: an add made whole after the pass joins it, the
+    /// cut one joins list 2 as the counts before the pass had it.
+    #[test]
+    fn an_add_cut_after_its_counts_joins_the_list_chosen_before_the_pass() {
+        let drop = |c: &mut AnimatedCells| c.used[1][1] = 0;
+        assert_eq!(added(AddCut::Whole, drop), Some((1, 1)));
+        assert_eq!(added(AddCut::List, drop), Some((2, 2)));
+        assert_eq!(added(AddCut::Entry, drop), Some((2, 2)));
+    }
+
+    /// Cut before the search, the entry is the first free after the pass; cut after it, the one
+    /// found before. Cut after a search that found none, nothing is added.
+    #[test]
+    fn an_add_cut_after_its_search_keeps_the_entry_too() {
+        let drop = |c: &mut AnimatedCells| c.used[2][0] = 0;
+        assert_eq!(added(AddCut::List, drop), Some((2, 0)));
+        assert_eq!(added(AddCut::Entry, drop), Some((2, 2)));
+        let mut e = lists();
+        for g in 0..4 {
+            e.cells.used[g].fill(0xff);
+        }
+        e.add_cell(&CutAt(0x100, AddCut::Entry), 0x100, 0x720, 0x20, 0x21);
+        assert_eq!(e.deferred, []);
+        // A later cell of the same scan is added whole after the pass.
+        e.add_cell(&CutAt(0x100, AddCut::Entry), 0x101, 0x730, 0x20, 0x21);
+        assert!(matches!(e.deferred[..], [Deferred::Cell(_)]));
+    }
+
+    /// T48: a redraw the next pass cut after `late_from` collision words writes those and keeps
+    /// the rest, in order, for after the pass.
+    #[test]
+    fn the_words_a_cut_redraw_had_not_copied_are_kept_for_after_the_pass() {
+        let program = crate::program::Program::hunk0(vec![0; 0x3_8000]);
+        let image = LevelImage {
+            bytes: Vec::new(),
+            program: program.clone(),
+        };
+        let mut plane = super::super::collision::CollisionPlane::new(&program);
+        let (mut objects, mut blits) = (Vec::new(), Vec::new());
+        let mut io = PlayIo {
+            image: &image,
+            objects: &mut objects,
+            collision: &mut plane,
+            blits: &mut blits,
+            defer_from: None,
+            add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
+            late_from: Some(2),
+            written: 0,
+            late: Vec::new(),
+        };
+        for (k, w) in [0x1111u16, 0x2222, 0x3333, 0x4444].into_iter().enumerate() {
+            io.collision_word(2 * k as u32, w);
+        }
+        assert_eq!(io.late, [(2, 4, 0x3333), (3, 6, 0x4444)]);
+        assert_eq!(io.written, 4);
+        let got: Vec<u8> = (0..8).map(|o| plane.byte(o)).collect();
+        assert_eq!(got, [0x11, 0x11, 0x22, 0x22, 0, 0, 0, 0]);
+    }
+
+    /// T82: the bobs of a cut scan from the cut cell on are kept for after the pass; the bobs
+    /// before it, and a blit that is no bob, start at once.
+    #[test]
+    fn the_bobs_from_the_cut_cell_on_are_kept_for_after_the_pass() {
+        let program = crate::program::Program::hunk0(vec![0; 0x3_8000]);
+        let image = LevelImage {
+            bytes: Vec::new(),
+            program: program.clone(),
+        };
+        let mut plane = super::super::collision::CollisionPlane::new(&program);
+        let (mut objects, mut blits) = (Vec::new(), Vec::new());
+        let mut io = PlayIo {
+            image: &image,
+            objects: &mut objects,
+            collision: &mut plane,
+            blits: &mut blits,
+            defer_from: Some(0x100),
+            add_cut: AddCut::Whole,
+            bob_late: false,
+            late_bobs: Vec::new(),
+            late_from: None,
+            written: 0,
+            late: Vec::new(),
+        };
+        let bob = |n| Blit::Bob { image: n, dst: n };
+        io.bob_cell(0xff);
+        io.blit(bob(1));
+        io.bob_cell(0x100);
+        io.blit(bob(2));
+        io.blit(Blit::Tile { tile: 3, dst: 3 });
+        io.bob_cell(0x101);
+        io.blit(bob(4));
+        assert_eq!(io.late_bobs, [bob(2), bob(4)]);
+        assert_eq!(blits, [bob(1), Blit::Tile { tile: 3, dst: 3 }]);
+    }
 
     #[test]
     fn a_tile_row_lands_in_the_band_of_its_row() {

@@ -1,10 +1,12 @@
 # T67: character-run-slide with up held from frame 6480 to 6489 while the camera scrolls, where most
 # passes read the joystick in the step after their start. The character jumps (joy_up 1 at the passes
 # ending 6481 to 6490) and is still in the air at W1-1 char_x $294, char_jump_t 167, at frame 6522.
+# hits_taken is compared since T76: its T24 exclusion hid no difference once T52 drew the creatures.
+# The fifteen creature slot variables are compared since T81: the run scrolls a creature in on the
+# original (enemy_cases.rs, no_level_case_runs_creatures_live_without_naming_their_slots).
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "character-run-slide-buttons"
 frames = 122
 compare = ["vars"]
-vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "lives", "irq_count", "countdown"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "lives", "hits_taken", "irq_count", "countdown", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { all = [{ var = "char_x", value = 0x294 }, { var = "char_jump_t", value = 167 }], by_frame = 6522 }
-exclude = [{ what = "var hits_taken", task = "T24" }]

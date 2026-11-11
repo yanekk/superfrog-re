@@ -1,12 +1,12 @@
 //! The collision model (`fd_core::render::contact`, plans/forest-dumb-level-1 T70) against the
 //! original's CLXDAT, as `char_hit_check` copies it to `clxdat_copy` every pass: over fd-plan's route
-//! across W1-1 (`contact-route`, frozen as `freeze.rs` says), and its parts on the engine alone.
+//! across W1-1 (`contact-route`, nothing frozen), and its parts on the engine alone.
 //!
 //! Measured (T70): a pass's read sees the frame the display showed since the last pass, the one
 //! `Game::picture` draws after it; with that, every pass of `contact-route`, `death-pit` and
-//! `death-spikes` agrees. The water (T72): `death-water` thaws `h0_6882`, so both sides draw it, and
-//! the same run with it frozen shows that its pixels alone give the contact. Needs the disks and
-//! Kickstart, as every case does.
+//! `death-spikes` agrees. The water (T72): `death-water` draws it on both sides (T47 removed the
+//! `h0_6882` freeze, and with it the run that left it undrawn). Needs the disks and Kickstart, as
+//! every case does.
 
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -49,12 +49,6 @@ impl Transplant for Copies {
 }
 
 impl Engine for Copies {
-    fn freeze(&mut self) {
-        Engine::freeze(&mut self.game);
-    }
-    fn thaw(&mut self, offset: u32) {
-        Engine::thaw(&mut self.game, offset);
-    }
     fn pass(&mut self, input: FrameInput) {
         self.game.step(input);
         let s = self.game.state();
@@ -67,6 +61,18 @@ impl Engine for Copies {
     fn events(&mut self) -> Vec<Event> {
         self.game.take_events()
     }
+    fn foreground_cut(&mut self, at: Option<fd_core::level::EdgesCut>) {
+        self.game.cut_foreground(at);
+    }
+    // `death-water` takes items since T79, so its status bar is redrawn and a pass cuts it (T71).
+    fn cut_redraw(&self, cut: u8) -> Option<Picture> {
+        Engine::cut_redraw(&self.game, cut)
+    }
+    // And a long pass cuts a creature behind the beam (T80): unforwarded, `death-water`'s picture
+    // differed at pass 1004 (T83).
+    fn creatures_uncut(&self, rows: &[u16]) -> Option<Picture> {
+        self.game.creatures_uncut(rows)
+    }
 }
 
 /// Every pass of the route to the exit's cells: CLXDAT and what contact counts, equal; and the
@@ -78,7 +84,9 @@ fn the_collision_model_matches_the_originals_clxdat_over_the_route() {
     let v = run_with(&case, &mut e, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
     println!("{v}");
     assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert!(v.goal_met.is_some() && v.passes > 1270, "{v}");
+    // Since T47 the route drops into the pool at W1-1:195..197,94 and loses a life there (its goal);
+    // the original's longer passes leave 62 pass ends unseen.
+    assert!(v.goal_met.is_some() && v.passes > 1230, "{v}");
     assert!(case.vars.iter().any(|n| n == "clxdat_copy"));
     let values: BTreeSet<u16> = e.seen.iter().copied().collect();
     let contact = e.seen.iter().filter(|&&c| c & CONTACT != 0).count();
@@ -100,55 +108,28 @@ fn the_status_bar_alone_sets_the_playfield_bit() {
     assert_eq!(clxdat(data, &d, (c.x, c.y), program), 0x8001);
 }
 
-/// The pool at `W1-1:148,66` (`death-water`), drawn and not: the same run with `h0_6882` frozen
-/// draws no water on either side. Measured (T72): the pool's tiles under the water carry colour 29
-/// themselves, so both runs lose two lives there; the water's frames change CLXDAT on
-/// a few passes, setting a contact bit the tiles alone do not (pass 773) and covering the tiles'
-/// pixels (passes 786 to 793). Both runs agree with the original on every compared pass and frame,
-/// so the engine draws the water's pixels where the original does and reads contact from them.
+/// The pool at `W1-1:148,66` (`death-water`), the water drawn on both sides. Measured (T72) with
+/// the water undrawn as well, which the `h0_6882` freeze allowed until T47: the pool's tiles carry
+/// colour 29 themselves, and the water's frames change CLXDAT on a few passes (docs/10). Here every
+/// pass's CLXDAT agrees with the original's through the route there, creatures live (T79), the drop
+/// and the two lives it costs.
 #[test]
 fn the_waters_frames_change_contact_in_the_pool_as_the_originals() {
     let case = Case::load(Path::new("cases/death-water.toml")).unwrap_or_else(|e| panic!("{e}"));
-    let mut dry_case = case.clone();
-    dry_case.thaw.clear();
-    // Frozen, no animated cell's blit runs a pass late: the edge latches are compared, not excluded.
-    dry_case.exclude.clear();
-    dry_case
-        .vars
-        .extend(["edge_latch_down", "edge_latch_up"].map(String::from));
-    let run = |case: &Case| {
-        let mut e = copies();
-        let v = run_with(case, &mut e, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
-        println!("{v}");
-        (e, v)
-    };
-    let ((wet, v), (dry, d)) = std::thread::scope(|s| {
-        let wet = s.spawn(|| run(&case));
-        let dry = s.spawn(|| run(&dry_case));
-        (wet.join().unwrap(), dry.join().unwrap())
-    });
+    let mut wet = copies();
+    let v = run_with(&case, &mut wet, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    println!("{v}");
     assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert_eq!(d.outcome, Outcome::Same, "{d}");
-    assert_eq!(dry.seen.len(), wet.seen.len());
+    assert!(case.vars.iter().any(|n| n == "clxdat_copy"));
     let touch = |c: u16| c & CONTACT != 0;
-    let first = wet.seen.iter().position(|&c| touch(c)).unwrap();
-    // Before the drop neither side touches anything, and the tiles alone cost two lives as well
-    // (the first a pass earlier: the drawn water covers the tiles' colour 29 on pass 758).
-    assert!(!dry.seen[..first - 1].iter().any(|&c| touch(c)));
-    let lost = |e: &Copies| {
-        (1..e.lives.len())
-            .filter(|&k| e.lives[k] < e.lives[k - 1])
-            .collect::<Vec<_>>()
-    };
-    let (wet_lost, dry_lost) = (lost(&wet), lost(&dry));
-    assert_eq!(wet_lost.len(), 2, "{wet_lost:?}");
-    assert_eq!(dry_lost.len(), 2, "{dry_lost:?}");
+    // Creatures are brushed on the way (first at pass 137, no life lost, measured 2026-11-10); in
+    // the pool contact comes and goes with the water's frames.
+    let lost: Vec<usize> = (1..wet.lives.len())
+        .filter(|&k| wet.lives[k] < wet.lives[k - 1])
+        .collect();
+    assert_eq!(lost.len(), 2, "{lost:?}");
+    assert!(lost[0] > 2180, "{lost:?}: a life lost before the pool");
+    let pool = &wet.seen[lost[0]..];
+    assert!(pool.iter().any(|&c| touch(c)) && pool.iter().any(|&c| !touch(c)));
     assert_eq!(wet.lives.last(), Some(&0x30));
-    let only = |a: &Copies, b: &Copies| {
-        (first..a.seen.len())
-            .filter(|&k| touch(a.seen[k]) && !touch(b.seen[k]))
-            .count()
-    };
-    let (water, covered) = (only(&wet, &dry), only(&dry, &wet));
-    assert!(water >= 1 && covered >= 8, "{water} {covered}");
 }

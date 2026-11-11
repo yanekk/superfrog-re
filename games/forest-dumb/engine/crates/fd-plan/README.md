@@ -66,17 +66,23 @@ The level (`facts.rs`):
 
 On the original (`confirm.rs`):
 - `confirm(data, inputs) -> Result<Verdict, String>` and `confirm_excluding(data, inputs, exclude: &[(&str, &str)])`.
-- `case(data, inputs) -> Result<Case, String>` and `case_excluding(...)`: the case, synced at `sync::LEVEL_1_SYNC`, `freeze = true`, goal the frozen engine's `char_x`/`char_y`.
+- `case(data, inputs) -> Result<Case, String>` and `case_excluding(...)`: the case, synced at `sync::LEVEL_1_SYNC`, nothing frozen, goal the `char_x`/`char_y` the engine alone ends at.
 - `VARS`: the compared variables. `SLACK` (8): idle frames past the route, because the original ends its passes about one behind.
-- `EDGE_LATCH_RIGHT = ("edge_latch_right", "T73")`: pass it to `confirm_excluding` only for a route that reaches that gap; an exclusion that hid nothing fails the case.
 
-Gotcha: the case runs the original frozen (creatures, animated cells, springs), so where a route meets
-a creature the two sides can differ; `tests/route.rs` shows how a test handles that today.
+Gotcha: creatures run on both sides (T79). The engine alone does not know which step each pass of the
+original read or which pass cut a redraw, so it can meet a creature a pass apart: the verdict is then
+`Outcome::GoalMissed`, every pass agreeing and the route ending elsewhere than planned, which the
+command prints as "agrees on all N passes but ends elsewhere than the engine alone". The 100-round
+route does so from 120 steps on (`tests/route.rs`). So does the whole level's route as the planner
+finds it (`tests/routes/W1-1-planned.txt`). The one route both sides finish, `tests/routes/W1-1.txt`,
+is that route searched again with both sides in the loop (T84,
+`games/forest-dumb/docs/13-full-route.md`, "The one route").
 
 ## Where the details are
 
 - `src/lib.rs`, `game.rs`, `facts.rs`, `confirm.rs`, `main.rs` as above.
 - `tests/route.rs`: the measured end, frames and coins of the 100-round search, kept current.
+- `tests/full_route.rs`, `tests/routes/W1-1.txt` and `W1-1-planned.txt`: the one route for both sides (T84) and the planner's own (T27), each replayed on the engine alone to the level's end with no life lost (`games/forest-dumb/docs/13-full-route.md`).
 - `toolkit/crates/amiga-plan` (`src/run.rs` `RunOptions`, `plan_engine`; `src/guide_file.rs`).
 - `plans/forest-dumb-level-1/DESIGN.md` §2.11; `games/forest-dumb/CLAUDE.md` "Planning a route"; `games/forest-dumb/docs/09-play-measured.md`, `10-object-system.md`.
 - A stall goes to the owner to play: `games/superfrog/docs/planner-stall-ask-owner.md`.

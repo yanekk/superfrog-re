@@ -34,7 +34,7 @@ native menu bar (muda) and panels (rfd, AppKit), and every file the game keeps:
 - **Menus and dialogs**: `games/superfrog/engine/crates/sf-app/src/menu.rs` (`Command`, `App::on_command`),
   `games/superfrog/engine/crates/sf-app/src/import.rs` (first-run disk import, `Ui`, `NativeUi`, `ScriptedUi`),
   `games/superfrog/engine/crates/sf-app/src/start_level_window.rs`.
-- **Files**: `games/superfrog/engine/crates/sf-app/src/settings.rs`, `games/superfrog/engine/crates/sf-app/src/progress.rs`,
+- **Files**: `toolkit/crates/amiga-app/src/settings.rs` (moved to the toolkit), `games/superfrog/engine/crates/sf-app/src/progress.rs`,
   `games/superfrog/engine/crates/sf-app/src/states.rs` (save states), `games/superfrog/engine/crates/sf-app/src/levelfile.rs`
   (`.sflevel` export and play, [games/superfrog/docs/14](../14-sflevel-format.md)),
   `games/superfrog/engine/crates/sf-app/src/home.rs`, `games/superfrog/engine/crates/sf-app/src/lock.rs`,
@@ -42,7 +42,7 @@ native menu bar (muda) and panels (rfd, AppKit), and every file the game keeps:
   the game crates' sources into the build identity save states are tagged with.
 - **Bug recorder UI** ([plans/bug-recorder](../../../../plans/bug-recorder/DESIGN.md)):
   `games/superfrog/engine/crates/sf-app/src/recorder.rs` (`Recorder`, `Replay`, the zip),
-  `games/superfrog/engine/crates/sf-app/src/recording_bar.rs`, `games/superfrog/engine/crates/sf-app/src/save_window.rs`.
+  `games/superfrog/engine/crates/sf-app/src/recording_bar.rs`, `toolkit/crates/amiga-app/src/save_window.rs` (moved to the toolkit).
 - **Scripted runs**, the test layer `sf-e2e` drives: `games/superfrog/engine/crates/sf-app/src/args.rs` (the
   seatbelts `--timeout`, `--max-frames`), `games/superfrog/engine/crates/sf-app/src/script.rs` (`--script`),
   `games/superfrog/engine/crates/sf-app/src/capture.rs` (`--capture`), and `--pacing`/`--replay` in `main.rs`.

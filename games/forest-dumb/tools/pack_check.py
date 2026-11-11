@@ -58,6 +58,16 @@ def steps(path):
     return [merged[k] for k in order], usd
 
 
+def reads(cmd):
+    """A shell command that reads a file whole or in part for the session to see: `cat`, `head`,
+    `less`, `sed -n`. Not an update that names the file (`sed -i`, a script writing it, `git add`,
+    a `grep -c` count): every task ends by updating PROGRESS and FINDINGS, which is not a re-read
+    (first run with packs, 2026-11-06)."""
+    if re.search(r'\bsed\s+-i\b|\bgit\s+(add|commit)\b|open\([^)]*\)\.write|>\s*\S*(PROGRESS|FINDINGS|DESIGN)', cmd):
+        return False
+    return bool(re.search(r'\b(cat|head|less)\b|\bsed\s+-n\b', cmd))
+
+
 def check(path):
     ss, usd = steps(path)
     built = read = first_edit = None
@@ -68,7 +78,7 @@ def check(path):
                 built = n
             if read is None and 'build/pack/' in text and (tool == 'Read' or re.search(r'\b(cat|sed|head)\b', text)):
                 read = n
-            elif read is not None and n > read and (tool == 'Read' or (tool == 'Bash' and re.search(r'\b(cat|sed|head|grep)\b', text))):
+            elif read is not None and n > read and (tool == 'Read' or (tool == 'Bash' and reads(text))):
                 rereads += [m for m in COVERED.findall(text)]
             if first_edit is None and tool in EDIT:
                 first_edit = n

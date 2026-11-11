@@ -1,9 +1,11 @@
 # T41 review: running right and jumping, up held: the jump meets the wall at char_x $14c at its peak
 # (char_y $36) and falls down the slope beyond. The case ends at frame 6522: from about 6529 the
 # original bounces off creatures (char_hit_check), which T24 models. The goal is the wall at the peak.
+# The fifteen creature slot variables are compared since T81: the run scrolls a creature in on the
+# original (enemy_cases.rs, no_level_case_runs_creatures_live_without_naming_their_slots).
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "character-run-right-jump"
 frames = 122
 compare = ["vars"]
-vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "lives", "hits_taken", "irq_count", "countdown"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "lives", "hits_taken", "irq_count", "countdown", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { all = [{ var = "char_x", value = 0x14c }, { var = "char_y", value = 0x36 }], by_frame = 6522 }

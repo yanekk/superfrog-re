@@ -15,6 +15,12 @@ The owner asked 2026-10-15 what carries over to another game and wants it rememb
 - learned on: Superfrog. Parts of `sf-disk`/`sf-assets` (ADF/zip/SHA-1, cache, launch) and `sf-core/src/render` (OCS bitplanes, copper, sprites) ~2k, now amiga-disk and amiga-chips.
 - learned on: Superfrog. Per game (~80%): `sf-core` game logic (38k), asset formats incl. the custom trackloader and `ATN!` cruncher (~3.5k; other Team 17 games *might* share ATN!/T7MP: unchecked), all conform cases/scripts/route planners (~19.5k), the `LAYOUT` memory map.
 
+**Measured on game two**, at the end of its first level (2026-11-11, `wc -l` over each tree's `.rs`):
+
+- learned on: Forest Dumb Forever. Its own crates hold 47 300 lines of Rust on top of the toolkit's 25 600, which the first game's 113 600 share: the game's part is 65% of what it runs on, against the first game's 82% for a whole game.
+- learned on: Forest Dumb Forever. Its conformance crate `fd-conform` (generators, the routine rig's game half, the runner, bug compare) is 26 700 of those lines, its engine `fd-core` 10 500, its app 2 600: proving the port cost two and a half times the port.
+- learned on: Forest Dumb Forever. Confirmed: the machinery carried whole, and the per-game work was content.
+
 **Also carries**: the pir method, the faithful bar (frame-exact cost ~5 days; start a new game on
 faithful, see knowledge/self-testing-faithful-bar.md), oracle/RE setup scripts, and days saved by
 having the harness from day one. Porting effort still scales with the new game's size.
@@ -30,7 +36,8 @@ draft 6 is this monorepo.
 
 - learned on: Forest Dumb Forever. Game two (owner, 2026-10-27): © 1998 L.K. Avalon / Eagle Soft, a similar platformer.
 - learned on: Forest Dumb Forever. Disks: `~/Documents/Amiga/Forest Dumb Forever!!! (1996)...(Disk N of 2)[cr WT].zip`, a cracked set (files identical to the WHDLoad package; crack adds a boot intro). Never committed, like the first game's.
-- learned on: Forest Dumb Forever. Hand-written 68k, RNC-packed exe, AmigaDOS floppy: needs an OFS file reader in the toolkit (RNC was only the WHDLoad packing).
+- learned on: Forest Dumb Forever. Hand-written 68k, RNC-packed exe, AmigaDOS floppy: needed an OFS file reader in the toolkit (RNC was only the WHDLoad packing), now `toolkit/crates/amiga-disk/src/ofs.rs`.
+- learned on: Forest Dumb Forever. Level 1 finished on its engine and judged against the original (`plans/forest-dumb-level-1/`); its next plans are in `games/forest-dumb/docs/ROADMAP.md`.
 
 **How to apply:** when the owner talks about the next game or the toolkit, start from
 plans/amiga-toolkit-prep/NORTH-STAR.md.

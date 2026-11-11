@@ -19,12 +19,12 @@ From `games/forest-dumb/engine/`:
 
 ## Flags (`src/args.rs`)
 
-`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR]`
+`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR]`
 
 - `--home DIR`: app-data folder; else `FOREST_DUMB_HOME`, else `~/Library/Application Support/Forest-Dumb-RE`. One copy runs per home (a second is refused, "already running").
 - `--disks DIR`: the folder of both zips; else `fd_tools::disk_dir()` (`FOREST_DUMB_DISKS`, then the main checkout). Missing disks: a plain message and exit 1.
 - `--script FILE`: events in place of the keyboard; makes the run unattended (no real pad, no native message, does not take focus). A script that does not parse is exit 2.
-- `--capture DIR`: frames, inputs and `hashes.txt` (below).
+- `--capture DIR`: frames, inputs and `hashes.txt` (below). `--capture-hashes`: without the frames' PNGs, for a whole level's run.
 - `--max-frames N`: exit 0 after N steps.
 - `--timeout S`: stop the whole process group after S seconds; defaults to 120 (`SCRIPT_TIMEOUT_S`) under `--script`. Exit 124 if the group cannot be stopped whole.
 - `--scale N`: 1 to 16, for this run only.

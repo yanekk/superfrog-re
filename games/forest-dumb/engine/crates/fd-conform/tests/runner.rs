@@ -118,6 +118,7 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     let bar = Exclusion {
         rows: 194..250,
         cols: None,
+        frames: None,
         var: None,
         what: "rows 194..250".into(),
         task: "T10".into(),
@@ -141,6 +142,96 @@ fn a_difference_past_the_tolerance_fails_and_an_excluded_area_passes_and_is_repo
     let v = run_on(&case, &mut honest(&case), &Options::default());
     assert!(
         matches!(v.outcome, Outcome::ExclusionUnused { ref task, .. } if task == "T10"),
+        "{v}"
+    );
+}
+
+/// T82 (coordinator, 2026-11-10): "in a row" is counted as the toolkit's `PictureJudge` counts it, the
+/// judge told of every compared frame. Two glitch frames, an identical one and a third glitch are
+/// three tolerated frames; three glitch frames with none between fail on the third. Before, the
+/// judge heard only of differing frames, so the identical frame ended no run and the first failed
+/// too. 300 frames, so that three glitches are inside the 1% budget.
+#[test]
+fn an_identical_frame_ends_a_run_of_glitches_and_three_in_a_row_still_fail() {
+    let case = short(300);
+    let (apart, together) = std::thread::scope(|s| {
+        let apart = s.spawn(|| {
+            let mut e = honest(&case);
+            e.paint = Some((10..12, 200, 320));
+            e.paint_again = Some(13..14);
+            run_on(&case, &mut e, &Options::default())
+        });
+        let together = s.spawn(|| {
+            let mut e = honest(&case);
+            e.paint = Some((10..13, 200, 320));
+            run_on(&case, &mut e, &Options::default())
+        });
+        (apart.join().unwrap(), together.join().unwrap())
+    });
+    assert_eq!(apart.outcome, Outcome::Same, "{apart}");
+    assert_eq!(apart.tolerated, [0, 0, 3], "{apart}");
+    match &together.outcome {
+        Outcome::PictureDiffers { pass: 12, why, .. } => {
+            assert!(why.contains("3 frames in a row"), "{why}")
+        }
+        other => panic!("{other}\n{together}"),
+    }
+}
+
+/// T48 review: a box naming frames hides its area on those frames alone. The same box a frame
+/// short, or on frames the difference never shows on, leaves the difference to fail the case.
+#[test]
+fn a_box_naming_frames_hides_nothing_on_any_other_frame() {
+    let paint = || Some((10..15, 200, 320));
+    let case = short(30);
+    let mut e = honest(&case);
+    e.paint = paint();
+    let v = run_on(&case, &mut e, &Options::default());
+    let Outcome::PictureDiffers {
+        pass: 10, frame, ..
+    } = v.outcome
+    else {
+        panic!("{v}")
+    };
+    let boxed = |frames: std::ops::Range<u32>| {
+        let bar = Exclusion {
+            rows: 194..250,
+            cols: Some(0..320),
+            frames: Some(frames.clone()),
+            var: None,
+            what: format!(
+                "rows 194..250 cols 0..320 frames {}..{}",
+                frames.start, frames.end
+            ),
+            task: "T82".into(),
+        };
+        let case = Case {
+            exclude: vec![bar],
+            ..short(30)
+        };
+        let mut e = honest(&case);
+        e.paint = paint();
+        run_on(&case, &mut e, &Options::default())
+    };
+    // Named on the five frames that differ: hidden, and counted on those five.
+    let v = boxed(frame..frame + 5);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert_eq!(v.excluded[0].1, 5, "{v}");
+    // One frame short at either end: that frame is compared and fails.
+    let v = boxed(frame + 1..frame + 5);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 10, .. }),
+        "{v}"
+    );
+    let v = boxed(frame..frame + 4);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 14, .. }),
+        "{v}"
+    );
+    // Named on other frames only: the difference fails as with no box.
+    let v = boxed(frame + 5..frame + 10);
+    assert!(
+        matches!(v.outcome, Outcome::PictureDiffers { pass: 10, .. }),
         "{v}"
     );
 }
@@ -248,21 +339,4 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
     assert!((19..=21).contains(&hits[0].1), "{v}");
     assert_eq!(v.coverage.unreached(), vec!["title_screen"]);
     assert!(v.to_string().contains("never reached"), "{v}");
-}
-
-#[test]
-fn a_freeze_case_patches_every_listed_entry_and_an_empty_list_is_an_error() {
-    let case = Case {
-        freeze: true,
-        thaw: Vec::new(),
-        ..short(5)
-    };
-    let am = fd_conform::reach_case(&case, 0).unwrap_or_else(|e| panic!("{e}"));
-    for f in fd_conform::freeze::FROZEN {
-        let at = fd_conform::HUNK_BASES[f.hunk as usize] + f.offset;
-        assert_eq!(am.peek(at, 2), [0x4e, 0x75], "{} not frozen", f.what);
-    }
-    let mut am = am;
-    let err = fd_conform::freeze::apply(&mut am, &[]).unwrap_err();
-    assert!(err.contains("empty"), "{err}");
 }

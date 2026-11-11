@@ -2,35 +2,44 @@
 # left off the ledge back up the slope to the left wall (W1-1:2,10, camera_x 0: the block is out of
 # view), stand, leap right onto the ledge again and jump in place under columns 30 and 29: nothing is
 # taken twice and the bonuses' cells come back into view empty. Measured 2026-11-06.
+# T75: creatures live. A wait and jumps added on the way back (888 steps for 820) so no life is lost.
 0: R
-44: R U      # the leap, up held 28 frames
+44: U R
 72: R
-120: -       # on the ledge, under column 33
+120: -
 140: U
 146: -
 180: L
-187: -       # under column 32
+187: -
 200: U
 206: -
 240: L
-247: -       # column 31
+247: -
 260: U
 266: -
 300: L
-307: -       # column 30
+307: -
 320: U
 326: -
-360: -
-370: L U      # the leap back left
+370: U L
 398: L
-520: R        # at the left wall since about frame 6811
-566: R U      # the leap back onto the ledge
-592: R
-632: -
-680: U        # under column 30
-686: -
-720: L
-727: -        # column 29
-740: U
-746: -
-790: -
+431: -
+459: U
+463: U L
+479: L
+552: R
+598: U R
+603: -
+629: U R
+664: R
+680: -
+690: R
+697: U R
+700: U
+708: -
+748: U
+754: -
+788: L
+795: -
+808: U
+814: -

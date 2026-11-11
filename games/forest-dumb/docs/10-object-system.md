@@ -29,7 +29,7 @@ compares, never through a table.
 | `$02` | 16 | `W1-1:9,92` | creature | `h0_681c` | creature kind 1; reading: walks a pixel a pass, turning on `collision_map` probes | placed |
 | `$03` | 15 | `W1-1:5,92` | creature | `h0_681c` | creature kind 2; reading: walks on a speed table | placed |
 | `$04` | 21 | `W1-1:6,40` | creature | `h0_681c` | creature kind 3; reading: hops on x and y tables | placed |
-| `$05` | 4 | `W1-1:45,92` | creature | `h0_681c` | creature kind 4; reading: walks on a speed table | placed |
+| `$05` | 4 | `W1-1:45,92` | creature | `h0_681c` | creature kind 4: walks on a speed table, a pixel every other pass, turning at walls (T77) | placed; walk, `W1-1:45,92` (`enemy-kind4`) |
 | `$06` | 30 | `W1-1:30,11` | creature | `h0_681c` | creature kind 5; reading: walks on a speed table | walk, `W1-1:30,11` |
 | `$10` | 2 | `W1-1:222,56` | spring | `h0_24ce` | spring, left half: throws the character up | placed |
 | `$11` | 1 | `W1-1:224,56` | spring | `h0_24ce` | spring, right half | placed |
@@ -82,13 +82,14 @@ from the level start and wraps to 0 about 100 passes after the sync point: until
 hurts. Measured: a creature (kinds 0, 1, 5) over the standing character, hits 1, 2, 3, a life lost on
 the third; one 200 pixels away, no contact. A creature under the falling character, kind 7 and +250.
 `$28` water under the feet hurts (contact passes 107 to 109 of the slide, a life lost), and so do the
-tiles where the first slope ends against a wall (`W1-1:42,35`, every object frozen: contact from pass
+tiles where the first slope ends against a wall (`W1-1:42,35`, no creature in the map: contact from pass
 133, a life lost at 135). Which tiles carry the colours there is not measured. In W1-1's own water (T72, 2026-11-06,
-`death-water`, `contact.rs`): with `h0_6882` thawed (the case's `thaw`) the character drops into the
+`death-water`, `contact.rs`): with the water drawn the character drops into the
 pool at `W1-1:148,66` to `149,66` (frame 7042), and three contact passes cost a life at frame 7062 and
-the next at 7204, engine and original equal on every pass and frame. The pool's tiles carry colour 29
+the next at 7204, engine and original equal on every pass and frame (T72's inputs, creatures frozen;
+since T79 the case reaches the pool with creatures live, at `149,66`, and the lives go at pass 2211 and frame 8652). The pool's tiles carry colour 29
 themselves: the same run with the water undrawn loses the same two lives, and the water's frames change
-CLXDAT only on a few passes (pass 773 sets a bit the tiles do not; 758 and 786 to 793 cover theirs). Those colours are in
+CLXDAT only on a few passes (on T72's inputs pass 773 sets a bit the tiles do not; 758 and 786 to 793 cover theirs). Those colours are in
 134 of W1-1's 328 tiles, in the coin and water frames and in `_ZNIKAJKA1` (counted for 21, 23, 29, 31). The oracle reports
 collision only since T59 (`DENISE_CLX_SPR_PLF`, off in vAmiga by default; before it CLXDAT read `$8000`).
 
@@ -177,13 +178,15 @@ picture: it tests the slots' boxes against the feet.
 flames). Rig: `fd-conform/tests/mechanic_routines.rs`. Like collectibles they stay map cells: no
 `ObjectKind` is registered for `$10`, `$11`, `$28`, `$30` to `$33`.
 
-Frozen cases still freeze `h0_6882` and `h0_24ce` (owner, 2026-11-06), and their engine leaves the same
-two out (`level::FROZEN_IN_A_CASE`, set only through `fd-conform`'s `Engine::freeze`; owner, at T25's
-merge with T70, whose contact reads the engine's picture). Measured unfrozen: the original's
-pass grows with the animated cells' blits and some passes end late, so `main_loop`'s edge redraws are cut
-short (`camera-bottom-right` differs at pass 495 on `edge_latch_down`) and more pass ends go unseen
-(`stretch-slope` 11, `camera-right-left` 24); every compared value and picture otherwise matched. T47's
-unfrozen cases remove the two entries.
+Since T47 (2026-11-09) no case freezes `h0_6882` or `h0_24ce`, on either side; `mechanic-vanish` and
+`mechanic-spring` hold them to the original (`fd-conform/tests/mechanic_cases.rs`). Measured: the
+original's pass grows with the animated cells' blits and more pass ends go unseen (`camera-right-left`
+24, `collect-return` 51). A pass long enough to end after the next frame starts, while `main_loop` is in
+an edge redraw, has its `frame_flag` cleared by `main_loop` when that redraw ends, so its latch waits a
+pass: `edge_latch_down` differs for one pass (`camera-bottom-right` pass 495, `mechanic-vanish` 293),
+and on `mechanic-spring` the row is scanned a pass late, so its coins join other animated-cell lists
+and spin out of step. Since T74 the case runner measures where each pass cut `main_loop`'s redraws and
+hands it to the engine (docs/09, "The edge redraws and the next pass"); no exclusion is left.
 
 **Where the original can be stopped partway** (`toolkit/docs/porting-routines.md` §1), listed before
 porting. All three run inside `game_frame`, so inside the level-3 handler: the vertical blank cannot cut
@@ -224,12 +227,157 @@ are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` an
 
 ## Freezing objects (DESIGN §2.2)
 
-`fd-conform/src/freeze.rs` returns at once (`rts`) from `h0_681c` (no creature ever spawns), `h0_6882` (no
-animated cell, so no coin, water or block drawn and no block writes `collision_map`), the four bonus
-blits, `h0_26ec` (nothing taken, and no exit) and `h0_24ce` (no spring). Measured: with all of them
-frozen, a creature, coin, bonus, block and spring placed on the slide do nothing and the character
-ends where it does on an empty map. Left running: the per-pass creature loop over empty slots and
-`char_hit_check`, so tiles still hurt: the frozen slide loses a life at its end (pass 135).
+**The freeze is gone (T79, 2026-11-10).** No case or test returns early from a routine of the
+original, and the case format has no `freeze` or `thaw` key. History: T21 froze `h0_681c` (no creature
+ever started), `h0_6882` (no animated cell), the four bonus blits, `h0_26ec` (nothing taken, no exit)
+and `h0_24ce` (no spring) in `fd-conform/src/freeze.rs`; T22 removed taking and the bonus blits, T47
+`h0_6882` and `h0_24ce`, T46 and T75 ran the enemy cases live, and T79 the last users of `h0_681c`.
+
+What the freeze hid, measured when it went: a frozen `h0_681c` left each creature cell in the object
+map, where the edge redraw's scan cut it as a bob, so the frozen runs' rows of 8 and 9 bobs were
+creature cells (docs/09, "The edge redraws and the next pass"). A claim that needs no creature
+about takes the creature values (1 to 6, `$87` to `$fe`) out of the map instead
+(`tests/object_claims.rs`, `no_creatures`): so isolated, the slide still ends against the tiles at
+`W1-1:42,35` in contact from pass 133 and loses a life at pass 135.
+
+Creatures run live in every case, held by `fd-conform/tests/enemy_cases.rs`. Measured (T46): a pass
+made longer by drawn creatures can cut `main_loop`'s edge redraw (interrupted in `h0_3ac2`) before
+its scan reaches a creature cell, so the original starts that creature after the pass, a pass later
+than an engine that runs the redraw whole, and it stays a pass behind.
+
+### A creature start the next pass cuts (T75, measured 2026-11-09)
+
+The engine models no sub-frame timing (DESIGN §2.1), so the runner hands it the cut, as for the
+latches and the animated cells (T74; docs/09, "Every cut, measured"). `fd_conform::edges_cut` reads
+where the pass took the foreground; inside a redraw's scan, once it has started (the PC decides,
+T81 below), the cell it stood at is `a2`, and a start
+still in the scan's creature branch (`h0+$abc`, `$d98`, `$10fc`, `$1444` to each `bsr.w h0_681c`) or
+in `h0_681c` and `h0_6852` short of the slot's `st.b` (`h0+$687a`) counts as not made. The engine
+(`level::main_loop_redraws`, `Cut::At`) draws the cut redraw whole but holds the scan's creature
+cells from that cell on in `Edges::deferred` with its animated cells, and starts them (`h0_681c`,
+then the cell cleared) after the pass, slots as that pass left them. Alone (the app, the planner's
+search) the engine starts every creature in its redraw: which pass is cut is the original's cycles.
+
+Measured on the original, every case comparing the five slots on every pass: without the hold the
+engine has the creature a pass early at pass 58 (`collect-ledge`, `collect-return`), 93
+(`camera-right-left`, `camera-bottom-right`, `enemy-hop`), 641 (`enemy-contact`, `contact-route`),
+571 (`death-water`, live) and 1250 (`enemy-route`, `edge-latch-route`); with it all agree to their
+ends (`enemy-route` 1 308 steps, `enemy-contact` 1 300, `camera-bottom-right` 2 165). In every one of
+those cuts the scan had not passed a creature cell, so holding the whole scan agrees too: the place
+inside a scan is proven for animated cells only (`mechanic-spring`, pass 495). A cut said where none
+was measured starts W1-1:27,2's hopper a pass late and differs at pass 84
+(`enemy_cases.rs`, `a_creature_start_waits_only_where_the_measured_cut_says`).
+
+Seven of T46's eight frozen cases run live since T75. Live, creatures hurt and are stomped, so
+`camera-bottom-right` and `collect-return` have waits and jumps added to reach their goals, and
+`collect-ledge`, `camera-right-left`, `character-edge-pit`, `contact-route` and `edge-latch-route`
+keep their inputs with the goal both sides now reach. T79 (2026-11-10) gave the last three their live
+inputs, each found with the original in the loop (`plans/forest-dumb-level-1/prototype/t79-route-repair/`):
+`death-water` and `mechanic-vanish` by fd-plan's explorer planned from the original's states, no life
+lost; `mechanic-spring` from `camera-bottom-right`'s live opening. The planner's confirmation
+(`fd_plan::confirm`) runs live too: the 100-round route agrees on every pass but ends elsewhere than
+the engine alone from 120 steps on, the engine alone not knowing the original's cuts.
+
+### A creature the engine starts a pass early (T79 review, measured 2026-11-10; fixed by T81, 2026-11-10)
+
+`mechanic-vanish`, the case's pass 330 (oracle frame 6632, `irq_count` 331): the engine started the
+kind 0 creature of W1-1:66,72 at `$429,$482` before the pass, and the original had not started it
+when the pass ended (slot 0 still the creature freed at `$3bb,$3a2`, its flag 0).
+
+The cause, measured on the original line by line (T81): the pass came at `h0+$7da`, in
+`redraw_edge_a`'s shape copy (`h0_7cc`), 20 scan loops (`h0+$98a`) and the one `h0_681c` running
+only in the step after. The row redraws' tile and shape loops use `a3` to `a5` and leave `a2`
+alone, so `a2` still held where the column scan before it had stopped, column 72, row 71, inside
+the object map. `fd_conform::edges_cut` took any `a2` inside the object map as this scan's place
+(T75 took the tile and shape loops to keep a table pointer there, true of the columns only), so it
+handed `defer_from` 59008, past the creature's cell, and the engine started it at once. All five
+slots were in use until pass 330 freed slot 0, so the same misreading three passes earlier (pass
+327, `h0+$82a`) started nothing on either side and went unseen.
+
+How it is handled: whether the scan has started is read off the PC, never `a2`
+(`edges_cut_at`, `REDRAWS`). It has not in the redraw's own code below its loop's top, nor in the
+tile blit and the shape copy (`h0+$774` to `$83a`), which only those loops call. The raster wait
+`h0_3ac2` is called by a tile's blit and by a bob's: there the line sample before the interrupt
+decides, a place at the tiles meaning a tile's wait, since the 23 shapes after them take 23 lines.
+A scan not started hands `defer_from` 0, and the engine holds every creature and animated cell of
+it until the pass has ended. A PC in a redraw's own code also names the redraw, where before only
+the stack a line earlier did. `mechanic-vanish` compares all fifteen slot variables;
+`enemy_cases.rs`, `a_scan_not_started_starts_no_creature_before_the_pass`, hands the old reading
+back and differs at pass 330 on `creature_active+$0`, engine `$ff`, original 0.
+
+Every live case compares the slots (T81, 2026-11-10). 26 level cases named no slot variable; on
+the original 11 of them fill a slot: `character-edge-slope`, `character-run-right-jump`,
+`character-run-slide`, `character-run-slide-buttons`, `death-pit`, `death-spikes`,
+`picture-scroll`, `stretch-pit`, `stretch-scroll`, `stretch-slope` and `stub-level`. With the
+fifteen variables added all 26 agreed on every pass, so the 11 now compare them. The other 15
+never fill a slot. `enemy_cases.rs`, `no_level_case_runs_creatures_live_without_naming_their_slots`,
+fails on a case that fills a slot and names none (`death-countdown`, 62 983 steps, in the nightly
+twin).
+
+### A creature cut behind the beam (T79, T80, measured 2026-11-10)
+
+`game_frame` restores the creatures and then cuts them with no beam wait. A pass starts at line 233.
+Its restores (`h0_5e44`) run from about line 252 to line 10 of the next frame, always outside the
+play area's lines (47 to 225). Its cuts (`h0_5820`) follow: one creature at about line 3, five from
+line 31 to 110 (`mechanic-spring`, frame 6779: cuts begun at lines 31, 42, 56, 75 and 94, the pass
+ending at line 160). The beam fetches the play area from line 47, so a creature near the view's top
+is cut after the beam has passed some or all of its lines, and that frame shows those lines as the
+restore left them: the creature missing, or missing from its top down to where the blitter overtook
+the beam. Inside the play area a cut takes about 16 lines for the creature's 32, so the blitter gains
+a line on the beam each line and the part missing is always a top part. The next pass restores and
+cuts again, so the same creature stays missing for as long as the passes stay long: 3 frames and
+more in a row, past the tolerance's 2.
+
+Measured on every frame of the three cases: 47 frames of `mechanic-spring`'s 3 609 show a cut behind
+the beam, 51 of `mechanic-vanish`'s 1 469, 36 of `death-water`'s 2 364. A cut is whole behind the
+beam on most of them and partial on the rest (counts of blit rows from 10 to 150 of 160). The two
+differences T79 left unlooked at are this: `mechanic-spring` frame 6824 (268 pixels at (108, 58)) is
+a creature cut behind the beam lower in the view, and `mechanic-vanish` frame 6675 (137 pixels at
+(112, 171)) is where T81's creature is, the one drawn on another frame of its animation at frame
+6683. Not seen: a restore inside the play area (a creature shown twice), or an animated cell or bob
+blinking so; no frame of `mechanic-spring` or `death-water` is left differing past the tolerance
+once the cuts are handed over.
+
+The engine draws a pass whole and counts no cycles (DESIGN §2.1), so it cannot know which frames
+these are. A case's runner measures them: after each step it reads the creature cuts made before
+line 233 and the beam at each blit's begin and end (`fd_conform::creature_cuts`, from the oracle's
+record of every step's register writes and blits, which is kept whether read or not, so the
+measurement switches nothing on; `edge_latch.rs` holds that the original is the same every frame of
+every level case with it read). `rows_behind_beam` takes a blit's rows as written evenly between
+begin and end and fetched at the cycle the display reaches their word (`DDFSTRT=$30`, 8 cycles a
+word, 227 a line), and counts the rows written after their fetch. `Game::creatures_uncut` then draws
+the frame with those rows as they were before the cut (the engine keeps each cut's words under it for
+a pass, `render::objects::CutsDrawn`), and the runner compares that picture on that frame alone. The
+row at the edge can be half shown: with the count handed as measured the frames left differing hold
+at most 48 pixels, inside the tolerance's few (64). `mechanic-spring` and `death-water` compare the
+play area with nothing excluded. `mechanic-vanish` kept `rows 0..194` excluded until T81 was fixed
+(its creature, started a pass early, was drawn on another frame of its animation, past the
+tolerance at frame 6683); since both merged it excludes nothing either (2026-11-10,
+`mechanic_cases.rs`).
+
+In play the engine shows every creature on every frame. To blink as the original does it would need
+the cycles each pass takes up to each cut: the CPU's instruction timings along the pass's path and
+the blitter's and display's bus use, which is the sub-frame timing DESIGN §2.1 leaves out.
+
+### Kind 4 in play (T77, measured 2026-11-10)
+
+W1-1 holds four `$05` cells: `W1-1:45,92`, `145,52`, `156,50` and `187,17`. None of T46's routes
+brought one into view (the nearest, `enemy-contact`, came within 180 pixels of `45,92`). The bottom
+corridor (rows 88 to 93, columns 2 to 110) is open from where `camera-bottom-right` drops into it at
+`W1-1:93,91` (step 700), so `enemy-kind4` walks left from there, over the mound at columns 52 to 59,
+and stands at `W1-1:45,92`. On the original and the engine, every slot equal on all 1 390 passes
+compared: the creature starts facing right as the left column's redraw brings `45,92` in, walks from
+x 723 to the mound's wall at x 784 a pixel every other pass, turns there in the pass that makes its
+last step right, walks left past the standing character to x 586, leaves the view and is written
+back (`h0_2e0e`), the map holding `$05` there again. Kind 4 has no routine of its own: its walk is
+inline in `h0_2fea` on the tables at `h0+$33f6` and `$3416`, so no coverage count shows it and
+`enemy_cases.rs` reads the engine's slots instead; the case fails on a slot within 16 passes of the
+start when the right table is changed. The other three cells are not visited. Kind 2 turning right
+(`h0_3222`) is held on `enemy-contact`: one walking left turns at x 1720 (pass 665) and steps on.
+
+The case compares state only. Its picture differs at pass 477 (oracle frame 6779, 445 pixels from
+(172, 11)), on `camera-bottom-right`'s stretch before the corridor, which never compared the
+picture; so no case compares kind 4 drawn in play (the rig does, `creature_drawing_routines.rs`).
 
 ## No dispatch tables
 

@@ -875,6 +875,14 @@ What each porting task did with its share of the table above, and which routines
   turned into a hunk 0 offset with `h(0, 0)`, kept). `examples` lists `cut` second only so `cut_all`'s own
   prompt has one. Blits are `CreatureBlit`s, turned into the register writes by the rig's `DrawIo` and drawn
   into the play screen by `PlayDraw`; registers are not compared.
+- **T63** (2026-11-09): `game_frame` itself, by hand, $0 spent: its own code is twenty `bsr`s, the
+  `paused` test, the creature-flag shuffles round `h0_2c7e` and `h0_2d4c`, and one write-only raster copy
+  (`move.w $dff006, h0+$8dfa`), which the engine leaves out in play since it keeps no beam. Proven whole
+  (`tests/game_frame_routine.rs`): `fd_core::level::game_frame_with` through `Game::game_frame_on` passes
+  10 000 of T39's states over the sync point's RAM, 947 paths, both ways of `paused`
+  (`h0+$200a`). What lies outside typed state goes through `level::Pass`: in play `InPlay`; on the rig the
+  porting tasks' blit and sound register writes in order, `h0_9754`'s copper pointers and the raster copy.
+  Its calls are checked against `re/translate.toml` both ways; `w1-idle`'s coverage shows its hits.
 
 ## The engine-shape trial: `tools/reshape.py` (T62)
 

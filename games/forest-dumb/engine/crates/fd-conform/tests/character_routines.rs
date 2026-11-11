@@ -140,7 +140,8 @@ const ROUTINES: &[(&str, u32, Run)] = &[
     ("char_probe_flags", 0x4f90, |c| c.probe_flags()),
 ];
 
-/// The T08 routines of `re/translate.toml`, by name; `game_frame` is T63's (owner, 2026-11-05).
+/// The T08 routines of `re/translate.toml`, by name; `game_frame` is T63's (owner, 2026-11-05) and
+/// its registration is checked by `game_frame_routine.rs`.
 fn t08_routines() -> Vec<String> {
     let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../re/translate.toml");
     let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{path}: {e}"));
@@ -166,10 +167,6 @@ fn every_t08_routine_is_registered_and_passes_the_rig() {
     let mut names: Vec<String> = ROUTINES.iter().map(|p| p.0.to_string()).collect();
     names.sort();
     assert_eq!(names, t08_routines(), "translate.toml's T08 share changed");
-    assert!(
-        PORTED.iter().all(|p| p.name != "game_frame"),
-        "game_frame is registered by T63 once its callees are ported"
-    );
 
     let mut r = rig();
     let mut line = Vec::new();

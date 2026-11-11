@@ -1,17 +1,16 @@
-# T72: lives lost in W1-1's water (scripts/death-water.txt): frozen as freeze.rs says but with h0_6882
-# thawed on both sides, so the original adds the water to h0_62b6's animated cells and draws it, and
-# the engine does the same (T25's port). The character drops into the pool at W1-1:148,66 to 149,66 (frame
-# 7042); contact comes and goes with the water's frames, the third pass in a row costs a life (frame
-# 7062), and after the hurt frame, the hold and the blink the next one (frame 7204). Creatures and
-# springs stay frozen. Thawed, the original's pass grows with the animated cells' blits and some passes
-# end late, cutting main_loop's edge redraws short, which the engine does not model (FINDINGS, T25):
-# edge_latch_down differs on 2 passes and edge_latch_up on 1, everything else and every frame equal.
+# T72: lives lost in W1-1's water (scripts/death-water.txt), creatures live since T79: the character
+# reaches the pool with no life lost and drops into it at W1-1:149,66 (step 2190); contact comes and
+# goes with the water's frames (h0_62b6 draws it on both sides, T25's port), the third pass in a row
+# costs a life (pass 2211), and after the hurt frame, the hold and the blink the next one (frame 8652).
+# The original's pass grows with the animated cells' blits and the creatures, so some passes cut
+# main_loop's redraws and its frame_flag clear swallows their latches: the runner hands the engine
+# where (T74, T75).
+# A creature the original cuts after the beam has passed its lines is missing from that frame, whole
+# or from its top: the runner measures the cuts' beam positions and the engine draws those frames so
+# (T80, 36 frames here). Every variable is compared, the five creature slots among them.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
-frames = 920
+frames = 2380
 compare = ["vars", "picture"]
-vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick"]
-goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 7221 }
-freeze = true
-thaw = ["h0_6882"]
-exclude = [{ what = "var edge_latch_down", task = "T47" }, { what = "var edge_latch_up", task = "T47" }]
+vars = ["clxdat_copy", "hits_taken", "lives", "char_dying", "char_dying_t", "char_unhurt_t", "char_anim_ptr", "char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_rising", "char_falling", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_slide_t", "items_left", "score", "irq_count", "countdown", "anim_tick", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "lives", value = 0x30 }], by_frame = 8669 }

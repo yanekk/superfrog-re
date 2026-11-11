@@ -60,24 +60,31 @@ Lesson: compare one routine, then one scene, then the whole game, and keep the c
 
 - learned on: Superfrog. Produced `games/superfrog/engine/crates/sf-app/`, `games/superfrog/engine/crates/sf-e2e/`.
 - Generic parts: `toolkit/crates/amiga-app/`, `toolkit/crates/amiga-e2e/`.
+- learned on: Forest Dumb Forever, confirming it. Its app took both whole, its windows moving into `amiga-app` when it needed them, and its level was checked by `games/forest-dumb/engine/crates/fd-e2e/tests/level_drill.rs` and `drill_os.rs`, never by the owner playing.
 
 Lesson: prove the game headless before opening a window, then wire the window, sound and menus onto a core already known to match the original. Drive the built app end to end by script and through the real window system, so nobody has to play it to check it.
+A level's drill plays its conformance stretches through the app as key presses with the recorder on, and judges each recording against the original with the bug compare (§8). Both games' apps pass opposite keys held together to the game, which no joystick can: a choice still open.
 
 ## 8. The recorder
 
 - learned on: Superfrog. Produced `plans/bug-recorder/DESIGN.md`, `games/superfrog/engine/crates/sf-app/src/recorder.rs`, `games/superfrog/docs/BUG-FIX.md`, `games/superfrog/engine/crates/sf-conform/tests/bug_zips.rs`, `games/superfrog/docs/milestone-2-bug-recorder.md`.
 - Generic part: `toolkit/crates/amiga-record/`.
+- learned on: Forest Dumb Forever, confirming it. Its recordings are put on the original by pass, not by frame (`games/forest-dumb/engine/crates/fd-conform/src/bug.rs`). A pass reading in the frame of the one before ends what a compare can judge: the whole level's route, recorded, was judged to step 1 340 of 22 464. The compare's engine wrapper lacked one of the runner's hand-overs, so a recording differed where its case agreed, until the drill found it.
 
 Lesson: a person who sees something wrong saves one zip and describes nothing further. A session replays it headless, compares it with the original, and answers with a fix and a new case or with a report that the original does the same. Spike first whether a recording made in the app replays on the original from a matching start, since everything after rests on that answer.
+Retime a recording by the original's passes, and expect a long one to be judged only to its first lagged read: bug recordings are best short. Every hand-over the case runner gives the engine must reach the recording's engine too.
 
 ## 9. The planner
 
 - learned on: Superfrog. Produced `plans/smart-planner/DESIGN.md`, `games/superfrog/engine/crates/sf-plan/`, `games/superfrog/engine/crates/sf-bench/`, `games/superfrog/engine/crates/sf-routeview/`, `games/superfrog/tools/handover.py`, `games/superfrog/tools/recording_guide.py`, `games/superfrog/docs/planner-stall-ask-owner.md`.
 - learned on: Superfrog. One level's seed that failed the same way on every run finished first time with a 44-second recording of the owner playing the stuck stretch.
 
+- learned on: Forest Dumb Forever. Produced `games/forest-dumb/engine/crates/fd-e2e/tests/finish_level.rs`, the planned route played in the real app from launch to the level's end (about 40 s, debug), and `finish_short.rs`, its smoke part. A whole level's PNG capture was 1.7 GB at 33 ms a frame, so the app gained the first game's `--capture-hashes` and runs unpaced (`fast-until`) to just before the end.
+
 Lesson: build the measuring instrument before the thing measured: the benchmark and an early sample of the old tools came before the planner. When a route stalls, show where and ask the person to play that stretch, instead of adding hints per level. The rule stays with the game until the planner is generalised.
+A level's final proof is its route as key presses in the real app, the state equal to headless every frame: give the app a hashes-only capture and an unpaced mode before writing it (both games needed them).
 
-## What the next game still needs
+## What the second game forced into the toolkit
 
-- learned on: Forest Dumb Forever. The toolkit still lacks an AmigaDOS (OFS) `.adf` reader, which Superfrog never exercised and this game needs: it loads its files through `dos.library` (`plans/amiga-toolkit-prep/NORTH-STAR.md`, J1).
-- `toolkit/crates/amiga-disk/` is where that reader belongs, and it is the first toolkit change a second game forces.
+- learned on: Forest Dumb Forever. An AmigaDOS (OFS) `.adf` reader, `toolkit/crates/amiga-disk/src/ofs.rs` (2026-10-31), the first toolkit change: it loads its files through `dos.library`.
+- learned on: Forest Dumb Forever. For its first level, the app's windows (`amiga-app`), the route planner (`amiga-plan`) and the map page (`amiga-routeview`), each moved when it first needed them. What stays per game, measured: `toolkit/docs/reuse-for-another-game.md`.

@@ -30,12 +30,6 @@ const ROUNDS: u64 = 100;
 const END: &str = "W1-1:66,90";
 const FRAMES: usize = 4380;
 const COINS_LEFT: u16 = 188;
-/// The pass the original and the engine first differ at (T24): the case's engine, frozen as the case
-/// freezes the original, still starts creatures from its edge redraws (`h0_681c` is frozen only in
-/// the original); one walks under the character, which stomps it at its step 566 and bounces:
-/// `char_x` one pixel apart. With the creatures left unmoved the route agrees on every pass (T24
-/// review). T46 lifts that freeze. Every pass before agrees.
-const PARTS_AT: u32 = 567;
 
 fn data() -> Arc<GameData> {
     static D: OnceLock<Arc<GameData>> = OnceLock::new();
@@ -227,30 +221,27 @@ fn the_budget_stops_the_search_and_it_reports_where() {
 fn the_routes_stretch_is_confirmed_on_the_original_where_modelled() {
     let d = data();
     let p = short();
+    // Creatures live on both sides (T79; frozen until then). The two agree on every pass of the
+    // route, the cuts and the input each pass read handed to the case's engine (T67, T74, T75). The
+    // engine alone knows neither, so a creature is met a pass apart and the route ends elsewhere
+    // than planned: the goal, where the engine alone ends, is missed from 120 steps on (measured
+    // 2026-11-10). A route that holds on the original is T27's and T48's.
     let v = confirm::confirm(&d, &p.route.inputs).unwrap_or_else(|e| panic!("{e}"));
-    // Agreement up to the engine's first stomp of a creature the frozen original lacks (T46). Once
-    // T46 closes its gap this fails, and the constant above goes. This route parts before
-    // `edge_latch_right`'s gap (T73, `confirm::EDGE_LATCH_RIGHT`), measured on T24's route before its
-    // merge with T25 and T52.
-    let Outcome::Differs { pass, ref var, .. } = v.outcome else {
-        panic!("the route agrees past the stomp: T46 has landed, update this test. {v}")
-    };
-    assert_eq!((pass, var.as_str()), (PARTS_AT, "char_x"), "{v}");
-    // Up to there, at the character's cell then (`W1-1:56,28`), no life lost.
-    let g = replay(&d, &p.route.inputs[..PARTS_AT as usize]);
-    assert!(g.location().col >= 50, "{}", g.location());
+    assert!(matches!(v.outcome, Outcome::GoalMissed { .. }), "{v}");
+    assert!(v.passes > 4300, "{v}");
+    let g = replay(&d, &p.route.inputs);
     assert_eq!(g.lives(), 32);
 }
 
 /// A stretch the two agree on all the way is confirmed whatever its length: the original ends its
 /// passes about one behind the frames run, so a case of exactly the route's frames missed its goal
-/// on the last pass at 600 and 900 steps of T20's route. Since T70 the whole route agrees, so any
-/// prefix does.
+/// on the last pass at 600 and 900 steps of T20's route. Both lengths end before the route's
+/// first creature is met, where the engine alone and the original part (T79).
 #[test]
 fn a_route_the_original_agrees_with_meets_its_goal_at_any_length() {
     let d = data();
     let p = short();
-    for n in [60, 120] {
+    for n in [60, 90] {
         let v = confirm::confirm(&d, &p.route.inputs[..n]).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(v.outcome, Outcome::Same, "{n} steps: {v}");
         assert!(v.goal_met.is_some(), "{n} steps: {v}");

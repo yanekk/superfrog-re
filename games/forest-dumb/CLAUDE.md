@@ -7,8 +7,8 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 ## What the game is
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
-the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is being
-built (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is built
+and judged against the original (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Its disks and where they live
 
@@ -75,9 +75,21 @@ holds disk graphics: keep it under `build/`.
 `cargo run --release -p fd-plan -- level W1-1` in `engine/` plans W1-1 on the engine (`--rounds N`,
 `--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
 `build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
-it on the original with creatures, animated cells and springs frozen, saying for how many passes the
-two agree. The engine takes coins (T22), so the search chases them; until contact and the level's end
-are ported (T70, T24, T26) the level never ends, so a route stalls with coins left and exits 1.
+it on the original, nothing frozen, saying for how many passes the two agree and whether the route ends
+where the planner's engine ended it. The whole level is planned (T27): `--rounds 2100` reaches the
+level's end in round 2 095, about 4 minutes, with no life lost on the engine alone; on the original
+it ends elsewhere. The one route both sides finish with no life lost (T84,
+`engine/crates/fd-plan/tests/routes/W1-1.txt`, the route the app plays) is that route searched again
+with both sides in the loop; both are committed and guarded, and
+[docs/13-full-route.md](docs/13-full-route.md) says how to find them again. A shorter search stalls
+with coins left and exits 1.
+`fd-e2e`'s `finish_level.rs` plays the one route in the real app, by key presses, from launch to
+"Level 1 complete" and fire's restart, the state equal to headless every frame (T28; full, about 40 s:
+`cargo test -q -p fd-e2e --test finish_level -- --ignored`); `finish_short.rs`, its first 600 steps, is
+in smoke. `level_drill.rs` (T29) is the level's drill: each enemy, mechanic and death stretch and the
+route played in the app with the recorder on, every recording judged on the original by `bug compare`
+(full, about 15 min: `-- --ignored`), and what a person tries unasked (smoke). Opposite keys held
+together reach the game both, which no joystick can: a known gap (the plan's FINDINGS).
 
 ## Bug-fix procedure
 
@@ -90,7 +102,7 @@ keep a difference as a case that fails before the fix.
 Each tool has a short README saying how to call it. Read it, in one step, before opening the tool's
 source; open the source only for what the README lacks.
 
-- [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, freeze, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
+- [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
 - [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
 - [tools/README.md](tools/README.md): every Python script here (listing, call tree, translate, reshape, generate, task pack, renders).
 - [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
@@ -104,12 +116,13 @@ source; open the source only for what the README lacks.
 
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 - [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
-- [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; the freeze list; contact (creatures, water, tiles) measured.
+- [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; how the freeze went; contact (creatures, water, tiles) measured.
 - [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves), `tools/generate.py` (Muse writes a generator, judged by branch coverage) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
 - [docs/12-level-start-draw.md](docs/12-level-start-draw.md): `level_init`'s first view (tiles, shapes) and what the plane's slack holds at the sync point (the title's music, `_BALLA`), measured.
+- [docs/13-full-route.md](docs/13-full-route.md): the routes through the whole of W1-1 (the one route for both sides, the planner's, T48's on the original), how each is guarded and found again.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
-- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 next.
+- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 done.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 - [docs/13-translator-trial.md](docs/13-translator-trial.md): the translator trial (stage 0): 84 of 85 judgeable routines pass with no hand edit, no write into code on level 1's path; how to rerun it; owner's go (2026-11-07).
 - [docs/translator-brief.md](docs/translator-brief.md): the brief for the translator plan; owner chose translated-first, hand-written where chosen (2026-11-06).
@@ -123,4 +136,4 @@ state only, on every frame of the idle title. Run it from `engine/` with
 
 ## Backlog
 
-- Next plan: level 1, `forest-dumb-level-1`, from [docs/level-1-brief.md](docs/level-1-brief.md).
+- Level 1 (`forest-dumb-level-1`) is done; the next plans are in [docs/ROADMAP.md](docs/ROADMAP.md).

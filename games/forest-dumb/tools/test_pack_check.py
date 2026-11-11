@@ -24,6 +24,9 @@ class Check(unittest.TestCase):
             step('m2', 53_000, ('Read', '/w/games/forest-dumb/build/pack/T22.md')),
             step('m3', 80_000, ('Bash', 'sed -n 1,40p plans/forest-dumb-level-1/DESIGN.md')),
             step('m4', 81_000, ('Write', '/w/games/forest-dumb/engine/crates/fd-core/src/objects/mod.rs')),
+            # Ending updates name the files without reading them back.
+            step('m5', 90_000, ('Bash', "sed -i '' 's/a/b/' plans/forest-dumb-level-1/FINDINGS.md")),
+            step('m6', 91_000, ('Bash', 'git add plans/forest-dumb-level-1/PROGRESS.md && git commit -q -m x')),
             {'event': {'type': 'result', 'model_usage_since_last_result': {'claude-opus-5-5': {'costUSD': 1.25}}}},
         ]
         with tempfile.TemporaryDirectory() as d:
@@ -32,7 +35,7 @@ class Check(unittest.TestCase):
                 f.write('\n'.join(json.dumps(l) for l in lines) + '\nnot json\n')
             r = pc.check(p)
         self.assertEqual((r['steps'], r['pack_built'], r['pack_read'], r['first_edit'], r['ctx_at_first_edit']),
-                         (5, 1, 2, 4, 81_000))
+                         (7, 1, 2, 4, 81_000))
         self.assertEqual(r['reread'], ['DESIGN.md'])
         self.assertEqual(r['usd'], 1.25)
 

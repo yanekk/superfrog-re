@@ -154,6 +154,18 @@ T34 assigns every routine a generator batch and a porting task, and asks the own
 | [T71](tasks/T71-status-redraw-race.md) | status-redraw-race | T70; blocks T27 |
 | [T72](tasks/T72-water-contact.md) | water-contact | T25, T70; blocks T47, T27 |
 | [T73](tasks/T73-edge-latch-gap.md) | edge-latch-gap | T24; blocks T46, T27 |
+| [T74](tasks/T74-switched-on-redraw-race.md) | switched-on-redraw-race | T47, T73; blocks T27, T48 |
+| [T76](tasks/T76-stale-hits-taken-exclusion.md) | stale-hits-taken-exclusion | —; blocks T27 |
+| [T75](tasks/T75-enemy-redraw-race.md) | enemy-redraw-race | T74, T46; blocks T27, T48 |
+| [T77](tasks/T77-enemy-kind-4.md) | enemy-kind-4 | T46, T75; blocks T27, T48 |
+| [T78](tasks/T78-oracle-recording-observes-only.md) | oracle-recording-observes-only | T74; blocks T75 |
+| [T79](tasks/T79-unfreeze-creature-starts.md) | unfreeze-creature-starts | T75; blocks T27, T48 |
+| [T80](tasks/T80-creature-cut-behind-beam.md) | creature-cut-behind-beam | T79; blocks T27, T48 |
+| [T81](tasks/T81-creature-start-pass-early.md) | creature-start-pass-early | T79; blocks T27, T48 |
+| [T82](tasks/T82-route-picture.md) | route-picture | T48; blocks T29 |
+| [T83](tasks/T83-red-cut-tests.md) | red-cut-tests | —; blocks T29 |
+| [T84](tasks/T84-one-route-both-sides.md) | one-route-both-sides | T48, T82; blocks T28, T29 |
+| [T85](tasks/T85-observes-only-flake.md) | observes-only-flake | —; blocks T29 |
 
 Muse writes generators from here on, judged by branch coverage on the original (T60, T61); T49 is the first user. T62 tries Muse on engine-shaped ports of T08's and T09's routines, set against what Opus wrote and spent, holds up no task, and asks the owner before any other task changes (DESIGN §4.3).
 

@@ -20,29 +20,6 @@
       "Bash(cargo add amiga-ffs:*)",
       "Bash(tools/empty_memory.sh)",
       "Bash(games/superfrog/tools/move-disks.sh)"
-    ],
-    "deny": [
-      "Agent",
-      "Workflow",
-      "WebSearch",
-      "WebFetch",
-      "SendMessage",
-      "ListAgents",
-      "EnterWorktree",
-      "ExitWorktree",
-      "NotebookEdit",
-      "LSP",
-      "Skill",
-      "CronCreate",
-      "CronDelete",
-      "CronList",
-      "ScheduleWakeup",
-      "RemoteTrigger",
-      "PushNotification",
-      "DesignSync",
-      "EnterPlanMode",
-      "ExitPlanMode",
-      "mcp__higgsfield"
     ]
   }
 }

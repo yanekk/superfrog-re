@@ -44,8 +44,6 @@ compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
-freeze = false               # optional
-thaw = ["h0_6882"]           # optional, with freeze = true: entries of freeze.rs left running
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
 swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
 ```
@@ -53,7 +51,7 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
 - **`sync`.** A script of `boot-to-level1` makes a level case: it starts from the cached level sync
   point (frame 6301, disk 2 already in df0, so no `swap`) and runs the script on to `frame`. Any other
   script makes a title case, booted from power-on, stepping forest-dumb-start's title scene a frame
-  at a time; title cases compare `vars` only and take no `goal`, `exclude` or `freeze`.
+  at a time; title cases compare `vars` only and take no `goal` or `exclude`.
 - **`input`.** Without it the sync script goes on after the sync point.
 - **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
   alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
@@ -72,16 +70,12 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
   task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
   countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
-  needs `compare = ["vars"]` and is not also in `vars`. An exclusion that hid no difference over the
+  needs `compare = ["vars"]` and is not also in `vars`. A box may name the oracle frames it is left out
+  on (`"rows A..B cols C..D frames F..G"`, T48): on every other frame it is compared. An exclusion that hid no difference over the
   whole run fails the case: it is no longer needed.
-- **`freeze`.** Patches the routines `fd-conform/src/freeze.rs` lists to return at once in the
-  original at the sync point, and has the engine leave out the ones it ports
-  (`fd_core::level::FROZEN_IN_A_CASE`, T25's springs and animated cells, through `Engine::freeze`). The list is empty until T21 measures the object entry points, so
-  `freeze = true` is an error until then.
-- **`thaw`.** Names `freeze.rs` entries (`h0_6882`) a frozen case leaves running on both sides: the
-  original is not patched there and the engine runs the routine (`Engine::thaw`, `Game::thaw_in_a_case`).
-  `death-water` thaws `h0_6882` so both draw the water while creatures stay frozen (T72). An unknown
-  name, a name given twice or `thaw` without `freeze = true` is an error.
+- **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
+  the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
+  as any unknown key is.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
   sets, so HELP ends the level (T26).
@@ -99,7 +93,7 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   the sync point, then runs each later pass on the input the original read for it. A step now
   and then ends two passes and shows only the first; the other is counted unseen and not compared.
 - **The input a pass read** (T67, `fd_conform::PassInputs`). Its joystick is the input of the step in
-  which its `read_joystick` (`h0+$8dfc`) ran, counted by `Amiga::watch_pcs`: every pass runs either it
+  which its `read_joystick` read JOY1DAT (`h0+$8e1c`, T48: not the routine's entry, a frame can end between), counted by `Amiga::watch_pcs`: every pass runs either it
   or the paused branch (`h0+$200e`), one pass after another, so the hits in step order are the passes'
   in pass order. While the camera scrolls a pass usually reads in the step after its start (57 of 76
   slide passes), so the start step's joystick is wrong there. Its keys are the step it started in
@@ -119,7 +113,9 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   `irq_count` at the step's end less one (T44, measured). Not the frame of the step a pass's end was
   seen in: once passes end after the frame does (from frame 6334 at the level sync point) that frame
   shows the pass before, a scroll apart (`tests/picture_cases.rs`). A frame showing a pass the original
-  has not ended yet, or a pass no frame shows, is not compared. A
+  has not ended yet, or a pass no frame shows, is not compared. The judge is told of every compared
+  frame, as the toolkit counts (T82, the coordinator agent for the owner, 2026-11-10): an identical frame ends a run of glitch
+  frames, so "in a row" means frames next to each other (`tests/runner.rs`). A
   run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
   `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
   under `build/`, never into git.
@@ -132,9 +128,59 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
   draws it passes if the bar equals `Engine::cut_redraw` at that count: the bar redrawn from the old
   and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
   a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
-  it off clears the frame just drawn, so the runner turns it off before the next step.
+  it off clears the frame just drawn, so the runner turns it on or off before a step, never after.
+- **A status bar redraw never reached** (T82, the coordinator agent's decision under DESIGN §2.1,
+  2026-11-10). `main_loop` reads `irq_count` once a turn and calls its redraw (`bsr.w h0_6a96`,
+  `h0+$29c`) only on a turn that read a multiple of 32. A turn still in its edge redraws when pass
+  `32k + 1` comes read the count before pass `32k` and reads it next after pass `32k + 1`, so the
+  bar keeps its numbers for the whole period. Measured on `route-W1-1`: nine calls between the
+  starts of passes 12 032 and 12 033, none between 12 064 and 12 065, and frames 18 365 to 18 396
+  show the countdown and score of the period before. The runner counts the calls with T31's counter
+  (`Amiga::watch_pcs`, proven to observe only; `tests/edge_latch.rs` holds this count with the
+  sampling). On a period with no call, whose pass `32k + 1` did not come between the turn's read
+  and the call (`redraw_cut`'s first arm), it compares the frames of passes `32k` to `32k + 31`
+  with `Engine::redraw_skipped` (`Game::redraw_skipped`): the bar as it stood before that redraw,
+  the play area the engine's own. Only on those frames, never listed per case; a bar left
+  unredrawn in a period the original redrew fails (`tests/full_route.rs`).
+  `Verdict::skipped_redraws` counts them: seven periods of the route, 220 frames. A wrapper of
+  `Game` that does not forward it fails a case that meets such a period.
+- **Edge redraws cut by the next pass** (T74, 2026-11-09). A pass can come while `main_loop` is still
+  in its edge redraws, as the cycles each pass took decide; the latches it had not yet tested stay set
+  through that pass, and its `frame_flag` clear afterwards swallows that pass's latches (docs/09,
+  "The edge redraws and the next pass"). The runner samples the lines of each step whose pass may find
+  it there (`frame_flag` or a latch set at the step's start, or the last pass still running short of
+  `camera_update`), reads where the pass took the foreground (`edges_cut`: the next latch to test and
+  where the interrupted redraw's object scan stood, or that it had not started, T81) and hands it to the engine before the engine runs
+  that pass (`Engine::foreground_cut`, `Game::cut_foreground`), as it hands over the input each pass
+  read. The engine then stops its redraws there and finishes them, the scan's later animated cells
+  and creature starts (T75, docs/10) included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not
+  forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
+  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
+  the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
+  since T78. A pass that came before the cut redraw's scan also carries how many `collision_map`
+  words its shapes had copied (`EdgesCut::shape_words`, `shapes_copied`: the PC's place in the
+  shape loops and their counters, T48); the engine copies the rest after the pass, which probes
+  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`). Two more parts of a cut
+  scan are read off the same interrupt (T82). A pass inside `h0_6882` past its four counts
+  (`h0+$691e`) leaves the animated cell's list chosen, and past its search (`h0+$6984`) its entry
+  too (`EdgesCut::add`, `AddCut`; pass 12 569 came at `h0+$693e`). A bob not yet started, in its
+  routine up to its BLTSIZE write or in the blitter wait, counts as after the cut, and the engine
+  starts the bobs from the cut cell on after the pass, a frame later (passes 13 153 to 13 162).
+- **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
+  the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
+  missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After
+  each step of a case that compares the picture the runner reads the creature cuts made before line
+  233 with the beam at each blit's begin and end (`creature_cuts`, from `cpu_writes` and
+  `blit_events`, which the oracle keeps of every step, so nothing is switched on), works out how
+  many of each cut's blit rows the beam had passed (`rows_behind_beam`), and where any had compares
+  the frame with `Engine::creatures_uncut` (`Game::creatures_uncut`) in place of the engine's
+  picture: those rows as they were before the cut. Only on those frames, never listed per case; a
+  frame differing with no such cut measured fails as any other. `Verdict::creature_cuts` counts
+  them. A wrapper of `Game` that does not forward it fails a case that meets a run of such frames
+  (`tests/creature_cuts.rs`).
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
-  the engine's `Transplant::probe` arm for it.
+  the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
+  (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.
 
 ## The coverage report
 

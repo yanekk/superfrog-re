@@ -2,9 +2,11 @@
 # character standing, walking right, jumping and standing again (scripts/w1-stub.txt).
 # tests/runner.rs runs it against a second copy of the original standing in for the engine; on
 # fd-core's Game it fails until the character moves (T08).
+# The fifteen creature slot variables are compared since T81: the run scrolls a creature in on the
+# original (enemy_cases.rs, no_level_case_runs_creatures_live_without_naming_their_slots).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "w1-stub"
 frames = 130
 compare = ["vars", "picture"]
-vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "countdown", "items_left", "score", "world_index", "irq_count"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "lives", "countdown", "items_left", "score", "world_index", "irq_count", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { all = [{ var = "char_x", value = 0x1a3 }, { var = "char_y", value = 0x153 }], by_frame = 6431 }

@@ -1,14 +1,13 @@
 //! A planned route played on the original (shell: the oracle). The route runs as a level case from
-//! the level sync point with what the engine does not model frozen (T21's `freeze.rs`: creatures,
-//! animated cells, springs), as T11's stretches do; items, bonuses and the exit are taken on both
-//! sides (T22); the case's engine leaves out what it freezes (`fd_conform::engine_for`, T25). The
-//! case compares the character's, the camera's and the status variables on every pass, and its goal
-//! is where that engine ends.
+//! the level sync point, nothing frozen: creatures, items, bonuses, the exit, springs and animated
+//! cells run on both sides. The case compares the character's, the camera's and the status
+//! variables on every pass, and its goal is where the engine alone ends on the route.
 //!
-//! Where the two first differ is where the modelled part of the route ends: contact with the
-//! playfield and the lives it costs are modelled since T70. Creatures move and are stomped on the
-//! engine since T24, but a frozen original spawns none after the sync point, so a route that stomps
-//! one the engine spawned parts there until T46 lifts that freeze.
+//! Where the two first differ is where the modelled part of the route ends. Agreeing on every pass
+//! and missing the goal (`Outcome::GoalMissed`) means the original's timing took the route
+//! elsewhere than the planner's engine: a pass reads the step before or after its own now and then
+//! (T67) and a redraw the next pass cuts short starts a creature a pass later (T75), both handed to
+//! the case's engine and unknown to the engine alone, so a creature can be met a pass apart.
 
 use std::sync::Arc;
 
@@ -18,12 +17,6 @@ use fd_core::{Game, GameData, Start};
 
 /// The variables compared: T11's stretches' (`conform/cases/stretch-*.toml`).
 pub const VARS: &str = r#""char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick""#;
-
-/// An exclusion a route that reaches the gap passes to [`confirm_excluding`]: on T24's route
-/// `edge_latch_right` differs on two passes from pass 1211 with every other variable equal, the
-/// original keeping a right-edge latch the engine's foreground cleared. T73 removes it. A case fails
-/// on an exclusion that hid nothing, so a route that never reaches the gap is confirmed without it.
-pub const EDGE_LATCH_RIGHT: (&str, &str) = ("edge_latch_right", "T73");
 
 /// Oracle frames run past the route's last step, for the original's last passes to end in.
 pub const SLACK: u32 = 8;
@@ -66,16 +59,13 @@ pub fn case_excluding(
              compare = [\"vars\"]\n\
              vars = [{vars}]\n\
              goal = {goal}\n\
-             freeze = true\n\
              {excluded}",
             script = sync::LEVEL_1_SCRIPT,
             sync = sync::LEVEL_1_SYNC,
         )
     };
-    // The goal is where the case's own engine ends, frozen as the case freezes the original (T25:
-    // springs and animated cells), so it is played on `engine_for` the case without its goal first.
-    let ahead = Case::parse("planned-route", &text("{ idle = true }"))?;
-    let mut g = fd_conform::engine_for(&ahead, data.clone());
+    // The goal is where the engine alone ends on these inputs, creatures live as in the case.
+    let mut g = Game::new(data.clone(), Start::Level1);
     for &i in inputs {
         g.step(i);
         g.take_events();

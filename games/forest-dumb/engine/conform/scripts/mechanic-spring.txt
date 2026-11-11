@@ -1,0 +1,188 @@
+# T79 (was T47's, made with creatures frozen): the springs ($10, $11, h0_24ce and h0_21c0) at
+# W1-1:222..224,56, from the level sync point with creatures live. camera-bottom-right's live input to
+# step 2030 (the character standing at 230,93 in the bottom right), then T47's paths up the shaft at
+# columns 226..230 into the springs' room, onto the spring, down the shaft and back, with waits and
+# jumps added by a search that plays each candidate on the original
+# (plans/forest-dumb-level-1/prototype/t79-route-repair/follow.rs) so the character keeps T47's path.
+# The spring fires at each landing, every 85 passes or so: six times at spring_x $df1, three at $dfa,
+# and after the trip down the shaft (passes 3062 to 3437, the springs out of view) three more at $dfa.
+# Checked on the original 2026-11-10.
+0: -
+40: U R
+52: R
+80: U R
+92: R
+120: U R
+132: R
+160: U R
+172: R
+200: U R
+212: R
+240: U R
+252: R
+280: U R
+292: R
+320: U R
+330: L
+430: R
+500: -
+528: R
+553: -
+586: R
+678: U R
+681: -
+693: U
+716: -
+726: U R
+757: R
+760: U R
+763: R
+776: U R
+788: R
+797: -
+840: R
+844: U R
+856: R
+869: U R
+881: R
+894: U R
+906: R
+919: U R
+931: R
+944: U R
+956: R
+969: U R
+981: R
+994: U R
+1006: R
+1019: U R
+1031: R
+1044: U R
+1056: R
+1069: U R
+1081: R
+1094: U R
+1106: R
+1119: U R
+1131: R
+1134: U R
+1156: R
+1169: U R
+1181: R
+1194: U R
+1206: R
+1219: -
+1286: U R
+1298: R
+1311: U R
+1323: R
+1336: U R
+1348: R
+1361: U R
+1373: R
+1386: U R
+1398: R
+1411: U R
+1423: R
+1436: U R
+1448: R
+1461: U R
+1473: R
+1486: U R
+1498: R
+1511: U R
+1523: R
+1536: U R
+1548: R
+1561: U R
+1573: R
+1586: U R
+1598: R
+1611: U R
+1623: R
+1636: U R
+1646: -
+1796: U L
+1808: L
+1821: U L
+1833: L
+1846: U L
+1858: L
+1871: U L
+1883: L
+1896: U L
+1908: L
+1921: U L
+1933: L
+1946: U L
+1958: L
+1970: -
+2030: D
+2046: L
+2055: U L
+2078: U
+2114: U L
+2130: U R
+2146: -
+2158: U R
+2162: U L
+2178: L
+2182: R
+2190: L
+2192: U L
+2198: R
+2200: -
+2204: R
+2209: U R
+2210: U
+2215: -
+2246: U
+2277: U L
+2285: U R
+2297: U
+2309: U L
+2315: -
+2317: U L
+2321: -
+2334: U
+2337: U L
+2341: U
+2350: -
+2351: U
+2359: U L
+2369: U
+2399: -
+2427: U
+2441: -
+2482: U
+2492: -
+2807: U
+2809: -
+2812: U
+2824: U R
+2825: R
+2841: -
+2901: R
+2949: -
+2986: R
+3017: U R
+3024: R
+3033: -
+3077: R
+3199: -
+3229: U L
+3237: D
+3241: U L
+3249: U
+3281: L
+3289: U R
+3305: U
+3313: U L
+3321: L
+3329: U L
+3341: L
+3345: -
+3359: L
+3365: -
+3383: U
+3403: -

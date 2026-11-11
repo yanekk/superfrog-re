@@ -164,9 +164,10 @@ void amiga_cpu(const amiga_machine *a, amiga_cpu_regs *out);
 /* Where the CPU was as each raster line ended during the last step, for timing studies (test tooling
  * that measures the original's CPU time): the line, the address of the instruction last executed,
  * SR, the active stack pointer and the first longs on the stack. Recorded only while profiling is on
- * (amiga_set_profile); the run is the same with it on or off, the CPU only pauses between
- * instructions to be looked at. A line on which no instruction ended (a blit holding the bus) has
- * no sample. Valid until the next step. */
+ * (amiga_set_profile); the run is the same with it on or off, switched between any steps, the CPU
+ * only pausing between instructions to be looked at (tests/line_samples.rs). A line on which no
+ * instruction ended (a blit holding the bus) has no sample; nor has any line from 309. Valid until
+ * the next step. */
 #define AMIGA_STACK_LONGS 64
 typedef struct {
     uint16_t vpos;
@@ -189,6 +190,12 @@ void amiga_watch_pcs(amiga_machine *a, const uint32_t *pcs, size_t n);
 /* The watched addresses, ascending and distinct, and how often each ran in the last step, zero
  * included. Valid until the next step or amiga_watch_pcs. */
 size_t amiga_pc_hits(const amiga_machine *a, const uint32_t **pcs, const uint32_t **counts);
+
+/* Whether the core's table of a line's disk, audio and sprite slots, shared by every machine in the
+ * process, is filled, read as a running machine reads it: without a lock. 0 before the first
+ * machine. Core patch 0007 fills it once; before it every amiga_new wiped and refilled it, and a
+ * machine stepped on another thread meanwhile could copy an empty line (tests/machines_apart.rs). */
+int amiga_das_table_whole(void);
 
 /* The whole machine state as a vAmiga snapshot. The returned buffer is freed with amiga_buffer_free. */
 uint8_t *amiga_snapshot(amiga_machine *a, size_t *len, char *err, size_t err_len);

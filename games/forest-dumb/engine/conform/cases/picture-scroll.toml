@@ -1,11 +1,13 @@
 # T44: the engine's picture against the original's while the view scrolls right, up, down and left
 # (scripts/picture-scroll.txt), the character walking and jumping both ways. Goal: back at the left
-# wall, char_x $1b, the view at the left end. Every object frozen, as T43's camera cases. The
+# wall, char_x $1b, the view at the left end. The
 # countdown's digits are compared since T23 ported its tick.
+# Creatures live on both sides since T46, nothing frozen.
+# The fifteen creature slot variables are compared since T81: the run scrolls a creature in on the
+# original (enemy_cases.rs, no_level_case_runs_creatures_live_without_naming_their_slots).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "picture-scroll"
 frames = 220
 compare = ["vars", "picture"]
-vars = ["camera_x", "camera_y", "char_x", "char_y", "char_anim_ptr", "lives", "items_left", "score"]
+vars = ["camera_x", "camera_y", "char_x", "char_y", "char_anim_ptr", "lives", "items_left", "score", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
 goal = { all = [{ var = "char_x", value = 0x1b }, { var = "camera_x", value = 0 }], by_frame = 6521 }
-freeze = true
