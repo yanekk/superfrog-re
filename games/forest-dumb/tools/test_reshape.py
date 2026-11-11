@@ -267,6 +267,12 @@ class Service(unittest.TestCase):
         self.assertEqual((res['result'], res['tries']), ('pass', 2))
         self.assertEqual(self.sent[0], self.sent[1])
 
+    def test_a_claude_that_never_answers_is_no_model_not_fail(self):
+        self.answers = [{'exit': 1, 'stderr': 'Not logged in'}] * 3
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['port']), ('no-model', 3, None))
+        self.assertEqual(self.judged, [])
+
 
 class OpusCost(unittest.TestCase):
     def test_sums_every_result_event_of_each_tasks_sessions(self):

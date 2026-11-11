@@ -4,7 +4,7 @@
     import model
     r = model.ask(SYSTEM, prompt, log='<out>/calls.jsonl')
     # {"result": "ok"|"no-model"|"timeout"|"max-calls", "text": str, "secs": float,
-    #  "tokens_in": n, "tokens_out": n, "usd": x}
+    #  "tokens_in": n, "tokens_out": n, "usd": x, "error": str (only when not ok)}
 
 Runs `claude -p --model haiku --tools "" --output-format json --max-turns 1 --system-prompt <system>`
 with the prompt on stdin. `no-model` is anything that is not an answer: no `claude` on PATH, a non-zero
@@ -51,7 +51,8 @@ def _log(path, rec):
 
 
 def ask(system, prompt, *, model='haiku', timeout_s=300, log, tag=None):
-    """-> {'result', 'text', 'secs', 'tokens_in', 'tokens_out', 'usd'}; `tag` goes into the log line."""
+    """-> {'result', 'text', 'secs', 'tokens_in', 'tokens_out', 'usd'} (+ 'error' when not ok); `tag` goes
+    into the log line."""
     global calls
     res = {'result': None, 'text': '', 'secs': 0.0, 'tokens_in': 0, 'tokens_out': 0, 'usd': 0.0}
     rec = dict(tag or {}, time=time.strftime('%Y-%m-%dT%H:%M:%S'), model=model)
@@ -86,6 +87,8 @@ def ask(system, prompt, *, model='haiku', timeout_s=300, log, tag=None):
                        tokens_in=sum(u.get(k, 0) or 0 for k in ('input_tokens', 'cache_creation_input_tokens',
                                                                  'cache_read_input_tokens')),
                        tokens_out=u.get('output_tokens', 0) or 0, usd=d.get('total_cost_usd', 0.0) or 0.0)
+    if err:
+        res['error'] = err
     _log(log, dict(rec, result=res['result'], secs=res['secs'], tokens_in=res['tokens_in'],
                    tokens_out=res['tokens_out'], usd=res['usd'], **({'error': err} if err else {})))
     return res

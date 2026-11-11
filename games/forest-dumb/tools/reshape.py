@@ -29,7 +29,7 @@ generators). The committed `fd-core` is never changed. A wrong answer gets the r
 case back, one that does not compile the compiler's errors; up to --tries answers. The call is
 model.py's (translator T17): at most --max-calls calls a run, --all's units included (`stopped`:
 "max-calls" when the cap ends one), a line a call in <out>/calls.jsonl and a line a judged answer in
-<out>/tries.jsonl; `no-model` when there is no `claude` on PATH. `usd` is `claude`'s list-price figure.
+<out>/tries.jsonl; `no-model` when there is no `claude` on PATH or no call answered. `usd` is `claude`'s list-price figure.
 
 Tidy. The prompt asks for the file's own style (docs naming the routine, names not numbers, no repeats).
 A passing answer goes through quality(): no model call, it lists what still reads like a literal port,
@@ -701,6 +701,7 @@ def reshape(routine, task, tries=3, out=OUT, dirs=None, tidy=2):
     log_path = os.path.join(out, 'tries.jsonl')
     best = None  # (issues, code, paths) of the passing answer with the fewest issues
     n_call = 0
+    answered, last_err = False, None  # whether any call came back with an answer
 
     def log(rec):
         with open(log_path, 'a', encoding='utf-8') as f:
@@ -734,8 +735,10 @@ def reshape(routine, task, tries=3, out=OUT, dirs=None, tidy=2):
         if r['result'] != 'ok':
             # A lost try; the question stands for the next.
             messages.pop()
+            last_err = r.get('error')
             log(dict(rec, outcome=r['result']))
             continue
+        answered = True
         answer = r['text']
         messages.append({'role': 'assistant', 'content': answer})
         with open(os.path.join(d, f'answer{n_call}.md'), 'w', encoding='utf-8') as f:
@@ -767,6 +770,11 @@ def reshape(routine, task, tries=3, out=OUT, dirs=None, tidy=2):
         with open(final, 'w', encoding='utf-8') as f:
             f.write(best[1])
         res.update(result='pass', port=os.path.abspath(final), paths=best[2], quality=best[0])
+    elif n_call and not answered:
+        # `claude` is there but never answered (logged out, say): no verdict on Haiku.
+        print(f'reshape: `claude` gave no answer on any of {n_call} calls: {last_err} '
+              '(login check: `claude auth status`)', file=sys.stderr)
+        res['result'] = 'no-model'
     else:
         res['result'] = 'fail'
     res['usd'] = round(res['usd'], 6)

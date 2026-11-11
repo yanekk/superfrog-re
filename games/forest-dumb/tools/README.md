@@ -12,8 +12,8 @@ writes `build/files/disk1/FOREST_DUMB_FOREVER` and the rest of `build/files/` (d
 ## Model services
 
 generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
-haiku`, no tools; login check `claude auth status`; no `claude` on PATH: result `no-model`). A run makes
-at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). translate and
+haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no call answered: result
+`no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). translate and
 translate_batch still call Muse, a paid model, with their own key and dollar cap (their docstrings);
 T18 of `plans/forest-dumb-translator/` replaces them. All need the listing
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line

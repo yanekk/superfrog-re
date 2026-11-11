@@ -284,6 +284,14 @@ class Service(unittest.TestCase):
         self.assertEqual(self.fake.prompts()[1], self.fake.prompts()[0])
         self.assertEqual(self.log()[0]['outcome'], 'no-model')
 
+    def test_a_claude_that_never_answers_is_no_model_not_fail(self):
+        # Logged out: `claude` is on PATH but every call exits non-zero. Haiku was never asked, so the
+        # result must not read as Haiku failing to write a generator (T19 counts `fail` against it).
+        self.answers = [RuntimeError('Not logged in')] * 3
+        res = self.run_it()
+        self.assertEqual((res['result'], res['tries'], res['gen']), ('no-model', 3, None))
+        self.assertIn('Not logged in', self.stderr.getvalue())
+
 
 class Command(unittest.TestCase):
     def test_no_claude_on_path_gives_no_model_and_asks_nothing(self):

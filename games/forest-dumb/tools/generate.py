@@ -26,7 +26,7 @@ reviewer reads (a base is shown, not judged).
 
 The model call is model.py's: Haiku through `claude -p`, at most --max-calls calls a run (`stopped`:
 "max-calls" when the cap ends it), a line a call in <out>/calls.jsonl; a judged try is a line in
-<out>/tries.jsonl. `no-model`: no `claude` on PATH, nothing asked. `usd` is `claude`'s list-price
+<out>/tries.jsonl. `no-model`: no `claude` on PATH, nothing asked, or no call answered. `usd` is `claude`'s list-price
 figure, not a bill. The
 listing, prompts and answers derive from the game's code and stay under build/; the generator is code
 written from the listing, as the hand-written ones are, and the builder commits it into
@@ -312,6 +312,7 @@ def generate(routine, name, tries=3, out=OUT):
     calls_log = os.path.join(out, 'calls.jsonl')
     log_path = os.path.join(out, 'tries.jsonl')
     best = None  # (uncovered ways, try, path, cover line, reasons)
+    answered, last_err = False, None  # whether any call came back with an answer
     judged = []  # each judged try's outcome: whether the original could be judged at all
     reasons = {}  # (at, never) -> reason, from UNREACHABLE lines
 
@@ -335,8 +336,10 @@ def generate(routine, name, tries=3, out=OUT):
         if r['result'] != 'ok':
             # A lost try, as a broken answer is; the question stands for the next.
             messages.pop()
+            last_err = r.get('error')
             log(dict(rec, outcome=r['result']))
             continue
+        answered = True
         answer = r['text']
         messages.append({'role': 'assistant', 'content': answer})
         res['usd'] += r['usd']
@@ -383,6 +386,12 @@ def generate(routine, name, tries=3, out=OUT):
         res.update(result='partial' if un else 'covered', gen=os.path.relpath(final),
                    branches=max(len(j['branches']), len(listed)), returns=j['passed'], base=j['base'],
                    uncovered=[{k: v for k, v in u.items() if k != '_addr'} for u in un])
+    elif res['tries'] and not answered:
+        # `claude` is there but never answered (logged out, say): Haiku was not asked, so this is no
+        # verdict on it, and a trial must not count it as one.
+        print(f'generate: `claude` gave no answer on any of {res["tries"]} calls: {last_err} '
+              '(login check: `claude auth status`)', file=sys.stderr)
+        res['result'] = 'no-model'
     elif ran and all(b['passed'] == 0 or b['unmodelled_blits'] for b in ran):
         # Every state set that ran had the original return on none of its states, or start a blit the
         # oracle does not run: the routine itself may be out of the routine oracle's reach.

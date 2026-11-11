@@ -102,6 +102,7 @@ class Ask(unittest.TestCase):
         self.fake.answer({'exit': 1, 'stderr': 'Not logged in'})
         r = model.ask('s', 'p', log=self.log)
         self.assertEqual((r['result'], r['text']), ('no-model', ''))
+        self.assertIn('Not logged in', r['error'])
         self.assertIn('Not logged in', self.lines()[0]['error'])
 
     def test_an_error_result_or_output_that_is_not_json_is_no_model(self):
