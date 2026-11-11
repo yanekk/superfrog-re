@@ -56,6 +56,14 @@ class Pack(unittest.TestCase):
 
     def test_dependencies_are_this_plans_commits_only(self):
         _, text = self.build('T22')
+        if '## What the tasks it depends on did' not in text:
+            # Once this plan is merged into main its commits sit behind the merge-base, so the section
+            # is rightly empty: then no commit since the merge-base may carry a dependency's subject.
+            since = tp.git('merge-base', 'HEAD', tp.BASE).strip()
+            subjects = tp.git('log', '--format=%s', f'{since}..HEAD').splitlines()
+            for t in tp.depends(tp.read(tp.task_doc('T22'))):
+                self.assertFalse([s for s in subjects if re.match(rf'{t}(?:[: ]|$)', s)], t)
+            return
         deps = text.split('## What the tasks it depends on did', 1)[1].split('\n## ', 1)[0]
         # T11 and T20 of the first game's plan touched sf- crates; this plan's never do.
         self.assertNotIn('sf-', deps)
