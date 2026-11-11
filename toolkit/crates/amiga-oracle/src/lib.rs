@@ -28,7 +28,7 @@ pub use config::{
 };
 pub use routine::{
     BranchWays, CallError, CallResult, CallTrace, Cpu68k, Gen, Hunk, HunkError, HunkKind, HunkMap,
-    MEM_SIZE, RETURN_SENTINEL, Regs,
+    MEM_SIZE, RETURN_SENTINEL, Regs, Stepped,
 };
 pub use trace::{
     CacheOutcome, InputScript, SyncPoint, Trace, TraceFrame, cached_trace, cached_trace_in,
