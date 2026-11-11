@@ -501,20 +501,32 @@ pub fn level_cases(dir: &Path, skipped: &mut Vec<String>) -> Result<Vec<Case>, S
     Ok(out)
 }
 
-/// The power-on run on `boot-to-level1` for `frames` steps.
-fn power_on(prog: &Program, cfg: &OracleConfig, frames: u32) -> Result<Seen, String> {
+/// The power-on run on `boot-to-level1` for `frames` steps, `pcs` watched, `each(amiga, frame)`
+/// called after every step (shared with `code_writes`, translator T15).
+pub(crate) fn drive_power_on(
+    cfg: &OracleConfig,
+    pcs: &[u32],
+    frames: u32,
+    mut each: impl FnMut(&Amiga, u32),
+) -> Result<(), String> {
     let (_, sc) = sync::level_1_script()?;
     let mut am = Amiga::power_on(cfg).map_err(|e| e.to_string())?;
-    am.watch_pcs(&prog.pcs());
-    let mut col = Collector::new(prog);
+    am.watch_pcs(pcs);
     for frame in 0..frames {
         if frame == sync::DISK_2_SWAP {
             am.insert_disk(0, 1);
         }
         am.step(script::input_at(&sc.lines, frame))
             .map_err(|e| e.to_string())?;
-        col.after_step(&am);
+        each(&am, frame);
     }
+    Ok(())
+}
+
+/// The power-on run on `boot-to-level1` for `frames` steps.
+fn power_on(prog: &Program, cfg: &OracleConfig, frames: u32) -> Result<Seen, String> {
+    let mut col = Collector::new(prog);
+    drive_power_on(cfg, &prog.pcs(), frames, |am, _| col.after_step(am))?;
     let n = col.seen.insns.len();
     col.seen.runs.push(("power-on".into(), frames, n));
     Ok(col.seen)
@@ -525,14 +537,28 @@ fn power_on(prog: &Program, cfg: &OracleConfig, frames: u32) -> Result<Seen, Str
 /// (`world_index` is `world - 1`, `irq_count` stopped and counting again), then
 /// [`WORLD_PLAY_FRAMES`] frames of play.
 fn world_start(prog: &Program, paths: (&Path, &Path, &Path), world: u32) -> Result<Seen, String> {
+    let mut col = Collector::new(prog);
+    let steps = drive_world(paths, &prog.pcs(), world, |am, _| col.after_step(am))?;
+    let n = col.seen.insns.len();
+    col.seen.runs.push((format!("world-{world}"), steps, n));
+    Ok(col.seen)
+}
+
+/// [`world_start`]'s run, `pcs` watched, `each(amiga, frame)` called after every step; the steps
+/// run from the level sync point (shared with `code_writes`, translator T15).
+pub(crate) fn drive_world(
+    paths: (&Path, &Path, &Path),
+    pcs: &[u32],
+    world: u32,
+    mut each: impl FnMut(&Amiga, u32),
+) -> Result<u32, String> {
     let end = Case::load(&conform_dir().join("cases").join(LEVEL_END_CASE))?;
     let inputs = crate::Inputs::load(&end)?;
     let world_index = address("world_index")?;
     let case_end = end.sync_frame + end.frames;
     let room = case_end - sync::LEVEL_1_SYNC + WORLD_REACH_CAP + WORLD_PLAY_FRAMES;
     let mut am = sync::reach_level_1_in(paths.0, paths.1, paths.2, room)?;
-    am.watch_pcs(&prog.pcs());
-    let mut col = Collector::new(prog);
+    am.watch_pcs(pcs);
     let (mut left, mut played) = (false, None);
     let irq_count = address("irq_count")?;
     let mut last_irq = am.peek(irq_count, 2);
@@ -559,7 +585,7 @@ fn world_start(prog: &Program, paths: (&Path, &Path, &Path), world: u32) -> Resu
             FrameInput::NONE
         };
         am.step(input).map_err(|e| e.to_string())?;
-        col.after_step(&am);
+        each(&am, frame);
         frame += 1;
         // `game_running` stays set through the load; `irq_count` stands still while the OS has the
         // machine and the SCENA screen waits, and counts again once play runs (measured 2026-11-11).
@@ -584,11 +610,7 @@ fn world_start(prog: &Program, paths: (&Path, &Path, &Path), world: u32) -> Resu
             _ => {}
         }
     }
-    let n = col.seen.insns.len();
-    col.seen
-        .runs
-        .push((format!("world-{world}"), frame - sync::LEVEL_1_SYNC, n));
-    Ok(col.seen)
+    Ok(frame - sync::LEVEL_1_SYNC)
 }
 
 /// One level case through `code_writes`' runner, its instructions kept where they are the

@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T15 code-writes total:** `fd-conform code-writes --all` over level 1's 42 cases, power-on (7 000 frames) and the world 2 to 6 starts: 48 runs, 153 600 frames, 0 changed instructions. The power-on watch arms at `h0+$0`. |
 | 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
 | 2026-11-11 | 📌 | **T11 cycles:** 279 of 290 census kinds counted, 0 cycle failures in 407 500 states. Left for T12: `mulu.w` 2 kinds, `divu.w` 2, `divs.w`, `dbf`, `movem.l` 3, `lsl.l`/`lsr.l Dn,Dn`. |
 | 2026-11-11 | 📌 | Moira counts `andi.l #imm,Dn` 16 cycles; the MC68000UM table 8-9, as T11 read it, gives 14. `pcode_rt::cycles` follows Moira. Real hardware unmeasured. |
@@ -64,5 +65,4 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🔄 | Owner first chose retiring Muse and all four model tools, then the same session chose Haiku through the subscription for `generate.py` and `reshape.py`, after a trial (DESIGN §2.13). |
 | 2026-11-11 | 📌 | `claude -p --model haiku --max-turns 1 --output-format json` works from a script here: model `claude-haiku-5-5`, 1.7 s, $0.003 list. Logged in through claude.ai. macOS has no `timeout`; bound runs in Python. |
 | 2026-11-11 | 🐞 | Smoke in a fresh worktree (cold build) hit `tools/smoke.py`'s 1 200 s limit, no test failed: forest-dumb done at 783 s, Superfrog unrun. Owner chose to start the build anyway (plan review). Translated-program tests go in full. |
-| 2026-11-11 | 📌 | `generate.py`, `reshape.py` and `translator_trial.py` import Muse's `translate.py` for the judge lock, `JUDGE_SECONDS`, `flow_text` and the model call; T17 moves these out before T18 replaces `translate.py`. |
 | 2026-11-11 | 📌 | The OS is live through the title (`system_on`, the OS keyboard handler, `irq_count` still) and every file loads through `dos.library` (`docs/07-executable-map.md`). The machine answers these; T01 measures exactly which. |

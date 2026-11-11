@@ -49,7 +49,8 @@ workspace = "engine"
 # T29: a recording through a cut status redraw, about 2 s more.
 "crates/fd-conform/tests/recording_compare.rs" = "smoke"
 # Translator trial T05: changes to executed instructions on w1-idle from the cached level sync point,
-# a poke caught, missing inputs named: under 2 s warm. The full run over every case is a tool run.
+# a poke caught, missing inputs named: under 2 s warm. Translator T15's run over every path
+# (`code-writes --all`, about 3 minutes release) is #[ignore]d for full.
 "crates/fd-conform/tests/code_writes.rs" = "smoke"
 # Translator T06: the instruction check's rig on Moira with made-up encodings, no disks: about 1 s.
 "crates/fd-conform/tests/insn_check.rs" = "smoke"
@@ -73,7 +74,7 @@ workspace = "engine"
 # The translation judge on h0+$774, under a second.
 "crates/fd-conform/tests/judge.rs" = "smoke"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
-# binary's line, under a second warm.
+# binary's line; T15's made-up self-modifying routine; under a second warm.
 "crates/fd-conform/tests/judge_translated.rs" = "smoke"
 # T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
 # each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
@@ -384,6 +385,9 @@ workspace = "engine"
 "tools/test_translate.py" = "smoke"
 "tools/test_translate_batch.py" = "smoke"
 "tools/test_translate_judge.py" = "smoke"
+# Translator T15: h0_6852 on the real export, translator and judge, its self-modifying states left
+# out: about 20 s (Ghidra, a fd-judge build).
+"tools/test_code_write_rule.py" = "full"
 # Translator trial T06: the trial tool with stub export, build and judge, the real translator: about 1 s.
 "tools/test_translator_trial.py" = "smoke"
 # Translator T06: pcode_fix, pcode_rust --insn and insn_check.py with a stub build and judge: under 1 s.
