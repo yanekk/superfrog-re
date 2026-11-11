@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
 | 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
 | 2026-11-11 | 📌 | **T11 cycles:** 279 of 290 census kinds counted, 0 cycle failures in 407 500 states. Left for T12: `mulu.w` 2 kinds, `divu.w` 2, `divs.w`, `dbf`, `movem.l` 3, `lsl.l`/`lsr.l Dn,Dn`. |
 | 2026-11-11 | 📌 | Moira counts `andi.l #imm,Dn` 16 cycles; the MC68000UM table 8-9, as T11 read it, gives 14. `pcode_rt::cycles` follows Moira. Real hardware unmeasured. |
@@ -34,10 +35,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | **T06 instruction check**, 500 states an opcode word, 815 words, 290 kinds, about 10 s: 15 kinds fail; failing states regs 831, ccr 9 751, mem 500, stop 0; cycles not-counted. bcd and compare pass every column. |
 | 2026-11-11 | 📌 | T06 fails by owner (`build/translator/insn.md`): T09 nine shift kinds (lsl/lsr V set where Moira clears it, asl.l V); T08 five (addx.l X, divu/divs registers and flags, clr.w abs.l); T10 rte (PC, flags). |
 | 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |
-| 2026-11-11 | 🐞 | `pcode_export.py` `--out` naming a file: `os.makedirs` raises a traceback, not exit 2 (T04 review sweep, read-only). Left alone. |
-| 2026-11-11 | 🐞 | `re_listing.py` `--out` naming a file: unguarded `os.makedirs` and temp-rename write, traceback not exit 2 (T04 review sweep, read-only). Left alone. |
-| 2026-11-11 | 🐞 | `translate_batch.py` `--out`: unguarded `os.makedirs` and state temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |
-| 2026-11-11 | 🐞 | `translator_trial.py` `--out`: unguarded `os.makedirs` and temp-rename write, traceback on an unwritable path (T04 review sweep, read-only). Left alone. |
+| 2026-11-11 | 🐞 | `--out` naming a file or an unwritable path gives a traceback, not exit 2, in `pcode_export.py`, `re_listing.py`, `translate_batch.py` and `translator_trial.py`: unguarded `os.makedirs` and temp-rename writes (T04 review sweep). Left alone. |
 | 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
 | 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |
 | 2026-11-11 | 📌 | Call graph: 197 of 199 functions form one component, so components alone give one part. Single-caller folding capped at a part's share; 358 of 558 call sites cross parts. Runtime cost unmeasured; T06's judge runs show it. |

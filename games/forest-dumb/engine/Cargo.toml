@@ -63,3 +63,8 @@ opt-level = 2
 # translated blocks. Its #[inline] ops are compiled at the calling crate's level, not this one.
 [profile.dev.package.pcode-rt]
 opt-level = 2
+
+# The machine translated code runs on (translator T22): every translated load and store goes through
+# its bus.
+[profile.dev.package.pcode-machine]
+opt-level = 2

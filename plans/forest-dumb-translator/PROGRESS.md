@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T22 (machine-core); T23 to T26 build on it once reviewed.
 
 ## Tasks
 
@@ -36,7 +36,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
-| T22 | machine-core | T11, T14 | ⬜ | |
+| T22 | machine-core | T11, T14 | 🔍 | New crate pcode-machine, 19 unit tests, smoke, in PURE. Deviations: new `Stop::Outside` in pcode-rt (judge counts it), since the bus cannot fail; accesses timed at block start; `Device: Send`; `Config::a500`, `attach`, `attach_cia`, `sync_beam` added; snapshot mem is chip then slow; VPOSW not moving the beam. |
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T22
 
 ## Blocked on the user
 
