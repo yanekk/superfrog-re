@@ -116,7 +116,7 @@ class OpMapping(unittest.TestCase):
             ({'op': 'BRANCH', 'in': [['ram', 0xfc0000, 4]]},
              'return Err(Stop::Untranslated("$fc0000".into()));'),
             ({'op': 'BRANCHIND', 'in': [D0]}, "Some(k) => { pc = k; continue 'b; }"),
-            ({'op': 'RETURN', 'in': [['register', 80, 4]]}, 'r.set(PC, 4, v);\n    return Ok(());'),
+            ({'op': 'RETURN', 'in': [['register', 80, 4]]}, 'r.set(PC, 4, v);\n    r.depth -= 1;\n    return Ok(());'),
             ({'op': 'CALL', 'in': [['ram', 'h0+$40', 4]]}, 'return Err(Stop::Untranslated("h0+$40".into()));'),
             ({'op': 'CALLIND', 'in': [D0]}, 'match img.hunk_of(a).and_then(by_addr)'),
         ]
@@ -249,6 +249,26 @@ class Flow(unittest.TestCase):
         self.assertEqual(stats['blocks'], 3)
         self.assertEqual(re.findall(r'^            (\(0, 0x[0-9a-f]+\)) =>', text, re.M),
                          ['(0, 0x0)', '(0, 0x2)', '(0, 0x6)'])
+
+    def test_every_function_counts_its_depth_and_every_block_its_step(self):
+        # Two functions; the caller's three blocks (entry, the branch target, the rts after it).
+        doc = export({'h0+$0': {'len': 2, 'mnem': 'bne', 'ops': [
+                          {'op': 'CBRANCH', 'in': [['ram', 'h0+$4', 4], ['register', 69, 1]]}]},
+                      'h0+$2': {'len': 2, 'mnem': 'a', 'ops': []},
+                      'h0+$4': {'len': 4, 'mnem': 'bsr', 'ops': [
+                          {'op': 'CALL', 'in': [['ram', 'h0+$10', 4]]}]},
+                      'h0+$8': RTS, 'h0+$10': RTS})
+        text, stats = translate_doc(doc)
+        self.assertEqual((stats['functions'], stats['blocks']), (2, 4))
+        # Once per function, before its first block; once per loop pass, so once per block run.
+        self.assertEqual(text.count('    fn_entry(r)?;\n    let mut pc'), 2)
+        self.assertEqual(text.count("    'b: loop {\n        block_start(bus, r, img)?;\n        match pc {"), 2)
+        self.assertNotIn('STEP_CAP', text, 'no per-call count left')
+        self.assertNotIn('let mut steps', text)
+        # Out on a return, and after a function jumped into returns.
+        self.assertEqual(text.count('r.depth -= 1;\n'), 2 + 2)
+        self.assertEqual(text.count('let res = enter(k, r, bus, img);\n                r.depth -= 1;\n'
+                                    '                return res;'), 2)
 
 
 class Cli(unittest.TestCase):
