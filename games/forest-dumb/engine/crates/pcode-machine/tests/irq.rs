@@ -190,6 +190,20 @@ fn level_2_waits_out_a_level_3_handler_then_is_taken() {
 }
 
 #[test]
+fn a_request_left_pending_by_an_rte_is_taken_in_the_same_poll() {
+    // Both requested at once: level 3 first, and level 2 right after its rte, before the
+    // interrupted block runs, as a 68000 takes it before the next instruction.
+    let mut m = machine(irq::INTEN | 1 << VERTB | 1 << PORTS, 0xA0, 0x40);
+    m.raise(VERTB, 0);
+    m.raise(PORTS, 0);
+    let mut r = regs();
+    m.poll(&mut r, &img()).unwrap();
+    assert_eq!((word(&mut m, 0x100), word(&mut m, 0x102)), (1, 1));
+    assert_eq!(m.intreq(), 0);
+    assert_eq!((r.a(7), ops::sr_get(&r) & 0xFF00), (STACK, 0x2000));
+}
+
+#[test]
 fn from_user_mode_the_frame_goes_on_the_system_stack() {
     let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x40);
     let mut r = Regs::new();
