@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T08 (flags-arith); the other phase 1 fix tasks run beside it.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | oracle-step | — | ✅ | |
 | T06 | insn-check | T04, T05 | ✅ | |
 | T07 | known-defects | T06 | ⬜ | |
-| T08 | flags-arith | T06 | ⬜ | |
+| T08 | flags-arith | T06 | 🔍 | pcode_fix/arith.py: addx X=C; divu/divs via ops::divu_w/divs_w (overflow, zero divisor is new Stop::Trap vector 5); clr.w/l writes the prefetch to write-only registers, clr.l low word first. Arith 0 fails. 19 tests. Deviations: pcode_rust.py gives emit `at` and P-code op lines; lib.rs Stop::Trap, judge counts traps; subx/negx flags uncorrected, not in census. |
 | T09 | flags-shift-bit | T06 | ⬜ | |
 | T10 | flags-move-control | T06 | ⬜ | |
 | T11 | cycles-static | T06 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T08
 
 ## Blocked on the user
 
