@@ -13,6 +13,11 @@ pub const JOY1DAT: u16 = 0x00C;
 pub const DMACONR: u16 = 0x002;
 pub const DMACON: u16 = 0x096;
 
+/// ADKCONR reads what ADKCON's set/clear writes leave (bit 15 says set or clear), as DMACONR does
+/// DMACON's (translator T47: a program saves it to hand back at a load).
+pub const ADKCONR: u16 = 0x010;
+pub const ADKCON: u16 = 0x09E;
+
 /// A register a CPU write changes nothing in (vAmiga `pokeCustom16`'s "READ-ONLY"): `$000..=$01E`
 /// and DENISEID; the word is still on the data bus. BLTDDAT (`$000`) is also [`write_only`]: a read
 /// takes the bus's word and the write it makes is dropped here.

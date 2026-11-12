@@ -117,6 +117,21 @@ impl Default for Os {
 const EXEC_BASE_PTR: u32 = 4;
 const AUTOVECTORS: u32 = 0x64;
 
+/// DMACONR, INTENAR and ADKCONR as Kickstart 1.3 leaves them to a program it starts, measured on
+/// the oracle's A500 (the game's entry saves them before it touches any, translator T47): DMA on
+/// for bitplanes, copper, blitter, sprites and disk; the master, EXTER, VERTB, PORTS and SOFT
+/// interrupts enabled; ADKCON's UARTBRK and MFMPREC set. A program that relies on the display
+/// Kickstart left on (a prompt drawn by its own copper list before it sets DMACON) draws.
+pub const KICKSTART_DMACON: u16 = 0x03F0;
+pub const KICKSTART_INTENA: u16 = 0x602C;
+pub const KICKSTART_ADKCON: u16 = 0x1100;
+
+/// Where COP1LC points at power-on: a copper list that only ends, in chip RAM below where the
+/// OS's loader ever places a hunk (Kickstart's own structures start at `$400`). With copper DMA on
+/// from the start, COP1LC must name a list the copper can read; GfxBase's `copinit` is in the ROM
+/// window, which the copper never reads.
+pub const POWER_ON_COPPER: u32 = 0x400;
+
 impl Os {
     pub fn new() -> Os {
         let mut rom = vec![0u8; layout::SIZE as usize];
@@ -225,13 +240,26 @@ impl Machine {
         &self.os.opened
     }
 
-    /// What Kickstart leaves in low memory for a program it starts: ExecBase at `$4`, and the
-    /// autovectors (`$64..$7C`) on the OS's handlers.
+    /// What Kickstart leaves for a program it starts: ExecBase at `$4`, the autovectors
+    /// (`$64..$7C`) on the OS's handlers, and DMACON, INTENA and ADKCON as it left them, COP1LC on
+    /// a list that only ends (translator T47).
+    ///
+    /// INTENA comes along although the OS's handlers are not run: nothing on the machine raises
+    /// what Kickstart enabled while its vectors are installed (no VERTB is raised at all, CIA-A
+    /// starts masked), and a program that saves INTENAR to hand back at a load saves Kickstart's
+    /// value. Should one be raised, entering the OS's handler stops the run, naming it.
     pub(crate) fn install_os(&mut self) {
         self.set_exec_base();
         for n in 1..=7u32 {
             self.poke_l(AUTOVECTORS + 4 * (n - 1), irq_handler(n));
         }
+        self.poke_l(POWER_ON_COPPER, 0xFFFF_FFFE);
+        let lc = crate::copper::COP1LC as usize >> 1;
+        self.custom[lc] = (POWER_ON_COPPER >> 16) as u16;
+        self.custom[lc + 1] = POWER_ON_COPPER as u16;
+        self.dmacon = KICKSTART_DMACON;
+        self.intena = KICKSTART_INTENA;
+        self.custom[crate::custom::ADKCONR as usize >> 1] = KICKSTART_ADKCON;
     }
 
     /// `$4` to the machine's ExecBase: at a snapshot, the oracle's own ExecBase would lead into a

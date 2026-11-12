@@ -790,6 +790,10 @@ impl Machine {
                 }
             }
             irq::INTENA => self.intena = irq::set_clear(self.intena, v),
+            custom::ADKCON => {
+                let r = custom::ADKCONR as usize >> 1;
+                self.custom[r] = irq::set_clear(self.custom[r], v) & 0x7FFF;
+            }
             irq::INTREQ => {
                 // A request raised before this write is cleared by it like any other.
                 self.settle();

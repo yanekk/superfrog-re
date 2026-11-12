@@ -123,6 +123,14 @@ finish at once (owner, 2026-11-11). d1, a0 and a1, scratch to the real OS, are l
 | dos `Read` (-42) | the next bytes, at most `d3`, into RAM at `d2`; `d0` = how many (0 at the end). A buffer over translated code stops as `write-into-code`, outside RAM, an unknown handle or a negative length as `os:` | `d0` must be the file's exact length: the unpacker finds the data's end by it |
 | dos `Close` (-36) | frees the handle; an unknown one stops | after each file |
 
+Power-on (`new`) also hands over the registers as Kickstart leaves them (T47, measured on the
+oracle): DMACON `$03f0` (`os::KICKSTART_DMACON`: bitplane, copper, blitter, sprite and disk DMA on),
+INTENA `$602c`, ADKCON `$1100`, and COP1LC on a list that only ends at `os::POWER_ON_COPPER` (`$400`,
+chip RAM). A program relying on the display Kickstart left on draws; one saving INTENAR, DMACONR and
+ADKCONR to hand back at a load saves Kickstart's values. INTENA comes along although the OS's handlers
+are not run: nothing raises VERTB, and CIA-A starts masked; should an interrupt be taken through the
+OS's vector, the run stops naming it. ADKCONR reads what ADKCON's set/clear writes leave.
+
 OS memory: `$4` holds ExecBase, set by `new` (power-on) and by `from_snapshot` (whose own ExecBase
 would lead into a Kickstart not here; a program reads `$4` afresh before its calls). `new` also points
 the autovectors `$64..$7C` at the OS's interrupt handlers (`os::irq_handler(n)`), so a program can
