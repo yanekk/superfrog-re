@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | os-answers | T01, T22 | ✅ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
 | T28 | translated-engine | T26, T27 | ✅ | |
-| T29 | conform-translated | T28 | ⬜ | |
+| T29 | conform-translated | T28 | ✅ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
