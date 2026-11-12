@@ -13,7 +13,9 @@ them) and re/entries.toml (T02's oracle trace); `--routines` seeds only the tria
 Each entry keeps one source: program-entry, then symbol, vector, trace (fd-conform's code_seen.rs
 order), or routine under --routines. A computed jump whose targets nobody found is listed by address
 under check.unresolved_computed; a flow Ghidra gives out of every hunk (an OS call through a library
-base, aimed at the loader's stand-in) is listed under check.outside as "hN+$off -> $addr", never walked. Writes <out>/pcode.json and prints one JSON summary line. Exit 2, the path on stderr, when Ghidra, its
+base, aimed at the loader's stand-in) is listed under check.outside as "hN+$off -> $addr", never walked.
+Every call falls through to its next instruction, whatever Ghidra's no-return analysis concluded of the
+callee; a call Ghidra judged non-returning is listed under check.no_return_calls. Writes <out>/pcode.json and prints one JSON summary line. Exit 2, the path on stderr, when Ghidra, its
 JDK, the program or a symbols file is missing; exit 1 when Ghidra fails.
 
 Ghidra's Amiga loader records no relocations, so the program file's HUNK_RELOC32 entries are read here
@@ -275,7 +277,7 @@ def summary(doc):
             'functions': c['functions'], 'relocs': c['relocs'], 'relocs_matched': c['relocs_matched'],
             'unmatched': len(c['unmatched']), 'mismatched': len(c['mismatched']),
             'unexplained': len(c['unexplained']), 'undecoded': len(c['undecoded']),
-            'outside': len(c.get('outside', []))}
+            'outside': len(c.get('outside', [])), 'no_return_calls': len(c.get('no_return_calls', []))}
 
 
 def main(argv=None):
