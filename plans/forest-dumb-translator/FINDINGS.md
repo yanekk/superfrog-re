@@ -6,8 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T43:** Ghidra's no-return analysis set `CALL_RETURN` on all 82 `jsr load_file`; the export now follows each instruction's own fall-through (`check.no_return_calls`). Whole export 7 716 instructions, 291 kinds; power-on reaches the title with no stop. |
 | 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |
-| 2026-11-12 | 🐞 | **T26:** Ghidra marks `load_file` (`h0+$8ec4`) non-returning, so hunk 4's 8 load lists (`h4+$19fda`..`$1c314`) lose their fall-through: power-on stops `untranslated: h4+$1a0f6` after `_NAPIS`. T43 added (owner's yes) to fix the export generally. |
 | 2026-11-12 | 📌 | DESIGN §2.8 says disk 2's prompt does not appear; the entry always calls `prompt_disk_2` (`h0+$7b70`) and waits for fire (docs/03). T26's `os_run` holds fire for that poll; T28 and T32 must too. |
 | 2026-11-12 | 📌 | **T26 OS values are the machine's:** ExecBase at `$4`, dos base `h0+$908e`, handle `$909e`, font fields `$1e54`/`$1e58`, copinit/LOFlist `$1e32`/`$1e36`, saved vectors `$1e26`/`$1e2e` differ from Kickstart's. T32 must not compare them. |
 | 2026-11-12 | 📌 | T16 review: the whole-tree gate stays 100 of 100 with `pcode_fix` `arith` and `shift_bit` both off (dead flags, write-only chip registers); only `insn_gate.rs` guards those corrections. A broken `INT_CARRY` drops it to 97. |
@@ -19,7 +19,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | **T23 interrupts:** the pushed PC is a marker, `IRQ_RETURN` ($FFFFFF), not the interrupted address: `poll` is not told its block. `from_snapshot` takes INTENA/INTREQ from `custom[0x0E]`, `custom[0x0F]` (INTENAR, INTREQR); T27/T28 snapshots must fill them. |
 | 2026-11-11 | 📌 | **T25 CIA-A:** its interrupt reaches INTREQ only via `Machine::take_cia_interrupts()` (PORTS `$0008`); T23's interrupts or T27 must set it. A snapshot start must set the ICR mask (`cia_a_mut().set_icr_mask(0x08)`): the oracle exposes no CIA state. |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
-| 2026-11-11 | 📌 | **T13 gate:** whole census, 290 kinds, 2 000 states a site, seed `insn-gate-T13`: 1 630 000 states, 0 fail in every column, cycles counted; 26 780 skipped (exceptions). `insn_gate.rs` (full) guards it; without `shift_bit` it fails 9 kinds. |
 | 2026-11-11 | 📌 | **T12 cycles:** all 290 census kinds counted, 0 failures in 407 500 states, every column. The 11 data-dependent kinds (`mulu.w`, `divu.w`, `divs.w`, `dbf`, `movem.l`, `lsl.l`/`lsr.l Dn,Dn`) tick from the registers before the instruction. |
 | 2026-11-11 | 📌 | T11/T12 timings follow Moira (`cyclesMul`, `cyclesDiv`, `cyclesBit`; `andi.l #imm,Dn` 16 where MC68000UM table 8-9 gives 14); real hardware unmeasured. Divide by zero (38), `trap` (34), `chk` trapping (40) are the manual's, unjudged. |
 | 2026-11-11 | 📌 | A `mulu`/`muls`/`divu`/`divs` with a memory source stops the run (`Stop::Unsupported`, `cycles: mulu.w with a (An) source`) rather than read its operand twice; the game has only `Dn` and `#imm` sources (T12). |

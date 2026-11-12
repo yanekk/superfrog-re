@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T43, which unblocks T28; T19 and T27 are ready beside it.
 
 ## Tasks
 
@@ -57,9 +57,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
-| T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
+| T43 | call-fallthrough | T03; blocks T28 | 🔍 | Walk follows each instruction's own fall-through, not Ghidra's CALL_RETURN; `check.no_return_calls` lists 82. Export 7 716 instructions, 291 kinds; gate, trial 85/85, whole tree 100/100, os_run power-on green. 4 tests. Deviation: made-up test marks `loader` non-returning via SetNoReturn.java; Ghidra's analysis does not on a small program. |
 
-**Review queue:** *(empty)*
+**Review queue:** T43
 
 ## Blocked on the user
 
