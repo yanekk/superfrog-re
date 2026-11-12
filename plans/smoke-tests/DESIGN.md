@@ -43,8 +43,9 @@ changed. It ignores the selector because pir's end gate sets `PIR_TEST_SCOPE=all
 at the end of a build would be one more way to miss a break.
 
 `tools/full.sh` sets `PIR_TEST_SCOPE=all` and `PIR_TEST_INCLUDE_IGNORED=1` and execs `tools/test.sh`.
-`toolkit/test.sh` and each game's `test.sh` pass `-- --include-ignored` to cargo when the variable is
-set. The variable is new so that `tools/test.sh` on its own behaves as today.
+`toolkit/test.sh` and each game's `test.sh` pass `--no-fail-fast -- --include-ignored` to cargo when the
+variable is set: without `--no-fail-fast` cargo stops at the first failing test binary, and the first
+nightly run (2026-11-12) never reached most of either game's binaries (owner, 2026-11-12). The variable is new so that `tools/test.sh` on its own behaves as today.
 
 Full leaves out the 32 Superfrog screen tests, those whose `#[ignore]` reason names `SF_E2E_OS=1`, unless that
 variable is set. They panic without it, so full would be red every night whatever the code did, and with it they
