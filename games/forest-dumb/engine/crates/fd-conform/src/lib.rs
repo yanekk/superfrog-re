@@ -780,9 +780,10 @@ pub enum Outcome {
     /// Paula's writes in a pass differ in register, value or order, or one side wrote more
     /// ([`frames`], T29; by pass since T30): `why` is `amiga_conform::compare::paula`'s.
     WritesDiffer { pass: u32, frame: u32, why: String },
-    /// The CPU's other custom-chip writes of a pass differ as a multiset of (register, value)
-    /// ([`frames`], T45): `value` was written to `reg` `original` times in the original, `engine`
-    /// times in the engine. Order is not compared, Paula's registers are the channel above.
+    /// The CPU's other custom-chip writes differ as a multiset of (register, value) ([`frames`],
+    /// T45), with a pass of slack (T30, `frames::custom_carried`): `value` was written to `reg`
+    /// `original` times in the original, `engine` times in the engine, since the two last agreed
+    /// on it. Order is not compared, Paula's registers are the channel above.
     CustomWritesDiffer {
         pass: u32,
         frame: u32,

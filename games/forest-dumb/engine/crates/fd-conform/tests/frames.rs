@@ -48,6 +48,9 @@ enum Meddle {
     /// Add a write the CPU did not make, as the copper's MOVE of BPL1PTH (`$0e0`) would be: an
     /// engine mixing the copper's writes into its CPU's must fail.
     AddCopperLike(u32),
+    /// Hold the frame's last non-Paula write back to the next frame, before its pass end: the
+    /// write a pass late, as a cut redraw's blit is on a machine of another pace (T30).
+    LateCustom(u32),
     /// Hand this frame's pass end and writes over `n` frames late (T30): a machine whose pass
     /// ends a frame from the original's passes, two frames apart fails.
     Hold(u32, u32),
@@ -69,6 +72,8 @@ struct StandIn {
     pic: Option<Rgb12Frame>,
     paula: Vec<PaulaWrite>,
     custom: Vec<(u16, u16)>,
+    /// A write `LateCustom` holds back a frame.
+    late: Option<(u16, u16)>,
     /// RAM at the pass end of the last frame (the oracle keeps a step's first).
     ends: Vec<AmigaMemory>,
     /// What a `Hold` keeps back: (the frame it is handed in, pass ends, Paula's, custom writes).
@@ -88,6 +93,7 @@ impl StandIn {
             pic: None,
             paula: Vec::new(),
             custom: Vec::new(),
+            late: None,
             ends: Vec::new(),
             held: None,
             char_x: Vec::new(),
@@ -182,6 +188,14 @@ impl FrameEngine for StandIn {
                 Meddle::AddCopperLike(f) if f == self.frames => {
                     // First in the frame: before its pass end, so in the pass that ends in it.
                     self.custom.insert(0, (0x0E0, 0x0000));
+                }
+                Meddle::LateCustom(f) if f == self.frames => {
+                    let k = last_other(&self.custom);
+                    self.late = Some(self.custom.remove(k));
+                }
+                Meddle::LateCustom(f) if f + 1 == self.frames => {
+                    let w = self.late.take().expect("held a frame ago");
+                    self.custom.insert(0, w);
                 }
                 Meddle::Hold(f, n) if f == self.frames => {
                     self.held = Some((
@@ -279,8 +293,9 @@ fn custom_first(meddle: Meddle) -> (u32, u16, u32, u32) {
 
 #[test]
 fn a_dropped_custom_write_fails_naming_the_frame_register_and_counts() {
+    // Late or missing cannot be told apart until the next pass end (T30's slack).
     let (pass, reg, original, engine) = custom_first(Meddle::DropCustom(5));
-    assert_eq!(pass, 5);
+    assert_eq!(pass, 6);
     assert!(!amiga_chips::is_paula(reg), "{reg:#x}");
     assert_eq!(original, engine + 1);
 }
@@ -288,7 +303,7 @@ fn a_dropped_custom_write_fails_naming_the_frame_register_and_counts() {
 #[test]
 fn a_changed_custom_write_fails() {
     let (pass, _, original, engine) = custom_first(Meddle::ChangeCustom(6));
-    assert_eq!(pass, 6);
+    assert_eq!(pass, 7);
     assert_ne!(original, engine);
 }
 
@@ -300,7 +315,15 @@ fn two_custom_writes_swapped_pass_as_order_is_not_compared() {
 
 #[test]
 fn a_copper_like_write_the_cpu_did_not_make_fails() {
-    assert_eq!(custom_first(Meddle::AddCopperLike(3)), (3, 0x0E0, 0, 1));
+    assert_eq!(custom_first(Meddle::AddCopperLike(3)), (4, 0x0E0, 0, 1));
+}
+
+/// A non-Paula write a pass late is the same write (owner, 2026-11-12, T30): `main_loop`'s blits
+/// are cut by the pass end wherever they have got to.
+#[test]
+fn a_custom_write_a_pass_late_passes() {
+    let v = run(&made_up(20), &[Meddle::LateCustom(4)], &Options::default());
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
 }
 
 #[test]
@@ -316,12 +339,12 @@ fn every_channel_records_the_custom_writes_beside_the_others() {
     );
     assert_eq!(v.firsts.len(), 2, "{v}");
     assert!(
-        matches!(v.firsts[1], Outcome::CustomWritesDiffer { pass: 8, .. }),
+        matches!(v.firsts[1], Outcome::CustomWritesDiffer { pass: 9, .. }),
         "{v}"
     );
     let row = Row::new("w1-idle-made-up", Ok(v));
     assert_eq!(row.kind(), "Paula writes");
-    assert_eq!(row.then(), "custom writes at pass 8");
+    assert_eq!(row.then(), "custom writes at pass 9");
 }
 
 #[test]

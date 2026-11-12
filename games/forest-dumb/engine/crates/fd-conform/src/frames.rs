@@ -154,6 +154,7 @@ pub fn run_frames_inputs(
     let mut start_irq = 0u32;
     let mut paula_passes = [Passes::default(), Passes::default()];
     let mut custom_passes = [Passes::default(), Passes::default()];
+    let mut carried: BTreeMap<(u16, u16), Carried> = BTreeMap::new();
 
     'steps: for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
@@ -277,7 +278,7 @@ pub fn run_frames_inputs(
                     differs.push((3, o));
                     break;
                 }
-                match custom_difference(&ours, &theirs) {
+                match custom_carried(&mut carried, &ours, &theirs) {
                     Some(d) => {
                         differs.push((
                             3,
@@ -592,4 +593,44 @@ fn as_paula(w: &[(u16, u16)]) -> Vec<PaulaWrite> {
             vpos: 0,
         })
         .collect()
+}
+
+/// A (register, value)'s writes since the two sides' counts of it last agreed: the original's,
+/// the engine's, and how many pass ends they have disagreed across.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Carried {
+    original: u32,
+    engine: u32,
+    passes: u32,
+}
+
+/// [`custom_difference`] with a pass of slack (owner, 2026-11-12, T30): `main_loop`'s blits are
+/// cut by the pass end wherever they have got to, so a write may fall a pass early or late on a
+/// machine of another pace. Each (register, value)'s counts are carried from pass to pass; they
+/// must agree again by the next pass end, or differ (the counts then cover both passes). A write
+/// missing or added for good fails a pass after it, however often the same write recurs.
+pub fn custom_carried(
+    carried: &mut BTreeMap<(u16, u16), Carried>,
+    ours: &[(u16, u16)],
+    theirs: &[(u16, u16)],
+) -> Option<CustomDifference> {
+    for &(reg, value) in theirs.iter().filter(|(r, _)| !is_paula(*r)) {
+        carried.entry((reg, value)).or_default().original += 1;
+    }
+    for &(reg, value) in ours.iter().filter(|(r, _)| !is_paula(*r)) {
+        carried.entry((reg, value)).or_default().engine += 1;
+    }
+    carried.retain(|_, c| c.original != c.engine);
+    for c in carried.values_mut() {
+        c.passes += 1;
+    }
+    carried
+        .iter()
+        .find(|(_, c)| c.passes > PASS_LAG)
+        .map(|(&(reg, value), c)| CustomDifference {
+            reg,
+            value,
+            original: c.original,
+            engine: c.engine,
+        })
 }
