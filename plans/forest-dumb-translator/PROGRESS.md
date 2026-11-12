@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T47, then T33 (later-world-cases); T46 and T48 can run beside it.
 
 ## Tasks
 
@@ -62,9 +62,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
-| T47 | machine-power-on | T32; blocks T33 | ⬜ | |
+| T47 | machine-power-on | T32; blocks T33 | 🔍 | Kickstart's DMACON, INTENA, ADKCON and COP1LC at power-on; ADKCONR tracks ADKCON. 10 tests. Deviations: the bus word is a DMA slot's, so by owner's choice leftover writes are marked (`store_leftover`) and compared by register only; INTENA handed over too. Both cases still fail on processor speed only (3462, 3967, from 5998) and play. |
 
-**Review queue:** *(empty)*
+**Review queue:** T47
 
 ## Blocked on the user
 
