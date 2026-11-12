@@ -139,6 +139,8 @@ pub struct Frame {
     /// The CPU's of `writes` alone, in order: what the oracle keeps (`Amiga::cpu_writes`), so the
     /// frame bar compares like with like (translator T45).
     pub cpu_writes: Vec<(u64, u16, u16)>,
+    /// Chip RAM then slow RAM at each CPU write [`Machine::watch_write`] names, in order.
+    pub watched: Vec<Vec<u8>>,
 }
 
 /// The machine: memory, the custom registers' last written values, the beam and the devices.
@@ -193,6 +195,9 @@ pub struct Machine {
     /// The CPU's of them, tagged as each is made: a register filter could not tell a copper MOVE
     /// from the CPU's write to the same register.
     cpu_log: Vec<(u64, u16, u16)>,
+    /// The CPU write whose memory is kept ([`Machine::watch_write`]), and the copies this frame.
+    watch_write: Option<(u16, u16)>,
+    watched: Vec<Vec<u8>>,
     /// The registers and DMACON as the current frame found them.
     frame_custom: [u16; 256],
     frame_dmacon: u16,
@@ -228,6 +233,8 @@ impl Machine {
             watch: Watch::default(),
             log: Vec::new(),
             cpu_log: Vec::new(),
+            watch_write: None,
+            watched: Vec::new(),
             frame_custom: [0; 256],
             frame_dmacon: 0,
         }
@@ -517,11 +524,13 @@ impl Machine {
         });
         let writes = std::mem::take(&mut self.log);
         let cpu_writes = std::mem::take(&mut self.cpu_log);
+        let watched = std::mem::take(&mut self.watched);
         self.start_frame(end as i64, end as i64);
         Frame {
             picture,
             writes,
             cpu_writes,
+            watched,
         }
     }
 
@@ -711,6 +720,11 @@ impl Machine {
         self.log.push((self.now, reg, v));
         if cpu {
             self.cpu_log.push((self.now, reg, v));
+            if self.watch_write == Some((reg, v)) {
+                let mut m = self.chip.clone();
+                m.extend_from_slice(&self.slow);
+                self.watched.push(m);
+            }
         }
         if custom::read_only(reg) {
             return;
@@ -802,6 +816,19 @@ impl Machine {
     /// a frame (the routine judge, translator T27) reads them here without ending one.
     pub fn custom_writes(&self) -> &[(u64, u16, u16)] {
         &self.log
+    }
+
+    /// Keep chip RAM then slow RAM as it is at every CPU write of `w` (register offset from
+    /// `$DFF000`, word), as the oracle's `Amiga::watch_write` does, so a host can compare state
+    /// where the program marks the end of its work (the game's pass end, translator T30), not
+    /// where a frame happens to end. `None` keeps nothing.
+    pub fn watch_write(&mut self, w: Option<(u16, u16)>) {
+        self.watch_write = w;
+    }
+
+    /// The copies [`Machine::watch_write`] kept since the frame started, emptying the list.
+    pub fn take_watched(&mut self) -> Vec<Vec<u8>> {
+        std::mem::take(&mut self.watched)
     }
 
     /// The CPU's of [`Machine::custom_writes`] alone, in order: what `end_frame` will return in

@@ -271,6 +271,36 @@ fn cpu_writes_hold_the_cpus_alone_not_the_coppers_to_the_same_register() {
     assert!(f.cpu_writes.is_empty());
 }
 
+/// The frame runner takes state where the program marks its work's end, the CPU's write of
+/// `INTREQ=$4010` (translator T30): the machine keeps RAM as it is at each such write, the CPU's
+/// only, in order, and hands the copies with the frame.
+#[test]
+fn watch_write_keeps_ram_at_each_cpu_write_of_the_value_named() {
+    let mark = (irq::INTREQ, 0x4010);
+    let list = wait_move(0x40, irq::INTREQ, 0x4010);
+    let mut m = machine(DMAEN | COPEN, 0x400, &[(0x400, &list)]);
+    m.watch_write(Some(mark));
+    m.ww(0x100, 0x1111);
+    put(&mut m, irq::INTREQ, 0x4000);
+    put(&mut m, irq::INTREQ, 0x4010);
+    m.ww(0x100, 0x2222);
+    put(&mut m, irq::INTREQ, 0x4010);
+    m.ww(0x100, 0x3333);
+    let f = m.end_frame();
+    let kept: Vec<u16> = f
+        .watched
+        .iter()
+        .map(|mem| u16::from_be_bytes([mem[0x100], mem[0x101]]))
+        .collect();
+    // Not the other INTREQ value, and not the copper's MOVE of the same value.
+    assert_eq!(kept, [0x1111, 0x2222]);
+    assert_eq!(f.watched[0].len(), (m.chip().len() + m.slow().len()));
+    assert!(m.take_watched().is_empty(), "emptied with the frame");
+    m.watch_write(None);
+    put(&mut m, irq::INTREQ, 0x4010);
+    assert!(m.take_watched().is_empty(), "nothing kept unwatched");
+}
+
 #[test]
 fn a_list_word_the_cpu_rewrites_before_the_copper_reads_it_is_read_new() {
     let colour = copper::reg::COLOR00;

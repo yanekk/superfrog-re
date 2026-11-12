@@ -20,7 +20,8 @@
 //! the frame whose level 3 interrupt runs `game_frame`. The probe reads RAM at that boundary. Under
 //! the pass runner (`run_with`) the original is read at its pass end (`PASS_END`) instead; the
 //! frame bar (DESIGN §2.7) is judged by [`crate::frames`] ([`FrameEngine`], [`run_translated`]),
-//! which reads both sides at the frame's end (T29).
+//! which reads both sides' state at each pass end, where the CPU writes `PASS_END`
+//! (`FrameEngine::pass_ends`, the machine's `watch_write`; T30), and the picture at the frame's end.
 
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
@@ -159,6 +160,8 @@ struct Frame {
     stop: Option<Stop>,
     /// Chip RAM then slow RAM at the frame's end.
     mem: Vec<u8>,
+    /// Chip RAM then slow RAM at each pass end of the frame (`FrameOut::watched`).
+    pass_ends: Vec<Vec<u8>>,
 }
 
 struct Link {
@@ -178,6 +181,8 @@ pub struct TranslatedEngine {
     picture: Option<Picture>,
     paula: Vec<PaulaWrite>,
     custom: Vec<(u16, u16)>,
+    /// RAM at each pass end of the last frame.
+    pass_ends: Vec<Vec<u8>>,
     stop: Option<(u32, Stop)>,
     passes: u32,
 }
@@ -192,6 +197,7 @@ impl TranslatedEngine {
             picture: None,
             paula: Vec::new(),
             custom: Vec::new(),
+            pass_ends: Vec::new(),
             stop: None,
             passes: 0,
         }
@@ -226,6 +232,7 @@ impl TranslatedEngine {
                     disks: Disks { df0: start.disk2 },
                 });
                 g.set_input(first);
+                g.watch_write(Some(PASS_END));
                 g.run(&mut |out| {
                     let mut mem = out.chip.to_vec();
                     mem.extend_from_slice(out.slow);
@@ -247,6 +254,7 @@ impl TranslatedEngine {
                         custom,
                         stop: out.stop.clone(),
                         mem,
+                        pass_ends: out.watched.clone(),
                     });
                     // The engine dropped: nobody wants the next frame.
                     match (sent, inputs.recv()) {
@@ -345,6 +353,7 @@ impl TranslatedEngine {
         self.picture = Some(f.picture);
         self.paula = f.paula;
         self.custom = f.custom;
+        self.pass_ends = f.pass_ends;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
@@ -377,6 +386,13 @@ impl FrameEngine for TranslatedEngine {
 
     fn custom_writes(&self) -> &[(u16, u16)] {
         &self.custom
+    }
+
+    fn pass_ends(&self, vars: &[&Var]) -> Vec<Vec<u32>> {
+        self.pass_ends
+            .iter()
+            .map(|m| vars.iter().map(|v| value(m, v)).collect())
+            .collect()
     }
 
     fn stopped(&self) -> Option<String> {
