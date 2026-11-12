@@ -91,7 +91,8 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   capture keeps it.
 - **Collisions** (`collide.rs`, T31): CLXDAT as the oracle's Denise sets it with its three checks on
   (vAmiga `checkS2PCollisions`, `checkS2SCollisions`, `checkP2PCollisions`), per lores pixel inside
-  each line's window, from what the picture draws there: playfield bits under CLXCON (in single
+  each line's window (sprite against sprite from `2 * DDFSTRT + 15` to the line's end on lines with
+  bitplanes fetched, window or not, measured on the oracle), from what the picture draws there: playfield bits under CLXCON (in single
   playfield, playfield 1 only where playfield 2 matched), a sprite's pixel as the picture marks it
   (an attached pair as its odd sprite, only in front of the playfield), ENSP. Bits gather line by
   line; a read returns them with bit 15 set and clears them, gathering the lines the beam has
@@ -152,7 +153,7 @@ stop as `untranslated`; the measured program makes neither.
   and the interrupt wait. BLTxDAT is not left holding the last word fetched.
 - **Collisions inside a line**: gathered a line at a time, so a read part way along a line misses
   that line's pixels (the next read has them); hires collisions are judged on the lores pixel
-  the picture keeps. Sprite against sprite is vAmiga's rule, unmeasured on any game.
+  the picture keeps. Sprite against sprite is vAmiga's rule, measured on a test scene, not on a game.
 - **Sprites** written by the CPU or copper through SPRxPOS/CTL/DATA (manual mode) are not drawn;
   only sprite DMA from SPRxPT. HAM and dual playfield stop the run (`unsupported: display ham`).
 - **Frames**: the host calls `end_frame` at `frame_end()`; copper writes past it wait until it does.

@@ -1,8 +1,9 @@
 //! CLXDAT, Denise's collision register, as the oracle (vAmiga with its three collision checks on,
 //! `amiga-oracle`'s `-clx` build) sets it while it draws each line: sprite against playfield
 //! (`checkS2PCollisions`), sprite against sprite (`checkS2SCollisions`) and playfield against
-//! playfield (`checkP2PCollisions`), each over the pixels inside the line's display window, at
-//! lores pixel granularity, the pixels and marks being what [`crate::video`] draws.
+//! playfield (`checkP2PCollisions`), at lores pixel granularity: sprite against playfield and
+//! playfield against playfield over the pixels inside the line's display window, sprite against
+//! sprite from the line's first bitplane data on, window or not ([`sprites`]), the pixels and marks being what [`crate::video`] draws.
 //!
 //! The rules (vAmiga's, which the original is judged against):
 //!
@@ -40,7 +41,7 @@ pub struct Compare {
 impl Compare {
     /// Whether odd sprite `n` (or any even one) takes part in collisions.
     fn counts(&self, n: usize) -> bool {
-        n % 2 == 0 || self.con >> (12 + n / 2) & 1 != 0
+        n.is_multiple_of(2) || self.con >> (12 + n / 2) & 1 != 0
     }
 
     fn masks(&self) -> (u8, u8, u8, u8) {
@@ -101,8 +102,9 @@ const S2S: [((usize, usize), u16); 6] = [
     ((2, 3), 14),
 ];
 
-/// The collision bits one line sets: `pf` the playfield bits of each pixel of the picture's row
-/// (window position `left + x`), `inside` whether pixel `x` lies in the line's display window.
+/// The sprite and playfield collision bits one line sets: `pf` the playfield bits of each pixel
+/// of the picture's row (window position `left + x`), `inside` whether pixel `x` lies in the
+/// line's display window. Sprite against sprite is [`sprites`].
 pub fn line(
     cmp: &Compare,
     lines: &[Option<SpriteLine>; 8],
@@ -124,12 +126,44 @@ pub fn line(
             continue;
         }
         let at = left + x as i32;
-        let mut groups = 0u8;
         for p in 0..4 {
             for (k, m) in marked(lines, p, at, px, priority).into_iter().enumerate() {
                 let n = 2 * p + k;
                 if m && cmp.counts(n) {
                     clx |= cmp.hit(n, px);
+                }
+            }
+        }
+    }
+    clx
+}
+
+/// The window positions past the last a sprite can show at (its 9-bit start, 16 pixels, the
+/// delay).
+const SPRITE_END: i32 = 0x200 + 16 + SPRITE_DELAY;
+
+/// Sprite against sprite on a line whose bitplanes are fetched: every position from `from` on,
+/// window or not. vAmiga draws no sprite before the line's first BPL1DAT (`spriteClipBegin`) and
+/// checks the pairs it drew without the window test S2P makes; measured on the oracle, the first
+/// position counted is `2 * DDFSTRT + 15` and pixels right of DIWSTOP count (T31 review).
+/// `pf` gives the playfield bits at a position, for an attached pair's priority.
+pub fn sprites(
+    cmp: &Compare,
+    lines: &[Option<SpriteLine>; 8],
+    priority: usize,
+    from: i32,
+    pf: impl Fn(i32) -> u8,
+) -> u16 {
+    let mut clx = 0;
+    if lines.iter().filter(|l| l.is_some()).count() < 2 {
+        return 0;
+    }
+    for at in from..SPRITE_END {
+        let px = pf(at);
+        let mut groups = 0u8;
+        for p in 0..4 {
+            for (k, m) in marked(lines, p, at, px, priority).into_iter().enumerate() {
+                if m && cmp.counts(2 * p + k) {
                     groups |= 1 << p;
                 }
             }
@@ -211,13 +245,14 @@ mod tests {
         let mut l = [None; 8];
         l[0] = sprite(0x80, [0x8000, 0], false);
         l[6] = sprite(0x80, [0x8000, 0], false);
-        let pf = [0u8; 4];
         // Groups 0/1 and 6/7 meet at window position 0x81: bit 11, no playfield match (0 != MVBP).
-        assert_eq!(line(&PLAY, &l, 4, 0x80, &pf, |_| true), 1 << 11);
+        assert_eq!(sprites(&PLAY, &l, 4, 0x80, |_| 0), 1 << 11);
+        // Not before `from`.
+        assert_eq!(sprites(&PLAY, &l, 4, 0x82, |_| 0), 0);
         // Sprite 7 alone does not count without ENSP.
         let mut l2 = [None; 8];
         l2[0] = sprite(0x80, [0x8000, 0], false);
         l2[7] = sprite(0x80, [0x8000, 0], false);
-        assert_eq!(line(&PLAY, &l2, 4, 0x80, &pf, |_| true), 0);
+        assert_eq!(sprites(&PLAY, &l2, 4, 0x80, |_| 0), 0);
     }
 }

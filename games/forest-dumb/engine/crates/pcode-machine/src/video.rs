@@ -304,6 +304,20 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
                 // The row holds the playfield's bits here, before the sprites are drawn over it.
                 clx |= collide::line(&cmp, &lines, planes.priority() as usize, left, row, inside);
             }
+            if f.clx_lines.contains(&line) && fetching {
+                let cmp = collide::Compare {
+                    con: clxcon,
+                    dual: fw.bplcon0 & DBLPF != 0,
+                };
+                let from = 2 * first as i32 + 15;
+                let pf = |at: i32| {
+                    usize::try_from(at - left)
+                        .ok()
+                        .and_then(|x| row.get(x).copied())
+                        .unwrap_or(0)
+                };
+                clx |= collide::sprites(&cmp, &lines, planes.priority() as usize, from, pf);
+            }
             if lines.iter().any(Option::is_some) {
                 let priority = planes.priority() as usize;
                 for (x, px) in row.iter_mut().enumerate() {

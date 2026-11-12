@@ -584,3 +584,46 @@ fn a_snapshots_unread_collisions_are_read_first() {
     assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS | EVEN_SPR0 | PLF_PLF);
     assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS);
 }
+
+/// Sprites 0 and 2, one pixel each (the first) at control word `pos` on lines $50 to $5F, over
+/// a clear plane, CLXCON 0, DDFSTRT `ddf`.
+fn two_sprites(pos: u16, ddf: u16) -> Machine {
+    use copper::reg::*;
+    let list = screen_list(
+        1,
+        &[
+            DDFSTRT, ddf, SPR0PTH, 0x3, SPR0PTH + 2, 0, SPR0PTH + 8, 0x3, SPR0PTH + 10, 0,
+            collide::CLXCON, 0,
+        ],
+    );
+    let mut spr = vec![pos, 0x6000];
+    for _ in 0..16 {
+        spr.extend([0x8000, 0x0000]);
+    }
+    spr.extend([0, 0]);
+    let plane = vec![0u16; 20 * 256];
+    let mem = [(0x400, &list[..]), (0x1_0000, &plane[..]), (0x3_0000, &spr[..])];
+    machine(DMAEN | COPEN | BPLEN | SPREN, 0x400, &mem)
+}
+
+/// Bit 9: sprite group 0/1 against group 2/3.
+const S01_S23: u16 = 1 << 9;
+
+#[test]
+fn sprite_against_sprite_counts_from_the_fetch_start_and_past_the_window() {
+    // The oracle (`amiga-oracle`'s collision scene, T31 review): sprite pixels from
+    // 2 * DDFSTRT + 15 on collide, left of DIWSTRT ($81) and right of DIWSTOP ($1C1) too;
+    // playfield against playfield (CLXCON 0) is set by the window either way.
+    for (pos, ddf, want) in [
+        (0x503F, 0x38, ALWAYS | S01_S23 | PLF_PLF), // pixel $7F
+        (0x503E, 0x38, ALWAYS | PLF_PLF),           // pixel $7D
+        (0x5037, 0x30, ALWAYS | S01_S23 | PLF_PLF), // pixel $6F
+        (0x5036, 0x30, ALWAYS | PLF_PLF),           // pixel $6D
+        (0x50E8, 0x38, ALWAYS | S01_S23 | PLF_PLF), // pixel $1D1
+    ] {
+        let mut m = two_sprites(pos, ddf);
+        m.end_frame();
+        at(&mut m, FRAME + 10).unwrap();
+        assert_eq!(get(&mut m, collide::CLXDAT), want, "pos {pos:#06x} DDFSTRT {ddf:#x}");
+    }
+}
