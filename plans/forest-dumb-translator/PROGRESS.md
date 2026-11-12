@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ✅ | |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ✅ | |
-| T16 | whole-tree-judge | T13, T15 | ⬜ | |
+| T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
