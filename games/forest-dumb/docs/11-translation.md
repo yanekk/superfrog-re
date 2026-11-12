@@ -1078,8 +1078,8 @@ What Haiku got wrong. `left_pressed`: no answer within 300 s on any of 3 calls, 
 `right_pressed` answered in 85 s with 20 500 tokens out; Haiku's answers run long (`idle` 53 000 tokens
 out, 213 s). `run_right_step` (`h0_497c`): try 1 did not compile (a `self` parameter outside the impl),
 try 2 differed on 6 153 of 10 000 states, try 3 on all 10 000. Its mirror `run_left_step` passed on try
-3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, 220 to
-2 700 lines after ticks are cut, so the two runs differ in input as well as model.
+3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, about
+160 to 2 500 lines a routine after ticks are cut, so the two runs differ in input as well as model.
 
 Below the mark, the choice between accepting Haiku and no model is the owner's (DESIGN §2.13), set
 aside as translator T44 on 2026-11-12. Until it is answered, sessions write generators and rewrites by

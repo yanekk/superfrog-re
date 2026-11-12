@@ -1,9 +1,10 @@
 # T44 — haiku-decision
 
-**Phase:** 3 · **Depends on:** T19 · **Weight:** light
+**Phase:** 3 · **Depends on:** T19; blocks T42 · **Weight:** light
 
 Added by T19 (coordinator's instruction, 2026-11-12): Haiku's trial fell below the owner's pass mark, the
 case DESIGN §2.13 and §5.1 leave to the owner, so the decision is set aside here and T20 is not held.
+It blocks T42: the plan closes with Haiku's role settled (T42's final reading names the trial).
 
 ## Goal
 
@@ -34,6 +35,10 @@ DESIGN §2.13, §5.1 (row "Haiku's trial result below the pass mark").
 - If no model: the same files say by hand only; whether `generate.py`, `reshape.py`, `model.py` and their
   tests are deleted or kept unused is asked in the same question.
 - `plans/forest-dumb-translator/FINDINGS.md`: the answer, dated.
+
+## Interface
+
+No new command or function: the owner's answer, applied to the docs and packs above.
 
 ## Tests
 

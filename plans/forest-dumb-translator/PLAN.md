@@ -73,7 +73,7 @@ At the end the whole program translates with no unsupported instruction, and eve
 | [T19](tasks/T19-haiku-trial.md) | haiku-trial | T17, T18 |
 | [T20](tasks/T20-docs-and-packs.md) | docs-and-packs | T18, T19 |
 | [T21](tasks/T21-default-check.md) | default-check | T20 |
-| [T44](tasks/T44-haiku-decision.md) | haiku-decision | T19 |
+| [T44](tasks/T44-haiku-decision.md) | haiku-decision | T19; blocks T42 |
 
 T18 depends on T17 because T17 moves the shared judge and model plumbing out of Muse's `translate.py`, which T18 replaces. At the end a fresh session reaches for `tools/translate.py` unprompted.
 
