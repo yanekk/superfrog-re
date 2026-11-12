@@ -452,6 +452,30 @@ fn joy1dat_and_the_fire_buttons_read_as_set() {
 }
 
 #[test]
+fn keys_already_held_at_a_snapshot_are_not_sent_again() {
+    let held = Input {
+        keys: vec![0x19],
+        ..Input::default()
+    };
+    let mut m = machine();
+    m.wb(CIAA_ICR, 0x88);
+    at_cycles(&mut m, 1_000);
+    m.keys_held(&held);
+    m.set_input(&held);
+    assert_eq!(m.take_cia_interrupts(), 0, "the held key is not pressed again");
+    assert_eq!(m.cia_a().keys_queued(), 0);
+    // Letting it go is a change: its up byte is sent.
+    m.set_input(&Input::default());
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+    // Without `keys_held` the same input is a press.
+    let mut m = machine();
+    m.wb(CIAA_ICR, 0x88);
+    at_cycles(&mut m, 1_000);
+    m.set_input(&held);
+    assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
+}
+
+#[test]
 fn a_key_arrives_through_sdr_with_its_interrupt_and_waits_for_the_handshake() {
     use amiga_input::key_byte;
     let mut m = machine();

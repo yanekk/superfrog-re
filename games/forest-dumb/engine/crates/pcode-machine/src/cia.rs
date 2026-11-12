@@ -170,6 +170,12 @@ impl CiaA {
         }
     }
 
+    /// The keys the keyboard has already sent as held, no byte queued: a snapshot's, whose
+    /// keyboard sent them before it was taken.
+    pub fn set_held(&mut self, keys: KeySet) {
+        self.held = keys;
+    }
+
     /// The keys held this frame, at cycle count `at`: the keyboard queues a byte per change and
     /// sends the first if it is free.
     pub fn set_keys(&mut self, keys: KeySet, at: u64) {

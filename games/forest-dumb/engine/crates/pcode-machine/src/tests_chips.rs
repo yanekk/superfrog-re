@@ -499,3 +499,131 @@ fn a_sprite_outside_a_lines_window_shows_colour_0_when_the_window_narrows_part_w
     assert_eq!(px(0xB1, 0x90), 17, "inside the window");
     assert_eq!(px(0x91, 0x90), 0, "left of the line's window");
 }
+
+/// CLXDAT bits: playfield against playfield, odd planes against sprite 0, even planes against
+/// sprite 0, always set. The scene is `amiga-oracle`'s `tests/collision.rs`, whose readings on the
+/// oracle these are (T31).
+const PLF_PLF: u16 = 1;
+const ODD_SPR0: u16 = 1 << 1;
+const EVEN_SPR0: u16 = 1 << 5;
+const ALWAYS: u16 = 0x8000;
+/// CLXCON: ENBP1 (bit 6), MVBP1 (bit 0).
+const ENBP1: u16 = 1 << 6;
+const MVBP1: u16 = 1;
+
+/// One lores plane, every pixel `set` or clear, sprite 0 (colour 1, lines $50 to $5F, at $90)
+/// over it, CLXCON `clxcon`.
+fn collision_scene(set: bool, clxcon: u16) -> Machine {
+    use copper::reg::*;
+    let list = screen_list(1, &[SPR0PTH, 0x3, SPR0PTH + 2, 0, collide::CLXCON, clxcon]);
+    let mut spr = vec![0x5048, 0x6000];
+    for _ in 0..16 {
+        spr.extend([0xFFFF, 0x0000]);
+    }
+    spr.extend([0, 0]);
+    let plane = vec![if set { 0xFFFF } else { 0 }; 20 * 256];
+    let mem = [(0x400, &list[..]), (0x1_0000, &plane[..]), (0x3_0000, &spr[..])];
+    machine(DMAEN | COPEN | BPLEN | SPREN, 0x400, &mem)
+}
+
+#[test]
+fn clxdat_reads_the_collisions_of_the_lines_drawn_since_its_last_read_and_clears() {
+    let mut m = collision_scene(true, ENBP1 | MVBP1);
+    m.end_frame();
+    at(&mut m, FRAME + 10).unwrap();
+    // As the oracle: no even plane enabled, so playfield 2 matches everywhere.
+    assert_eq!(
+        get(&mut m, collide::CLXDAT),
+        ALWAYS | EVEN_SPR0 | ODD_SPR0 | PLF_PLF
+    );
+    // A read clears it; line 0 of the next frame has drawn nothing since.
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS);
+}
+
+#[test]
+fn without_a_match_only_the_matching_playfields_bits_are_set() {
+    // Plane clear, matching set: playfield 2 still matches (none enabled), playfield 1 not.
+    let mut m = collision_scene(false, ENBP1 | MVBP1);
+    m.end_frame();
+    at(&mut m, FRAME + 10).unwrap();
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS | EVEN_SPR0);
+    // Plane set, matching clear.
+    let mut m = collision_scene(true, ENBP1);
+    m.end_frame();
+    at(&mut m, FRAME + 10).unwrap();
+    assert_eq!(get(&mut m, collide::CLXDAT) & (ODD_SPR0 | PLF_PLF), 0);
+}
+
+#[test]
+fn a_read_part_way_down_sees_only_the_lines_above_the_beam() {
+    let mut m = collision_scene(true, ENBP1 | MVBP1);
+    // Line $40: the window's lines from $2C are drawn, the sprite (from $50) not yet.
+    at(&mut m, 0x40 * 454).unwrap();
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS | PLF_PLF);
+    // Line $60: the sprite's lines since.
+    at(&mut m, 0x60 * 454).unwrap();
+    assert_eq!(
+        get(&mut m, collide::CLXDAT),
+        ALWAYS | EVEN_SPR0 | ODD_SPR0 | PLF_PLF
+    );
+    // The frame's end adds the rest of the window, read in the next frame.
+    m.end_frame();
+    at(&mut m, FRAME + 10).unwrap();
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS | PLF_PLF);
+}
+
+#[test]
+fn a_snapshots_unread_collisions_are_read_first() {
+    let cfg = Config::a500(vec![]);
+    let ram = vec![0u8; (cfg.chip + cfg.slow) as usize];
+    let mut custom = [0u16; 256];
+    custom[2] = 0x8000;
+    custom[collide::CLXDAT as usize >> 1] = ALWAYS | EVEN_SPR0 | PLF_PLF;
+    let mut m = Machine::from_snapshot(cfg, &ram, &custom);
+    at(&mut m, 10).unwrap();
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS | EVEN_SPR0 | PLF_PLF);
+    assert_eq!(get(&mut m, collide::CLXDAT), ALWAYS);
+}
+
+/// Sprites 0 and 2, one pixel each (the first) at control word `pos` on lines $50 to $5F, over
+/// a clear plane, CLXCON 0, DDFSTRT `ddf`.
+fn two_sprites(pos: u16, ddf: u16) -> Machine {
+    use copper::reg::*;
+    let list = screen_list(
+        1,
+        &[
+            DDFSTRT, ddf, SPR0PTH, 0x3, SPR0PTH + 2, 0, SPR0PTH + 8, 0x3, SPR0PTH + 10, 0,
+            collide::CLXCON, 0,
+        ],
+    );
+    let mut spr = vec![pos, 0x6000];
+    for _ in 0..16 {
+        spr.extend([0x8000, 0x0000]);
+    }
+    spr.extend([0, 0]);
+    let plane = vec![0u16; 20 * 256];
+    let mem = [(0x400, &list[..]), (0x1_0000, &plane[..]), (0x3_0000, &spr[..])];
+    machine(DMAEN | COPEN | BPLEN | SPREN, 0x400, &mem)
+}
+
+/// Bit 9: sprite group 0/1 against group 2/3.
+const S01_S23: u16 = 1 << 9;
+
+#[test]
+fn sprite_against_sprite_counts_from_the_fetch_start_and_past_the_window() {
+    // The oracle (`amiga-oracle`'s collision scene, T31 review): sprite pixels from
+    // 2 * DDFSTRT + 15 on collide, left of DIWSTRT ($81) and right of DIWSTOP ($1C1) too;
+    // playfield against playfield (CLXCON 0) is set by the window either way.
+    for (pos, ddf, want) in [
+        (0x503F, 0x38, ALWAYS | S01_S23 | PLF_PLF), // pixel $7F
+        (0x503E, 0x38, ALWAYS | PLF_PLF),           // pixel $7D
+        (0x5037, 0x30, ALWAYS | S01_S23 | PLF_PLF), // pixel $6F
+        (0x5036, 0x30, ALWAYS | PLF_PLF),           // pixel $6D
+        (0x50E8, 0x38, ALWAYS | S01_S23 | PLF_PLF), // pixel $1D1
+    ] {
+        let mut m = two_sprites(pos, ddf);
+        m.end_frame();
+        at(&mut m, FRAME + 10).unwrap();
+        assert_eq!(get(&mut m, collide::CLXDAT), want, "pos {pos:#06x} DDFSTRT {ddf:#x}");
+    }
+}

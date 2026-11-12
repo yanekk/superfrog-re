@@ -136,6 +136,7 @@ unsafe extern "C" {
     pub fn amiga_audio_out(a: *const RawAmiga, out: *mut *const f32) -> usize;
     pub fn amiga_texture(a: *const RawAmiga, stride: *mut usize, rows: *mut usize) -> *const u32;
     pub fn amiga_diw(a: *const RawAmiga, diwstrt: *mut u16, diwstop: *mut u16);
+    pub fn amiga_clxdat(a: *const RawAmiga) -> u16;
     pub fn amiga_chip(a: *const RawAmiga, len: *mut usize) -> *const u8;
     pub fn amiga_slow(a: *const RawAmiga, len: *mut usize) -> *const u8;
     pub fn amiga_cpu(a: *const RawAmiga, out: *mut RawCpuRegs);
