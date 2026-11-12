@@ -6,6 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |
+| 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |
 | 2026-11-12 | 📌 | **T35 seam:** `fd-judge --seam` passes `camera_update` and `char_sprite_position` 2 000/2 000 against the generated tree. A mounted routine counts no cycles or `Regs::depth`; T36 should measure whether `game_frame`'s missing cycles show at a frame boundary. |
 | 2026-11-12 | 📌 | **T28 snapshot starts:** at every step's end the original is inside `level3_handler`, so translated code resumes mid-function: `pcode_rust.py` emits `NAME_from(start)` and `resume(k)`. T08's 15 routines still pass; whole gate not rerun. |
 | 2026-11-12 | 📌 | **T28 w1-idle on the translated engine:** 199 of 199 passes equal (vars only), no stop; 50 frames from the sync point 10 s. Review: power-on 400 frames, fire held 100, no stop; deepest `Regs::depth` unrecorded. |
@@ -58,7 +60,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |
 | 2026-11-11 | 📌 | `world_index` cannot be poked before `load_world`: `title_code_world` writes it in the same step. T01 sets the immediate at `h0+$778e` (the no-code branch `h0+$778c`) instead; T33's `set` meets the same step. |
 | 2026-11-11 | 📌 | First real `generate.py` on Haiku: `h0+$513c` covered, 4 of 4 branches, 2 000 returns, 2 tries (the first left its name out of `ALL`), 22 s, $0.011 list. `claude -p` keeps no conversation; retries go as one transcript prompt. |
-| 2026-11-11 | 🐞 | A write-back compares with memory's bytes, not the typed state before: `camera_update`'s `crossed` flags are bools, so a poked `$6c` stayed and 288/2 000 failed. Camera needed four values outside `LAYOUT` (`h0+$4d76`, `$4d7a`, `$51f8`, `frame_flag`). |
 | 2026-11-11 | 📌 | Round trip (write back whole, transplant again) over `camera-right-left`'s first 100 steps: 0 equal. Not transplanted: `edges.pos` (`h0+$1e66`), pointers `p840`, `p83c`, the `input_log` bytes. Screen and plane share `h3+$fa10..$fa4f`; 4 bytes disagree. `game_frame` reads none. |
 | 2026-11-11 | 📌 | Whole write-back is 129 500 bytes (display 75 101, object map 38 400, plane 15 152, outside-`LAYOUT` extras 539, `LAYOUT` 207, input log 101); the frame mount stores only what changed. |
 | 2026-11-11 | 🐞 | `Cpu68k::call` with an odd entry runs the instruction at the even address below it (probe: call(0x2001) ran moveq at 0x2000); Moira's reset ignores bit 0. Fixed in `step` (T05 review), left open in `call`. |
