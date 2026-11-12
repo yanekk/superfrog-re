@@ -788,6 +788,10 @@ fn code_of_any_other_shape_still_fails() {
         format!("pub static CODE: &[(u32, u32, u32)] = &[{}];", ranges(17)),
         format!("pub const RANGES: &[(u32, u32, u32)] = &[{}];", ranges(17)),
         format!("pub const CODE: &[(u32, u32, u32)] = &[{}]", ranges(17)),
+        // A non-integer in any slot ends the exemption, so the usual scan sees the float.
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(1.5, 0, 1)];", ranges(17)),
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(0, 1.5, 1)];", ranges(17)),
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(0, 0, 1.5)];", ranges(17)),
     ];
     for c in &cases {
         let src = format!("{HEADER}{c}\n");
