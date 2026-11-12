@@ -61,6 +61,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
+| T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
 
 **Review queue:** *(empty)*
 

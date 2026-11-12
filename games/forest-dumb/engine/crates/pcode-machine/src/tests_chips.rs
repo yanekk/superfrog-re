@@ -271,6 +271,36 @@ fn cpu_writes_hold_the_cpus_alone_not_the_coppers_to_the_same_register() {
     assert!(f.cpu_writes.is_empty());
 }
 
+/// The frame runner takes state where the program marks its work's end, the CPU's write of
+/// `INTREQ=$4010` (translator T30): the machine keeps RAM as it is at each such write, the CPU's
+/// only, in order, and hands the copies with the frame.
+#[test]
+fn watch_write_keeps_ram_at_each_cpu_write_of_the_value_named() {
+    let mark = (irq::INTREQ, 0x4010);
+    let list = wait_move(0x40, irq::INTREQ, 0x4010);
+    let mut m = machine(DMAEN | COPEN, 0x400, &[(0x400, &list)]);
+    m.watch_write(Some(mark));
+    m.ww(0x100, 0x1111);
+    put(&mut m, irq::INTREQ, 0x4000);
+    put(&mut m, irq::INTREQ, 0x4010);
+    m.ww(0x100, 0x2222);
+    put(&mut m, irq::INTREQ, 0x4010);
+    m.ww(0x100, 0x3333);
+    let f = m.end_frame();
+    let kept: Vec<u16> = f
+        .watched
+        .iter()
+        .map(|mem| u16::from_be_bytes([mem[0x100], mem[0x101]]))
+        .collect();
+    // Not the other INTREQ value, and not the copper's MOVE of the same value.
+    assert_eq!(kept, [0x1111, 0x2222]);
+    assert_eq!(f.watched[0].len(), (m.chip().len() + m.slow().len()));
+    assert!(m.take_watched().is_empty(), "emptied with the frame");
+    m.watch_write(None);
+    put(&mut m, irq::INTREQ, 0x4010);
+    assert!(m.take_watched().is_empty(), "nothing kept unwatched");
+}
+
 #[test]
 fn a_list_word_the_cpu_rewrites_before_the_copper_reads_it_is_read_new() {
     let colour = copper::reg::COLOR00;
@@ -412,6 +442,47 @@ fn a_sprite_shows_over_colour_0_inside_the_window() {
     // With sprite DMA off, nothing.
     let mut m = machine(DMAEN | COPEN | BPLEN, 0x400, &mem);
     assert!(m.end_frame().picture.pixels.iter().all(|&p| p == 0));
+}
+
+/// CLXDAT (translator T30): Denise ORs in each line's collisions as the beam passes it, and a
+/// CPU read returns them with bit 15 and clears them. CLXCON `$0041` compares plane 1 with 1, so a
+/// colour 1 pixel matches both playfields (bit 0), and sprite 0 over it sets bits 1 and 5.
+#[test]
+fn clxdat_reads_the_collisions_the_beam_has_passed_and_clears_them() {
+    use copper::reg::*;
+    let list = screen_list(1, &[SPR0PTH, 0x3, SPR0PTH + 2, 0, 0x098, 0x0041]);
+    // Sprite 0 on line $30 at window position $A1, the picture's x $20.
+    let spr = [0x3050, 0x3100, 0x8000, 0x0000, 0, 0];
+    // Plane 1's row 4 (line $30): pixel $20 set.
+    let pf = [0x8000u16];
+    let mem = [(0x400, &list[..]), (0x3_0000, &spr[..]), (0x1_00A4, &pf[..])];
+    let mut m = machine(DMAEN | COPEN | BPLEN | SPREN, 0x400, &mem);
+    let line = |n: u64| n * amiga_clock::LINE_CYCLES as u64;
+    at(&mut m, line(0x20)).unwrap();
+    assert_eq!(get(&mut m, 0x00E), 0x8000, "the beam has not reached line $30");
+    at(&mut m, line(0x40)).unwrap();
+    assert_eq!(get(&mut m, 0x00E), 0x8023);
+    assert_eq!(get(&mut m, 0x00E), 0x8000, "a read clears it");
+    // The frame's end accounts the lines after the last read; the next frame's line $30 again.
+    let f = m.end_frame();
+    // BPLCON2 0 puts the playfield in front, yet an unattached sprite collides wherever it shows.
+    assert_eq!(f.picture.pixels[4 * 320 + 0x20], 1, "the playfield in front");
+    at(&mut m, line(313 + 0x40)).unwrap();
+    assert_eq!(get(&mut m, 0x00E), 0x8023);
+}
+
+/// A machine started from a snapshot owes the program the collisions the original had not yet
+/// read (`Amiga::clxdat`, in the snapshot's `custom[7]`).
+#[test]
+fn a_snapshots_clxdat_is_the_first_reads() {
+    let cfg = Config::a500(vec![]);
+    let ram = vec![0u8; (cfg.chip + cfg.slow) as usize];
+    let mut custom = [0u16; 256];
+    custom[2] = 0x8000;
+    custom[0x00E >> 1] = 0x8006;
+    let mut m = Machine::from_snapshot(cfg, &ram, &custom);
+    assert_eq!(get(&mut m, 0x00E), 0x8006);
+    assert_eq!(get(&mut m, 0x00E), 0x8000);
 }
 
 #[test]
