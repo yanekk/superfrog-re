@@ -1,6 +1,6 @@
 # T43 — call-fallthrough
 
-**Phase:** 2 · **Depends on:** T03; blocks T16, T28 · **Weight:** medium
+**Phase:** 2 · **Depends on:** T03; blocks T28 · **Weight:** medium
 
 ## Goal
 

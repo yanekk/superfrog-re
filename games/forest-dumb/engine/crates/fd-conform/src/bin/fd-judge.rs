@@ -46,6 +46,10 @@
 //! `{"run":"load-napis","stop":"..","equal":bool,"differ":n,"first_differ":n,"nonzero":n,"frame":n,"opened":[..],"missing":[..]}`
 //!
 //! `nonzero` counts the original's bytes there that are not 0, so an empty match shows.
+//!
+//! `--generators` (translator T16) prints every registered generator's name, in registry order, as
+//! one line `{"generators":["name",..]}`: the whole-tree judge's work list, read from the build
+//! rather than from `re/translate.toml`, which predates the later generator modules. Needs no disks.
 
 use std::process::ExitCode;
 
@@ -202,6 +206,13 @@ fn main() -> ExitCode {
                 ExitCode::from(2)
             }
         };
+    }
+    if v.len() == 1 && v[0] == "--generators" {
+        let names: Vec<String> = generators::all()
+            .map(|(n, _)| format!("\"{}\"", esc(n)))
+            .collect();
+        println!("{{\"generators\":[{}]}}", names.join(","));
+        return ExitCode::SUCCESS;
     }
     if v.iter().any(|a| a == "--insn" || a == "--insn-all") {
         return match insn_main(&v) {

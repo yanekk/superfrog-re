@@ -7,6 +7,12 @@ pub const VHPOSR: u16 = 0x006;
 /// JOY1DAT: the port-2 joystick's counters, read-only; the machine's input sets it.
 pub const JOY1DAT: u16 = 0x00C;
 
+/// DMACON's state read back (with the blitter's BBUSY, BZERO), and DMACON, set/clear (bit 15
+/// says whether the other bits written set or clear theirs; `irq::set_clear`). INTENA's and
+/// INTREQ's are in `irq`.
+pub const DMACONR: u16 = 0x002;
+pub const DMACON: u16 = 0x096;
+
 /// A register a CPU write changes nothing in (vAmiga `pokeCustom16`'s "READ-ONLY"): `$000..=$01E`
 /// and DENISEID; the word is still on the data bus. BLTDDAT (`$000`) is also [`write_only`]: a read
 /// takes the bus's word and the write it makes is dropped here.

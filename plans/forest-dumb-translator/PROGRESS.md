@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** T43 (call-fallthrough) before T16 and T28.
+**Next `pir-work` will:** T43 (call-fallthrough) before T28.
 
 ## Tasks
 
@@ -30,15 +30,15 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ✅ | |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ✅ | |
-| T16 | whole-tree-judge | T13, T15 | ⬜ | |
+| T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
-| T23 | interrupts | T22 | ⬜ | |
-| T24 | machine-chips | T22 | ⬜ | |
+| T23 | interrupts | T22 | ✅ | |
+| T24 | machine-chips | T22 | ✅ | |
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ✅ | Reviewed: one fix, T43's doc lacked its Interface section. Ran full `os_run.rs`: `load-napis` equals the original's 18 720 bytes; power-on stops `untranslated: h4+$1a0f6`, absent from `pcode.json`, so that Done-when item is carried by T43. Mutated the rts pop, read position and vector stride: each caught. |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
@@ -57,7 +57,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
-| T43 | call-fallthrough | T03; blocks T16, T28 | ⬜ | Added by T26 with the owner's yes: keep every call's fall-through in the export, by a general rule. |
+| T43 | call-fallthrough | T03; blocks T28 | ⬜ | Added by T26 with the owner's yes: keep every call's fall-through in the export, by a general rule. |
 
 **Review queue:** none
 
