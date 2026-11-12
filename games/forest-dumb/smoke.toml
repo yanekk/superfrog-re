@@ -389,6 +389,8 @@ workspace = "engine"
 "tools/test_task_pack.py" = "smoke"
 # A hand-made conversation log, no run: under 1 s.
 "tools/test_pack_check.py" = "smoke"
+# Translator T20: no doc outside "History" sections names Muse, git ls-files and the docs only: under 1 s.
+"tools/test_docs_translator_first.py" = "smoke"
 # T03 (translator trial): the translator on made-up exports, its fixtures current, under a second.
 "tools/test_pcode_rust.py" = "smoke"
 # Translator T01: the hunk walk, the missing-input exits and ghidra_headless's command, no Ghidra: under 1 s.
