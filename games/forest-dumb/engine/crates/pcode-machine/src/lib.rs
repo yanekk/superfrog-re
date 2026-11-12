@@ -20,6 +20,7 @@ use journal::{Journal, Watch};
 pub mod beam;
 pub mod blitter;
 pub mod cia;
+pub mod collide;
 pub mod copper;
 pub mod custom;
 pub mod input;
@@ -196,6 +197,11 @@ pub struct Machine {
     /// The registers and DMACON as the current frame found them.
     frame_custom: [u16; 256],
     frame_dmacon: u16,
+    /// CLXDAT's collision bits gathered since its last read (bit 15 not held).
+    clx: u16,
+    /// The current frame's first line not yet gathered into `clx`: Denise sets the bits as it
+    /// finishes each line, so a read part way down sees the lines above the beam.
+    clx_from: u16,
 }
 
 impl Machine {
@@ -230,6 +236,8 @@ impl Machine {
             cpu_log: Vec::new(),
             frame_custom: [0; 256],
             frame_dmacon: 0,
+            clx: 0,
+            clx_from: 0,
         }
     }
 
@@ -290,7 +298,8 @@ impl Machine {
     /// A case's sync point: `mem` is chip RAM then slow RAM, as the oracle's `AmigaMemory` holds
     /// them, `custom` the registers by `reg / 2`. VPOSR and VHPOSR (`custom[2]`, `custom[3]`) place
     /// the beam at cycle 0; INTENAR and INTREQR (`custom[0x0E]`, `custom[0x0F]`) are INTENA's and
-    /// INTREQ's state; the rest are the registers' values. Hunk sizes are unknown here. `$4` is set
+    /// INTREQ's state; CLXDAT (`custom[7]`) the collisions gathered and not yet read, as a read
+    /// would return them (the oracle's `Amiga::clxdat`); the rest are the registers' values. Hunk sizes are unknown here. `$4` is set
     /// to the machine's ExecBase (`os`): the oracle's would lead into a Kickstart not here.
     ///
     /// Panics on an impossible `cfg` or on `mem` not `cfg.chip + cfg.slow` bytes: both are the
@@ -313,6 +322,7 @@ impl Machine {
         m.dmacon = custom[custom::DMACONR as usize >> 1] & 0x07FF;
         m.intena = custom[irq::INTENAR as usize >> 1] & 0x7FFF;
         m.intreq = custom[irq::INTREQR as usize >> 1] & 0x7FFF;
+        m.clx = custom[collide::CLXDAT as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
         m.set_exec_base();
@@ -500,21 +510,17 @@ impl Machine {
         let saved = self.now;
         self.advance(end.saturating_sub(1));
         self.now = saved;
-        let c = self.copper.as_ref().expect("started");
-        let history = self.journal.history();
-        let drawn = video::draw(&video::FrameIn {
-            chip: &self.chip,
-            history: &history,
-            frame_start: c.frame_start,
-            frame_lines: self.cfg.frame_lines,
-            start: &self.frame_custom,
-            dmacon: self.frame_dmacon,
-            writes: &self.log,
-        });
-        let picture = drawn.unwrap_or_else(|op| {
-            self.unsupported(op);
-            Picture::blank(0, 0, 0, 0)
-        });
+        let picture = match self.draw(self.cfg.frame_lines) {
+            Ok(d) => {
+                self.clx |= d.clx;
+                d.picture
+            }
+            Err(op) => {
+                self.unsupported(op);
+                Picture::blank(0, 0, 0, 0)
+            }
+        };
+        self.clx_from = 0;
         let writes = std::mem::take(&mut self.log);
         let cpu_writes = std::mem::take(&mut self.cpu_log);
         self.start_frame(end as i64, end as i64);
@@ -525,11 +531,51 @@ impl Machine {
         }
     }
 
-    /// Start the frame the beam is in now, if none is: a machine's first access to time.
+    /// The current frame drawn from its start up to line `upto` (exclusive), its collisions
+    /// gathered from `clx_from`.
+    fn draw(&self, upto: u16) -> Result<video::Drawn, &'static str> {
+        let c = self.copper.as_ref().expect("started");
+        let history = self.journal.history();
+        video::draw(&video::FrameIn {
+            chip: &self.chip,
+            history: &history,
+            frame_start: c.frame_start,
+            frame_lines: self.cfg.frame_lines,
+            start: &self.frame_custom,
+            dmacon: self.frame_dmacon,
+            writes: &self.log,
+            clx_lines: self.clx_from..upto,
+        })
+    }
+
+    /// A CLXDAT read: the lines the beam has finished since the last read are drawn and their
+    /// collisions gathered; the bits are returned with bit 15 set and cleared (vAmiga
+    /// `peekCLXDAT`). The line the beam is on is gathered by the next read.
+    fn read_clxdat(&mut self) -> u16 {
+        let saved = self.now;
+        self.advance(saved);
+        self.now = saved;
+        let start = self.copper.as_ref().expect("started").frame_start;
+        let line = ((saved as i64 - start).max(0) / amiga_clock::LINE_CYCLES as i64)
+            .min(self.cfg.frame_lines as i64) as u16;
+        if line > self.clx_from {
+            match self.draw(line) {
+                Ok(d) => self.clx |= d.clx,
+                Err(op) => self.unsupported(op),
+            }
+            self.clx_from = line;
+        }
+        collide::CLXDAT_NONE | std::mem::take(&mut self.clx)
+    }
+
+    /// Start the frame the beam is in now, if none is: a machine's first access to time. Its
+    /// lines above the beam are not the machine's (a snapshot taken part way down a frame holds
+    /// no record of them), so their collisions are not gathered.
     fn ensure_frame(&mut self) {
         if self.copper.is_none() {
             let into = self.phase.wrapping_add(self.now) % beam::frame_cycles(self.cfg.frame_lines);
             self.start_frame(self.now as i64 - into as i64, self.now as i64);
+            self.clx_from = (into / amiga_clock::LINE_CYCLES as u64) as u16;
         }
     }
 
@@ -684,6 +730,7 @@ impl Machine {
                 let zero = if self.blitter.zero { 0x2000 } else { 0 };
                 self.dmacon | busy | zero
             }
+            collide::CLXDAT if !routed => self.read_clxdat(),
             irq::INTENAR => self.intena,
             irq::INTREQR => self.intreq(),
             custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),

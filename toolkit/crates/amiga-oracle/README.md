@@ -45,6 +45,7 @@ The machine, `Amiga` (`amiga.rs`): an A500, OCS, 512K chip + 512K slow, PAL, det
 - Sound: `FrameCapture::paula: Vec<PaulaWrite>`; `FrameCapture::taps()` yields `AudioTap { channel, vpos, hpos, value }` (DAC changes); `mixed_audio() -> Vec<[f32; 2]>` at `MIX_RATE`, fading in over the first 10 000 samples.
 - Memory: `memory() -> AmigaMemory`, `memory_hash() -> u64`, `hash_memory(&AmigaMemory) -> u64`, `peek(addr: u32, len: usize) -> Vec<u8>` (0 outside RAM). `SLOW_BASE` is `0xC00000`.
 - Writing RAM between frames: `poke(addr, bytes)` drops bytes outside RAM; `write_memory(addr, bytes)` panics on them. Neither is player input.
+- Chips: `clxdat() -> u16`, CLXDAT as a read would return it now (bit 15 set) without the read's clearing: the collisions gathered since the program's last read, for a machine started from this state (`tests/collision.rs`).
 - CPU: `cpu() -> CpuRegs` (`d`, `a`, `pc`, `sr`, `usp`, `ssp`; `ipl()`, `supervisor()`).
 - State: `snapshot() -> Snapshot` (`frame`, `input`, `bytes`), `restore(&mut self, s: &Snapshot)` (panics on a foreign snapshot).
 - Disks: `insert_disk(drive: usize, disk: usize)` and `eject_disk(drive: usize)` panic on an unconnected drive; `df0() -> Option<usize>`.

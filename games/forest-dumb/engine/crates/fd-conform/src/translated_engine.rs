@@ -50,7 +50,8 @@ pub struct CaseStart {
     pub mem: Vec<u8>,
     pub regs: Regs68k,
     /// Each custom register's last CPU write, by `reg / 2`; DMACONR, INTENAR and INTREQR the
-    /// set/clear state of the CPU's writes; VPOSR and VHPOSR line 0, where a step ends.
+    /// set/clear state of the CPU's writes; CLXDAT the collisions not yet read (`Amiga::clxdat`);
+    /// VPOSR and VHPOSR line 0, where a step ends.
     pub custom: [u16; 256],
     /// Disk 2, in df0 since frame [`sync::DISK_2_SWAP`].
     pub disk2: Vec<u8>,
@@ -118,6 +119,9 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
             regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
             regs[irq::INTENAR as usize >> 1] = intena;
             regs[irq::INTREQR as usize >> 1] = intreq;
+            // The collisions Denise gathered since the program's last CLXDAT read: below the
+            // beam's line then, so the machine, starting at the frame's start, cannot draw them.
+            regs[pcode_machine::collide::CLXDAT as usize >> 1] = am.clxdat();
             // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
             regs[0x004 >> 1] = 0;
             regs[0x006 >> 1] = 0;
