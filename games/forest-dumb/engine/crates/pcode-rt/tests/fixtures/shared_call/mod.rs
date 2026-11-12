@@ -53,3 +53,25 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
         None => Err(Stop::Untranslated(format!("h{}+${:x}", k.0, k.1))),
     }
 }
+
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x4)
+        | (0, 0x8) => Some(p00::h0_0_from),
+        (0, 0x10)
+        | (0, 0x14)
+        | (0, 0x16) => Some(p00::h0_10_from),
+        (0, 0x20)
+        | (0, 0x24)
+        | (0, 0x26) => Some(p01::h0_20_from),
+        (0, 0x30)
+        | (0, 0x32) => Some(p01::h0_30_from),
+        _ => None,
+    }
+}

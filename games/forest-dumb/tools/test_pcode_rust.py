@@ -250,8 +250,9 @@ class Flow(unittest.TestCase):
                       'h0+$6': RTS})
         text, stats = translate_doc(doc)
         self.assertEqual(stats['blocks'], 3)
-        self.assertEqual(re.findall(r'^            (\(0, 0x[0-9a-f]+\)) =>', text, re.M),
-                         ['(0, 0x0)', '(0, 0x2)', '(0, 0x6)'])
+        # An arm names every instruction of its block, so a run can be resumed at any (T28).
+        self.assertEqual(re.findall(r'^            (\(0, 0x[0-9a-f]+\)(?: \| \(0, 0x[0-9a-f]+\))*) =>', text, re.M),
+                         ['(0, 0x0)', '(0, 0x2) | (0, 0x4)', '(0, 0x6)'])
 
     def test_every_function_counts_its_depth_and_every_block_its_step(self):
         # Two functions; the caller's three blocks (entry, the branch target, the rts after it).
@@ -422,7 +423,7 @@ class Split(unittest.TestCase):
             self.assertIn('#[path = "p00.rs"]\nmod p00;', files['mod.rs'])
             self.assertIn('"h0+$30" => Some(p01::h0_30),', files['mod.rs'])
             self.assertIn('super::p01::h0_30(r, bus, img)?;', files['p00.rs'])
-            self.assertIn('\n                    h0_30(r, bus, img)?;', files['p01.rs'])
+            self.assertIn('\n                        h0_30(r, bus, img)?;', files['p01.rs'])
             self.assertNotIn('pub fn h0_30', files['p00.rs'])
 
     def test_the_split_holds_the_same_functions_as_one_module(self):

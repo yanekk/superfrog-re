@@ -40,53 +40,77 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x4) => Some(h0_0_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x0) => {
-                // h0+$0 made-up: d2 = d0 == d1 ? 2 : 1
-                {
-                    let mut u_200: u64 = 0;
-                    let mut i: usize = 0;
-                    'i: loop {
-                        match i {
-                            0 => {
-                                let v = int_equal(r.get(0x0, 4), r.get(0x4, 4), 4);
-                                u_200 = v & 0xff;
+            (0, 0x0) | (0, 0x4) => {
+                let entered = pc.1;
+                if entered <= 0x0 {
+                    // h0+$0 made-up: d2 = d0 == d1 ? 2 : 1
+                    {
+                        let mut u_200: u64 = 0;
+                        let mut i: usize = 0;
+                        'i: loop {
+                            match i {
+                                0 => {
+                                    let v = int_equal(r.get(0x0, 4), r.get(0x4, 4), 4);
+                                    u_200 = v & 0xff;
+                                }
+                                1 => {
+                                    if u_200 != 0 { i = 4; continue 'i; }
+                                }
+                                2 => {
+                                    let v = 0x1u64;
+                                    r.set(0x8, 4, v);
+                                }
+                                3 => {
+                                    i = 5; continue 'i;
+                                }
+                                4 => {
+                                    let v = 0x2u64;
+                                    r.set(0x8, 4, v);
+                                }
+                                _ => break 'i,
                             }
-                            1 => {
-                                if u_200 != 0 { i = 4; continue 'i; }
-                            }
-                            2 => {
-                                let v = 0x1u64;
-                                r.set(0x8, 4, v);
-                            }
-                            3 => {
-                                i = 5; continue 'i;
-                            }
-                            4 => {
-                                let v = 0x2u64;
-                                r.set(0x8, 4, v);
-                            }
-                            _ => break 'i,
+                            i += 1;
                         }
-                        i += 1;
                     }
                 }
-                // h0+$4 rts
-                {
-                    let v = load(bus, r.get(0x3c, 4) as u32, 4);
-                    r.set(0x50, 4, v);
-                    let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = r.get(0x50, 4);
-                    r.set(PC, 4, v);
-                    r.depth -= 1;
-                    return Ok(());
+                if entered <= 0x4 {
+                    // h0+$4 rts
+                    {
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
                 }
                 pc = (0, 0x6);
             }

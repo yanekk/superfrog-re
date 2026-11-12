@@ -40,42 +40,72 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x6)
+        | (0, 0xc)
+        | (0, 0x10) => Some(h0_0_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x0) => {
-                // h0+$0 move.l d0,(h1+$4).l
-                {
-                    let v = r.get(0x0, 4);
-                    store(bus, img, img.h(1, 0x4), 4, v)?;
+            (0, 0x0) | (0, 0x6) | (0, 0xc) | (0, 0x10) => {
+                let entered = pc.1;
+                if entered <= 0x0 {
+                    // h0+$0 move.l d0,(h1+$4).l
+                    {
+                        let v = r.get(0x0, 4);
+                        store(bus, img, img.h(1, 0x4), 4, v)?;
+                    }
                 }
-                // h0+$6 lea (h0+$0).l,a0
-                {
-                    let v = (img.h(0, 0x0) as u64);
-                    r.set(0x20, 4, v);
+                if entered <= 0x6 {
+                    // h0+$6 lea (h0+$0).l,a0
+                    {
+                        let v = (img.h(0, 0x0) as u64);
+                        r.set(0x20, 4, v);
+                    }
                 }
-                // h0+$c move.w d1w,(2,a0)
-                {
-                    let mut u_1080: u64 = 0;
-                    let v = int_add(r.get(0x20, 4), 0x2u64, 4);
-                    u_1080 = v & 0xffffffff;
-                    let v = r.get(0x6, 2);
-                    store(bus, img, u_1080 as u32, 2, v)?;
+                if entered <= 0xc {
+                    // h0+$c move.w d1w,(2,a0)
+                    {
+                        let mut u_1080: u64 = 0;
+                        let v = int_add(r.get(0x20, 4), 0x2u64, 4);
+                        u_1080 = v & 0xffffffff;
+                        let v = r.get(0x6, 2);
+                        store(bus, img, u_1080 as u32, 2, v)?;
+                    }
                 }
-                // h0+$10 rts
-                {
-                    let v = load(bus, r.get(0x3c, 4) as u32, 4);
-                    r.set(0x50, 4, v);
-                    let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = r.get(0x50, 4);
-                    r.set(PC, 4, v);
-                    r.depth -= 1;
-                    return Ok(());
+                if entered <= 0x10 {
+                    // h0+$10 rts
+                    {
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
                 }
                 pc = (0, 0x12);
             }

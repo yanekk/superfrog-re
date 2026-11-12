@@ -563,20 +563,33 @@ class Emit:
         return lines, False
 
     def function(self, e, blocks):
-        lines = [ALLOW, f'pub fn {fn_name(e)}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',
+        name = fn_name(e)
+        lines = [ALLOW, '#[inline]',
+                 f'pub fn {name}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',
+                 f'    {name}_from({key(e)}, r, bus, img)', '}', '',
+                 ALLOW,
+                 f'pub fn {name}_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',
                  '    fn_entry(r)?;',
-                 f'    let mut pc: (u32, u32) = {key(e)};',
+                 '    let mut pc: (u32, u32) = start;',
                  '    \'b: loop {',
                  '        block_start(bus, r, img)?;',
                  '        match pc {']
         unsupported = 0
         for l in sorted(blocks):
-            lines.append(f'            {key(l)} => {{')
             run = blocks[l]
-            for a in run:
+            # Every instruction of the block is an arm's address, so a run resumed at any of them
+            # (`resume`, translator T28) starts there: the instructions before it are skipped.
+            lines.append('            ' + ' | '.join(key(a) for a in run) + ' => {')
+            if len(run) > 1:
+                lines.append('                let entered = pc.1;')
+            for i, a in enumerate(run):
                 body, stop = self.instruction(a, self.insns[a])
                 unsupported += stop
-                lines += ['                ' + x for x in body]
+                if len(run) == 1:
+                    lines += ['                ' + x for x in body]
+                else:
+                    lines += [f'                if entered <= {hex_lit(a[1])} {{']
+                    lines += ['                    ' + x for x in body] + ['                }']
             last = run[-1]
             lines.append(f'                pc = {key((last[0], last[1] + self.insns[last]["len"]))};')
             lines.append('            }')
@@ -647,6 +660,32 @@ def head(export, funcs, source_name, path=lambda e: fn_name(e)):
             '        Some(f) => f(r, bus, img),',
             '        None => Err(Stop::Untranslated(format!("h{}+${:x}", k.0, k.1))),',
             '    }', '}']
+    out += resume_table(funcs, path)
+    return out
+
+
+def resume_table(funcs, path):
+    """`resume(k)`: a function holding the instruction at `k`, to be entered there (translator T28).
+    A host starting from a snapshot of the original, whose PC and stacked return addresses are any
+    instruction, enters through it; a run never does. An instruction in several functions is run by
+    the one it is the entry of, else by the first by address: each holds the same code for it."""
+    owner = {}
+    for e in sorted(funcs):
+        for run in funcs[e].values():
+            for a in run:
+                if a not in owner or a == e:
+                    owner[a] = e
+    by_fn = {}
+    for a, e in owner.items():
+        by_fn.setdefault(e, []).append(a)
+    out = ['', '#[allow(dead_code)]',
+           'pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;', '',
+           '/// The translated function holding the instruction at `k`, entered at it.',
+           '#[allow(dead_code)]', 'pub fn resume(k: (u32, u32)) -> Option<Resume> {', '    match k {']
+    for e in sorted(by_fn):
+        pats = sorted(by_fn[e])
+        out.append('        ' + '\n        | '.join(key(a) for a in pats) + f' => Some({path(e)}_from),')
+    out += ['        _ => None,', '    }', '}']
     return out
 
 

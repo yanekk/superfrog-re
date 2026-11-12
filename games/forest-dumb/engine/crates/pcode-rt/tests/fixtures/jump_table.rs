@@ -40,46 +40,79 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x2)
+        | (0, 0x4)
+        | (0, 0xa)
+        | (0, 0xe) => Some(h0_0_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x0) => {
-                // h0+$0 add.w d0w,d0w
-                {
-                    let v = int_add(r.get(0x2, 2), r.get(0x2, 2), 2);
-                    r.set(0x2, 2, v);
+            (0, 0x0) | (0, 0x2) | (0, 0x4) | (0, 0xa) | (0, 0xe) => {
+                let entered = pc.1;
+                if entered <= 0x0 {
+                    // h0+$0 add.w d0w,d0w
+                    {
+                        let v = int_add(r.get(0x2, 2), r.get(0x2, 2), 2);
+                        r.set(0x2, 2, v);
+                    }
                 }
-                // h0+$2 add.w d0w,d0w
-                {
-                    let v = int_add(r.get(0x2, 2), r.get(0x2, 2), 2);
-                    r.set(0x2, 2, v);
+                if entered <= 0x2 {
+                    // h0+$2 add.w d0w,d0w
+                    {
+                        let v = int_add(r.get(0x2, 2), r.get(0x2, 2), 2);
+                        r.set(0x2, 2, v);
+                    }
                 }
-                // h0+$4 lea (h1+$0).l,a0
-                {
-                    let v = (img.h(1, 0x0) as u64);
-                    r.set(0x20, 4, v);
+                if entered <= 0x4 {
+                    // h0+$4 lea (h1+$0).l,a0
+                    {
+                        let v = (img.h(1, 0x0) as u64);
+                        r.set(0x20, 4, v);
+                    }
                 }
-                // h0+$a movea.l (0,a0,d0w.w),a1
-                {
-                    let mut u_1100: u64 = 0;
-                    let mut u_1180: u64 = 0;
-                    let v = int_sext(r.get(0x2, 2), 2, 4);
-                    u_1100 = v & 0xffffffff;
-                    let v = int_add(r.get(0x20, 4), u_1100, 4);
-                    u_1180 = v & 0xffffffff;
-                    let v = load(bus, u_1180 as u32, 4);
-                    r.set(0x24, 4, v);
+                if entered <= 0xa {
+                    // h0+$a movea.l (0,a0,d0w.w),a1
+                    {
+                        let mut u_1100: u64 = 0;
+                        let mut u_1180: u64 = 0;
+                        let v = int_sext(r.get(0x2, 2), 2, 4);
+                        u_1100 = v & 0xffffffff;
+                        let v = int_add(r.get(0x20, 4), u_1100, 4);
+                        u_1180 = v & 0xffffffff;
+                        let v = load(bus, u_1180 as u32, 4);
+                        r.set(0x24, 4, v);
+                    }
                 }
-                // h0+$e jmp (a1)
-                {
-                    let a = r.get(0x24, 4) as u32;
-                    match img.hunk_of(a) {
-                        Some(k) => { pc = k; continue 'b; }
-                        None => return Err(Stop::Untranslated(img.describe(a))),
+                if entered <= 0xe {
+                    // h0+$e jmp (a1)
+                    {
+                        let a = r.get(0x24, 4) as u32;
+                        match img.hunk_of(a) {
+                            Some(k) => { pc = k; continue 'b; }
+                            None => return Err(Stop::Untranslated(img.describe(a))),
+                        }
                     }
                 }
                 pc = (0, 0x10);
