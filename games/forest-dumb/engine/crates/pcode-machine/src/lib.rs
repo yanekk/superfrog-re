@@ -399,11 +399,20 @@ impl Machine {
         self.intreq |= due;
     }
 
-    /// Take a level `level` interrupt as the 68000 does: SR copied, S set, T cleared and the mask
-    /// raised (A7 becomes the system stack if it was the user's), PC and the old SR pushed, then
-    /// the handler at the vector's address called. Its `rte` pops the frame; anything else coming
-    /// back stops the run, since control cannot follow it.
+    /// Take a level `level` interrupt as the 68000 does: [`Machine::enter_interrupt`], the handler
+    /// called on this machine, [`Machine::leave_interrupt`].
     fn take(&mut self, level: u8, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let taken = self.enter_interrupt(level, r, img)?;
+        (taken.handler)(r, self, img)?;
+        self.leave_interrupt(&taken, r, img)
+    }
+
+    /// The first half of taking a level `level` interrupt as the 68000 does: SR copied, S set, T
+    /// cleared and the mask raised (A7 becomes the system stack if it was the user's), 44 cycles
+    /// counted, PC and the old SR pushed, and the handler the vector points at found. The host calls
+    /// it with its own bus and then [`Machine::leave_interrupt`]: a host wrapping the machine runs
+    /// the handler on its wrapper, so it sees the handler's blocks too (translator T28).
+    pub fn enter_interrupt(&mut self, level: u8, r: &mut Regs, img: &Image) -> Result<Taken, Stop> {
         let old = ops::sr_get(r) as u16;
         // The interrupted code's PC register is not the 68000's PC (generated code keeps that in
         // a local), but it holds a call's return address between `rts` and its check: keep it.
@@ -421,7 +430,12 @@ impl Machine {
             .and(self.entry)
             .and_then(|entry| entry(&img.describe(at)))
             .ok_or_else(|| os::interrupt_stop(at, img))?;
-        handler(r, self, img)?;
+        Ok(Taken { handler, at, pc })
+    }
+
+    /// The second half, once the handler has returned: its `rte` popped the frame; anything else
+    /// coming back stops the run, since control cannot follow it.
+    pub fn leave_interrupt(&mut self, taken: &Taken, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         let back = r.get(PC, 4) as u32;
         if back != irq::IRQ_RETURN {
             return Err(Stop::Unsupported {
@@ -429,12 +443,32 @@ impl Machine {
                     "interrupt handler returned to {}, not by rte",
                     img.describe(back)
                 ),
-                at: img.describe(at),
+                at: img.describe(taken.at),
             });
         }
-        r.set(PC, 4, pc);
+        r.set(PC, 4, taken.pc);
         self.now = r.cycles();
         Ok(())
+    }
+
+    /// What [`Bus::poll`] does before taking an interrupt: time the block's accesses at `r`'s
+    /// count, run the chips up to it, tick the keyboard, and end the run on an access outside
+    /// memory made since.
+    pub fn poll_time(&mut self, r: &Regs) -> Result<(), Stop> {
+        self.advance(r.cycles());
+        self.now = r.cycles();
+        // The keyboard's next byte, if its time has come since the last block.
+        self.cia_a.tick(self.now);
+        match &self.fault {
+            Some(f) => Err(f.clone()),
+            None => Ok(()),
+        }
+    }
+
+    /// The interrupt level to take now under `r`'s SR, with every request due by now in INTREQ.
+    pub fn due(&mut self, r: &Regs) -> Option<u8> {
+        self.settle();
+        self.pending(ops::sr_get(r) as u16)
     }
 
     /// DMACON as its set/clear writes leave it.
@@ -786,6 +820,15 @@ impl Machine {
     }
 }
 
+/// An interrupt taken by [`Machine::enter_interrupt`]: the handler to call, where it is, and the
+/// interrupted code's PC register, which [`Machine::leave_interrupt`] puts back.
+#[derive(Clone, Copy, Debug)]
+pub struct Taken {
+    pub handler: Routine,
+    pub at: u32,
+    pc: u64,
+}
+
 /// INTREQ's PORTS bit: level 2, CIA-A's interrupt line.
 pub const INTREQ_PORTS: u16 = 0x0008;
 
@@ -795,23 +838,14 @@ impl Bus for Machine {
     /// a higher level nests inside it, and one left pending after its `rte` is taken here at once,
     /// as a 68000 takes it before the next instruction.
     fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
-        self.advance(r.cycles());
-        self.now = r.cycles();
-        // The keyboard's next byte, if its time has come since the last block.
-        self.cia_a.tick(self.now);
-        if let Some(f) = &self.fault {
-            return Err(f.clone());
-        }
-        loop {
-            self.settle();
-            match self.pending(ops::sr_get(r) as u16) {
-                Some(level) => self.take(level, r, img)?,
-                None => return Ok(()),
-            }
+        self.poll_time(r)?;
+        while let Some(level) = self.due(r) {
+            self.take(level, r, img)?;
             if let Some(f) = &self.fault {
                 return Err(f.clone());
             }
         }
+        Ok(())
     }
 
     /// A library vector: the OS's answer (`os`).

@@ -1,0 +1,388 @@
+//! The translated program as an engine (translator T28, DESIGN §2.14, §3.3): the generated tree
+//! built in at compile time ([`tree`]), run on `pcode-machine` from power-on or from a snapshot of
+//! the original, calling back at every frame boundary. See README.md.
+//!
+//! The engine drives: [`TranslatedGame::run`] runs the program and calls `each` at each frame's end
+//! with the frame, taking the next frame's input back. The foreground (`main_loop`, the title's
+//! loop) is nested Rust calls a pure crate cannot suspend, so a shell needing a pull-style step runs
+//! `run` on a thread of its own and hands frames and inputs across a channel (fd-conform's
+//! `translated_engine`, later fd-app).
+//!
+//! Starting from a snapshot: the original's PC and the return addresses on its stack are any
+//! instruction, mid-function and mid-block. The run enters the function holding the PC there
+//! (`tree::resume`, every instruction an entry); when it returns, there is no Rust caller to go back
+//! to, so the run resumes again at the address the `rts` or `rte` popped, until the program stops.
+//! A function returning to its real Rust caller never reaches that loop: only the frames the
+//! snapshot was taken inside do.
+
+use pcode_machine::{Config, Disks, Input, Machine, Picture};
+use pcode_rt::{Bus, Image, PC, Regs, SR, Stop, ops};
+
+/// The tree from `build/translator/tree/` or `FD_TRANSLATED`, else a stub with no entries
+/// (`buildscripts/fd_translated.rs`).
+#[allow(
+    unused_imports,
+    dead_code,
+    unused_variables,
+    unused_mut,
+    unreachable_code,
+    clippy::all
+)]
+pub mod tree {
+    include!(concat!(env!("OUT_DIR"), "/tree.rs"));
+}
+
+/// A translated entry, as the tree's `entry` gives it.
+pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+/// A translated function entered at an instruction, as the tree's `resume` gives it.
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The stack [`TranslatedGame::run`] needs: every translated function is a Rust frame, up to
+/// `pcode_rt::DEPTH_CAP` of them, measured up to 49 KB each unoptimised (fd-conform's judge,
+/// translator T14). A shell runs `run` on a thread with this much stack.
+pub const RUN_STACK: usize = 64 << 20;
+
+/// Where the stack starts at power-on: slow RAM below hunk 0, which nothing the program loads
+/// reaches (translator T26, `os_run`).
+pub const POWER_ON_STACK: u32 = 0xC0_7000;
+
+/// CIA-A's interrupt mask the program leaves set in play: the keyboard's serial bit (translator
+/// T01, T25). The original's snapshot holds no CIA state, so a snapshot start sets it.
+const CIA_A_MASK: u8 = 0x08;
+
+/// INTREQ's PORTS bit number, which CIA-A's interrupt line sets.
+const PORTS_BIT: u16 = 3;
+
+/// A translated program: its instructions' bytes, each hunk's length, and its functions by entry
+/// and by instruction. [`Program::BUILT_IN`] is the tree; a test hands a made-up one.
+#[derive(Clone, Copy)]
+pub struct Program {
+    pub code: &'static [(u32, u32, u32)],
+    pub hunk_sizes: &'static [u32],
+    pub entry: fn(&str) -> Option<Routine>,
+    pub resume: fn((u32, u32)) -> Option<Resume>,
+}
+
+impl Program {
+    /// The tree built in.
+    pub const BUILT_IN: Program = Program {
+        code: tree::CODE,
+        hunk_sizes: tree::HUNK_SIZES,
+        entry: tree::entry,
+        resume: tree::resume,
+    };
+    /// No translation at all, as a build without a tree has.
+    pub const STUB: Program = Program {
+        code: &[],
+        hunk_sizes: &[],
+        entry: |_| None,
+        resume: |_| None,
+    };
+}
+
+/// The 68000's registers at a snapshot, as the oracle gives them at a frame boundary.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Regs68k {
+    pub d: [u32; 8],
+    /// `a[7]` is the stack pointer SR selects.
+    pub a: [u32; 8],
+    /// The next instruction to run.
+    pub pc: u32,
+    pub sr: u16,
+    pub usp: u32,
+    pub ssp: u32,
+}
+
+/// Where a run starts.
+pub enum Start<'a> {
+    /// The program file loaded at the hunk bases as Kickstart would and entered at `h0+$0`, the
+    /// stack at [`POWER_ON_STACK`]. The program waits for fire at the disk 2 prompt (`h0+$7b70`):
+    /// the first frames' input should hold it.
+    PowerOn { program: &'a [u8], disks: Disks },
+    /// The original's state: chip RAM then slow RAM, the registers, the custom registers by
+    /// `reg / 2` (VPOSR and VHPOSR place the beam, INTENAR, INTREQR and DMACONR are those
+    /// registers' state, as `Machine::from_snapshot` reads them).
+    Snapshot {
+        mem: &'a [u8],
+        regs: Regs68k,
+        custom: &'a [u16; 256],
+        disks: Disks,
+    },
+}
+
+/// What `each` answers at a frame boundary.
+pub enum Control {
+    /// Run the next frame on this input.
+    Next(Input),
+    /// End the run here. The game cannot be run again: the frames it was inside are gone.
+    Stop,
+}
+
+/// One frame as the translated program made it.
+pub struct FrameOut<'a> {
+    /// The frame's picture; on a stop, the last whole frame's.
+    pub picture: Picture,
+    /// Every custom-register write of the frame, the CPU's and the copper's, in order: (cycle,
+    /// register offset from `$DFF000`, word).
+    pub writes: Vec<(u64, u16, u16)>,
+    /// Paula's writes of the frame, in order: (cycle, register, word).
+    pub paula: Vec<(u64, u16, u16)>,
+    /// Set on the last frame of a run the program stopped: how it stopped.
+    pub stop: Option<Stop>,
+    /// Chip RAM and slow RAM at the frame's end, for a shell to read the state from.
+    pub chip: &'a [u8],
+    pub slow: &'a [u8],
+}
+
+/// The translated program on its machine.
+pub struct TranslatedGame {
+    m: Machine,
+    r: Regs,
+    prog: Program,
+    bases: Vec<u32>,
+    sizes: Vec<u32>,
+    /// Where the next run enters; `None` once a run has ended.
+    at: Option<u32>,
+    /// Why the game cannot start (a program file the machine could not load), or how it stopped.
+    stopped: Option<Stop>,
+    input: Input,
+    picture: Picture,
+}
+
+impl TranslatedGame {
+    /// The built-in tree on `start`, the program at the original's hunk bases.
+    pub fn new(start: Start) -> Self {
+        Self::with_program(Program::BUILT_IN, &fd_core::HUNK_BASES, start)
+    }
+
+    /// Whether a tree is built in (false on the stub).
+    pub fn generated() -> bool {
+        !tree::CODE.is_empty()
+    }
+
+    /// `prog` with its hunks at `bases`, on `start`.
+    pub fn with_program(prog: Program, bases: &[u32], start: Start) -> Self {
+        let cfg = Config::a500(bases.to_vec());
+        let mut r = Regs::new();
+        let mut stopped = None;
+        let (mut m, at, sizes) = match start {
+            Start::PowerOn { program, disks } => {
+                let m = match Machine::new(cfg.clone(), program) {
+                    Ok(mut m) => {
+                        m.insert(disks);
+                        m
+                    }
+                    Err(e) => {
+                        stopped = Some(Stop::Unsupported {
+                            op: format!("loading the program: {e}"),
+                            at: "power-on".into(),
+                        });
+                        let mem = vec![0; (cfg.chip + cfg.slow) as usize];
+                        Machine::from_snapshot(cfg, &mem, &[0; 256])
+                    }
+                };
+                r.set_a(7, POWER_ON_STACK);
+                let sizes = if m.hunk_sizes().is_empty() {
+                    prog.hunk_sizes.to_vec()
+                } else {
+                    m.hunk_sizes().to_vec()
+                };
+                (m, bases[0], sizes)
+            }
+            Start::Snapshot {
+                mem,
+                regs,
+                custom,
+                disks,
+            } => {
+                let mut m = Machine::from_snapshot(cfg, mem, custom);
+                m.insert(disks);
+                m.cia_a_mut().set_icr_mask(CIA_A_MASK);
+                for n in 0..8 {
+                    r.set_d(n, regs.d[n]);
+                    r.set_a(n, regs.a[n]);
+                }
+                // SR as written, not through `sr_set`, which would swap A7 for the other stack.
+                r.set(SR, 2, (regs.sr & 0xa71f) as u64);
+                ops::ccr_set(&mut r, regs.sr as u64);
+                let other = if regs.sr & 0x2000 != 0 {
+                    (ops::USP, regs.usp)
+                } else {
+                    (ops::ISP, regs.ssp)
+                };
+                r.set(other.0, 4, other.1 as u64);
+                (m, regs.pc & 0xFF_FFFF, prog.hunk_sizes.to_vec())
+            }
+        };
+        m.set_entry(prog.entry);
+        TranslatedGame {
+            m,
+            r,
+            prog,
+            bases: bases.to_vec(),
+            sizes,
+            at: Some(at),
+            stopped,
+            input: Input::default(),
+            picture: Picture::blank(0, 0, 0, 0),
+        }
+    }
+
+    /// The first frame's input: the frames after it take theirs from `run`'s `each`.
+    pub fn set_input(&mut self, input: Input) {
+        self.input = input;
+    }
+
+    pub fn machine(&self) -> &Machine {
+        &self.m
+    }
+
+    pub fn regs(&self) -> &Regs {
+        &self.r
+    }
+
+    /// Runs the program; at every frame boundary (inside `Bus::poll`) calls `each` with the frame
+    /// and takes the next frame's input from it. Returns `None` when `each` says stop, the stop
+    /// when the program stops (after handing `each` a last frame with `stop` set). Needs
+    /// [`RUN_STACK`] bytes of stack for the real program.
+    pub fn run(&mut self, each: &mut dyn FnMut(&FrameOut) -> Control) -> Option<Stop> {
+        let Some(mut at) = self.at.take() else {
+            return self.stopped.clone();
+        };
+        self.m.set_input(&self.input);
+        let img = Image {
+            bases: &self.bases,
+            sizes: &self.sizes,
+            code: self.prog.code,
+        };
+        let mut host = Host {
+            m: &mut self.m,
+            each,
+            picture: &mut self.picture,
+            host_stop: false,
+        };
+        let stop = match self.stopped.clone() {
+            Some(s) => s,
+            None => loop {
+                let res = match img.hunk_of(at).and_then(self.prog.resume) {
+                    Some(f) => f(img.hunk_of(at).expect("in a hunk"), &mut self.r, &mut host, &img),
+                    None => Err(Stop::Untranslated(img.describe(at))),
+                };
+                match res {
+                    // Returned with no Rust caller: a frame the start was inside. Go on where its
+                    // `rts` or `rte` went.
+                    Ok(()) => at = self.r.get(PC, 4) as u32 & 0xFF_FFFF,
+                    Err(s) => break s,
+                }
+            },
+        };
+        if host.host_stop {
+            return None;
+        }
+        let paula = host.paula();
+        let out = FrameOut {
+            picture: host.picture.clone(),
+            writes: host.m.custom_writes().to_vec(),
+            paula,
+            stop: Some(stop.clone()),
+            chip: host.m.chip(),
+            slow: host.m.slow(),
+        };
+        (host.each)(&out);
+        self.stopped = Some(stop.clone());
+        Some(stop)
+    }
+}
+
+/// The machine as the generated code sees it during a run: the machine's bus, with the frame
+/// boundary and the interrupts taken here, so a handler's blocks reach this `poll` too.
+struct Host<'a, 'b> {
+    m: &'a mut Machine,
+    each: &'b mut dyn FnMut(&FrameOut) -> Control,
+    picture: &'a mut Picture,
+    /// `each` said stop: the stop unwinding the run is the host's, not the program's.
+    host_stop: bool,
+}
+
+impl Host<'_, '_> {
+    fn paula(&mut self) -> Vec<(u64, u16, u16)> {
+        self.m
+            .take_paula_writes()
+            .into_iter()
+            .map(|(at, w)| (at, w.reg, w.value))
+            .collect()
+    }
+
+    /// The frame that ended at `frame_end()`: drawn, handed to `each`, the next one's input taken.
+    fn end_frame(&mut self, r: &mut Regs) -> Result<(), Stop> {
+        let frame = self.m.end_frame();
+        let paula = self.paula();
+        // One step count per frame (pcode-rt: a host running frame by frame resets it).
+        r.steps = 0;
+        let out = FrameOut {
+            picture: frame.picture,
+            writes: frame.writes,
+            paula,
+            stop: None,
+            chip: self.m.chip(),
+            slow: self.m.slow(),
+        };
+        let next = (self.each)(&out);
+        *self.picture = out.picture;
+        match next {
+            Control::Next(input) => {
+                self.m.set_input(&input);
+                Ok(())
+            }
+            Control::Stop => {
+                self.host_stop = true;
+                Err(Stop::Unsupported {
+                    op: "host: stopped".into(),
+                    at: format!("cycle {}", r.cycles()),
+                })
+            }
+        }
+    }
+}
+
+impl Bus for Host<'_, '_> {
+    fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        while r.cycles() >= self.m.frame_end() {
+            self.end_frame(r)?;
+        }
+        self.m.poll_time(r)?;
+        if self.m.take_cia_interrupts() != 0 {
+            self.m.raise(PORTS_BIT, r.cycles());
+        }
+        while let Some(level) = self.m.due(r) {
+            let taken = self.m.enter_interrupt(level, r, img)?;
+            (taken.handler)(r, self, img)?;
+            self.m.leave_interrupt(&taken, r, img)?;
+            if let Some(f) = self.m.fault() {
+                return Err(f.clone());
+            }
+        }
+        Ok(())
+    }
+    fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.m.call_outside(a, r, img)
+    }
+    fn rb(&mut self, a: u32) -> u8 {
+        self.m.rb(a)
+    }
+    fn rw(&mut self, a: u32) -> u16 {
+        self.m.rw(a)
+    }
+    fn rl(&mut self, a: u32) -> u32 {
+        self.m.rl(a)
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        self.m.wb(a, v)
+    }
+    fn ww(&mut self, a: u32, v: u16) {
+        self.m.ww(a, v)
+    }
+    fn wl(&mut self, a: u32, v: u32) {
+        self.m.wl(a, v)
+    }
+}
