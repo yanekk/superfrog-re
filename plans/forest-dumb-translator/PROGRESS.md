@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T19; T20 can start, wording generators and rewrites by hand until T44 brings the owner's Haiku decision.
+**Next `pir-work` will:** T20 can start, wording generators and rewrites by hand; T44 waits on the owner's Haiku decision (accept Haiku or no model).
 
 ## Tasks
 
@@ -33,7 +33,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
-| T19 | haiku-trial | T17, T18 | 🔍 | `haiku_trial.py` reruns T61's 5 generators and T62's 21 rewrites on Haiku; 10 new tests. Below the mark: 5/5, 19/21; decision set aside as T44 (coordinator). Deviations: `reshape.py` now prompts with `translated.rs` (the goal needs it, not in Files); rewrites run `--tidy 0`, as T62; an all-timeout item counts as failed. |
+| T19 | haiku-trial | T17, T18 | ✅ | Mark missed (5/5, 19/21). One review fix: T44 gained Interface and `blocks T42`; docs/11 input sizes corrected. Done-when 2 carried by T44 (coordinator); owner's answer open. Probed `translated()` on all 23 real routines, `timed_out` on the run's tries.jsonl, Muse numbers against docs/11; mutated the 20-of-21 mark and the own-callee filter, both caught. |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
 | T44 | haiku-decision | T19; blocks T42 | ⬜ | |
 
-**Review queue:** T19
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
