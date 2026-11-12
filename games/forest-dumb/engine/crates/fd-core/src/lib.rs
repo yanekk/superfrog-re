@@ -22,7 +22,7 @@ pub mod timing;
 pub mod title;
 
 pub use game::{Game, GameData, Start};
-pub use layout::{LAYOUT, Mem, Transplant, Var, Width, layout_var};
+pub use layout::{LAYOUT, Mem, MemMut, Transplant, Var, Width, WriteBack, layout_var, write_back_vars};
 pub use level::{Bob, Dispatch, DrawList, Event, LevelCtx, Object, ObjectKind, register};
 pub use ported::{PORTED, Ported};
 pub use program::{HUNK_BASES, Program, Scratch};

@@ -123,7 +123,7 @@ fn fail(stops: &mut Stops, stop: Stop) -> ! {
 
 /// Run `f` on a thread with [`RUN_STACK`] bytes of stack; a panic in it goes on unwinding here,
 /// where the rig catches it.
-fn on_run_stack<T: Send>(f: impl FnOnce() -> T + Send) -> T {
+pub(crate) fn on_run_stack<T: Send>(f: impl FnOnce() -> T + Send) -> T {
     thread::scope(|scope| {
         thread::Builder::new()
             .stack_size(RUN_STACK)

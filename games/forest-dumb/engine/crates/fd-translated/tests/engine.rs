@@ -8,7 +8,7 @@
 
 use fd_translated::{Control, FrameOut, Program, Regs68k, Start, TranslatedGame};
 use pcode_machine::{Config, Disks, Input, irq};
-use pcode_rt::Stop;
+use pcode_rt::{Bus, Image, PC, Regs, Stop, ops};
 
 #[rustfmt::skip]
 #[path = "../../pcode-machine/tests/fixtures/irq.rs"]
@@ -262,4 +262,48 @@ fn a_frame_that_ends_inside_a_handler_is_handed_over_there() {
     // Frame 1 ends mid-handler, before its count; the handler returns in frame 2, whose VERTB,
     // held pending meanwhile, starts it again at once, and frame 3 ends inside that one.
     assert_eq!(counts, [0, 1, 1], "frame 1 handed over inside the handler");
+}
+
+/// The level 3 handler by hand, counting two a frame: `addq.w #2,($100).w`, VERTB cleared, `rte`.
+fn handler_by_two(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+    let n = bus.rw(COUNT as u32);
+    bus.ww(COUNT as u32, n.wrapping_add(2));
+    bus.ww(irq::INTREQ as u32 | 0xdf_f000, 0x20);
+    let sp = r.a(7);
+    let sr = bus.rw(sp);
+    let pc = bus.rl(sp + 2);
+    r.set_a(7, sp + 6);
+    ops::sr_set(r, sr as u64);
+    r.set(PC, 4, pc as u64);
+    Ok(())
+}
+
+#[test]
+fn a_mounted_routine_runs_in_place_of_the_translated_one_in_a_run() {
+    let (mem, custom) = memory();
+    let mut g = TranslatedGame::with_program(
+        PROG,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    // The machine enters the handler through the tree's `entry`, so the seam reaches it too.
+    g.mount((0, 0x40), handler_by_two);
+    assert_eq!(g.seam().addresses().collect::<Vec<_>>(), [(0, 0x40)]);
+    let mut counts = Vec::new();
+    let stop = g.run(&mut |out| {
+        assert_eq!(out.stop, None);
+        counts.push(word(out, COUNT));
+        if counts.len() == 4 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    assert_eq!(stop, None);
+    assert_eq!(counts, [2, 4, 6, 8], "the mounted handler, once a frame");
 }

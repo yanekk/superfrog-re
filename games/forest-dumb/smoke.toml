@@ -14,9 +14,21 @@ workspace = "engine"
 # Translator T28: the translated engine on the stub and a made-up program, frame by frame, under a second
 # (no tree in a fresh worktree, so the crate builds in seconds).
 "crates/fd-translated/tests/engine.rs" = "smoke"
+# Translator T35: the seam's table and its register check, under a second.
+"crates/fd-translated/src" = "smoke"
 # Translator T28: 50 frames and w1-idle from the sync point on the generated tree; about 10 and 15 s
 # warm, but the tree's build (about 40 s) and the disks put them in full.
 "crates/fd-conform/tests/translated_engine.rs" = "full"
+# Translator T35: the seam's judge on a made-up routine, about 3 s, no disks. The two adapters on
+# 2 000 states of the generated tree need the disks and the tree's build, so are full.
+"crates/fd-conform/tests/seam.rs" = [
+    "a_replacement_that_does_the_same_passes",
+    "one_byte_written_differently_fails_naming_it",
+    "registers_are_held_only_when_named",
+    "a_replacement_that_does_not_return_as_rts_does_fails",
+    "a_panicking_replacement_fails_and_no_translation_fails_every_state",
+    "custom_writes_are_held_in_order",
+]
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [
@@ -680,3 +692,7 @@ covers = ["crates/fd-e2e/tests/finish_short.rs::the_routes_first_stretch_plays_i
 [[area]]
 name = "the translated program run frame by frame from a snapshot"
 covers = ["crates/fd-translated/tests/engine.rs"]
+
+[[area]]
+name = "a hand-written routine held to the translated routine it replaces (the seam)"
+covers = ["crates/fd-conform/tests/seam.rs::one_byte_written_differently_fails_naming_it"]

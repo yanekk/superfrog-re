@@ -159,6 +159,73 @@ fn a_nested_call_returns_through_both_levels() {
     assert!(nested_call::entry("h0+$4").is_none());
 }
 
+/// [`Ram`] with one hand-written routine mounted at `at` (the seam, translator T35).
+struct Mounting(Ram, (u32, u32), pcode_rt::Mounted);
+
+impl Bus for Mounting {
+    fn mounted(&self, k: (u32, u32)) -> Option<pcode_rt::Mounted> {
+        (k == self.1).then_some(self.2)
+    }
+    fn rb(&mut self, a: u32) -> u8 {
+        self.0.rb(a)
+    }
+    fn rw(&mut self, a: u32) -> u16 {
+        self.0.rw(a)
+    }
+    fn rl(&mut self, a: u32) -> u32 {
+        self.0.rl(a)
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        self.0.wb(a, v)
+    }
+    fn ww(&mut self, a: u32, v: u16) {
+        self.0.ww(a, v)
+    }
+    fn wl(&mut self, a: u32, v: u32) {
+        self.0.wl(a, v)
+    }
+}
+
+/// `moveq #9,d2` and the original's `rts`, by hand.
+fn nine(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+    r.set_d(2, 9);
+    pcode_rt::rts(r, bus);
+    Ok(())
+}
+
+#[test]
+fn a_mounted_routine_runs_in_place_of_the_translated_one_wherever_it_is_called() {
+    let f = nested_call::entry("h0+$0").unwrap();
+    // The innermost (`moveq #5`) replaced: the middle routine's `addq #1` runs on the mounted 9.
+    for (at, d2) in [((0, 0x20), 10), ((0, 0x10), 9)] {
+        let (mut r, ram) = (Regs::new(), ram());
+        let mut m = Mounting(ram, at, nine);
+        let img = Image {
+            bases: &BASES[..1],
+            sizes: nested_call::HUNK_SIZES,
+            code: nested_call::CODE,
+        };
+        r.set_a(7, STACK - 4);
+        m.wl(STACK - 4, RETURN_TO);
+        f(&mut r, &mut m, &img).unwrap();
+        returned(&r);
+        assert_eq!((r.d(2), r.d(3)), (d2, d2), "mounted at {at:?}");
+        assert_eq!(r.depth, 0, "a mounted routine counts no translated frame");
+    }
+    // Mounted at the entry the host calls: the translated code never runs.
+    let (mut r, mut m) = (Regs::new(), Mounting(ram(), (0, 0), nine));
+    let img = Image {
+        bases: &BASES[..1],
+        sizes: nested_call::HUNK_SIZES,
+        code: nested_call::CODE,
+    };
+    r.set_a(7, STACK - 4);
+    m.wl(STACK - 4, RETURN_TO);
+    f(&mut r, &mut m, &img).unwrap();
+    returned(&r);
+    assert_eq!((r.d(2), r.d(3)), (9, 0));
+}
+
 #[test]
 fn a_caller_branches_on_the_flags_its_callee_set() {
     let f = flags_call::entry("h0+$0").unwrap();

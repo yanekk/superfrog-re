@@ -179,6 +179,45 @@ pub trait Transplant {
     fn probe(&self, v: &Var) -> u32;
 }
 
+/// Memory a mounted routine's adapter writes its changes back into (translator DESIGN §2.9). The
+/// translated program's machine implements it over the hunks; a test, over a few bytes.
+pub trait MemMut: Mem {
+    /// Write `bytes` at byte `offset` of hunk `hunk`.
+    fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]);
+
+    /// Write `bytes` at `hunk`, `offset`, one byte at a time and only the bytes memory does not
+    /// already hold, so a write-back of state that did not change writes nothing.
+    fn put(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+        let held = self.read(hunk, offset, bytes.len());
+        for (k, (&b, &was)) in bytes.iter().zip(&held).enumerate() {
+            if b != was {
+                self.write(hunk, offset + k as u32, &[b]);
+            }
+        }
+    }
+
+    /// Variable `v` set to `value` (its low `v.width` bytes, big-endian), through [`MemMut::put`].
+    fn put_var(&mut self, v: &Var, value: u32) {
+        let n = v.width.bytes();
+        self.put(v.hunk, v.offset, &value.to_be_bytes()[4 - n..]);
+    }
+}
+
+/// The reverse of [`Transplant`] (translator DESIGN §2.9, T35): the state a mounted routine changed,
+/// written back into the original's memory where the translated program reads it. Only bytes that
+/// differ are written, so `transplant` then `write_back` with nothing run in between writes nothing.
+pub trait WriteBack {
+    fn write_back(&self, mem: &mut dyn MemMut);
+}
+
+/// Every variable of `vars` as `t` holds it, written back: the [`WriteBack`] of an engine whose
+/// state is its `LAYOUT` variables.
+pub fn write_back_vars(t: &dyn Transplant, vars: &[Var], mem: &mut dyn MemMut) {
+    for v in vars {
+        mem.put_var(v, t.probe(v));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,6 +288,40 @@ mod tests {
             assert_eq!(hunk, 0);
             self.0[offset as usize..offset as usize + len].to_vec()
         }
+    }
+
+    impl MemMut for Bytes {
+        fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+            assert_eq!(hunk, 0);
+            self.0[offset as usize..offset as usize + bytes.len()].copy_from_slice(bytes);
+        }
+    }
+
+    /// [`Bytes`] counting the writes that reach it.
+    struct Counting(Bytes, usize);
+
+    impl Mem for Counting {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            self.0.read(hunk, offset, len)
+        }
+    }
+
+    impl MemMut for Counting {
+        fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+            self.1 += bytes.len();
+            self.0.write(hunk, offset, bytes)
+        }
+    }
+
+    #[test]
+    fn put_writes_only_the_bytes_that_differ() {
+        let mut m = Counting(Bytes(vec![0x12, 0x34, 0x56, 0x78]), 0);
+        m.put_var(&var("v", 0, 0, Width::Long), 0x1234_5678);
+        assert_eq!(m.1, 0, "the value memory holds");
+        m.put_var(&var("v", 0, 1, Width::Word), 0x3499);
+        assert_eq!((m.1, &m.0.0[..]), (1, &[0x12, 0x34, 0x99, 0x78][..]));
+        m.put_var(&var("v", 0, 3, Width::Byte), 0xffff_ff00);
+        assert_eq!(m.0.0[3], 0, "a byte variable takes the value's low byte");
     }
 
     #[test]

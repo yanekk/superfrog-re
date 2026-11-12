@@ -317,12 +317,14 @@ fn the_coverage_report_counts_each_registered_routine_and_shows_an_unreached_one
             hunk: 0,
             offset: 0x1fec,
             port: "test",
+            mounted: false,
         },
         Ported {
             name: "title_screen",
             hunk: 0,
             offset: 0x6e06,
             port: "test",
+            mounted: false,
         },
     ];
     let case = short(20);

@@ -54,6 +54,15 @@
 //!
 //! `nonzero` counts the original's bytes there that are not 0, so an empty match shows.
 //!
+//! `--seam` (translator T35, `judge::seam`) judges the hand-written routine `fd-translated`'s seam
+//! mounts at the address (`seam::adapter`) against the translated routine it replaces (the tree
+//! `fd-translated` builds in) on the same states; `--gen` defaults to the routine's `PORTED` name.
+//! Registers are not compared unless `--regs all` or `--regs d0,d3,a1` names them:
+//!
+//! `{"routine":..,"gen":..,"seam":true,"cases":n,"passed":n,"failures":n,"replaced_stopped":n,"pass":bool,"first_failure":"..","first_replaced_stop":".."}`
+//!
+//! Exit 2, naming it, when no adapter is written for the address.
+//!
 //! `--generators` (translator T16) prints every registered generator's name, in registry order, as
 //! one line `{"generators":["name",..]}`: the whole-tree judge's work list, read from the build
 //! rather than from `re/translate.toml`, which predates the later generator modules. Needs no disks.
@@ -64,9 +73,11 @@ use fd_conform::generators;
 use fd_conform::judge::insn::{self, Columns, InsnRig, Site};
 use fd_conform::judge::translated::{self, Hardware, Stops, tree};
 use fd_conform::judge::{self, port};
-use fd_conform::routine::{Coverage, Gen, Generator, Rig, RigReport, STACK_AREA, h, seed};
+use fd_conform::routine::{
+    Coverage, Gen, Generator, RegsCompared, Rig, RigReport, STACK_AREA, h, seed,
+};
 
-const USAGE: &str = "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover | --translated [--machine]]";
+const USAGE: &str = "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover | --translated [--machine] | --seam [--regs all|d0,a1,..]]";
 
 /// `hN+$off` as (hunk, offset).
 fn parse_routine(r: &str) -> Option<(usize, u32)> {
@@ -94,12 +105,36 @@ fn esc(s: &str) -> String {
 struct Args {
     routine: String,
     entry: u32,
+    hunk: u8,
+    off: u32,
     gen_name: String,
     cases: usize,
     survey: bool,
     cover: bool,
     translated: bool,
     machine: bool,
+    seam: bool,
+    regs: RegsCompared,
+}
+
+/// `--regs`: `all`, `none`, or registers by name (`d0,d3,a1`).
+fn parse_regs(s: &str) -> Result<RegsCompared, String> {
+    match s {
+        "all" => return Ok(RegsCompared::ALL),
+        "none" => return Ok(RegsCompared::NONE),
+        _ => {}
+    }
+    let mut r = RegsCompared::NONE;
+    for name in s.split(',') {
+        let bad = || format!("--regs `{name}`: not d0-d7 or a0-a6");
+        let n: u8 = name.get(1..).and_then(|n| n.parse().ok()).ok_or_else(bad)?;
+        match name.as_bytes()[0] {
+            b'd' if n < 8 => r.d |= 1 << n,
+            b'a' if n < 7 => r.a |= 1 << n,
+            _ => return Err(bad()),
+        }
+    }
+    Ok(r)
 }
 
 fn args() -> Result<Args, String> {
@@ -107,7 +142,7 @@ fn args() -> Result<Args, String> {
     let mut it = v.iter();
     let (mut routine, mut gen_name, mut cases, mut survey, mut cover, mut translated) =
         (None, None, 2000usize, false, false, false);
-    let mut machine = false;
+    let (mut machine, mut seam, mut regs) = (false, false, RegsCompared::NONE);
     while let Some(a) = it.next() {
         match a.as_str() {
             "--gen" => gen_name = it.next().cloned(),
@@ -122,14 +157,21 @@ fn args() -> Result<Args, String> {
             "--cover" => cover = true,
             "--translated" => translated = true,
             "--machine" => machine = true,
+            "--seam" => seam = true,
+            "--regs" => regs = parse_regs(it.next().ok_or("--regs takes a value")?)?,
             r if routine.is_none() && !r.starts_with("--") => routine = Some(r.to_string()),
             other => return Err(format!("`{other}`: {USAGE}")),
         }
     }
     let routine = routine.ok_or(USAGE)?;
-    if [survey, cover, translated].iter().filter(|&&m| m).count() > 1 {
+    if [survey, cover, translated, seam]
+        .iter()
+        .filter(|&&m| m)
+        .count()
+        > 1
+    {
         return Err(format!(
-            "--survey, --cover and --translated are three modes: {USAGE}"
+            "--survey, --cover, --translated and --seam are four modes: {USAGE}"
         ));
     }
     if machine && !translated {
@@ -137,8 +179,18 @@ fn args() -> Result<Args, String> {
     }
     let (hunk, off) = parse_routine(&routine)
         .ok_or_else(|| format!("`{routine}` is not `hN+$off` with N a hunk 0-4"))?;
+    // A mounted routine's generator is registered under its PORTED name.
+    let ported = || {
+        fd_core::PORTED
+            .iter()
+            .find(|p| (p.hunk as usize, p.offset) == (hunk, off))
+            .map(|p| p.name.to_string())
+    };
+    let gen_name = gen_name.or_else(|| seam.then(ported).flatten());
     Ok(Args {
         entry: h(hunk, off),
+        hunk: hunk as u8,
+        off,
         routine,
         gen_name: gen_name.ok_or(USAGE)?,
         cases,
@@ -146,6 +198,8 @@ fn args() -> Result<Args, String> {
         cover,
         translated,
         machine,
+        seam,
+        regs,
     })
 }
 
@@ -263,6 +317,39 @@ fn main() -> ExitCode {
     if a.cover {
         let c = rig.coverage(&a.gen_name, a.cases, a.entry, &generator);
         println!("{}", cover_line(&a, &rig, &generator, &c));
+        return ExitCode::SUCCESS;
+    }
+    if a.seam {
+        let Some(replacing) = fd_translated::seam::adapter((a.hunk, a.off)) else {
+            eprintln!(
+                "fd-judge: no adapter for {} in fd-translated's seam.rs (seam::ADAPTERS)",
+                a.routine
+            );
+            return ExitCode::from(2);
+        };
+        let key = rig.name(a.entry);
+        let r = judge::seam::check(
+            &rig,
+            &a.gen_name,
+            a.cases,
+            a.entry,
+            &generator,
+            fd_translated::tree::entry(&key),
+            replacing,
+            a.regs,
+        );
+        println!(
+            "{{\"routine\":\"{}\",\"gen\":\"{}\",\"seam\":true,\"cases\":{},\"passed\":{},\"failures\":{},\"replaced_stopped\":{},\"pass\":{},\"first_failure\":\"{}\",\"first_replaced_stop\":\"{}\"}}",
+            esc(&a.routine),
+            esc(&a.gen_name),
+            r.cases,
+            r.passed,
+            r.failures,
+            r.replaced_stopped,
+            r.pass(),
+            esc(&r.first),
+            esc(&r.first_replaced_stop)
+        );
         return ExitCode::SUCCESS;
     }
     // Seeded by the generator's name, as an engine port's rig test seeds it, so both see the same states.
