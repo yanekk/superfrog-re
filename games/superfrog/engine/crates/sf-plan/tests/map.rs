@@ -242,22 +242,55 @@ fn w6_4_spikes_are_crossed_only_with_wings() {
     let _ = g;
 }
 
+/// The object coins `reach` takes.
+fn object_coins(fa: &Facts, coins: &BTreeSet<u16>) -> usize {
+    coins
+        .iter()
+        .filter(|&&k| matches!(fa.coins[k as usize].kind, CoinKind::Object(_)))
+        .count()
+}
+
+/// T04 meant W4-2's exit to be reachable in the map only with the switch at 222,4 pressed (FINDINGS
+/// T103). The map has never reached it, switches or not: pinned as measured (owner, 2026-11-12;
+/// `games/superfrog/docs/movement-map-tests.md`). If the map ever reaches the exit, this fails and
+/// T04's two assertions come back: exit with `all`, none with `all & !(1 << k)`.
 #[test]
 #[ignore]
-fn w4_2_exit_needs_the_switch_at_222_4() {
+fn w4_2_map_stops_short_of_its_exit_even_with_the_switch_at_222_4() {
     let (g, fa, map) = whole("W4-2");
     let k = fa.switches.iter().position(|s| s.gate == (222, 4)).expect("switch 49");
     let start = node_of(&map, g.state()).unwrap();
     let all = (1u32 << fa.switches.len()) - 1;
-    assert!(reach(&map, &fa, start, all, true).exit);
+    let r = reach(&map, &fa, start, all, true);
+    assert_eq!((r.exit, object_coins(&fa, &r.coins)), (false, 98));
     assert!(!reach(&map, &fa, start, all & !(1 << k), true).exit);
 }
 
-/// D13: in the map alone, every normal level's exit is reachable through at least `coins_needed`
-/// object coins (T03: only those count toward the exit).
+/// The levels whose map, every switch pressed, misses the exit or `coins_needed` object coins, as
+/// T04 measured them (smart-planner FINDINGS, D13 row, 2026-10-21) and the full run of 2026-11-12
+/// read them: what the map reached and the coins needed.
+const SHORT: [&str; 11] = [
+    "W2-1: exit true coins 24/35",
+    "W2-3: exit false coins 71/66",
+    "W2-4: exit false coins 1/99",
+    "W3-2: exit false coins 28/99",
+    "W3-4: exit false coins 52/99",
+    "W4-2: exit false coins 98/99",
+    "W4-4: exit false coins 56/97",
+    "W5-2: exit false coins 147/99",
+    "W6-1: exit false coins 36/97",
+    "W6-2: exit false coins 159/97",
+    "W6-4: exit false coins 137/99",
+];
+
+/// D13 meant every normal level's exit to be reachable in the map alone through at least
+/// `coins_needed` object coins (T03: only those count toward the exit). The map has never done it on
+/// [`SHORT`]'s eleven, and the owner keeps it a compass that nothing waits on (D19, D20): the
+/// shortfall is pinned as measured (owner, 2026-11-12; `games/superfrog/docs/movement-map-tests.md`).
+/// Any change fails: another level falling short, or one of the eleven reaching more or less.
 #[test]
 #[ignore]
-fn every_level_reaches_its_exit_with_its_coins() {
+fn every_level_reaches_its_exit_with_its_coins_but_the_eleven_measured_short() {
     let data = sf_conform::game_data();
     let mut short = Vec::new();
     for &level in data.levels.keys() {
@@ -268,16 +301,12 @@ fn every_level_reaches_its_exit_with_its_coins() {
         let (g, fa, map) = whole(&s);
         let start = node_of(&map, g.state()).unwrap();
         let r = reach(&map, &fa, start, u32::MAX, true);
-        let objects = r
-            .coins
-            .iter()
-            .filter(|&&k| matches!(fa.coins[k as usize].kind, CoinKind::Object(_)))
-            .count();
+        let objects = object_coins(&fa, &r.coins);
         if !r.exit || objects < fa.coins_needed as usize {
             short.push(format!("{s}: exit {} coins {objects}/{}", r.exit, fa.coins_needed));
         }
     }
-    assert!(short.is_empty(), "{short:?}");
+    assert_eq!(short, SHORT);
 }
 
 /// T00's stall spots: all 44 of W1-4's stall coins are on the map (Q4); W6-3's map, wrong in the

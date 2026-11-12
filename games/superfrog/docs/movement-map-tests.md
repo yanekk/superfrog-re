@@ -1,14 +1,14 @@
 # The movement map's whole-level tests
 
-`engine/crates/sf-plan/tests/map.rs` holds two `#[ignore]`d tests that check the movement map
-(`sf_plan::core::map`, smart-planner T04) on whole levels:
+`engine/crates/sf-plan/tests/map.rs` holds two `#[ignore]`d (full) tests that check the movement
+map (`sf_plan::core::map`, smart-planner T04) on whole levels. T04 wrote them as:
 
 - `w4_2_exit_needs_the_switch_at_222_4`: with every switch pressed the map reaches W4-2's exit,
   and without the switch at 222,4 it does not.
 - `every_level_reaches_its_exit_with_its_coins`: every normal level's exit is reachable in the
   map through at least `coins_needed` object coins (smart-planner D13).
 
-**Neither has ever passed.** Measured 2026-11-12 with the W4-2 test alone (debug, about 3 to 6
+**Neither ever passed.** Measured 2026-11-12 with the W4-2 test alone (debug, about 3 to 6
 minutes a step): it fails at d4b4e16b, at 32a149c9 (T02, the move into `games/superfrog/`) and at
 bc6121a5, the T04 commit that last wrote `map.rs`. T04 itself measured the shortfall on 2026-10-21
 (`plans/smart-planner/FINDINGS.md`, the D13 row): exit unreached on W2-3, W2-4, W3-2, W3-4, W4-2,
@@ -18,5 +18,10 @@ before 2026-11-12, because cargo stopped at the first failing test binary until 
 
 Why the map falls short is settled in the plan: the owner made the planner a whole-level explorer
 (D19, 2026-10-22) and kept the map only as an optional compass that nothing waits on (D20,
-DESIGN §2.2), dropping T20, which was to patch the eleven maps by hand. The tests still assert
-T04's original aim. What they should hold now is the owner's call (asked 2026-11-12).
+DESIGN §2.2), dropping T20, which was to patch the eleven maps by hand.
+
+**Pinned as measured** (owner, 2026-11-12). The tests are now
+`w4_2_map_stops_short_of_its_exit_even_with_the_switch_at_222_4` (no exit, 98 object coins, every
+switch pressed) and `every_level_reaches_its_exit_with_its_coins_but_the_eleven_measured_short`
+(`SHORT`: each of the eleven with what its map reaches). Any change fails, better or worse. If the
+map ever reaches more, update `SHORT`; if W4-2's exit is reached, T04's two assertions come back.
