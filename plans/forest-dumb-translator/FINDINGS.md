@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | **T30/T31 split** (owner): every level case fails frame 1 on four machine defects. T31 owns sprite collisions (`clxdat_copy`); T30 owns the one-pixel `char_x`/`char_y`, Paula one frame early and `edge_latch_left`. Merging, keep one collision fix. |
 | 2026-11-12 | 📌 | **T45 custom writes:** `build/translated-cases.md` regenerated, 42 level cases, 0 pass, first differences unchanged. The new channel is first in 0 cases, a later difference in 33; its first register `$040` (BLTCON0) in 31, `$080` (COP1LCH) 2. |
 | 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
 | 2026-11-12 | 📌 | **T29 first reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 14, `char_y` 11, `clxdat_copy` 7, `char_x` 6, `edge_latch_left` 4. Six held state and picture all their frames (w1-idle 199). |
