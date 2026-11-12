@@ -183,10 +183,14 @@ impl FrameEngine for StandIn {
 }
 
 fn run_stand_in(meddle_after: Option<u32>) -> Verdict {
+    run_stand_in_with(meddle_after, &Options::default())
+}
+
+fn run_stand_in_with(meddle_after: Option<u32>, opts: &Options) -> Verdict {
     let case = first_load();
     let inputs = Inputs::load(&case).unwrap();
     let mut s = StandIn::new(&case, meddle_after);
-    run_entry_frames(&case, &inputs, &mut s, &Options::default()).unwrap_or_else(|e| panic!("{e}"))
+    run_entry_frames(&case, &inputs, &mut s, opts).unwrap_or_else(|e| panic!("{e}"))
 }
 
 #[test]
@@ -214,6 +218,29 @@ fn a_difference_just_after_the_load_fails_there() {
         }
         other => panic!("expected a memory difference, got {other}"),
     }
+}
+
+/// With `every_channel` (what `run --engine translated` sets) a channel's first difference drops
+/// that channel and the run goes on to the case's end with the others (T32 review: it stopped at the
+/// next frame).
+#[test]
+#[ignore = "full: the disks and Kickstart; the original from power-on twice"]
+fn every_channel_goes_on_past_the_first_difference() {
+    let v = run_stand_in_with(
+        Some(1),
+        &Options {
+            every_channel: true,
+            ..Options::default()
+        },
+    );
+    assert!(
+        matches!(&v.outcome, Outcome::Differs { frame: 3890, .. }),
+        "the memory difference first: {v}"
+    );
+    assert_eq!(v.firsts.len(), 1, "only memory differs: {v}");
+    assert_eq!(v.loads, 1, "{v}");
+    assert!(v.aligned_frames >= 250, "every frame outside the load compared: {v}");
+    assert!(v.pictures >= 250, "the picture judged on to the end: {v}");
 }
 
 fn generated() {

@@ -148,7 +148,7 @@ pub const LEVEL3_HANDLER: (u8, u32) = (0, 0x1eda);
 /// entry ran on. `watch` are the PCs whose hits the run counts from then on (the entry's own is
 /// added first); the entry step's hits are the caller's to read.
 ///
-/// The line: Kickstart enters the program partway through a frame (line 15 of frame 3461 on
+/// The line: Kickstart enters the program partway through a frame (line 179 of frame 3461 on
 /// boot-to-title's input, T32), and the program draws the disk 2 prompt at once, so a translated
 /// run started at line 0 has drawn more of it by the frame's end. The line is the first whose end
 /// finds the CPU in the program's code, sampled (`Amiga::set_profile`, which leaves the run

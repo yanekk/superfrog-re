@@ -404,13 +404,11 @@ pub fn run_entry_frames(
     let h = |(hunk, off): (u8, u32)| HUNK_BASES[hunk as usize] + off;
     let entries: Vec<u32> = LOAD_ROUTINES.iter().copied().map(h).collect();
     let returns: Vec<u32> = LOAD_RETURNS.iter().copied().map(h).collect();
-    let verdict_line;
     let mut pcs: Vec<u32> = opts.register.iter().map(crate::coverage::address).collect();
     pcs.extend(&entries);
     pcs.extend(&returns);
     let (mut am, line) = sync::reach_entry(case, inputs, &pcs)?;
     engine.start_line(line);
-    verdict_line = line;
     let handler = h(sync::LEVEL3_HANDLER);
     let program_owns = |am: &Amiga| {
         let v = am.peek(sync::LEVEL3_VECTOR, 4);
@@ -432,7 +430,7 @@ pub fn run_entry_frames(
         (r, entered > returned)
     };
     let mut verdict = Verdict::new(opts.register);
-    verdict.entry = Some((am.frame(), verdict_line));
+    verdict.entry = Some((am.frame(), line));
     let mut align = ByReturns::new(LOAD_CAP);
     // The step just run: its input, its capture, whether the program had the machine before it.
     let mut input = inputs.at(am.frame() - 1);
@@ -462,8 +460,12 @@ pub fn run_entry_frames(
         }
         let (r, l) = engine.loads();
         align.engine(r, l);
+        // Loads apart ends the run whatever `every_channel` says: nothing after it lines up. A
+        // channel's earlier difference does not (`firsts` holds those with `every_channel`).
+        let mut apart = false;
         while align.behind() {
             if let Err(e) = align.skip() {
+                apart = true;
                 verdict.firsts.push(Outcome::LoadApart {
                     pass,
                     frame: am.frame(),
@@ -481,7 +483,7 @@ pub fn run_entry_frames(
             let (r, l) = count(&am);
             align.original(r, l);
         }
-        if !verdict.firsts.is_empty() || align.behind() {
+        if apart || align.behind() {
             break;
         }
         let frame = am.frame();

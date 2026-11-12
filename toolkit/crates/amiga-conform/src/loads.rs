@@ -297,6 +297,17 @@ mod tests {
         assert_eq!(pairs, [(0, 0), (3, 5), (4, 6)]);
     }
 
+    /// The original enters its load a frame before the engine does: that frame has the same loads
+    /// returned on both sides, but the original is inside one, so it is not compared.
+    #[test]
+    fn a_frame_the_original_alone_is_loading_is_not_compared() {
+        let engine: Side = vec![(0, false), (0, false), (1, false), (0, false)];
+        let original: Side = vec![(0, false), (0, true), (0, true), (1, false), (0, false)];
+        let (pairs, skipped) = drive(&engine, &original, 100).unwrap();
+        assert_eq!(skipped, 1);
+        assert_eq!(pairs, [(0, 0), (2, 3), (3, 4)], "the original's frame 1 left out");
+    }
+
     #[test]
     fn an_original_load_past_the_cap_is_an_error() {
         let engine: Side = vec![(0, false), (1, false), (0, false)];
