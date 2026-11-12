@@ -11,6 +11,12 @@ workspace = "engine"
 "crates/pcode-machine/src" = "smoke"
 # Translator T23: interrupts on a made-up translated program, under a second.
 "crates/pcode-machine/tests/irq.rs" = "smoke"
+# Translator T28: the translated engine on the stub and a made-up program, frame by frame, under a second
+# (no tree in a fresh worktree, so the crate builds in seconds).
+"crates/fd-translated/tests/engine.rs" = "smoke"
+# Translator T28: 50 frames and w1-idle from the sync point on the generated tree; about 10 and 15 s
+# warm, but the tree's build (about 40 s) and the disks put them in full.
+"crates/fd-conform/tests/translated_engine.rs" = "full"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [
@@ -670,3 +676,7 @@ covers = [
 [[area]]
 name = "level 1 finishes: the one route played in the real app by key presses, the app's state the headless game's"
 covers = ["crates/fd-e2e/tests/finish_short.rs::the_routes_first_stretch_plays_in_the_app_as_the_headless_game_does_every_frame"]
+
+[[area]]
+name = "the translated program run frame by frame from a snapshot"
+covers = ["crates/fd-translated/tests/engine.rs"]

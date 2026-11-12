@@ -168,6 +168,9 @@ m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at c
   Why the block and not the instruction (DESIGN §2.8): generated code checks nothing between
   instructions, and a check after every one would cost far more than the at most one block's
   cycles it moves an interrupt, which the frame bar admits (§2.7).
+- **A host that wraps the machine** (translator T28, `fd-translated`) runs the same steps itself so
+  the handler gets the host's bus: `poll_time(r)?`, then while `due(r)` gives a level,
+  `enter_interrupt(level, r, img)?`, `(taken.handler)(r, host, img)?`, `leave_interrupt(&taken, r, img)?`.
 - **The pushed PC is `irq::IRQ_RETURN` (`$FFFFFF`)**, not the interrupted address: `poll` is not
   told which block it starts, and with block delivery the original's stacked PC names another
   instruction anyway. Odd, so it is no instruction's address. Only the stack's dead bytes differ.

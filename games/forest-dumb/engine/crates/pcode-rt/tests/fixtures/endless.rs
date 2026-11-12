@@ -40,10 +40,28 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0) => Some(h0_0_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {

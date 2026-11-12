@@ -1,0 +1,329 @@
+//! The translated program as a case's engine (translator T28, DESIGN §3.3): `fd-translated`'s
+//! [`TranslatedGame`] behind [`Engine`] and [`Transplant`], so `run_with` drives it as it drives
+//! the hand engine.
+//!
+//! **The thread.** `TranslatedGame::run` drives and calls back once a frame; `Engine::pass` is a
+//! step the runner pulls. So the game runs on a thread of its own ([`RUN_STACK`] of stack), and
+//! each pass hands one input across a channel and takes one frame back: lockstep, so a run is as
+//! deterministic as the game.
+//!
+//! **The start.** A case transplants at the original's first pass end after its sync point, giving
+//! only RAM; the translated program needs the CPU's registers and the custom registers too. So
+//! [`case_start`] runs the original itself from power-on along the case's way to its sync point
+//! (`reach_case`'s, uncached: the cache keeps no custom registers), collects every CPU write to a
+//! custom register, and at the end of the step whose pass end the runner transplants at takes RAM,
+//! the registers and that collection. [`Transplant::transplant`] checks that the pass is the same.
+//! At that step's end the original is inside `level3_handler` (docs/09), mid-function, which
+//! `fd-translated` resumes.
+//!
+//! **One pass, one frame.** A pass runs the translated program from one frame boundary to the next,
+//! the frame whose level 3 interrupt runs `game_frame`. The probe reads RAM at that boundary, where
+//! the original's runner reads it at the pass end (`PASS_END`): what the foreground writes between
+//! the two is a difference this adapter does not hide (T29 settles the comparison).
+
+use std::sync::mpsc::{Receiver, Sender, channel};
+use std::thread::{self, JoinHandle};
+
+use amiga_conform::script;
+
+use amiga_oracle::{Amiga, FrameInput, OracleConfig, kickstart_path};
+use fd_core::{Mem, Transplant, Var, layout_var};
+use fd_translated::{Control, RUN_STACK, Regs68k, Start, TranslatedGame};
+use pcode_machine::{Disks, Input, Picture, custom, irq};
+use pcode_rt::Stop;
+
+use crate::{Case, Engine, HUNK_BASES, Inputs, OracleMem, PASS_END, address, disks, sync};
+
+/// Chip RAM's size on the oracle's A500, where slow RAM starts in a snapshot's bytes.
+const CHIP: usize = 512 << 10;
+const SLOW_BASE: u32 = 0xC0_0000;
+
+/// The original at the step whose pass end a case's runner transplants at.
+#[derive(Clone)]
+pub struct CaseStart {
+    /// Chip RAM then slow RAM at the step's end.
+    pub mem: Vec<u8>,
+    pub regs: Regs68k,
+    /// Each custom register's last CPU write, by `reg / 2`; DMACONR, INTENAR and INTREQR the
+    /// set/clear state of the CPU's writes; VPOSR and VHPOSR line 0, where a step ends.
+    pub custom: [u16; 256],
+    /// Disk 2, in df0 since frame [`sync::DISK_2_SWAP`].
+    pub disk2: Vec<u8>,
+    /// `irq_count` at the pass end: the pass the runner transplants at.
+    pub pass: u32,
+    /// The oracle frame the step ended at.
+    pub frame: u32,
+}
+
+/// [`CaseStart`] of `case`: the original from power-on along `reach_case`'s way (the level 1
+/// script up to [`sync::LEVEL_1_SYNC`], then the case's inputs, then its `set`), then the case's
+/// steps until a pass end, as `run_inputs` steps them.
+pub fn case_start(case: &Case) -> Result<CaseStart, String> {
+    if !case.is_level() {
+        return Err(format!("{}: not a level case", case.name));
+    }
+    let inputs = Inputs::load(case)?;
+    let (_, level_1) = sync::level_1_script()?;
+    let kickstart = kickstart_path().map_err(|e| e.to_string())?;
+    let disks = disks::load()?;
+    let disk2 = disks[1].clone();
+    // A pass ends within a step or two of any step in play; 50 is room, not a wait.
+    let cap = case.sync_frame + 50;
+    let mut am = Amiga::power_on(&OracleConfig::new(kickstart, disks, cap + 1))
+        .map_err(|e| e.to_string())?;
+    let mut regs = [0u16; 256];
+    let (mut dmacon, mut intena, mut intreq) = (0u16, 0u16, 0u16);
+    let mut collect = |am: &Amiga| {
+        for w in am.cpu_writes() {
+            let reg = w.reg & 0x1FE;
+            regs[reg as usize >> 1] = w.value;
+            match reg {
+                custom::DMACON => dmacon = irq::set_clear(dmacon, w.value),
+                irq::INTENA => intena = irq::set_clear(intena, w.value),
+                irq::INTREQ => intreq = irq::set_clear(intreq, w.value),
+                _ => {}
+            }
+        }
+    };
+    for frame in 0..case.sync_frame {
+        if frame == sync::DISK_2_SWAP {
+            am.insert_disk(0, 1);
+        }
+        let input = if frame < sync::LEVEL_1_SYNC {
+            script::input_at(&level_1.lines, frame)
+        } else {
+            inputs.at(frame)
+        };
+        am.step(input).map_err(|e| e.to_string())?;
+        collect(&am);
+    }
+    for (name, value) in &case.set {
+        let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
+        let bytes = &value.to_be_bytes()[4 - v.width.bytes()..];
+        am.poke(address(name)?, bytes);
+    }
+    am.watch_write(Some(PASS_END));
+    let irq_count = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
+    for step in 0..cap - case.sync_frame {
+        am.step(inputs.at(case.sync_frame + step))
+            .map_err(|e| e.to_string())?;
+        collect(&am);
+        if let Some(mem) = am.watched_memory() {
+            let pass = OracleMem(&mem).value(irq_count);
+            regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
+            regs[irq::INTENAR as usize >> 1] = intena;
+            regs[irq::INTREQR as usize >> 1] = intreq;
+            // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
+            regs[0x004 >> 1] = 0;
+            regs[0x006 >> 1] = 0;
+            let ram = am.memory();
+            let mut mem = ram.chip.clone();
+            mem.extend_from_slice(&ram.slow);
+            let c = am.cpu();
+            return Ok(CaseStart {
+                mem,
+                regs: Regs68k {
+                    d: c.d,
+                    a: c.a,
+                    pc: c.pc,
+                    sr: c.sr,
+                    usp: c.usp,
+                    ssp: c.ssp,
+                },
+                custom: regs,
+                disk2,
+                pass,
+                frame: am.frame(),
+            });
+        }
+    }
+    Err(format!(
+        "{}: no pass ended in the {} steps after frame {}",
+        case.name,
+        cap - case.sync_frame,
+        case.sync_frame
+    ))
+}
+
+/// One frame as the game thread hands it over.
+struct Frame {
+    picture: Picture,
+    stop: Option<Stop>,
+    /// Chip RAM then slow RAM at the frame's end.
+    mem: Vec<u8>,
+}
+
+struct Link {
+    to: Option<Sender<Input>>,
+    from: Receiver<Frame>,
+    thread: Option<JoinHandle<()>>,
+}
+
+/// The translated program as a level case's engine. Built from a [`CaseStart`]; the game starts on
+/// the first [`Engine::pass`].
+pub struct TranslatedEngine {
+    start: Option<CaseStart>,
+    pass: u32,
+    link: Option<Link>,
+    /// RAM as the last pass left it (the start's until the first).
+    mem: Vec<u8>,
+    picture: Option<Picture>,
+    stop: Option<(u32, Stop)>,
+    passes: u32,
+}
+
+impl TranslatedEngine {
+    pub fn new(start: CaseStart) -> TranslatedEngine {
+        TranslatedEngine {
+            pass: start.pass,
+            mem: start.mem.clone(),
+            start: Some(start),
+            link: None,
+            picture: None,
+            stop: None,
+            passes: 0,
+        }
+    }
+
+    /// How the translated program stopped, and after how many passes; `None` while it runs.
+    pub fn stop(&self) -> Option<&(u32, Stop)> {
+        self.stop.as_ref()
+    }
+
+    /// The passes run.
+    pub fn passes(&self) -> u32 {
+        self.passes
+    }
+
+    /// RAM as the last pass left it, chip then slow.
+    pub fn mem(&self) -> &[u8] {
+        &self.mem
+    }
+
+    fn spawn(start: CaseStart, first: Input) -> Link {
+        let (to, inputs) = channel::<Input>();
+        let (frames, from) = channel::<Frame>();
+        let thread = thread::Builder::new()
+            .name("translated game".into())
+            .stack_size(RUN_STACK)
+            .spawn(move || {
+                let mut g = TranslatedGame::new(Start::Snapshot {
+                    mem: &start.mem,
+                    regs: start.regs,
+                    custom: &start.custom,
+                    disks: Disks { df0: start.disk2 },
+                });
+                g.set_input(first);
+                g.run(&mut |out| {
+                    let mut mem = out.chip.to_vec();
+                    mem.extend_from_slice(out.slow);
+                    let sent = frames.send(Frame {
+                        picture: out.picture.clone(),
+                        stop: out.stop.clone(),
+                        mem,
+                    });
+                    // The engine dropped: nobody wants the next frame.
+                    match (sent, inputs.recv()) {
+                        (Ok(()), Ok(input)) => Control::Next(input),
+                        _ => Control::Stop,
+                    }
+                });
+            })
+            .expect("a thread for the translated game");
+        Link {
+            to: Some(to),
+            from,
+            thread: Some(thread),
+        }
+    }
+
+    /// Wait for the game thread's next frame; a panic there goes on here.
+    fn receive(&mut self) -> Frame {
+        let link = self.link.as_mut().expect("started");
+        match link.from.recv() {
+            Ok(f) => f,
+            Err(_) => {
+                let t = link.thread.take().expect("joined once");
+                match t.join() {
+                    Err(e) => std::panic::resume_unwind(e),
+                    Ok(()) => panic!("the translated game's thread ended without a stop"),
+                }
+            }
+        }
+    }
+}
+
+impl Drop for TranslatedEngine {
+    fn drop(&mut self) {
+        if let Some(mut link) = self.link.take() {
+            // Closing the input channel ends the run at the frame it waits in.
+            link.to.take();
+            while link.from.recv().is_ok() {}
+            if let Some(t) = link.thread.take() {
+                let _ = t.join();
+            }
+        }
+    }
+}
+
+/// `v`'s bytes in `mem` (chip RAM, then slow RAM from [`SLOW_BASE`]), zero-extended.
+fn value(mem: &[u8], v: &Var) -> u32 {
+    let at = HUNK_BASES[v.hunk as usize] + v.offset;
+    (0..v.width.bytes() as u32).fold(0, |acc, k| {
+        let a = (at + k) & 0xFF_FFFF;
+        let i = if a >= SLOW_BASE {
+            CHIP + (a - SLOW_BASE) as usize
+        } else {
+            a as usize
+        };
+        acc << 8 | mem.get(i).copied().unwrap_or(0) as u32
+    })
+}
+
+impl Transplant for TranslatedEngine {
+    /// The start was taken at the same pass end on the case's own way there; a different pass means
+    /// the two runs of the original went apart, which no comparison after it could trust.
+    fn transplant(&mut self, mem: &dyn Mem) {
+        let irq_count = layout_var("irq_count").expect("irq_count in LAYOUT");
+        let theirs = mem.value(irq_count);
+        assert_eq!(
+            theirs, self.pass,
+            "the runner transplants at pass {theirs}, the translated start was taken at pass {}",
+            self.pass
+        );
+    }
+
+    fn probe(&self, v: &Var) -> u32 {
+        value(&self.mem, v)
+    }
+}
+
+impl Engine for TranslatedEngine {
+    /// One frame of the translated program on `input`. After a stop, nothing runs.
+    fn pass(&mut self, input: FrameInput) {
+        if self.stop.is_some() {
+            return;
+        }
+        let input = Input::from(input);
+        match self.start.take() {
+            Some(start) => self.link = Some(Self::spawn(start, input)),
+            None => {
+                let link = self.link.as_ref().expect("started");
+                // A send fails only when the thread has ended; `receive` reports why.
+                let _ = link.to.as_ref().expect("open").send(input);
+            }
+        }
+        let f = self.receive();
+        self.passes += 1;
+        self.mem = f.mem;
+        self.picture = Some(f.picture);
+        if let Some(s) = f.stop {
+            self.stop = Some((self.passes, s));
+        }
+    }
+
+    /// The machine's whole picture of the last frame, not cut to the play window (T29's).
+    fn picture(&self) -> Option<Picture> {
+        self.picture.clone()
+    }
+}

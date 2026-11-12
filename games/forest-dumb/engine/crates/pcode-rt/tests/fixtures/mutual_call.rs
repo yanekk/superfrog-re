@@ -43,40 +43,66 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x6) => Some(h0_0_from),
+        (0, 0x10)
+        | (0, 0x16) => Some(h0_10_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x0) => {
-                // h0+$0 jsr h0+$10
-                {
-                    let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = (img.h(0, 0x6) as u64);
-                    store(bus, img, r.get(0x3c, 4) as u32, 4, v)?;
-                    h0_10(r, bus, img)?;
-                    let ret = r.get(PC, 4) as u32;
-                    if ret != img.h(0, 0x6) {
-                        let a = ret as u32;
-                        match img.hunk_of(a) {
-                            Some(k) => { pc = k; continue 'b; }
-                            None => return Err(Stop::Untranslated(img.describe(a))),
+            (0, 0x0) | (0, 0x6) => {
+                let entered = pc.1;
+                if entered <= 0x0 {
+                    // h0+$0 jsr h0+$10
+                    {
+                        let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = (img.h(0, 0x6) as u64);
+                        store(bus, img, r.get(0x3c, 4) as u32, 4, v)?;
+                        h0_10(r, bus, img)?;
+                        let ret = r.get(PC, 4) as u32;
+                        if ret != img.h(0, 0x6) {
+                            let a = ret as u32;
+                            match img.hunk_of(a) {
+                                Some(k) => { pc = k; continue 'b; }
+                                None => return Err(Stop::Untranslated(img.describe(a))),
+                            }
                         }
                     }
                 }
-                // h0+$6 rts
-                {
-                    let v = load(bus, r.get(0x3c, 4) as u32, 4);
-                    r.set(0x50, 4, v);
-                    let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = r.get(0x50, 4);
-                    r.set(PC, 4, v);
-                    r.depth -= 1;
-                    return Ok(());
+                if entered <= 0x6 {
+                    // h0+$6 rts
+                    {
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
                 }
                 pc = (0, 0x8);
             }
@@ -90,39 +116,50 @@ pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
 }
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_10_from((0, 0x10), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x10);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x10) => {
-                // h0+$10 jsr h0+$0
-                {
-                    let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = (img.h(0, 0x16) as u64);
-                    store(bus, img, r.get(0x3c, 4) as u32, 4, v)?;
-                    h0_0(r, bus, img)?;
-                    let ret = r.get(PC, 4) as u32;
-                    if ret != img.h(0, 0x16) {
-                        let a = ret as u32;
-                        match img.hunk_of(a) {
-                            Some(k) => { pc = k; continue 'b; }
-                            None => return Err(Stop::Untranslated(img.describe(a))),
+            (0, 0x10) | (0, 0x16) => {
+                let entered = pc.1;
+                if entered <= 0x10 {
+                    // h0+$10 jsr h0+$0
+                    {
+                        let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = (img.h(0, 0x16) as u64);
+                        store(bus, img, r.get(0x3c, 4) as u32, 4, v)?;
+                        h0_0(r, bus, img)?;
+                        let ret = r.get(PC, 4) as u32;
+                        if ret != img.h(0, 0x16) {
+                            let a = ret as u32;
+                            match img.hunk_of(a) {
+                                Some(k) => { pc = k; continue 'b; }
+                                None => return Err(Stop::Untranslated(img.describe(a))),
+                            }
                         }
                     }
                 }
-                // h0+$16 rts
-                {
-                    let v = load(bus, r.get(0x3c, 4) as u32, 4);
-                    r.set(0x50, 4, v);
-                    let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
-                    r.set(0x3c, 4, v);
-                    let v = r.get(0x50, 4);
-                    r.set(PC, 4, v);
-                    r.depth -= 1;
-                    return Ok(());
+                if entered <= 0x16 {
+                    // h0+$16 rts
+                    {
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
                 }
                 pc = (0, 0x18);
             }

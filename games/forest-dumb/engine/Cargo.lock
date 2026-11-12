@@ -954,6 +954,7 @@ dependencies = [
  "fd-assets",
  "fd-core",
  "fd-tools",
+ "fd-translated",
  "pcode-machine",
  "pcode-rt",
 ]
@@ -1015,6 +1016,15 @@ name = "fd-tools"
 version = "0.1.0"
 dependencies = [
  "amiga-disk",
+]
+
+[[package]]
+name = "fd-translated"
+version = "0.1.0"
+dependencies = [
+ "fd-core",
+ "pcode-machine",
+ "pcode-rt",
 ]
 
 [[package]]

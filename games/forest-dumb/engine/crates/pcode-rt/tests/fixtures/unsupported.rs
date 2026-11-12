@@ -40,30 +40,59 @@ fn enter(k: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<
     }
 }
 
+#[allow(dead_code)]
+pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The translated function holding the instruction at `k`, entered at it.
+#[allow(dead_code)]
+pub fn resume(k: (u32, u32)) -> Option<Resume> {
+    match k {
+        (0, 0x0)
+        | (0, 0x2)
+        | (0, 0x4)
+        | (0, 0x6)
+        | (0, 0x8) => Some(h0_0_from),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    h0_0_from((0, 0x0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     fn_entry(r)?;
-    let mut pc: (u32, u32) = (0, 0x0);
+    let mut pc: (u32, u32) = start;
     'b: loop {
         block_start(bus, r, img)?;
         match pc {
-            (0, 0x0) => {
-                // h0+$0 moveq #7,d0
-                {
-                    let v = 0x7u64;
-                    r.set(0x0, 4, v);
+            (0, 0x0) | (0, 0x2) | (0, 0x4) => {
+                let entered = pc.1;
+                if entered <= 0x0 {
+                    // h0+$0 moveq #7,d0
+                    {
+                        let v = 0x7u64;
+                        r.set(0x0, 4, v);
+                    }
                 }
-                // h0+$2 tst.w d1w
-                {
-                    let v = int_sless(r.get(0x6, 2), 0x0u64, 2);
-                    r.set(0x44, 1, v);
-                    let v = int_equal(r.get(0x6, 2), 0x0u64, 2);
-                    r.set(0x45, 1, v);
+                if entered <= 0x2 {
+                    // h0+$2 tst.w d1w
+                    {
+                        let v = int_sless(r.get(0x6, 2), 0x0u64, 2);
+                        r.set(0x44, 1, v);
+                        let v = int_equal(r.get(0x6, 2), 0x0u64, 2);
+                        r.set(0x45, 1, v);
+                    }
                 }
-                // h0+$4 beq.b h0+$8
-                {
-                    if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x8); continue 'b; }
-                    r.tick(const { cy::bcc(false, cy::Size::B) });
+                if entered <= 0x4 {
+                    // h0+$4 beq.b h0+$8
+                    {
+                        if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x8); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) });
+                    }
                 }
                 pc = (0, 0x6);
             }

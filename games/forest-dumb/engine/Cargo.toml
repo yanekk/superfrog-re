@@ -68,3 +68,7 @@ opt-level = 2
 # its bus.
 [profile.dev.package.pcode-machine]
 opt-level = 2
+
+# The translated program as an engine (translator T28): the whole generated tree, run frame by frame.
+[profile.dev.package.fd-translated]
+opt-level = 2

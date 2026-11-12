@@ -33,3 +33,5 @@ pcode-rt = { path = "../pcode-rt" }
 # its OS answers are run from power-on (T26, `os_run`) and held against the measured OS surface
 # (tests/os_answers.rs).
 pcode-machine = { path = "../pcode-machine" }
+# The translated program as a case's engine (T28, `translated_engine`).
+fd-translated = { path = "../fd-translated" }

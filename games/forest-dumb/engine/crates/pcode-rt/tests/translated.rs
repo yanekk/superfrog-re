@@ -402,6 +402,38 @@ fn a_return_to_another_pushed_address_continues_there() {
     }
 }
 
+/// A run resumed at any instruction (translator T28: a host starting from a snapshot of the
+/// original) starts there: the instructions of its block before it are skipped.
+#[test]
+fn a_run_resumed_mid_block_runs_from_that_instruction_on() {
+    // h0+$a, the rts after `addq.l #4,d3`: the addq is skipped.
+    // h0+$6, the moveq after the bsr: moveq, then the addq and the rts.
+    // h0+$2, the bsr's block start: the call too (d4 gives it the normal return).
+    for (at, d2, d3) in [(0xa, 0, 0), (0x6, 1, 4), (0x2, 1, 4)] {
+        let f = pushed_return::resume((0, at)).expect("every instruction resumes");
+        let (mut r, mut m) = (Regs::new(), ram());
+        r.set_d(4, BASES[0] + 0x6);
+        let img = Image {
+            bases: &BASES[..1],
+            sizes: pushed_return::HUNK_SIZES,
+            code: pushed_return::CODE,
+        };
+        r.set_a(7, STACK - 4);
+        m.wl(STACK - 4, RETURN_TO);
+        f((0, at), &mut r, &mut m, &img).unwrap();
+        returned(&r);
+        assert_eq!((r.d(2), r.d(3), r.depth), (d2, d3, 0), "resumed at h0+${at:x}");
+    }
+    // Inside an instruction, or no instruction: nothing to resume.
+    assert!(pushed_return::resume((0, 0x4)).is_none());
+    assert!(pushed_return::resume((0, 0x30)).is_none());
+    // A function's own entry is run by that function.
+    assert_eq!(
+        pushed_return::resume((0, 0x20)).map(|f| f as usize),
+        Some(pushed_return::h0_20_from as pushed_return::Resume as usize)
+    );
+}
+
 #[test]
 fn branches_inside_one_instruction_take_either_way() {
     let f = relative::entry("h0+$0").unwrap();
