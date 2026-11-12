@@ -51,6 +51,12 @@ pub const RUN_STACK: usize = 64 << 20;
 /// reaches (translator T26, `os_run`).
 pub const POWER_ON_STACK: u32 = 0xC0_7000;
 
+/// The supervisor stack at power-on: Kickstart 1.3's exec keeps it at the top of slow RAM (the
+/// oracle's SSP `$C7FFFA` inside an interrupt at the entry's step, translator T32). The program
+/// runs in user mode on [`POWER_ON_STACK`], and the first interrupt it takes (play's first level 3,
+/// since the title takes none) switches to this one.
+pub const POWER_ON_SUPERVISOR_STACK: u32 = 0xC8_0000;
+
 /// CIA-A's interrupt mask the program leaves set in play: the keyboard's serial bit (translator
 /// T01, T25). The original's snapshot holds no CIA state, so a snapshot start sets it.
 const CIA_A_MASK: u8 = 0x08;
@@ -211,6 +217,7 @@ impl TranslatedGame {
                     }
                 };
                 r.set_a(7, POWER_ON_STACK);
+                r.set(ops::ISP, 4, POWER_ON_SUPERVISOR_STACK as u64);
                 let sizes = if m.hunk_sizes().is_empty() {
                     prog.hunk_sizes.to_vec()
                 } else {

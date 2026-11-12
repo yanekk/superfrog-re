@@ -432,3 +432,24 @@ fn a_run_started_at_a_line_has_a_short_first_frame() {
         c / line
     );
 }
+
+/// Power-on runs in user mode on `POWER_ON_STACK` with a supervisor stack for the first
+/// interrupt: without one the 68000 pushes the exception frame below address 0 (translator T32,
+/// `outside-memory: $fffffc` at play's first level 3 interrupt).
+#[test]
+fn power_on_has_a_supervisor_stack() {
+    let g = TranslatedGame::with_program(
+        Program::STUB,
+        &[BASE],
+        Start::PowerOn {
+            program: &[],
+            disks: Disks::default(),
+        },
+    );
+    assert_eq!(ops::sr_get(g.regs()) & 0x2000, 0, "user mode");
+    assert_eq!(g.regs().a(7), fd_translated::POWER_ON_STACK);
+    assert_eq!(
+        g.regs().get(ops::ISP, 4) as u32,
+        fd_translated::POWER_ON_SUPERVISOR_STACK
+    );
+}
