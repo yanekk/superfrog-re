@@ -48,6 +48,8 @@ struct StandIn {
     mem: Option<AmigaMemory>,
     pic: Option<Rgb12Frame>,
     paula: Vec<PaulaWrite>,
+    /// `char_x` at each frame's end, to show a moving case moved.
+    char_x: Vec<u32>,
 }
 
 impl StandIn {
@@ -60,6 +62,7 @@ impl StandIn {
             mem: None,
             pic: None,
             paula: Vec::new(),
+            char_x: Vec::new(),
         }
     }
 }
@@ -69,13 +72,18 @@ impl Transplant for StandIn {
     fn transplant(&mut self, mem: &dyn Mem) {
         let irq = layout_var("irq_count").unwrap();
         self.am.watch_write(Some(PASS_END));
-        while self.am.watched_memory().is_none() {
+        // The runner's `mem` is RAM as the pass end wrote it, inside the step; a level 3 interrupt
+        // later in the same step may count `irq_count` on (sync 6301), so compare like with like.
+        let at_pass_end = loop {
             let f = self.am.frame();
             self.am.step(self.inputs.at(f)).unwrap();
-        }
+            if let Some(m) = self.am.watched_memory() {
+                break m;
+            }
+        };
         self.am.watch_write(None);
         assert_eq!(
-            fd_conform::Live(&self.am).value(irq),
+            fd_conform::OracleMem(&at_pass_end).value(irq),
             mem.value(irq),
             "the stand-in's start is the runner's"
         );
@@ -98,6 +106,9 @@ impl FrameEngine for StandIn {
         self.mem = Some(self.am.memory());
         self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
         self.paula = c.paula;
+        let x =
+            fd_conform::OracleMem(self.mem.as_ref().unwrap()).value(layout_var("char_x").unwrap());
+        self.char_x.push(x);
         for m in &self.meddle {
             match *m {
                 Meddle::Swap(f) if f == self.frames => {
@@ -171,7 +182,10 @@ fn every_channel_goes_on_past_the_writes_to_the_states_first_difference() {
         ..Options::default()
     };
     let v = run(&made_up(40), &[Meddle::Swap(4), Meddle::Bump(9)], &opts);
-    assert!(matches!(v.outcome, Outcome::WritesDiffer { pass: 4, .. }), "{v}");
+    assert!(
+        matches!(v.outcome, Outcome::WritesDiffer { pass: 4, .. }),
+        "{v}"
+    );
     assert_eq!(v.firsts.len(), 2, "{v}");
     let Outcome::Differs { pass, var, .. } = &v.firsts[1] else {
         panic!("{v}");
@@ -188,6 +202,30 @@ fn every_channel_goes_on_past_the_writes_to_the_states_first_difference() {
     }
     .markdown();
     assert!(md.contains("## T31:"), "{md}");
+}
+
+/// The runner must hand each engine frame the input the original got in the same step: an idle
+/// case cannot tell, so this one runs collect-ledge's script, where the character runs from the
+/// first frames (translator T29 review: an input one step late or early passed every other test).
+#[test]
+fn an_equal_engine_given_each_frames_input_stays_in_step_while_the_character_moves() {
+    let case = Case::parse(
+        "frames-made-up-moving",
+        "sync = { script = \"boot-to-level1\", frame = 6301 }\ninput = \"collect-ledge\"\n\
+         frames = 60\ncompare = [\"vars\", \"picture\", \"writes\"]\n\
+         vars = [\"char_x\", \"char_y\", \"joy_left\", \"joy_right\", \"joy_up\"]\n\
+         goal = { idle = true }\n",
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    let mut stand_in = StandIn::new(&case, &[Meddle::None]);
+    let v = run_frames(&case, &mut stand_in, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert_eq!(v.passes + 1, case.frames, "{v}");
+    let xs = &stand_in.char_x;
+    assert!(
+        xs.windows(2).filter(|w| w[0] != w[1]).count() >= 10,
+        "char_x {xs:?}"
+    );
 }
 
 #[test]
