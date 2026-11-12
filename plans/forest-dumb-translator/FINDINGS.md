@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | T16 review: the whole-tree gate stays 100 of 100 with `pcode_fix` `arith` and `shift_bit` both off (dead flags, write-only chip registers); only `insn_gate.rs` guards those corrections. A broken `INT_CARRY` drops it to 97. |
+| 2026-11-12 | 📌 | **T16 whole tree:** 6 684 instructions, 0 unsupported, 0 unresolved computed jumps, 0 hints; the 24 targetless `jsr -n(a5|a6)` are library calls for the machine (`h0+$943a`..`$94ae` absent from `re/os-calls.toml`). 100 of 100 judgeable routines pass, 2 000 states. |
+| 2026-11-12 | 📌 | `translator_trial.py --whole` builds fd-judge optimised: unoptimised, `view_tiles` took 340 s for 2 000 translated states (original 5 s), past `JUDGE_SECONDS` 120. pcode_rust's `computed_unresolved` 28 counts per function, the export's 24 per instruction. |
 | 2026-11-12 | 📌 | **T24 title picture:** the CPU strobes COPJMP1 on line 3 of frame 4921 and writes 185 chip bytes in 4922; a snapshot at 4922's end gives 4923 and 4924 pixel-equal on the machine (`machine_title.rs`, full). |
 | 2026-11-12 | 📌 | T24 stops rather than guess: a copper MOVE to COPJMP1/2 (`unsupported: copper jump`), line and fill blits (`blit line`, `blit fill`), HAM. The host must call `end_frame` at `frame_end()`; T28 owns that. |
 | 2026-11-12 | 🐞 | `purity.rs` fails on the feature branch: T23's generated `pcode-machine/tests/fixtures/irq.rs:7` holds an 18-element integer array (tables over 16 elements come from the disks). Found merging into T24; left alone. |
@@ -34,11 +37,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |
 | 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |
-| 2026-11-11 | 📌 | **T07 bcd and compare check:** 25 kinds, 65 words, 32 500 states, 0 fail in regs, ccr, mem; 506 skipped. Game has no `nbcd` or `cmpm`; whole translation byte-identical to T06's, unsupported 0. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
-| 2026-11-11 | 📌 | **T06 instruction check** (500 states a word, 815 words, 290 kinds, about 10 s) failed 15 kinds, listed by owner in `build/translator/insn.md`; T08 to T10 fixed them and T13's `insn_gate.rs` holds every kind at 0. |
-| 2026-11-11 | 📌 | T06 skips 6 753 states, all the original's exceptions: `(d8,An,Xn)` kinds lose about half to an odd random index, `rts`/`rte` half to an odd popped address, `divu` 14 to zero. Each kind keeps 230 or more judged. |
 | 2026-11-11 | 🐞 | `--out` naming a file or an unwritable path gives a traceback, not exit 2 (unguarded `os.makedirs`, temp-rename write) in `pcode_export.py`, `re_listing.py`, `translate_batch.py`, `translator_trial.py` (T04 review sweep). Left alone. |
 | 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
 | 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |

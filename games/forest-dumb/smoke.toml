@@ -402,6 +402,9 @@ workspace = "engine"
 "tools/test_code_write_rule.py" = "full"
 # Translator trial T06: the trial tool with stub export, build and judge, the real translator: about 1 s.
 "tools/test_translator_trial.py" = "smoke"
+# Translator T16: the whole-tree gate on the game (export, optimised fd-judge, every routine with a
+# generator on 2 000 states), about 1 to 2 minutes warm; needs Ghidra and the disks.
+"tools/test_translator_whole.py" = "full"
 # Translator T06: pcode_fix, pcode_rust --insn and insn_check.py with a stub build and judge: under 1 s.
 "tools/test_insn_check.py" = "smoke"
 # Translator T08: pcode_fix.arith on made-up P-code, and its fixtures current: under 1 s.

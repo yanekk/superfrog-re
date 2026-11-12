@@ -198,6 +198,27 @@ fn fd_judge_translated_prints_the_stops_beside_the_verdict() {
     assert_eq!(both.status.code(), Some(2));
 }
 
+/// `--generators` (translator T16) is the whole-tree judge's work list: every registered name, in
+/// registry order, the same list `generators::all` gives.
+#[test]
+fn fd_judge_lists_every_registered_generator() {
+    let out = Command::new(env!("CARGO_BIN_EXE_fd-judge"))
+        .arg("--generators")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let names: Vec<String> = generators::all().map(|(n, _)| format!("\"{n}\"")).collect();
+    assert!(names.iter().any(|n| n == &format!("\"{GEN}\"")));
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout).trim_end(),
+        format!("{{\"generators\":[{}]}}", names.join(","))
+    );
+}
+
 /// `movea.l a7,a0; movea.l (a7),a1; rts` at $2000 in empty memory: the stack pointer and the word
 /// on top of it at entry, which the oracle sets to `STACK - 4` with its return address there.
 fn stack_at_entry_rig() -> Rig {

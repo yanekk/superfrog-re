@@ -181,8 +181,13 @@ address, a division by zero) is skipped and counted. One kind alone: `fd-judge -
 The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a
 tree, survey and judge every routine of `re/translate.toml` (DESIGN §2.1 to §2.4, §2.7).
 ```
-python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,…] [--skip-export] [--cases N]
+python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,… | --whole] [--skip-export] [--cases N]
 ```
+`--whole` (translator T16) is the whole-tree gate: it builds `fd-judge` optimised, judges every routine of
+`re/translate.toml` and every generator `fd-judge --generators` lists, and adds the tree's reading
+(instructions, unsupported, unresolved computed jumps, library calls `jsr -n(An)` the machine answers,
+hints). The gate is met with nothing unsupported or unresolved, no hint and every judgeable routine
+passing; `test_translator_whole.py` (full) runs it. About 1 minute warm.
 Writes `build/translator/trial.json` and `table.md` (with Muse's `batch.json` results beside, from this
 checkout or the main one), prints the gate summary line. A state on which the original itself
 changes a translated instruction's byte is not judged: the table's `Self-modifying` column counts them

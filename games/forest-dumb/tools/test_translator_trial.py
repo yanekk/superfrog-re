@@ -86,6 +86,9 @@ open(os.environ['FAKE_STATE'], 'w').write(os.path.basename(tree))
 # Answers from FAKE_ANSWERS by mode and, for --translated, by the tree last built.
 JUDGE = '''
 import json, os, sys
+if sys.argv[1:] == ['--generators']:
+    print(json.dumps({'generators': json.loads(os.environ.get('FAKE_GENERATORS', '[]'))}))
+    sys.exit(0)
 routine, gen, mode = sys.argv[1], sys.argv[3], sys.argv[-1]
 ans = json.load(open(os.environ['FAKE_ANSWERS']))
 if gen == 'unregistered':
@@ -100,6 +103,21 @@ else:
     base.update(untranslated=0, write_into_code=0, unsupported=0, stopped_hangs=0, first_stop='')
     base.update(ans[tree][routine])
 print(json.dumps(base))
+'''
+
+SYMBOLS = '''
+[[sym]]
+name = "view_tile"
+hunk = 0
+offset = 0x180
+kind = "func"
+
+[[sym]]
+name = "view_tile"
+exe = "some_other_program"
+hunk = 0
+offset = 0x999
+kind = "func"
 '''
 
 FAIL_PLAIN = {'pass': False, 'failures': 2000, 'passed': 0, 'untranslated': 2000,
@@ -127,6 +145,7 @@ class Trial(unittest.TestCase):
         self.write('inventory.toml', INVENTORY)
         shutil.copy(os.path.join(FIXTURES, 'jump_table.hints.toml'), os.path.join(d, 'hints.toml'))
         self.write('answers.json', json.dumps(ANSWERS))
+        self.write('symbols.toml', SYMBOLS)
         py = shlex.quote(sys.executable)
         env = {'FD_TRIAL_EXPORT': f"{py} {shlex.quote(stubs['export'])} {shlex.quote(os.path.join(FIXTURES, 'jump_table.json'))}",
                'FD_TRIAL_BUILD': f"{py} {shlex.quote(stubs['build'])}",
@@ -137,6 +156,7 @@ class Trial(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.paths = t.Paths(out=os.path.join(d, 'translator'), lock_dir=os.path.join(d, 'translate'),
                              inventory=os.path.join(d, 'inventory.toml'), hints=os.path.join(d, 'hints.toml'),
+                             symbols=os.path.join(d, 'symbols.toml'),
                              batches=[os.path.join(d, 'here', 'batch.json'), os.path.join(d, 'main', 'batch.json')])
 
     def write(self, name, text):
@@ -250,6 +270,95 @@ class Trial(unittest.TestCase):
         code, _, err = self.run_trial()
         self.assertEqual(code, 1)
         self.assertIn('export:', err)
+
+    # --- --whole (translator T16) ---
+
+    def whole_answers(self, **plain):
+        ok = {'pass': True}
+        ans = json.loads(json.dumps(ANSWERS))
+        for tree in ('tree.rs', 'tree-hints.rs'):
+            ans[tree].update({'h0+$140': ok, 'h0+$180': ok, 'h0+$1c0': {'pass': True, 'passed': 1990, 'self_modifying': 10}})
+        ans['tree.rs'].update(plain)
+        self.write('answers.json', json.dumps(ans))
+        os.environ['FAKE_GENERATORS'] = json.dumps(['h0_0', 'waits_forever', 'draws_lines', 'h0_140', 'view_tile',
+                                                    'h0+$1c0'])
+
+    def test_whole_judges_every_registered_generator_and_names_what_fails_the_gate(self):
+        self.whole_answers()
+        code, out, err = self.run_trial('--whole')
+        self.assertEqual(code, 0, err)
+        s = json.loads(out)
+        self.assertEqual(list(s), list(t.SUMMARY_KEYS + t.WHOLE_KEYS))
+        # The inventory's five, and three generators it does not hold: by `hN_off`, a symbol (this
+        # program's, not another's) and `hN+$off`.
+        self.assertEqual((s['routines'], s['judgeable'], s['pass'], s['unjudgeable']), (8, 4, 3, 4))
+        self.assertEqual((s['instructions'], s['unsupported_insns'], s['unresolved_computed'], s['library_calls'],
+                          s['hints'], s['self_modifying_states'], s['gate']), (9, 0, 1, 0, 1, 10, False))
+        tab = self.table()
+        self.assertIn('| `h0+$140` `h0_140` |  |  | pass |', tab)
+        self.assertIn('| `h0+$180` `view_tile` |  |  | pass |', tab)
+        self.assertIn('| `h0+$1c0` |  |  | pass |', tab)
+        self.assertIn('1 unresolved computed jump(s): h0+$e', tab)
+        self.assertIn('not met: unresolved computed jump(s) needing a hint: h0+$e; hint(s), each a hand edit: h0+$e; '
+                      '1 judgeable routine(s) fail.', tab)
+        self.assertNotIn('against 90%', tab)
+        with open(os.path.join(self.paths.out, 'trial.json')) as f:
+            doc = json.load(f)
+        self.assertEqual(doc['whole']['reading']['unresolved'], ['h0+$e'])
+        self.assertFalse(doc['whole']['gate'])
+
+    def test_whole_gate_met_on_a_clean_tree(self):
+        # A tree with no computed flow, the hints file empty, every judgeable routine passing.
+        os.environ['FD_TRIAL_EXPORT'] = os.environ['FD_TRIAL_EXPORT'].replace('jump_table.json', 'nested_call.json')
+        self.write('hints.toml', '# no hint\n')
+        self.whole_answers(**{'h0+$0': {'pass': True}})
+        code, out, err = self.run_trial('--whole')
+        self.assertEqual(code, 0, err)
+        s = json.loads(out)
+        self.assertEqual((s['pass'], s['judgeable'], s['unresolved_computed'], s['hints'], s['gate']), (4, 4, 0, 0, True))
+        self.assertRegex(self.table(), r'Whole-tree gate: 4 of 4 judgeable routines pass .*: met\.\n')
+
+    def test_tree_reading_puts_library_calls_apart_from_unresolved_jumps(self):
+        insns = {
+            'h0+$82': {'bytes': '4eaefe68', 'flow': {'kind': 'call', 'computed': True, 'targets': []}},   # jsr -408(a6)
+            'h0+$8eec': {'bytes': '4eadffe2', 'flow': {'kind': 'call', 'computed': True, 'targets': []}},  # jsr -30(a5)
+            'h0+$10': {'bytes': '4eae0010', 'flow': {'kind': 'call', 'computed': True, 'targets': []}},   # jsr 16(a6)
+            'h0+$20': {'bytes': '4ed1', 'flow': {'kind': 'computed', 'targets': []}},                      # jmp (a1)
+            'h0+$24': {'bytes': '4ed1', 'flow': {'kind': 'computed', 'targets': ['h0+$40']}},
+            'h4+$4': {'bytes': '4e90', 'flow': {'kind': 'call', 'computed': True, 'targets': []}},          # jsr (a0)
+            'h0+$30': {'bytes': '4e75', 'flow': {'kind': 'return'}},
+        }
+        pcode = self.write('reading/pcode.json', json.dumps({'insns': insns}))
+        rd = t.tree_reading(pcode, self.paths.hints, {'unsupported': 2})
+        self.assertEqual(rd, {'instructions': 7, 'unsupported_insns': 2, 'unresolved': ['h0+$10', 'h0+$20', 'h4+$4'],
+                              'library': ['h0+$82', 'h0+$8eec'], 'hints': ['h0+$e']})
+        ok, why = t.whole_gate(rd, {'judgeable': 0, 'pass': 0})
+        self.assertFalse(ok)
+        self.assertEqual(why[0], '2 unsupported instruction(s)')
+        self.assertEqual(why[-1], 'no routine judgeable')
+
+    def test_whole_refuses_routines_and_a_generator_naming_no_routine(self):
+        with mock.patch('sys.stderr'), self.assertRaises(SystemExit) as e:
+            self.run_trial('--whole', '--routines', 'h0_0')
+        self.assertEqual(e.exception.code, 2)
+        self.whole_answers()
+        os.environ['FAKE_GENERATORS'] = json.dumps(['h0_0', 'nowhere'])
+        code, _, err = self.run_trial('--whole')
+        self.assertEqual(code, 1)
+        self.assertIn('`nowhere` is registered but names no routine', err)
+
+    def test_whole_builds_and_judges_optimised(self):
+        del os.environ['FD_TRIAL_BUILD'], os.environ['FD_TRIAL_JUDGE']
+        seen = []
+        done = mock.Mock(returncode=0, stdout='{"generators":[]}', stderr='')
+        with mock.patch.object(t.subprocess, 'run', lambda argv, **k: seen.append(argv) or done):
+            t.build('tree.rs', release=True)
+            t.build('tree.rs')
+            t.generators(release=True)
+        self.assertIn('--release', seen[0])
+        self.assertNotIn('--release', seen[1])
+        self.assertTrue(seen[2][0].endswith(os.path.join('release', 'fd-judge')), seen[2])
+        self.assertTrue(t.judge_bin(False).endswith(os.path.join('debug', 'fd-judge')))
 
     def test_a_judge_past_its_limit_fails_as_timeout(self):
         slow = self.write('slow.py', 'import time; time.sleep(5)\n')
