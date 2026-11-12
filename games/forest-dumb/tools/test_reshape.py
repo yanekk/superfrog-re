@@ -17,16 +17,16 @@ from test_model import FakeClaude  # noqa: E402
 
 
 def fake_ports(root):
-    """A passing literal port for every unit's routines, each naming itself."""
+    """A translated routine for every unit's routines, as translate.py writes it, each naming itself."""
     for cfg in r.TASKS.values():
         for u in cfg['units']:
             for name, off in u['routines']:
                 d = os.path.join(root, f'h0-{off:x}')
                 os.makedirs(d, exist_ok=True)
-                with open(os.path.join(d, 'result.json'), 'w') as f:
-                    json.dump({'result': 'pass'}, f)
-                with open(os.path.join(d, 'port.rs'), 'w') as f:
-                    f.write(f'pub fn port(cpu: &mut Cpu) {{ /* literal {name} */ }}\n')
+                with open(os.path.join(d, 'translated.rs'), 'w') as f:
+                    f.write(f'// h0+${off:x} `{name}` as the translator generated it\n'
+                            f'pub fn h0_{off:x}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{\n'
+                            f'    /* translated {name} */\n}}\n')
 
 
 def src(task):
@@ -68,7 +68,7 @@ class Prompt(unittest.TestCase):
                     for t in own:
                         self.assertNotIn(t.strip(), p)
                     for name, _ in u['routines']:
-                        self.assertIn(f'/* literal {name} */', p)
+                        self.assertIn(f'/* translated {name} */', p)
                     ex = r.example_unit(cfg, u)
                     self.assertNotEqual(ex['fn'], u['fn'])
                     self.assertIn(body(r.fn_text(src(task), ex['fn'])), p)
@@ -84,12 +84,38 @@ class Prompt(unittest.TestCase):
         self.assertIn('var("char_jump_t", 0, 0x410a, Width::Byte),', p)
         self.assertNotIn('#[cfg(test)]', p)
 
-    def test_a_routine_with_no_passing_literal_port_is_a_usage_error(self):
+    def test_a_routine_with_no_translated_routine_is_a_usage_error_naming_translate(self):
         u = r.find_unit('T08', 'h0_4274')[1]
-        with open(os.path.join(self.tmp.name, 'h0-4274', 'result.json'), 'w') as f:
-            json.dump({'result': 'fail'}, f)
-        with self.assertRaises(r.Usage):
+        os.remove(os.path.join(self.tmp.name, 'h0-4274', 'translated.rs'))
+        with self.assertRaises(r.Usage) as e:
             r.prompt('T08', u, dirs=self.dirs)
+        self.assertIn('translate.py --task T08', str(e.exception))
+
+    def test_the_translation_keeps_its_own_callees_names_the_ported_ones_and_drops_ticks(self):
+        # char_step (h0+$3e30) calls up_pressed's routine and a helper no unit ports.
+        with open(os.path.join(self.tmp.name, 'h0-3e30', 'translated.rs'), 'w') as f:
+            f.write('// h0+$3e30 `h0_3e30` as the translator generated it, with its 2 callee(s), routine first.\n'
+                    '// Read-only: never compiled from here.\n\n'
+                    'pub fn h0_3e30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {\n'
+                    '                {\n'
+                    '                    r.tick(const { cy::of(cy::Op::Tst, cy::Size::W, cy::Ea::AbsL, cy::Ea::None) });\n'
+                    '                    if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::W) }); pc = (0, 0x3e3e); continue \'b; }\n'
+                    '                    h0_4b0e(r, bus, img)?;\n'
+                    '                    h0_4c6a(r, bus, img)?;\n'
+                    '                }\n}\n'
+                    'pub fn h0_4b0e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {\n'
+                    '    /* up_pressed body */\n}\n'
+                    'pub fn h0_4c6a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {\n'
+                    '    /* helper body */\n}\n')
+        t = r.translated('T08', 'char_step', 0x3e30, self.dirs)
+        self.assertIn('`h0_4b0e(r, bus, img)?` is ported as `up_pressed`: call that.', t)
+        self.assertNotIn('up_pressed body', t)
+        self.assertIn('/* helper body */', t)
+        self.assertNotIn('tick', t)
+        self.assertIn("if r.get(0x45, 1) != 0 { pc = (0, 0x3e3e); continue 'b; }", t)
+        self.assertNotIn('Read-only', t)
+        self.assertFalse(re.search(r'(?m)^[ \t]+$', t), 'no line left blank by a removed tick')
+        self.assertIn(t, r.prompt('T08', r.find_unit('T08', 'char_step')[1], dirs=self.dirs))
 
 
 class Units(unittest.TestCase):
@@ -334,6 +360,12 @@ class Quality(unittest.TestCase):
         self.assertIn('`0x431e` is `RISE_TABLE`', text)
         self.assertIn('`0x1234`', text)
         self.assertIn('appear twice', text)
+
+    def test_the_translations_register_and_memory_calls_left_in_are_an_issue(self):
+        for left in ('let v = r.get(0x0, 4);', 'let v = load(bus, 0x4ed0, 1);', 'store(bus, img, 0x4ed0, 1, 0);'):
+            with self.subTest(left=left):
+                code = f"impl Character<'_> {{\n    /// Rise (h0+$4274).\n    pub fn rise_step(&mut self) {{ {left} }}\n}}\n"
+                self.assertIn('memory by address', '\n'.join(r.quality(code, r.TASKS['T08'])))
 
     def test_a_tidy_answer_and_named_table_loads_pass(self):
         self.assertEqual(r.quality(TIDY_CODE, r.TASKS['T08']), [])

@@ -58,6 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
+| T44 | haiku-decision | T19; blocks T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

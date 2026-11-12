@@ -1024,3 +1024,63 @@ Opus's; `scroll` is one function over a direction, where T62's answer had four n
 
 The judge's copy needs `build/toolkit` linked to the checkout's toolkit since T14's build tag hashes
 `<workspace>/../../../toolkit`; `scratch()` makes the link (the first run failed every unit on it).
+
+## Haiku's trial (translator T19, 2026-11-12)
+
+Whether Haiku keeps the generator and rewrite jobs Muse held (translator DESIGN §2.13). Pass mark
+(owner, 2026-11-11): each of T61's 5 generators reaches at least as many of its routine's branch ways as
+Muse's did, and at least 20 of T62's 21 rewritten routines pass level 1's rig tests with no hand fix.
+
+```
+python3 -I games/forest-dumb/tools/haiku_trial.py [--only gen|reshape] [--tries 3] [--max-calls 100]
+```
+
+It runs `generate.py` and `reshape.py` in one process under one call cap, after `translate.py --task
+T08` and `--task T09`: since T19, `reshape.py`'s prompt holds the translated routine
+(`build/translate/h0-<off>/translated.rs`, cycle ticks taken out, each callee another unit ports named
+as that engine function) where it held Muse's literal port. Rewrites run with `--tidy 0`, as T62's
+did. Outputs `build/haiku-trial/table.md` and `summary.json`; `tools/test_haiku_trial.py` checks the
+mark on made-up results. A unit whose every call runs past `model.py`'s 300 s bound is `timeout`, a
+failure; a logged-out `claude` gives `no-model` and no verdict.
+
+### The run, 2026-11-12
+
+Worker action, DESIGN §5.3 row "Haiku trial batch". 29 calls, $0.36 at list price (Muse's two runs:
+$0.046), about 50 minutes. **Mark missed: generators 5 of 5, rewrites 19 of 21.**
+
+| Generator | Subsystem | Haiku: result, tries | Branch ways | Muse (T61 record) |
+|---|---|---|---|---|
+| `h0_4e9a` | camera | covered, 1 | 10 of 10 | covered, 2 |
+| `play_keys` | rest | covered, 1 | 16 of 16 | covered, 1 |
+| `char_sprite_position` | drawing | covered, 1 | 6 of 6 | covered, 1 |
+| `h0_3566` | objects | covered, 1 | 2 of 2 | covered, 1 |
+| `h0_4b0e` | character | covered, 1 | 28 of 28 | covered, 1 |
+
+| Task | Function | Routines | Haiku: rig result, tries | Paths | Muse (T62 run) |
+|---|---|---|---|---|---|
+| T08 | `step` | `char_step` | pass, 2 | 91 | pass, 1 |
+| T08 | `idle` | `h0_3ea8` | pass, 1 | 29 | pass, 2 |
+| T08 | `land_or_fall` | `h0_410c` | pass, 2 | 9 | pass, 1 |
+| T08 | `fall_step` | `h0_416c` | pass, 1 | 2 | pass, 1 |
+| T08 | `rise_step` | `h0_4274` | pass, 1 | 6 | pass, 1 |
+| T08 | `move_x` | `h0_4696` | pass, 1 | 4 | pass, 1 |
+| T08 | `left_pressed` | `h0_4718` | timeout, 3 | — | pass, 1 |
+| T08 | `run_left_step` | `h0_47e2` | pass, 3 | 3 | pass, 1 |
+| T08 | `right_pressed` | `h0_48be` | pass, 2 | 24 | pass, 1 |
+| T08 | `run_right_step` | `h0_497c` | fail, 3 | — | pass, 1 |
+| T08 | `up_pressed` | `h0_4b0e` | pass, 1 | 8 | pass, 1 |
+| T08 | `probe_flags` | `char_probe_flags` | pass, 1 | 15 | pass, 1 |
+| T09 | `follow` | `h0_4e9a`, `h0_4ea6`, `h0_4eb4`, `h0_4ec2` | pass, 1 | 260 | pass, 1 |
+| T09 | `clamp` | `h0_513c` | pass, 1 | 3 | pass, 1 |
+| T09 | `scroll` | `h0_51fc`, `h0_526a`, `h0_52d8`, `h0_5346` | pass, 1 | 16 | pass, 1 |
+
+What Haiku got wrong. `left_pressed`: no answer within 300 s on any of 3 calls, where its mirror
+`right_pressed` answered in 85 s with 20 500 tokens out; Haiku's answers run long (`idle` 53 000 tokens
+out, 213 s). `run_right_step` (`h0_497c`): try 1 did not compile (a `self` parameter outside the impl),
+try 2 differed on 6 153 of 10 000 states, try 3 on all 10 000. Its mirror `run_left_step` passed on try
+3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, about
+160 to 2 500 lines a routine after ticks are cut, so the two runs differ in input as well as model.
+
+Below the mark, the choice between accepting Haiku and no model is the owner's (DESIGN §2.13), set
+aside as translator T44 on 2026-11-12. Until it is answered, sessions write generators and rewrites by
+hand; `generate.py` and `reshape.py` work but are not the default.
