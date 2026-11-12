@@ -27,6 +27,7 @@ workspace = "engine"
     "registers_are_held_only_when_named",
     "a_replacement_that_does_not_return_as_rts_does_fails",
     "a_panicking_replacement_fails_and_no_translation_fails_every_state",
+    "custom_writes_are_held_in_order",
 ]
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.

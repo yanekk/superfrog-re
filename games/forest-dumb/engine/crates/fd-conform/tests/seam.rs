@@ -131,6 +131,34 @@ fn a_panicking_replacement_fails_and_no_translation_fails_every_state() {
     );
 }
 
+/// `move.w d0,COLOR00; move.w d1,COLOR01; rts`: custom-chip writes, which no byte of memory keeps.
+fn colours(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+    bus.ww(0xdf_f180, r.d(0) as u16);
+    bus.ww(0xdf_f182, r.d(1) as u16);
+    rts(r, bus);
+    Ok(())
+}
+
+fn colours_swapped(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+    bus.ww(0xdf_f182, r.d(1) as u16);
+    bus.ww(0xdf_f180, r.d(0) as u16);
+    rts(r, bus);
+    Ok(())
+}
+
+#[test]
+fn custom_writes_are_held_in_order() {
+    assert!(judge(Some(colours), colours, RegsCompared::NONE).pass());
+    // The same two writes in the other order: the chips see a different sequence.
+    let r = judge(Some(colours), colours_swapped, RegsCompared::NONE);
+    assert!(r.failures > CASES - 5, "{r:?}");
+    assert!(
+        r.first.contains("custom write 0: replaced $180="),
+        "{}",
+        r.first
+    );
+}
+
 #[test]
 #[ignore = "full: the disks and the generated tree (translate.py --build)"]
 fn the_two_adapters_pass_against_the_translated_routines_on_2000_states() {
