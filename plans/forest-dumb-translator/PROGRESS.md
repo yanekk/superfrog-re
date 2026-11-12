@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T47, then T33 (later-world-cases); T46 and T48 can run beside it.
+**Next `pir-work` will:** T33 (later-world-cases); T46 and T48 can run beside it.
 
 ## Tasks
 
@@ -62,9 +62,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
-| T47 | machine-power-on | T32; blocks T33 | 🔍 | Kickstart's DMACON, INTENA, ADKCON and COP1LC at power-on; ADKCONR tracks ADKCON. 10 tests. Deviations: the bus word is a DMA slot's, so by owner's choice leftover writes are marked (`store_leftover`) and compared by register only; INTENA handed over too. Both cases still fail on processor speed only (3462, 3967, from 5998) and play. |
+| T47 | machine-power-on | T32; blocks T33 | ✅ | Review clean, no fix commit. Probed: write channels kept live past 3973, frame 5001 equal; marking mutated, 5001 differs and unit test red; oracle's saved h0+$1e3a reads $602c $03f0 $1100, engine's equal; machine judge 88 of 100 unchanged. judge_machine CLXDAT fails on base too. Both cases still fail on processor speed (T30). |
 
-**Review queue:** T47
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
