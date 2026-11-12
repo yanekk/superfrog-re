@@ -101,6 +101,7 @@ At the end translated routines are judged on the machine with real hardware effe
 | [T32](tasks/T32-power-on-cases.md) | power-on-cases | T29 |
 | [T33](tasks/T33-later-world-cases.md) | later-world-cases | T32 |
 | [T34](tasks/T34-generated-purity.md) | generated-purity | T28 |
+| [T45](tasks/T45-custom-writes-compared.md) | custom-writes-compared | T29; blocks T30, T31, T32 |
 
 T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worker that finds more failure kinds than fit asks to add a task (CLAUDE.md, adding a task mid-run).
 
