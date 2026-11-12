@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T43, which unblocks T28; T19 and T27 are ready beside it.
+**Next `pir-work` will:** T28, unblocked by T43; T19 and T27 are ready beside it.
 
 ## Tasks
 
@@ -57,9 +57,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
-| T43 | call-fallthrough | T03; blocks T28 | 🔍 | Walk follows each instruction's own fall-through, not Ghidra's CALL_RETURN; `check.no_return_calls` lists 82. Export 7 716 instructions, 291 kinds; gate, trial 85/85, whole tree 100/100, os_run power-on green. 4 tests. Deviation: made-up test marks `loader` non-returning via SetNoReturn.java; Ghidra's analysis does not on a small program. |
+| T43 | call-fallthrough | T03; blocks T28 | ✅ | Review clean, no fix commit. Reran export tests, insn_gate (291 kinds, 0 failing), trial 85/85, whole tree 100/100, os_run power-on (title reached, four files opened). Mutation restoring Ghidra's fall-through turned NoReturnExport and GameWholeExport red. Probed: 82 no-return calls all to `h0+$8ec4`, `cleared_data` 0, `undecoded` 0, new hunk 1 code is real colour copies. |
 
-**Review queue:** T43
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
