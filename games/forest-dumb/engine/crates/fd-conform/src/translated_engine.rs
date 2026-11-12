@@ -122,6 +122,8 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
             // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
             regs[0x004 >> 1] = 0;
             regs[0x006 >> 1] = 0;
+            // CLXDAT: the collisions the original has not read yet, owed to the next read (T30).
+            regs[0x00E >> 1] = am.clxdat();
             let ram = am.memory();
             let mut mem = ram.chip.clone();
             mem.extend_from_slice(&ram.slow);

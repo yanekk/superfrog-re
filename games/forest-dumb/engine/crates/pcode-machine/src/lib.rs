@@ -20,6 +20,7 @@ use journal::{Journal, Watch};
 pub mod beam;
 pub mod blitter;
 pub mod cia;
+mod collision;
 pub mod copper;
 pub mod custom;
 pub mod input;
@@ -198,6 +199,10 @@ pub struct Machine {
     /// The CPU write whose memory is kept ([`Machine::watch_write`]), and the copies this frame.
     watch_write: Option<(u16, u16)>,
     watched: Vec<Vec<u8>>,
+    /// CLXDAT's collisions not yet read from lines before the current frame's `clx_line`, and that
+    /// line: a read ORs in the lines the beam has passed since (`collision`, translator T30).
+    clx_acc: u16,
+    clx_line: u16,
     /// The registers and DMACON as the current frame found them.
     frame_custom: [u16; 256],
     frame_dmacon: u16,
@@ -235,6 +240,8 @@ impl Machine {
             cpu_log: Vec::new(),
             watch_write: None,
             watched: Vec::new(),
+            clx_acc: 0,
+            clx_line: 0,
             frame_custom: [0; 256],
             frame_dmacon: 0,
         }
@@ -320,6 +327,8 @@ impl Machine {
         m.dmacon = custom[custom::DMACONR as usize >> 1] & 0x07FF;
         m.intena = custom[irq::INTENAR as usize >> 1] & 0x7FFF;
         m.intreq = custom[irq::INTREQR as usize >> 1] & 0x7FFF;
+        // CLXDAT (`custom[7]`): the collisions the original owes its next read (`Amiga::clxdat`).
+        m.clx_acc = custom[collision::CLXDAT as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
         m.set_exec_base();
@@ -507,21 +516,18 @@ impl Machine {
         let saved = self.now;
         self.advance(end.saturating_sub(1));
         self.now = saved;
-        let c = self.copper.as_ref().expect("started");
-        let history = self.journal.history();
-        let drawn = video::draw(&video::FrameIn {
-            chip: &self.chip,
-            history: &history,
-            frame_start: c.frame_start,
-            frame_lines: self.cfg.frame_lines,
-            start: &self.frame_custom,
-            dmacon: self.frame_dmacon,
-            writes: &self.log,
-        });
-        let picture = drawn.unwrap_or_else(|op| {
-            self.unsupported(op);
-            Picture::blank(0, 0, 0, 0)
-        });
+        let drawn = self.draw(self.cfg.frame_lines);
+        let picture = match drawn {
+            Ok(d) => {
+                self.clx_acc |= d.clx[self.clx_line as usize..].iter().fold(0, |a, b| a | b);
+                d.picture
+            }
+            Err(op) => {
+                self.unsupported(op);
+                Picture::blank(0, 0, 0, 0)
+            }
+        };
+        self.clx_line = 0;
         let writes = std::mem::take(&mut self.log);
         let cpu_writes = std::mem::take(&mut self.cpu_log);
         let watched = std::mem::take(&mut self.watched);
@@ -532,6 +538,43 @@ impl Machine {
             cpu_writes,
             watched,
         }
+    }
+
+    /// The current frame's first `until` lines, as far as its writes so far go.
+    fn draw(&mut self, until: u16) -> Result<video::Drawn, &'static str> {
+        self.ensure_frame();
+        let c = self.copper.as_ref().expect("started");
+        let history = self.journal.history();
+        video::draw(&video::FrameIn {
+            chip: &self.chip,
+            history: &history,
+            frame_start: c.frame_start,
+            frame_lines: self.cfg.frame_lines,
+            start: &self.frame_custom,
+            dmacon: self.frame_dmacon,
+            writes: &self.log,
+            until,
+        })
+    }
+
+    /// A CPU read of CLXDAT: the collisions of every line the beam has passed since the last
+    /// read, bit 15 set, and the rest cleared. A line counts once the beam has left it (Denise
+    /// checks as it draws; the read's own line is the next read's).
+    fn clxdat(&mut self) -> u16 {
+        let (line, _) = self.beam(self.now);
+        let line = line.min(self.cfg.frame_lines);
+        if line > self.clx_line {
+            match self.draw(line) {
+                Ok(d) => {
+                    self.clx_acc |= d.clx[self.clx_line as usize..line as usize]
+                        .iter()
+                        .fold(0, |a, b| a | b)
+                }
+                Err(op) => self.unsupported(op),
+            }
+            self.clx_line = line;
+        }
+        0x8000 | std::mem::take(&mut self.clx_acc)
     }
 
     /// Start the frame the beam is in now, if none is: a machine's first access to time.
@@ -695,6 +738,7 @@ impl Machine {
             }
             irq::INTENAR => self.intena,
             irq::INTREQR => self.intreq(),
+            collision::CLXDAT if !routed => self.clxdat(),
             custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),
             custom::VHPOSR => {
                 let (line, h) = self.beam(self.now);

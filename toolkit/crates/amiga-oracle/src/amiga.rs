@@ -602,6 +602,13 @@ impl Amiga {
         unsafe { ffi::amiga_frame_lines(self.raw) as u32 }
     }
 
+    /// CLXDAT as Denise holds it after the last step, without the clear a CPU read makes: the
+    /// collisions since the program last read it, bit 15 set as a read returns it. What a machine
+    /// started from this point owes the program's next read.
+    pub fn clxdat(&self) -> u16 {
+        unsafe { ffi::amiga_clxdat(self.raw) }
+    }
+
     fn taps(&self) -> Vec<i16> {
         let mut ptr = std::ptr::null();
         let n = unsafe { ffi::amiga_audio_taps(self.raw, &mut ptr) };

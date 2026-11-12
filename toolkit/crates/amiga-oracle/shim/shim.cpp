@@ -649,6 +649,12 @@ int amiga_frame_lines(const amiga_machine *a)
     return a->lines;
 }
 
+uint16_t amiga_clxdat(const amiga_machine *a)
+{
+    // Not peekCLXDAT, which clears it as a CPU read does.
+    return const_cast<amiga_machine *>(a)->amiga().denise.spypeekCLXDAT();
+}
+
 size_t amiga_audio_out(const amiga_machine *a, const float **out)
 {
     *out = a->mixed.data();

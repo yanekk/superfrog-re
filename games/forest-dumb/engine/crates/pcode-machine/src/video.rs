@@ -16,6 +16,7 @@ use amiga_chips::display::{Colours, Planes};
 use amiga_chips::sprite::{self, SpriteLine};
 use amiga_clock::LINE_CYCLES;
 
+use crate::collision::{self, CLXCON};
 use crate::journal::History;
 
 /// The line every sprite fetches its control words afresh on (PAL: the end of the vertical blank).
@@ -42,6 +43,14 @@ pub(crate) struct FrameIn<'a> {
     pub dmacon: u16,
     /// Every custom write of the frame: (cycle, register, value), in order.
     pub writes: &'a [(u64, u16, u16)],
+    /// Lines drawn: the frame's first `until` (a CLXDAT read mid-frame draws up to the beam).
+    pub until: u16,
+}
+
+/// What a frame drew: its picture and each line's collisions (`collision::line`), by line.
+pub(crate) struct Drawn {
+    pub picture: Picture,
+    pub clx: Vec<u16>,
 }
 
 impl FrameIn<'_> {
@@ -144,8 +153,8 @@ fn spanning_window(start: Fetch, writes: &[Write], lines: u16) -> Option<(i32, u
     span
 }
 
-/// The frame's picture, or the mode it cannot draw.
-pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
+/// The frame's picture and collisions, or the mode it cannot draw.
+pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
     let writes = beam_writes(f);
     let start = fetch_of(f.start);
     for con0 in std::iter::once(start.bplcon0).chain(
@@ -161,8 +170,12 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
             return Err("display dual playfield");
         }
     }
+    let mut clx = vec![0u16; f.frame_lines as usize];
     let Some((left, top, right, bottom)) = spanning_window(start, &writes, f.frame_lines) else {
-        return Ok(Picture::blank(0, 0, 0, 0));
+        return Ok(Drawn {
+            picture: Picture::blank(0, 0, 0, 0),
+            clx,
+        });
     };
     let mut pic = Picture::blank(left, top, (right - left) as u16, bottom - top);
     let w = pic.width as usize;
@@ -199,6 +212,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
         }
     });
     let mut dmacon = f.dmacon;
+    let mut clxcon = f.start[CLXCON as usize >> 1];
     let mut next = 0;
     // Apply the writes before beam position (`line`, `h`).
     let mut apply = |line: u16,
@@ -208,6 +222,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
                      colours: &mut Colours,
                      channels: &mut [Channel; 8],
                      dmacon: &mut u16,
+                     clxcon: &mut u16,
                      pic: &mut Picture| {
         while let Some(wr) = writes.get(next) {
             if (wr.line, wr.h) >= (line, h) {
@@ -219,6 +234,8 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
             }
             if wr.reg == DMACON {
                 *dmacon = crate::irq::set_clear(*dmacon, wr.value);
+            } else if wr.reg == CLXCON {
+                *clxcon = wr.value;
             } else if (reg::SPR0PTH..reg::SPR0PTH + 32).contains(&wr.reg) {
                 let c = &mut channels[((wr.reg - reg::SPR0PTH) / 4) as usize];
                 c.pt = if wr.reg & 2 == 0 {
@@ -231,7 +248,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
             }
         }
     };
-    for line in 0..bottom {
+    for line in 0..bottom.min(f.until) {
         let y = line.checked_sub(top).map(|y| y as usize);
         let first = planes.fetch.first_cycle();
         apply(
@@ -242,6 +259,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
             &mut colours,
             &mut channels,
             &mut dmacon,
+            &mut clxcon,
             &mut pic,
         );
         let at = f.at(line, first);
@@ -265,6 +283,20 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
                 });
             }
             let lines: [Option<SpriteLine>; 8] = std::array::from_fn(|n| channels[n].line());
+            let fw = &planes.fetch;
+            if line >= FIRST_SHOWN && fw.lines().contains(&line) {
+                let cmp = collision::Compare {
+                    con: clxcon,
+                    dual: fw.bplcon0 & DBLPF != 0,
+                };
+                let window = (
+                    (fw.diwstrt & 0xFF) as i32,
+                    (fw.diwstop & 0xFF | 0x100) as i32,
+                );
+                let priority = planes.priority() as usize;
+                clx[line as usize] =
+                    collision::line(&cmp, &lines, row, left, window, fetching, priority);
+            }
             if lines.iter().any(Option::is_some) {
                 let priority = planes.priority() as usize;
                 for (x, px) in row.iter_mut().enumerate() {
@@ -300,11 +332,12 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Picture, &'static str> {
             &mut colours,
             &mut channels,
             &mut dmacon,
+            &mut clxcon,
             &mut pic,
         );
         if let Some(y) = y {
             pic.palettes[y] = colours.end_line();
         }
     }
-    Ok(pic)
+    Ok(Drawn { picture: pic, clx })
 }
