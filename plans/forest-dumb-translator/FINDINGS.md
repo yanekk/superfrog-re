@@ -6,10 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-12 | 🔄 | **T49 added** (owner, T46): T46's four cases fail on missing DMA contention: JOY1DAT read at line 300 and 308 on `pcode-machine`, past 313 on the original; pass 93's creature started before docs/10's cut. T49 models contention, blocks T36. |
+| 2026-11-12 | 📌 | **T46 review:** T49 blocks T36 only; T48 is not blocked though T31 saw its reads 5 to 10 lines early, likely contention. T48 was already running; left alone, T48 should check T49 first. |
+| 2026-11-12 | 🔄 | **T49 added** (owner, T46): T46's four cases fail on missing DMA contention: JOY1DAT read at line 300 or 308 on `pcode-machine`, past 313 on the original; pass 93 starts a creature before docs/10's cut. |
 | 2026-11-12 | 📌 | **T30 reading** (supersedes T29's, T45's): 23 cases on the translated engine, 19 pass. T29's Paula and CLXDAT rows are now DESIGN §2.7 (pass end) and `pcode-machine/src/collide.rs` (T31's, kept at merge). Left: four cases, all DMA contention (T46 row). |
 | 2026-11-12 | 🔄 | **Owner, T30:** state and writes judged at each pass end (`PASS_END`, paired by `irq_count`), a pass one frame of slack, a non-Paula write one pass; DMA contention not modelled. T46 added for T30's four remaining cases. |
-| 2026-11-12 | 🔄 | **T48 added** (owner, T31 review): T31's 18 cases pass 0, every first difference T30's. T31 merges its fixes; T48 carries the finish line, after T30 and T31, blocks T36, under the owner's frame rule from T30. |
 | 2026-11-12 | 🐞 | **T31 review, S2S:** `collide.rs` checked sprite against sprite only inside the window; the oracle counts from `2*DDFSTRT+15` ($7F at $38) to the line's end. Fixed, `collide::sprites`, test with five oracle readings. |
 | 2026-11-12 | 🔄 | **T30/T31 split** (owner): every level case fails frame 1 on four machine defects. T31 owns sprite collisions (`clxdat_copy`); T30 owns the one-pixel `char_x`/`char_y`, Paula one frame early and `edge_latch_left`. Merging, keep one collision fix. |
 | 2026-11-12 | 📌 | **T31 reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 16, `char_y` 13, `char_x` 7, `edge_latch_left` 6, all T30's. Cases synced at 6400 not comparing `edge_latch_left` still differ on it at frame 1. |

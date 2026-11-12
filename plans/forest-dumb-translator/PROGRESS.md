@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T46, then T49 (DMA contention on `pcode-machine`), which T36 waits on with T48.
+**Next `pir-work` will:** T49 (DMA contention on `pcode-machine`), which T36 waits on with T48.
 
 ## Tasks
 
@@ -61,10 +61,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
-| T46 | level1-cases-a-rest | T30; blocks T36 | 🔍 | Diagnosis only, no code: all four cases fail on missing DMA contention (lines measured in T49's doc). Deviation: no case passes; owner chose T49 to model contention and carry the four cases. Temporary probes removed. |
+| T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | Diagnosis only; "every case passes" carried to T49 (Split from T46). Review clean, no fix commit: four first differences reproduced; oracle probe confirmed the original reads JOY1DAT at lines 303-304, sliding past the frame end from step 6478. Machine-side read lines read-only. T49 shape valid. |
 | T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
 
-**Review queue:** T46
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
