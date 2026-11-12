@@ -29,6 +29,32 @@ pub struct Compare {
     /// CPU's to every other register as a (register, value) multiset (T45). The frame runner's alone
     /// ([`crate::frames`]); the hand engine plays no sound and writes no chip.
     pub writes: bool,
+    /// The program's five hunks byte for byte, but for the values the OS gave it
+    /// ([`crate::sync::OS_VALUES`]): a power-on case's state (translator T32, DESIGN §2.7).
+    pub memory: bool,
+}
+
+/// Where the engine starts.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum StartAt {
+    /// At the sync point: the level sync point's pass end, or the title's frame.
+    #[default]
+    Sync,
+    /// `start = "entry"` (translator T32): the program's entry `h0+$0`, at the end of the oracle
+    /// step that first runs it from power-on; the engine starts there with the machine's OS answers.
+    Entry,
+}
+
+/// How the two sides' frames are lined up.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Align {
+    /// One engine frame an oracle step.
+    #[default]
+    Frames,
+    /// `align = "loads"` (translator T32, DESIGN §2.8): the engine loads at once, so the oracle
+    /// runs on, its frames not compared, until it has returned from as many loads as the engine
+    /// ([`crate::sync::LOAD_ROUTINES`]); a frame with a load running on either side is not compared.
+    Loads,
 }
 
 /// What a level case must reach, besides both sides agreeing: two sides failing alike agree
@@ -94,6 +120,8 @@ pub struct Case {
     /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
     /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
     pub set: Vec<(String, u32)>,
+    pub start: StartAt,
+    pub align: Align,
 }
 
 impl Case {
@@ -111,9 +139,15 @@ impl Case {
         Case::parse(&name, &text).map_err(|e| format!("case {}: {e}", found.display()))
     }
 
-    /// Whether this case starts in play (the level sync point) rather than on the title.
+    /// Whether this case starts in play (the level sync point) rather than on the title or at the
+    /// program's entry.
     pub fn is_level(&self) -> bool {
-        self.script == LEVEL_1_SCRIPT
+        self.script == LEVEL_1_SCRIPT && self.start == StartAt::Sync
+    }
+
+    /// Whether this case starts at the program's entry from power-on (`start = "entry"`).
+    pub fn is_entry(&self) -> bool {
+        self.start == StartAt::Entry
     }
 
     /// The whole format and nothing else.
@@ -142,7 +176,30 @@ impl Case {
         let missing = |k: &str| format!("no `{k}`");
 
         let (script, sync_frame) = sync_table(get("sync").ok_or_else(|| missing("sync"))?)?;
-        let level = script == LEVEL_1_SCRIPT;
+        let start = match get("start") {
+            None => StartAt::Sync,
+            Some(v) => match v.string("start")?.as_str() {
+                "entry" => StartAt::Entry,
+                other => {
+                    return Err(format!(
+                        "start = \"{other}\": a case starts at its sync point, or at \"entry\""
+                    ));
+                }
+            },
+        };
+        let align = match get("align") {
+            None => Align::Frames,
+            Some(v) => match v.string("align")?.as_str() {
+                "loads" => Align::Loads,
+                other => {
+                    return Err(format!(
+                        "align = \"{other}\": frames are lined up one a step, or by \"loads\""
+                    ));
+                }
+            },
+        };
+        let entry = start == StartAt::Entry;
+        let level = script == LEVEL_1_SCRIPT && !entry;
         let swap = get("swap").map(swap_table).transpose()?;
         let frames = get("frames")
             .ok_or_else(|| missing("frames"))?
@@ -219,6 +276,41 @@ impl Case {
                 _ => {}
             }
         }
+        if entry {
+            // The engine's loads are instant, so a run from power-on lines up at each load.
+            if align != Align::Loads {
+                return Err(
+                    "`start = \"entry\"` needs `align = \"loads\"`: the engine loads at \
+                            once and the original does not"
+                        .to_string(),
+                );
+            }
+            if sync_frame != 0 {
+                return Err(format!(
+                    "sync frame {sync_frame}: a `start = \"entry\"` case runs from power-on, \
+                     frame 0; the engine starts where the program's entry first runs"
+                ));
+            }
+            for (taken, key) in [
+                (!exclude.is_empty(), "exclude"),
+                (!set.is_empty(), "set"),
+                (
+                    matches!(
+                        goal,
+                        Some(Goal::Idle | Goal::GameOver { .. } | Goal::LevelEnd { .. })
+                    ),
+                    "goal other than `all`",
+                ),
+            ] {
+                if taken {
+                    return Err(format!("`{key}` is not for a `start = \"entry\"` case"));
+                }
+            }
+        } else if align != Align::Frames {
+            return Err("`align = \"loads\"` is for a `start = \"entry\"` case".to_string());
+        } else if compare.memory {
+            return Err("compare = [\"memory\"] is for a `start = \"entry\"` case".to_string());
+        }
         if level {
             // The level sync point is the cached snapshot, which made its own disk change.
             if swap.is_some() {
@@ -239,7 +331,7 @@ impl Case {
                             `{ level_end = true, by_frame = N }`"
                     .to_string());
             }
-        } else {
+        } else if !entry {
             // The title runner is forest-dumb-start's: one variable, state only.
             for (taken, key) in [
                 (goal.is_some(), "goal"),
@@ -253,8 +345,14 @@ impl Case {
                 }
             }
         }
-        // `run` swaps only on the way to the sync point, so a later swap would never happen.
-        if let Some(Swap { frame, .. }) = swap.filter(|s| s.frame >= sync_frame) {
+        // `run` swaps only on the way to the sync point, so a later swap would never happen; an
+        // entry case runs from power-on and swaps on its way.
+        if let Some(Swap { frame, .. }) = swap.filter(|s| entry && s.frame >= frames) {
+            return Err(format!(
+                "swap at frame {frame}: past the case's last frame {frames}"
+            ));
+        }
+        if let Some(Swap { frame, .. }) = swap.filter(|s| s.frame >= sync_frame && !entry) {
             return Err(format!(
                 "swap at frame {frame}: a swap must come before the sync frame {sync_frame}"
             ));
@@ -271,14 +369,17 @@ impl Case {
             goal,
             exclude,
             set,
+            start,
+            align,
         })
     }
 }
 
 // No `freeze` or `thaw`: T79 removed the last frozen routine (docs/10, "Freezing objects"), so a
 // case naming either is refused as any unknown key is.
-const KEYS: [&str; 9] = [
-    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "set",
+const KEYS: [&str; 11] = [
+    "sync", "swap", "frames", "input", "compare", "vars", "goal", "exclude", "set", "start",
+    "align",
 ];
 
 fn known(var: &str) -> Result<(), String> {
@@ -526,10 +627,11 @@ fn compare_list(v: &Value) -> Result<Compare, String> {
             "vars" => &mut c.vars,
             "picture" => &mut c.picture,
             "writes" => &mut c.writes,
+            "memory" => &mut c.memory,
             other => {
                 return Err(format!(
-                    "compare = \"{other}\": this runner compares \"vars\", \"picture\" and \
-                     \"writes\""
+                    "compare = \"{other}\": this runner compares \"vars\", \"picture\", \
+                     \"writes\" and \"memory\""
                 ));
             }
         };
@@ -691,13 +793,74 @@ mod tests {
                 compare: Compare {
                     vars: true,
                     picture: false,
-                    writes: false
+                    writes: false,
+                    memory: false,
                 },
                 vars: vec!["mt_counter".into()],
                 goal: None,
                 exclude: vec![],
                 set: vec![],
+                start: StartAt::Sync,
+                align: Align::Frames,
             }
+        );
+    }
+
+    const ENTRY: &str = "sync = { script = \"boot-to-level1\", frame = 0 }\nstart = \"entry\"\n\
+                         align = \"loads\"\nswap = { frame = 3600, disk = 2 }\nframes = 6500\n\
+                         compare = [\"memory\", \"picture\", \"writes\"]\n\
+                         goal = { all = [{ var = \"irq_count\", value = 100 }], by_frame = 6500 }\n";
+
+    /// A power-on case (T32): from frame 0, the entry, loads lined up; its swap comes on the way,
+    /// and its script being the level's does not make it a level case.
+    #[test]
+    fn a_whole_power_on_case_parses() {
+        let c = Case::parse("p", ENTRY).unwrap();
+        assert!(c.is_entry() && !c.is_level());
+        assert_eq!((c.start, c.align), (StartAt::Entry, Align::Loads));
+        assert_eq!(c.swap, Some(Swap { frame: 3600, disk: 2 }));
+        assert_eq!(
+            c.compare,
+            Compare {
+                vars: false,
+                picture: true,
+                writes: true,
+                memory: true,
+            }
+        );
+    }
+
+    #[test]
+    fn what_the_power_on_format_does_not_say_is_refused() {
+        refused(ENTRY, "align = \"loads\"\n", "", "needs `align = \"loads\"`");
+        refused(ENTRY, "frame = 0 }", "frame = 10 }", "runs from power-on, frame 0");
+        refused(ENTRY, "start = \"entry\"", "start = \"title\"", "or at \"entry\"");
+        refused(ENTRY, "align = \"loads\"", "align = \"passes\"", "or by \"loads\"");
+        refused(ENTRY, "frame = 3600", "frame = 6500", "past the case's last frame");
+        refused(
+            ENTRY,
+            "goal = { all = [{ var = \"irq_count\", value = 100 }], by_frame = 6500 }",
+            "goal = { game_over = true, by_frame = 6500 }",
+            "goal other than `all`",
+        );
+        refused(
+            ENTRY,
+            "frames = 6500\n",
+            "frames = 6500\nset = [{ var = \"cheat_flag\", value = 1 }]\n",
+            "`set` is not for a `start = \"entry\"` case",
+        );
+        // The memory and the load rule are a power-on case's alone.
+        refused(
+            LEVEL,
+            "\"vars\", \"picture\"]",
+            "\"vars\", \"picture\", \"memory\"]",
+            "is for a `start = \"entry\"` case",
+        );
+        refused(
+            LEVEL,
+            "frames = ",
+            "align = \"loads\"\nframes = ",
+            "is for a `start = \"entry\"` case",
         );
     }
 
@@ -711,7 +874,8 @@ mod tests {
             Compare {
                 vars: true,
                 picture: true,
-                writes: false
+                writes: false,
+                memory: false,
             }
         );
         assert_eq!(

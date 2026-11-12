@@ -27,6 +27,7 @@ pub mod sync;
 // Moved whole to the toolkit (toolkit-extract T06); kept at this path for its callers. The
 // module and its `sound_events` function, both.
 pub use amiga_conform::sound_events;
+use amiga_conform::loads::OriginalLoad;
 
 pub use case::{Alone, Case, Compare, Excluded, Exclusion, LagLimit, PutBacks, cases_dir, scripts_dir};
 pub use compare::{Mode, Tolerance};
@@ -70,6 +71,14 @@ pub fn display_data() -> Arc<DisplayData> {
 
 /// The most frames the original may spend on one load the engine did at once.
 const LOAD_SEARCH: u32 = 20_000;
+
+/// The engine's word for where its load ends, as the toolkit's rule reads it off the chain.
+pub(crate) fn load_end(end: LoadEnd) -> amiga_conform::loads::LoadEnd {
+    match end {
+        LoadEnd::Reached(a) => amiga_conform::loads::LoadEnd::Reached(a),
+        LoadEnd::Left(a) => amiga_conform::loads::LoadEnd::Left(a),
+    }
+}
 
 /// What a green run compared: the frames, and for a `render` case the frames it left out, each
 /// with the reason.
@@ -423,33 +432,23 @@ fn run_inner(
                 under_screen.clear();
                 load_blanks = 0;
                 load_line = None;
-                let mut n = 0;
-                let mut seen = false;
+                let mut load = OriginalLoad::new(load_end(end), LOAD_SEARCH);
                 let mut prev_mem = mem.clone();
                 loop {
                     let chain = sync::main_chain_deep(&amiga.cpu(), &mem, usize::MAX);
-                    let over = match end {
-                        LoadEnd::Reached(a) => chain.iter().take(4).any(|&x| x == a),
-                        LoadEnd::Left(a) => {
-                            let inside = chain.contains(&a);
-                            seen |= inside;
-                            seen && !inside
-                        }
-                    };
-                    if over {
+                    if load.over(&chain) {
                         break;
                     }
-                    n += 1;
-                    let why = || format!(
-                        "the original's load ({end:x?}) was not over within {LOAD_SEARCH} frames of the engine's (frame {f})"
-                    );
-                    // In legs (a bug zip's comparison) the original is somewhere the recording is
-                    // not: the run ends, its frames from here not judged (bug-recorder T14).
-                    if n >= LOAD_SEARCH && let Some(l) = legs.as_deref_mut() {
-                        l.cut = Some((of - n, why()));
-                        break 'frames;
+                    if let Err(e) = load.frame() {
+                        let why = format!("{e} ({end:x?}, frame {f})");
+                        // In legs (a bug zip's comparison) the original is somewhere the recording
+                        // is not: the run ends, its frames from here not judged (bug-recorder T14).
+                        if let Some(l) = legs.as_deref_mut() {
+                            l.cut = Some((of - e.frames, why));
+                            break 'frames;
+                        }
+                        panic!("{}: {why}", case.name);
                     }
-                    assert!(n < LOAD_SEARCH, "{}: {}", case.name, why());
                     frozen.apply(&mut amiga, &display);
                     let resumes = sync::intro_resumes(&amiga);
                     // A load is not modelled frame by frame: what it plays is not compared, but

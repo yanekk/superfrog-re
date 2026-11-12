@@ -190,6 +190,7 @@ fn play(rec: &Recording, pokes: &Pokes) -> Played {
 /// original's frames from the start; `step` is the recording's step it was fed. The toolkit's, as
 /// Forest Dumb's compare reports it too.
 pub use amiga_conform::bug_compare::Left;
+use amiga_conform::loads::OriginalLoad;
 
 /// Where the original was put back on the recording (bug-recorder T14): it had left it (`what`)
 /// by the pass end its frame `frame` ended, and the recording's engine after step `step` was
@@ -354,16 +355,14 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
         // The engine loaded at once on this step: the original's load runs on, nothing pressed.
         let mut under = 0;
         if !pending && let Some(end) = played.load[of as usize] {
-            let mut seen = false;
-            let mut k = 0;
+            let mut load = OriginalLoad::new(crate::load_end(end), LOAD_SEARCH);
             let (before, stop) = (frames.len(), r.stop.clone());
-            while !load_over(a, end, &mut seen) {
+            while !load_over(a, &mut load) {
                 step(a, FrameInput::NONE, of, &mut frames, &mut r, &mut cop);
                 if cop.is_some_and(crate::timed_screen) {
                     under += 1;
                 }
-                k += 1;
-                if k >= LOAD_SEARCH {
+                if let Err(e) = load.frame() {
                     // The original is not where the recording is (it never begins or ends the
                     // load the engine did): the retiming ends before this step, judged no
                     // further (T14; T12's dry run 2 panicked here).
@@ -373,14 +372,12 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
                     r.left.get_or_insert(Left {
                         frame: before as u32 - 1,
                         step: of,
-                        what: format!(
-                            "the engine loads here ({end:x?}) and the original's load was not over within {LOAD_SEARCH} frames"
-                        ),
+                        what: format!("the engine loads here ({end:x?}) and {e}"),
                     });
                     break 'run;
                 }
             }
-            held_in_loads += k;
+            held_in_loads += load.frames();
         }
         let m = a.memory();
         let cpu = a.cpu();
@@ -482,17 +479,9 @@ fn retime_played(rec: &Recording, played: &Played, pokes: &Pokes, a: &mut Amiga)
 }
 
 /// The original's load is over, as the runner decides it.
-fn load_over(a: &Amiga, end: LoadEnd, seen: &mut bool) -> bool {
+fn load_over(a: &Amiga, load: &mut OriginalLoad) -> bool {
     let m = a.memory();
-    let chain = sync::main_chain_deep(&a.cpu(), &m, usize::MAX);
-    match end {
-        LoadEnd::Reached(x) => chain.iter().take(4).any(|&c| c == x),
-        LoadEnd::Left(x) => {
-            let inside = chain.contains(&x);
-            *seen |= inside;
-            *seen && !inside
-        }
-    }
+    load.over(&sync::main_chain_deep(&a.cpu(), &m, usize::MAX))
 }
 
 /// One leg of the comparison: the runner's frames `from..to`, and its first divergence.
