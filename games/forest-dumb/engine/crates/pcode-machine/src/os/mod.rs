@@ -189,6 +189,18 @@ pub fn irq_handler(n: u32) -> u32 {
     ROM_BASE + layout::IRQ + 8 * n
 }
 
+/// The stop for an interrupt whose vector has no translated handler. `new` leaves the autovectors
+/// on the OS's handlers, so an interrupt taken before a program installs its own lands there: name
+/// it as the unmodelled OS handler, as a call to it is named, rather than as a bare address.
+pub(crate) fn interrupt_stop(at: u32, img: &Image) -> Stop {
+    match (1..=7).find(|&n| irq_handler(n) == at) {
+        Some(n) => Stop::Os(format!(
+            "the OS's level {n} interrupt handler, not modelled, entered by an interrupt"
+        )),
+        None => Stop::Untranslated(img.describe(at)),
+    }
+}
+
 fn put_w(b: &mut [u8], at: usize, v: u16) {
     b[at..at + 2].copy_from_slice(&v.to_be_bytes());
 }

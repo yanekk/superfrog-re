@@ -172,5 +172,6 @@ m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at c
   told which block it starts, and with block delivery the original's stacked PC names another
   instruction anyway. Odd, so it is no instruction's address. Only the stack's dead bytes differ.
 - **Stops:** a vector outside every hunk or with no translated function is `untranslated: <addr>`
-  (an OS vector is T26's); a handler coming back other than by `rte` to `IRQ_RETURN` (an `rts`, a
+  (one still on the OS's handler, as `new` leaves the autovectors, is `os: the OS's level n
+  interrupt handler, not modelled, entered by an interrupt`); a handler coming back other than by `rte` to `IRQ_RETURN` (an `rts`, a
   changed stacked PC) is `unsupported: interrupt handler returned to …, not by rte at <handler>`.

@@ -420,7 +420,7 @@ impl Machine {
             .hunk_of(at)
             .and(self.entry)
             .and_then(|entry| entry(&img.describe(at)))
-            .ok_or_else(|| Stop::Untranslated(img.describe(at)))?;
+            .ok_or_else(|| os::interrupt_stop(at, img))?;
         handler(r, self, img)?;
         let back = r.get(PC, 4) as u32;
         if back != irq::IRQ_RETURN {

@@ -463,3 +463,22 @@ fn open_stops_on_writing_another_device_too_many_files_or_no_disk() {
         "{e}"
     );
 }
+
+/// An interrupt taken while its autovector still holds the OS's handler (as `new` leaves it, before
+/// a program installs its own) stops naming that handler, as a call to it does (translator T26,
+/// T23's interrupts).
+#[test]
+fn an_interrupt_on_the_os_handler_stops_naming_it() {
+    let mut m = bare();
+    m.wl(0x6C, irq_handler(3));
+    m.ww(0xDF_F09A, 0x8000 | crate::irq::INTEN | 1 << 5);
+    m.raise(5, 0);
+    let mut r = Regs::new();
+    r.set(pcode_rt::SR, 2, 0x2000);
+    r.set_a(7, STACK);
+    let e = m.poll(&mut r, &img(&[0x100, 0x100], &[])).unwrap_err();
+    assert_eq!(
+        e,
+        Stop::Os("the OS's level 3 interrupt handler, not modelled, entered by an interrupt".into())
+    );
+}
