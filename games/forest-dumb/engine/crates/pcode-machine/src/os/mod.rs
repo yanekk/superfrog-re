@@ -103,6 +103,8 @@ pub struct Os {
     rom: Vec<u8>,
     disks: Disks,
     files: Vec<Option<dos::OpenFile>>,
+    /// Every name `Open` was given, in order, with whether it opened: what a run loaded.
+    opened: Vec<(String, bool)>,
 }
 
 impl Default for Os {
@@ -163,6 +165,7 @@ impl Os {
             rom,
             disks: Disks::default(),
             files: Vec::new(),
+            opened: Vec::new(),
         }
     }
 
@@ -203,6 +206,11 @@ impl Machine {
     /// The disk in the drive.
     pub fn disks(&self) -> &Disks {
         self.os.disks()
+    }
+
+    /// Every name `Open` was given so far, in order, and whether the file opened.
+    pub fn opened(&self) -> &[(String, bool)] {
+        &self.os.opened
     }
 
     /// What Kickstart leaves in low memory for a program it starts: ExecBase at `$4`, and the

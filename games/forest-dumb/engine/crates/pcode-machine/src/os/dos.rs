@@ -88,6 +88,7 @@ fn open(m: &mut Machine, r: &mut Regs, site: &str) -> Result<(), Stop> {
         }
     };
     let Ok(data) = disk.read_file(path) else {
+        m.os.opened.push((name, false));
         r.set(D0, 4, 0);
         return Ok(());
     };
@@ -104,6 +105,7 @@ fn open(m: &mut Machine, r: &mut Regs, site: &str) -> Result<(), Stop> {
         }
     };
     m.os.files[free] = Some(OpenFile { data, pos: 0 });
+    m.os.opened.push((name, true));
     r.set(D0, 4, handle(free) as u64);
     Ok(())
 }

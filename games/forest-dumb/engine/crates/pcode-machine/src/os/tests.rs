@@ -196,6 +196,7 @@ fn a_missing_file_opens_as_0_and_reading_handle_0_stops_at_its_site() {
     let mut m = program_machine("df0:nothere");
     let (r, res) = run_program(&mut m);
     assert_eq!(r.d(4), 0, "Open returned 0, as AmigaDOS does");
+    assert_eq!(m.opened(), &[("df0:nothere".to_string(), false)]);
     assert_eq!(
         res.unwrap_err().to_string(),
         "os: Read of handle $00000000, not open, at h0+$30"
