@@ -17,6 +17,10 @@ pub struct Ported {
     pub offset: u32,
     /// The Rust function that ports it, as a path from this crate's root (`level::char_step`).
     pub port: &'static str,
+    /// Whether the translated program runs this port in place of the translated routine, through
+    /// the seam (translator DESIGN §2.9): `fd-translated`'s `seam::Seam::from_ported` mounts it by
+    /// address with its adapter, after `fd-judge --seam` has held it to the translated routine.
+    pub mounted: bool,
 }
 
 /// Every ported routine. Append only.
@@ -192,5 +196,6 @@ const fn port(name: &'static str, offset: u32, port: &'static str) -> Ported {
         hunk: 0,
         offset,
         port,
+        mounted: false,
     }
 }

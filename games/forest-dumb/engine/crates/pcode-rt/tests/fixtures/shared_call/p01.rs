@@ -7,6 +7,9 @@ use super::{by_addr, enter};
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x20)) {
+        return f(r, bus, img);
+    }
     h0_20_from((0, 0x20), r, bus, img)
 }
 
@@ -71,6 +74,9 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x30)) {
+        return f(r, bus, img);
+    }
     h0_30_from((0, 0x30), r, bus, img)
 }
 

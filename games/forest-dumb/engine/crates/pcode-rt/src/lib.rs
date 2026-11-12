@@ -48,6 +48,18 @@ pub const CF: usize = 0x47;
 pub const PC: usize = 0x50;
 pub const SR: usize = 0x200;
 
+/// A routine with a translated function's shape, mounted in its place through [`Bus::mounted`].
+pub type Mounted = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
+
+/// The original's `rts`, for a mounted routine to leave by: pop the return address off `A7` into
+/// `PC`, where the generated caller checks it against the address after its call.
+pub fn rts<B: Bus + ?Sized>(r: &mut Regs, bus: &mut B) {
+    let sp = r.a(7);
+    let ret = bus.rl(sp);
+    r.set_a(7, sp.wrapping_add(4));
+    r.set(PC, 4, ret as u64);
+}
+
 /// Memory as the host provides it. Word and long accesses are big-endian.
 pub trait Bus {
     /// Called at the start of every translated basic block, before its first instruction: where a
@@ -65,6 +77,16 @@ pub trait Bus {
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         let _ = r;
         Err(Stop::Untranslated(img.describe(a)))
+    }
+    /// The hand-written routine mounted in place of the translated function entered at `k` (hunk,
+    /// offset), if any: the seam (translator DESIGN §2.9). Every generated function asks on entry,
+    /// before it counts itself in, and runs the mounted one instead, which must leave as the
+    /// original's `rts` does (pop the return address into `PC`, see [`rts`]). Plain memory mounts
+    /// nothing.
+    #[inline]
+    fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
+        let _ = k;
+        None
     }
     fn rb(&mut self, a: u32) -> u8;
     fn rw(&mut self, a: u32) -> u16;

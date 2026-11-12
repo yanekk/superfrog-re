@@ -60,6 +60,9 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x0)) {
+        return f(r, bus, img);
+    }
     h0_0_from((0, 0x0), r, bus, img)
 }
 

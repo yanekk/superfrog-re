@@ -16,7 +16,10 @@
 //! snapshot was taken inside do.
 
 use pcode_machine::{Config, Disks, Input, Machine, Picture};
-use pcode_rt::{Bus, Image, PC, Regs, SR, Stop, ops};
+use pcode_rt::{Bus, Image, Mounted, PC, Regs, SR, Stop, ops};
+
+pub mod seam;
+pub use seam::Seam;
 
 /// The tree from `build/translator/tree/` or `FD_TRANSLATED`, else a stub with no entries
 /// (`buildscripts/fd_translated.rs`).
@@ -147,12 +150,26 @@ pub struct TranslatedGame {
     stopped: Option<Stop>,
     input: Input,
     picture: Picture,
+    /// The hand-written routines run in place of translated ones (DESIGN §2.9).
+    seam: Seam,
 }
 
 impl TranslatedGame {
-    /// The built-in tree on `start`, the program at the original's hunk bases.
+    /// The built-in tree on `start`, the program at the original's hunk bases, with every routine
+    /// `fd_core::PORTED` marks mounted run through the seam. A mounted routine with no adapter
+    /// stops the run at once, naming it.
     pub fn new(start: Start) -> Self {
-        Self::with_program(Program::BUILT_IN, &fd_core::HUNK_BASES, start)
+        let mut g = Self::with_program(Program::BUILT_IN, &fd_core::HUNK_BASES, start);
+        match Seam::from_ported(fd_core::PORTED) {
+            Ok(seam) => g.seam = seam,
+            Err(e) => {
+                g.stopped.get_or_insert(Stop::Unsupported {
+                    op: e,
+                    at: "start".into(),
+                });
+            }
+        }
+        g
     }
 
     /// Whether a tree is built in (false on the stub).
@@ -225,7 +242,18 @@ impl TranslatedGame {
             stopped,
             input: Input::default(),
             picture: Picture::blank(0, 0, 0, 0),
+            seam: Seam::new(),
         }
+    }
+
+    /// Run `f` in place of the translated routine at `addr` (hunk, offset) from the next run on.
+    pub fn mount(&mut self, addr: (u8, u32), f: Mounted) {
+        self.seam.mount(addr, f);
+    }
+
+    /// What is mounted.
+    pub fn seam(&self) -> &Seam {
+        &self.seam
     }
 
     /// The first frame's input: the frames after it take theirs from `run`'s `each`.
@@ -257,6 +285,7 @@ impl TranslatedGame {
         };
         let mut host = Host {
             m: &mut self.m,
+            seam: &self.seam,
             each,
             picture: &mut self.picture,
             host_stop: false,
@@ -303,6 +332,7 @@ impl TranslatedGame {
 /// boundary and the interrupts taken here, so a handler's blocks reach this `poll` too.
 struct Host<'a, 'b> {
     m: &'a mut Machine,
+    seam: &'a Seam,
     each: &'b mut dyn FnMut(&FrameOut) -> Control,
     picture: &'a mut Picture,
     /// `each` said stop: the stop unwinding the run is the host's, not the program's.
@@ -371,6 +401,9 @@ impl Bus for Host<'_, '_> {
     }
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.m.call_outside(a, r, img)
+    }
+    fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
+        self.seam.get(k)
     }
     fn rb(&mut self, a: u32) -> u8 {
         self.m.rb(a)

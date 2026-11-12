@@ -33,7 +33,9 @@ with the address after its call and, on a mismatch, jumps there the same way, si
 return to an address it pushed. An op the translator does not carry out makes its whole
 instruction `Stop::Unsupported`, and only that instruction.
 
-Each function `NAME` is an inline wrapper of `NAME_from(start, ..)`, whose block arms name every
+Each function `NAME` first asks the bus whether a hand-written routine is mounted at its entry
+(`Bus::mounted`, the seam, translator T35) and runs that instead; otherwise it is an inline wrapper of
+`NAME_from(start, ..)`, whose block arms name every
 instruction of the block and skip those before the one entered; `resume(k)` in the root gives the
 function to enter at any instruction (translator T28: a host starting from a snapshot of the
 original, whose PC and stacked return addresses are anywhere).
@@ -571,6 +573,8 @@ class Emit:
         name = fn_name(e)
         lines = [ALLOW, '#[inline]',
                  f'pub fn {name}(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',
+                 # The seam (translator T35): a hand-written routine the host mounted here runs instead.
+                 f'    if let Some(f) = bus.mounted({key(e)}) {{', '        return f(r, bus, img);', '    }',
                  f'    {name}_from({key(e)}, r, bus, img)', '}', '',
                  ALLOW,
                  f'pub fn {name}_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {{',

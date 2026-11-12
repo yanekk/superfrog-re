@@ -95,6 +95,9 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x0)) {
+        return f(r, bus, img);
+    }
     h0_0_from((0, 0x0), r, bus, img)
 }
 
@@ -159,6 +162,9 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x10)) {
+        return f(r, bus, img);
+    }
     h0_10_from((0, 0x10), r, bus, img)
 }
 
@@ -265,6 +271,9 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_40(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x40)) {
+        return f(r, bus, img);
+    }
     h0_40_from((0, 0x40), r, bus, img)
 }
 
@@ -331,6 +340,9 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_60(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x60)) {
+        return f(r, bus, img);
+    }
     h0_60_from((0, 0x60), r, bus, img)
 }
 
@@ -408,6 +420,9 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_80(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0x80)) {
+        return f(r, bus, img);
+    }
     h0_80_from((0, 0x80), r, bus, img)
 }
 
@@ -498,6 +513,9 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_a0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0xa0)) {
+        return f(r, bus, img);
+    }
     h0_a0_from((0, 0xa0), r, bus, img)
 }
 

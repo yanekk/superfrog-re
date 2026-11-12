@@ -15,7 +15,7 @@ use crate::level_end::{self, Complete, LevelEnd};
 use crate::program::{HUNK_BASES, PROGRAM_FILE, Program, Scratch};
 use crate::render::status::Shown;
 use crate::render::{self, Display, DisplayData};
-use crate::{Mem, Scene, State, Transplant, Var};
+use crate::{Mem, MemMut, Scene, State, Transplant, Var, WriteBack};
 use amiga_chips::Picture;
 
 /// What the game reads from the disks, at run time: the copyrighted data never enters the repo
@@ -778,6 +778,16 @@ impl Transplant for Game {
     }
 }
 
+impl WriteBack for Game {
+    /// Every `LAYOUT` variable, the reverse of [`Transplant::transplant`]'s first half. The state a
+    /// frame mount also changes outside `LAYOUT` (the camera's screen position, the creatures'
+    /// drawing, the object map, the plane and the display: translator T00) is the frame mount's to
+    /// write (T36).
+    fn write_back(&self, mem: &mut dyn MemMut) {
+        crate::write_back_vars(self, crate::LAYOUT, mem);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1176,5 +1186,40 @@ mod tests {
         let short = |_: &str| Ok(vec![0u8; 3]);
         let e = GameData::read(&short).unwrap_err();
         assert!(e.to_string().contains("_Gen1-1"), "{e}");
+    }
+
+    /// Any hunk's bytes, made up from where they are, counting the writes that reach them.
+    struct Made {
+        written: usize,
+    }
+
+    impl Mem for Made {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            (0..len as u32)
+                .map(|k| {
+                    let a = (hunk as u32) << 24 | offset.wrapping_add(k);
+                    (a.wrapping_mul(0x9e37_79b1) >> 13) as u8
+                })
+                .collect()
+        }
+    }
+
+    impl MemMut for Made {
+        fn write(&mut self, _: u8, _: u32, bytes: &[u8]) {
+            self.written += bytes.len();
+        }
+    }
+
+    #[test]
+    fn write_back_after_transplant_with_no_change_writes_nothing() {
+        let mut g = Game::new(data(), Start::Level1);
+        let mut m = Made { written: 0 };
+        g.transplant(&m);
+        g.write_back(&mut m);
+        assert_eq!(m.written, 0);
+        // And a change is written: one byte of `lives`.
+        g.state.lives ^= 1;
+        g.write_back(&mut m);
+        assert_eq!(m.written, 1);
     }
 }
