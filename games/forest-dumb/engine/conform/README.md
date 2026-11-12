@@ -37,8 +37,13 @@ made to differ in exactly one way. `stub-level.toml` fails on `Game` until the c
 on the frame bar (translator DESIGN §2.7) by the frame runner, `fd_conform::frames`: the engine starts at
 the same pass end and then runs one frame per oracle step on that step's input, and at every frame's
 end both sides' state (the case's `vars`, or every play variable in `LAYOUT` where it lists none), the
-picture in the play window and Paula's writes of the frame, in order (`amiga_conform::compare::paula`,
-beam positions ignored) must be equal. The case's `exclude` rows are left out on this engine: each
+picture in the play window, Paula's writes of the frame in order (`amiga_conform::compare::paula`,
+beam positions ignored), and the CPU's other custom-chip writes of the frame as a (register, value)
+multiset (T45: the same writes, each as many times, order not checked) must be equal. The multiset
+leaves Paula's registers (`$96`, `$9A`, `$9C`, `$9E`, `$A0..=$DE`) out, as they are compared in order
+already, and takes the CPU's writes only on both sides, because the oracle keeps no Copper write; its
+first difference names the frame, the register and both counts (`custom writes` in the reading). An
+accepted difference goes in the case's notes with the measurement that justifies it. The case's `exclude` rows are left out on this engine: each
 names a hand engine task. A stop (`untranslated: hN+$off` and the rest) fails the case naming the frame.
 `run-all` and `run --engine translated` go on past a channel's first difference with the others
 (`Options::every_channel`) and print each channel's first; `run-all --report` writes a Markdown reading
@@ -69,8 +74,11 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   script makes a title case, booted from power-on, stepping forest-dumb-start's title scene a frame
   at a time; title cases compare `vars` only and take no `goal` or `exclude`.
 - **`input`.** Without it the sync script goes on after the sync point.
-- **`compare`.** `"vars"`, `"picture"`, and `"writes"`: Paula's writes of every frame, in order, which
-  only the frame runner compares (the hand engine plays no sound, and `run_with` refuses such a case).
+- **`compare`.** `"vars"`, `"picture"`, and `"writes"`: the custom-chip writes of every frame,
+  Paula's in order and the CPU's others as a multiset, which only the frame runner compares (the hand
+  engine plays no sound, and `run_with` refuses such a case). One key covers both because §2.7 names
+  one bar, "the custom-chip writes of the frame, Paula's in order"; a key of its own would let a case
+  pass that bar with half of it off.
 - **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
   alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
   compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches

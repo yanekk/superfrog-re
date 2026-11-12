@@ -1,6 +1,14 @@
 //! The frame bar's runner (translator DESIGN §2.7, T29): a level case on an engine that is a whole
 //! machine, judged at the end of every frame on what the bar names: the case's state, the picture
-//! in [`PLAY_WINDOW`] and Paula's writes of the frame, in order.
+//! in [`PLAY_WINDOW`], Paula's writes of the frame in order, and the CPU's other custom-chip writes
+//! of the frame as a multiset (T45).
+//!
+//! **Custom writes.** §2.7 asks order of Paula's writes only, and the bar does not chase sub-frame
+//! timing, so every other register's writes are compared as (register, value) counts: the same
+//! writes, each as many times (owner, 2026-11-12). Paula's registers are left out of that channel,
+//! being compared in order already. Both sides give the CPU's writes alone, tagged where made: the
+//! oracle keeps no Copper write (`Amiga::cpu_writes`), and the engine hands `pcode-machine`'s
+//! `cpu_writes`, not its log with the copper's MOVEs in it.
 //!
 //! **Why not [`crate::run_with`].** The pass runner pairs the original's pass ends with an engine
 //! that knows only passes: it hands each pass the input that pass read ([`crate::PassInputs`]),
@@ -21,12 +29,13 @@
 //! The engine is transplanted at that step's end (`translated_engine::case_start` takes its start
 //! there), and its first frame is the next step's.
 
-use amiga_chips::{Picture, to_rgb12};
+use std::collections::BTreeMap;
+
+use amiga_chips::{Picture, is_paula, to_rgb12};
 use amiga_conform::compare::{PictureClass, PictureJudge, classify, paula, picture_except};
 use amiga_conform::{Mode, Tolerance, report};
 use amiga_oracle::{FrameInput, PaulaWrite};
 use fd_core::{Mem, Transplant, Var};
-
 
 use crate::{
     Case, GAME_OVER_SCREEN, Goal, HIGH_SCORES, HUNK_BASES, Inputs, Live, NEXT_WORLD, OracleMem,
@@ -41,6 +50,9 @@ pub trait FrameEngine: Transplant {
     fn picture(&self) -> Option<Picture>;
     /// Paula's writes in the last frame, in order; their beam positions are not compared.
     fn paula(&self) -> &[PaulaWrite];
+    /// Every custom-register write the CPU made in the last frame, `(register offset from
+    /// $DFF000, value)`, Paula's included; never the copper's, which the oracle does not keep.
+    fn custom_writes(&self) -> &[(u16, u16)];
     /// How the engine stopped (translator DESIGN §2.4: `untranslated: hN+$off` and the rest), once
     /// it has; no frame runs after it.
     fn stopped(&self) -> Option<String>;
@@ -104,9 +116,11 @@ pub fn run_frames_inputs(
     // Transplanted yet, and the engine frames run since.
     let mut started = false;
     let mut run = 0u32;
-    // The channels still compared: state, Paula's writes, the picture. With
-    // `Options::every_channel` a channel that differed is dropped and the run goes on with the rest.
-    let mut live = [case.compare.vars, case.compare.writes, case.compare.picture];
+    // The channels still compared: state, Paula's writes, the picture, the other custom writes.
+    // With `Options::every_channel` a channel that differed is dropped and the run goes on with
+    // the rest.
+    let w = case.compare.writes;
+    let mut live = [case.compare.vars, w, case.compare.picture, w];
 
     'steps: for step in 0..case.frames {
         let input = inputs.at(case.sync_frame + step);
@@ -194,6 +208,31 @@ pub fn run_frames_inputs(
                     why += &format!("; {}", d.path.display());
                 }
                 differs.push((2, Outcome::PictureDiffers { pass, frame, why }));
+            }
+        }
+        if live[3] {
+            let theirs: Vec<(u16, u16)> = am
+                .cpu_writes()
+                .iter()
+                .map(|w| (w.reg & 0x1FE, w.value))
+                .collect();
+            match custom_difference(engine.custom_writes(), &theirs) {
+                Some(d) => differs.push((
+                    3,
+                    Outcome::CustomWritesDiffer {
+                        pass,
+                        frame,
+                        reg: d.reg,
+                        value: d.value,
+                        original: d.original,
+                        engine: d.engine,
+                    },
+                )),
+                None => {
+                    verdict.custom_writes +=
+                        theirs.iter().filter(|(r, _)| !is_paula(*r)).count() as u32;
+                    verdict.custom_frames += 1;
+                }
             }
         }
         for (k, o) in differs {
@@ -287,4 +326,35 @@ pub fn run_frames_inputs(
     };
     verdict.outcome = failed.or_else(unused).unwrap_or(Outcome::Same);
     Ok(verdict)
+}
+
+/// The first (register, value) whose count differs between two frames' custom writes, by register
+/// then value; `None` if every count is equal. Paula's registers are left out (compared in order).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CustomDifference {
+    pub reg: u16,
+    pub value: u16,
+    pub original: u32,
+    pub engine: u32,
+}
+
+/// [`CustomDifference`] of `ours` (the engine's) against `theirs` (the original's), each
+/// `(register, value)`.
+pub fn custom_difference(ours: &[(u16, u16)], theirs: &[(u16, u16)]) -> Option<CustomDifference> {
+    let mut counts: BTreeMap<(u16, u16), (u32, u32)> = BTreeMap::new();
+    for &(reg, value) in theirs.iter().filter(|(r, _)| !is_paula(*r)) {
+        counts.entry((reg, value)).or_default().0 += 1;
+    }
+    for &(reg, value) in ours.iter().filter(|(r, _)| !is_paula(*r)) {
+        counts.entry((reg, value)).or_default().1 += 1;
+    }
+    counts
+        .into_iter()
+        .find(|(_, (o, e))| o != e)
+        .map(|((reg, value), (original, engine))| CustomDifference {
+            reg,
+            value,
+            original,
+            engine,
+        })
 }

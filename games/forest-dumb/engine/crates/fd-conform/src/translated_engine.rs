@@ -154,6 +154,8 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
 struct Frame {
     picture: Picture,
     paula: Vec<PaulaWrite>,
+    /// The CPU's custom writes, (register, value): `FrameOut::cpu_writes`, never the copper's.
+    custom: Vec<(u16, u16)>,
     stop: Option<Stop>,
     /// Chip RAM then slow RAM at the frame's end.
     mem: Vec<u8>,
@@ -175,6 +177,7 @@ pub struct TranslatedEngine {
     mem: Vec<u8>,
     picture: Option<Picture>,
     paula: Vec<PaulaWrite>,
+    custom: Vec<(u16, u16)>,
     stop: Option<(u32, Stop)>,
     passes: u32,
 }
@@ -188,6 +191,7 @@ impl TranslatedEngine {
             link: None,
             picture: None,
             paula: Vec::new(),
+            custom: Vec::new(),
             stop: None,
             passes: 0,
         }
@@ -236,9 +240,11 @@ impl TranslatedEngine {
                             vpos: 0,
                         })
                         .collect();
+                    let custom = out.cpu_writes.iter().map(|&(_, r, v)| (r, v)).collect();
                     let sent = frames.send(Frame {
                         picture: out.picture.clone(),
                         paula,
+                        custom,
                         stop: out.stop.clone(),
                         mem,
                     });
@@ -338,6 +344,7 @@ impl TranslatedEngine {
         self.mem = f.mem;
         self.picture = Some(f.picture);
         self.paula = f.paula;
+        self.custom = f.custom;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
@@ -368,14 +375,18 @@ impl FrameEngine for TranslatedEngine {
         &self.paula
     }
 
+    fn custom_writes(&self) -> &[(u16, u16)] {
+        &self.custom
+    }
+
     fn stopped(&self) -> Option<String> {
         self.stop.as_ref().map(|(_, s)| s.to_string())
     }
 }
 
 /// `case` as the frame bar judges the translated program (DESIGN §2.7): the case's state (every
-/// play variable in `LAYOUT` where the case lists none), the picture and Paula's writes, every
-/// frame. The case's exclusions are left out: each names a hand engine task, and an acceptance for
+/// play variable in `LAYOUT` where the case lists none), the picture, Paula's writes in order and
+/// the CPU's other custom writes as a multiset, every frame. The case's exclusions are left out: each names a hand engine task, and an acceptance for
 /// the translated program is written with its own measurement (§2.7).
 pub fn frame_bar(case: &Case) -> Case {
     let vars = if case.vars.is_empty() {

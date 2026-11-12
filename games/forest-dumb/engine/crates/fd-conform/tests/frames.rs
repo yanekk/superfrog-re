@@ -1,8 +1,9 @@
 //! The frame bar's runner (`fd_conform::frames`, translator T29) against a stand-in whole-frame
 //! engine: a second copy of the original from the same cached sync point, stepped a frame a call, so
 //! the runner is shown to pass an engine equal in state, picture and Paula's writes, and to fail one
-//! whose writes differ in order, in number, or in a later frame. Needs the disks and Kickstart (the
-//! cached level sync point): absent, it fails naming where it looked.
+//! whose writes differ in order, in number, or in a later frame; and (T45) to compare the CPU's
+//! other custom writes as a multiset: one dropped, changed or added fails, two swapped pass. Needs
+//! the disks and Kickstart (the cached level sync point): absent, it fails naming where it looked.
 
 mod common;
 
@@ -38,6 +39,22 @@ enum Meddle {
     Drop(u32),
     /// Report `countdown` one higher.
     Bump(u32),
+    /// Leave the last non-Paula custom write out.
+    DropCustom(u32),
+    /// Flip a bit of the last non-Paula custom write's value.
+    ChangeCustom(u32),
+    /// Swap two non-Paula custom writes that differ: order is not compared.
+    SwapCustom(u32),
+    /// Add a write the CPU did not make, as the copper's MOVE of BPL1PTH (`$0e0`) would be: an
+    /// engine mixing the copper's writes into its CPU's must fail.
+    AddCopperLike(u32),
+}
+
+/// The index of the last non-Paula write in `w`.
+fn last_other(w: &[(u16, u16)]) -> usize {
+    w.iter()
+        .rposition(|&(r, _)| !amiga_chips::is_paula(r))
+        .expect("a non-Paula custom write in the frame")
 }
 
 struct StandIn {
@@ -48,6 +65,7 @@ struct StandIn {
     mem: Option<AmigaMemory>,
     pic: Option<Rgb12Frame>,
     paula: Vec<PaulaWrite>,
+    custom: Vec<(u16, u16)>,
     /// `char_x` at each frame's end, to show a moving case moved.
     char_x: Vec<u32>,
 }
@@ -62,6 +80,7 @@ impl StandIn {
             mem: None,
             pic: None,
             paula: Vec::new(),
+            custom: Vec::new(),
             char_x: Vec::new(),
         }
     }
@@ -106,6 +125,12 @@ impl FrameEngine for StandIn {
         self.mem = Some(self.am.memory());
         self.pic = Some(self.am.picture_in(PLAY_WINDOW.0, PLAY_WINDOW.1));
         self.paula = c.paula;
+        self.custom = self
+            .am
+            .cpu_writes()
+            .iter()
+            .map(|w| (w.reg & 0x1FE, w.value))
+            .collect();
         let x =
             fd_conform::OracleMem(self.mem.as_ref().unwrap()).value(layout_var("char_x").unwrap());
         self.char_x.push(x);
@@ -120,6 +145,28 @@ impl FrameEngine for StandIn {
                 Meddle::Drop(f) if f == self.frames => {
                     self.paula.pop().expect("a write to drop");
                 }
+                Meddle::DropCustom(f) if f == self.frames => {
+                    let k = last_other(&self.custom);
+                    self.custom.remove(k);
+                }
+                Meddle::ChangeCustom(f) if f == self.frames => {
+                    let k = last_other(&self.custom);
+                    self.custom[k].1 ^= 0x0001;
+                }
+                Meddle::SwapCustom(f) if f == self.frames => {
+                    let a = last_other(&self.custom);
+                    let b = (0..a)
+                        .rev()
+                        .find(|&b| {
+                            !amiga_chips::is_paula(self.custom[b].0)
+                                && self.custom[b] != self.custom[a]
+                        })
+                        .expect("two different non-Paula writes");
+                    self.custom.swap(a, b);
+                }
+                Meddle::AddCopperLike(f) if f == self.frames => {
+                    self.custom.push((0x0E0, 0x0000));
+                }
                 _ => {}
             }
         }
@@ -131,6 +178,10 @@ impl FrameEngine for StandIn {
 
     fn paula(&self) -> &[PaulaWrite] {
         &self.paula
+    }
+
+    fn custom_writes(&self) -> &[(u16, u16)] {
+        &self.custom
     }
 
     fn stopped(&self) -> Option<String> {
@@ -153,6 +204,76 @@ fn an_equal_engine_passes_on_state_picture_and_paulas_writes_every_frame() {
     assert_eq!(v.write_frames, v.passes, "{v}");
     // Level 1's music writes Paula every frame: the comparison is not of two empty lists.
     assert!(v.writes >= 12 * v.write_frames, "{v}");
+    // Nor of the other custom writes (T45).
+    assert_eq!(v.custom_frames, v.passes, "{v}");
+    assert!(v.custom_writes >= v.custom_frames, "{v}");
+}
+
+/// A frame's non-Paula custom writes as the runner compares them (T45).
+fn custom_first(meddle: Meddle) -> (u32, u16, u32, u32) {
+    let v = run(&made_up(20), &[meddle], &Options::default());
+    let Outcome::CustomWritesDiffer {
+        pass,
+        reg,
+        original,
+        engine,
+        ..
+    } = v.outcome
+    else {
+        panic!("{v}");
+    };
+    // The report names the frame and the register.
+    let shown = v.outcome.to_string();
+    assert!(shown.contains(&format!("at frame {pass}")), "{shown}");
+    assert!(shown.contains(&format!("${reg:03x}")), "{shown}");
+    (pass, reg, original, engine)
+}
+
+#[test]
+fn a_dropped_custom_write_fails_naming_the_frame_register_and_counts() {
+    let (pass, reg, original, engine) = custom_first(Meddle::DropCustom(5));
+    assert_eq!(pass, 5);
+    assert!(!amiga_chips::is_paula(reg), "{reg:#x}");
+    assert_eq!(original, engine + 1);
+}
+
+#[test]
+fn a_changed_custom_write_fails() {
+    let (pass, _, original, engine) = custom_first(Meddle::ChangeCustom(6));
+    assert_eq!(pass, 6);
+    assert_ne!(original, engine);
+}
+
+#[test]
+fn two_custom_writes_swapped_pass_as_order_is_not_compared() {
+    let v = run(&made_up(20), &[Meddle::SwapCustom(4)], &Options::default());
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+}
+
+#[test]
+fn a_copper_like_write_the_cpu_did_not_make_fails() {
+    assert_eq!(custom_first(Meddle::AddCopperLike(3)), (3, 0x0E0, 0, 1));
+}
+
+#[test]
+fn every_channel_records_the_custom_writes_beside_the_others() {
+    let opts = Options {
+        every_channel: true,
+        ..Options::default()
+    };
+    let v = run(
+        &made_up(20),
+        &[Meddle::Swap(2), Meddle::DropCustom(8)],
+        &opts,
+    );
+    assert_eq!(v.firsts.len(), 2, "{v}");
+    assert!(
+        matches!(v.firsts[1], Outcome::CustomWritesDiffer { pass: 8, .. }),
+        "{v}"
+    );
+    let row = Row::new("w1-idle-made-up", Ok(v));
+    assert_eq!(row.kind(), "Paula writes");
+    assert_eq!(row.then(), "custom writes at frame 8");
 }
 
 #[test]

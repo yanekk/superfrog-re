@@ -19,7 +19,8 @@ m.set_input(&pcode_machine::Input::from(frame_input));     // each frame, at its
 let paula = m.take_paula_writes();                          // each frame, at its end: (cycle, PaulaWrite)
 let intreq = m.take_cia_interrupts();                       // after each block: INTREQ bits to set
 // When the CPU's cycle count reaches m.frame_end(), the host ends the frame:
-let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value), CPU's and copper's
+let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value), CPU's and copper's;
+                             // frame.cpu_writes the CPU's alone, tagged as made (m.cpu_writes() so far)
 ```
 
 - `poll` (called at every translated block's start) takes the cycle count from `Regs`; every

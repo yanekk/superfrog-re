@@ -22,7 +22,8 @@ let mut g = TranslatedGame::new(Start::PowerOn { program: &bytes, disks: Disks {
 g.set_input(first_frame_input);
 // on a thread with RUN_STACK bytes of stack:
 let stop = g.run(&mut |frame| {
-    // frame.picture, frame.writes (cycle, reg, word), frame.paula, frame.chip, frame.slow
+    // frame.picture, frame.writes (cycle, reg, word; CPU and copper), frame.cpu_writes (the CPU's
+    // alone), frame.paula, frame.chip, frame.slow
     Control::Next(next_input)          // or Control::Stop
 });
 ```

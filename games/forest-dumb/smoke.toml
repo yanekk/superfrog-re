@@ -20,8 +20,8 @@ workspace = "engine"
 # warm, but the tree's build (about 40 s) and the disks put them in full.
 "crates/fd-conform/tests/translated_engine.rs" = "full"
 # Translator T29: the frame runner against a stand-in copy of the original from the cached sync point,
-# Paula's writes swapped, dropped and kept, and a moving case (T29 review): six runs of 10 to 60
-# frames, about 2 s warm.
+# Paula's writes swapped, dropped and kept, and a moving case (T29 review); T45 the CPU's other custom
+# writes dropped, changed, swapped and one added: eleven runs of 10 to 60 frames, about 2 s warm.
 "crates/fd-conform/tests/frames.rs" = "smoke"
 # Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
 "crates/fd-conform/tests/engine_hand.rs" = "full"
@@ -700,7 +700,7 @@ name = "the translated program run frame by frame from a snapshot"
 covers = ["crates/fd-translated/tests/engine.rs"]
 
 [[area]]
-name = "judging the translated program on the frame bar: state, picture and Paula's writes each frame"
+name = "judging the translated program on the frame bar: state, picture, Paula's writes and the other custom writes each frame"
 covers = ["crates/fd-conform/tests/frames.rs"]
 
 [[area]]

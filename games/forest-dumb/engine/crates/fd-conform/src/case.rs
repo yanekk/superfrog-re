@@ -25,8 +25,9 @@ pub struct Compare {
     pub vars: bool,
     /// The play area and the status bar, each frame a pass ended in, within the owner's tolerance.
     pub picture: bool,
-    /// Paula's writes of each frame, in order (translator T29): the frame runner's alone
-    /// ([`crate::frames`]); the hand engine plays no sound.
+    /// The custom-chip writes of each frame (translator DESIGN §2.7): Paula's in order (T29), the
+    /// CPU's to every other register as a (register, value) multiset (T45). The frame runner's alone
+    /// ([`crate::frames`]); the hand engine plays no sound and writes no chip.
     pub writes: bool,
 }
 
