@@ -9,6 +9,7 @@
 
 pub mod insn;
 mod mem;
+pub mod seam;
 pub mod translated;
 
 pub use mem::{Cpu, Mem};
