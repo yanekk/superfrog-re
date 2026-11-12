@@ -35,7 +35,7 @@ use pcode_rt::Stop;
 
 use crate::frames::{FrameEngine, run_frames};
 use crate::{
-    Case, Compare, Engine, HUNK_BASES, Inputs, OracleMem, Options, PASS_END, Verdict, address,
+    Case, Compare, Engine, HUNK_BASES, Inputs, Options, OracleMem, PASS_END, Verdict, address,
     disks, sync,
 };
 
@@ -62,11 +62,16 @@ pub struct CaseStart {
 
 /// [`CaseStart`] of `case`: the original from power-on along `reach_case`'s way (the level 1
 /// script up to [`sync::LEVEL_1_SYNC`], then the case's inputs, then its `set`), then the case's
-/// steps until a pass end, as `run_inputs` steps them.
+/// steps until a pass end, as `run_inputs` steps them. A title case's start is the end of its sync
+/// frame's step, its script and swap on the way (T32); its `pass` is 0, as nothing is transplanted.
 pub fn case_start(case: &Case) -> Result<CaseStart, String> {
-    if !case.is_level() {
-        return Err(format!("{}: not a level case", case.name));
+    if case.is_entry() {
+        return Err(format!(
+            "{}: a power-on case starts at the program's entry, not a snapshot",
+            case.name
+        ));
     }
+    let level = case.is_level();
     let inputs = Inputs::load(case)?;
     let (_, level_1) = sync::level_1_script()?;
     let kickstart = kickstart_path().map_err(|e| e.to_string())?;
@@ -91,16 +96,24 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         }
     };
     for frame in 0..case.sync_frame {
-        if frame == sync::DISK_2_SWAP {
-            am.insert_disk(0, 1);
+        let swap = if level {
+            Some(sync::DISK_2_SWAP)
+        } else {
+            case.swap.map(|s| s.frame)
+        };
+        if swap == Some(frame) {
+            am.insert_disk(0, case.swap.map_or(1, |s| s.disk as usize - 1));
         }
-        let input = if frame < sync::LEVEL_1_SYNC {
+        let input = if level && frame < sync::LEVEL_1_SYNC {
             script::input_at(&level_1.lines, frame)
         } else {
             inputs.at(frame)
         };
         am.step(input).map_err(|e| e.to_string())?;
         collect(&am);
+    }
+    if !level {
+        return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, 0));
     }
     for (name, value) in &case.set {
         let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
@@ -115,31 +128,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         collect(&am);
         if let Some(mem) = am.watched_memory() {
             let pass = OracleMem(&mem).value(irq_count);
-            regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
-            regs[irq::INTENAR as usize >> 1] = intena;
-            regs[irq::INTREQR as usize >> 1] = intreq;
-            // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
-            regs[0x004 >> 1] = 0;
-            regs[0x006 >> 1] = 0;
-            let ram = am.memory();
-            let mut mem = ram.chip.clone();
-            mem.extend_from_slice(&ram.slow);
-            let c = am.cpu();
-            return Ok(CaseStart {
-                mem,
-                regs: Regs68k {
-                    d: c.d,
-                    a: c.a,
-                    pc: c.pc,
-                    sr: c.sr,
-                    usp: c.usp,
-                    ssp: c.ssp,
-                },
-                custom: regs,
-                disk2,
-                pass,
-                frame: am.frame(),
-            });
+            return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, pass));
         }
     }
     Err(format!(
@@ -148,6 +137,42 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         cap - case.sync_frame,
         case.sync_frame
     ))
+}
+
+/// The original's state at the end of its last step, as a [`CaseStart`]: `regs` each custom
+/// register's last CPU write, `(dmacon, intena, intreq)` those registers' set/clear state.
+fn snapshot(
+    am: &Amiga,
+    mut regs: [u16; 256],
+    (dmacon, intena, intreq): (u16, u16, u16),
+    disk2: Vec<u8>,
+    pass: u32,
+) -> CaseStart {
+    regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
+    regs[irq::INTENAR as usize >> 1] = intena;
+    regs[irq::INTREQR as usize >> 1] = intreq;
+    // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
+    regs[0x004 >> 1] = 0;
+    regs[0x006 >> 1] = 0;
+    let ram = am.memory();
+    let mut mem = ram.chip.clone();
+    mem.extend_from_slice(&ram.slow);
+    let c = am.cpu();
+    CaseStart {
+        mem,
+        regs: Regs68k {
+            d: c.d,
+            a: c.a,
+            pc: c.pc,
+            sr: c.sr,
+            usp: c.usp,
+            ssp: c.ssp,
+        },
+        custom: regs,
+        disk2,
+        pass,
+        frame: am.frame(),
+    }
 }
 
 /// One frame as the game thread hands it over.
@@ -159,6 +184,20 @@ struct Frame {
     stop: Option<Stop>,
     /// Chip RAM then slow RAM at the frame's end.
     mem: Vec<u8>,
+    /// Loads returned in the frame, and whether one runs at its end (power-on only).
+    loads: (u32, bool),
+}
+
+/// Where the game thread starts.
+enum Begin {
+    Snapshot(CaseStart),
+    /// The program file loaded as Kickstart would and entered at `h0+$0` on `line`, disk 2 in
+    /// df0, its file routines watched for `align = "loads"` (T32).
+    PowerOn {
+        program: Vec<u8>,
+        disk2: Vec<u8>,
+        line: u16,
+    },
 }
 
 struct Link {
@@ -170,7 +209,7 @@ struct Link {
 /// The translated program as a level case's engine. Built from a [`CaseStart`]; the game starts on
 /// the first [`Engine::pass`].
 pub struct TranslatedEngine {
-    start: Option<CaseStart>,
+    start: Option<Begin>,
     pass: u32,
     link: Option<Link>,
     /// RAM as the last pass left it (the start's until the first).
@@ -180,6 +219,7 @@ pub struct TranslatedEngine {
     custom: Vec<(u16, u16)>,
     stop: Option<(u32, Stop)>,
     passes: u32,
+    loads: (u32, bool),
 }
 
 impl TranslatedEngine {
@@ -187,14 +227,38 @@ impl TranslatedEngine {
         TranslatedEngine {
             pass: start.pass,
             mem: start.mem.clone(),
-            start: Some(start),
+            start: Some(Begin::Snapshot(start)),
             link: None,
             picture: None,
             paula: Vec::new(),
             custom: Vec::new(),
             stop: None,
             passes: 0,
+            loads: (0, false),
         }
+    }
+
+    /// The translated program from power-on (T32): the program file from disk 1 at the hunk
+    /// bases, disk 2 in df0, entered at `h0+$0` on the first frame, every load of
+    /// [`sync::LOAD_ROUTINES`] reported.
+    pub fn power_on(disks: &[Vec<u8>]) -> Result<TranslatedEngine, String> {
+        let program = crate::os_run::program(&disks[0])?;
+        Ok(TranslatedEngine {
+            pass: 0,
+            mem: Vec::new(),
+            start: Some(Begin::PowerOn {
+                program,
+                disk2: disks[1].clone(),
+                line: 0,
+            }),
+            link: None,
+            picture: None,
+            paula: Vec::new(),
+            custom: Vec::new(),
+            stop: None,
+            passes: 0,
+            loads: (0, false),
+        })
     }
 
     /// How the translated program stopped, and after how many passes; `None` while it runs.
@@ -212,19 +276,36 @@ impl TranslatedEngine {
         &self.mem
     }
 
-    fn spawn(start: CaseStart, first: Input) -> Link {
+    fn spawn(start: Begin, first: Input) -> Link {
         let (to, inputs) = channel::<Input>();
         let (frames, from) = channel::<Frame>();
         let thread = thread::Builder::new()
             .name("translated game".into())
             .stack_size(RUN_STACK)
             .spawn(move || {
-                let mut g = TranslatedGame::new(Start::Snapshot {
-                    mem: &start.mem,
-                    regs: start.regs,
-                    custom: &start.custom,
-                    disks: Disks { df0: start.disk2 },
-                });
+                let mut g = match &start {
+                    Begin::Snapshot(start) => TranslatedGame::new(Start::Snapshot {
+                        mem: &start.mem,
+                        regs: start.regs,
+                        custom: &start.custom,
+                        disks: Disks {
+                            df0: start.disk2.clone(),
+                        },
+                    }),
+                    Begin::PowerOn {
+                        program,
+                        disk2,
+                        line,
+                    } => {
+                        let mut g = TranslatedGame::new(Start::PowerOn {
+                            program,
+                            disks: Disks { df0: disk2.clone() },
+                        });
+                        g.watch_returns(&sync::LOAD_ROUTINES);
+                        g.start_at_line(*line);
+                        g
+                    }
+                };
                 g.set_input(first);
                 g.run(&mut |out| {
                     let mut mem = out.chip.to_vec();
@@ -247,6 +328,7 @@ impl TranslatedEngine {
                         custom,
                         stop: out.stop.clone(),
                         mem,
+                        loads: (out.returns.len() as u32, !out.inside.is_empty()),
                     });
                     // The engine dropped: nobody wants the next frame.
                     match (sent, inputs.recv()) {
@@ -345,6 +427,7 @@ impl TranslatedEngine {
         self.picture = Some(f.picture);
         self.paula = f.paula;
         self.custom = f.custom;
+        self.loads = f.loads;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
@@ -382,23 +465,39 @@ impl FrameEngine for TranslatedEngine {
     fn stopped(&self) -> Option<String> {
         self.stop.as_ref().map(|(_, s)| s.to_string())
     }
+
+    fn ram(&self) -> Option<&[u8]> {
+        Some(&self.mem)
+    }
+
+    fn loads(&self) -> (u32, bool) {
+        self.loads
+    }
+
+    fn start_line(&mut self, at: u16) {
+        if let Some(Begin::PowerOn { line, .. }) = &mut self.start {
+            *line = at;
+        }
+    }
 }
 
 /// `case` as the frame bar judges the translated program (DESIGN §2.7): the case's state (every
-/// play variable in `LAYOUT` where the case lists none), the picture, Paula's writes in order and
-/// the CPU's other custom writes as a multiset, every frame. The case's exclusions are left out: each names a hand engine task, and an acceptance for
-/// the translated program is written with its own measurement (§2.7).
+/// play variable in `LAYOUT` where a level case lists none; a power-on case's hunks, and its `vars`
+/// if it lists any), the picture, Paula's writes in order and the CPU's other custom writes as a
+/// multiset, every frame. A level case's exclusions are left out: each names a hand engine task,
+/// and an acceptance for the translated program is written with its own measurement (§2.7).
 pub fn frame_bar(case: &Case) -> Case {
-    let vars = if case.vars.is_empty() {
+    let vars = if case.vars.is_empty() && case.is_level() {
         crate::bug::compared_vars()
     } else {
         case.vars.clone()
     };
     Case {
         compare: Compare {
-            vars: true,
+            vars: !vars.is_empty(),
             picture: true,
             writes: true,
+            memory: case.is_entry(),
         },
         vars,
         exclude: Vec::new(),
@@ -406,15 +505,15 @@ pub fn frame_bar(case: &Case) -> Case {
     }
 }
 
-/// Level case `case` on the translated program, judged on the frame bar ([`frame_bar`]).
+/// `case` on the translated program, judged on the frame bar ([`frame_bar`]): a level case from
+/// its pass end, a title case from its sync frame, a power-on case (`start = "entry"`, T32) from
+/// the program's entry with its loads lined up.
 pub fn run_translated(case: &Case, opts: &Options) -> Result<Verdict, String> {
-    if !case.is_level() {
-        return Err(format!(
-            "{}: the translated engine runs level cases; a power-on case is T32's",
-            case.name
-        ));
-    }
     let bar = frame_bar(case);
+    if case.is_entry() {
+        let mut e = TranslatedEngine::power_on(&disks::load()?)?;
+        return crate::frames::run_entry_frames(&bar, &Inputs::load(&bar)?, &mut e, opts);
+    }
     let mut e = TranslatedEngine::new(case_start(&bar)?);
     run_frames(&bar, &mut e, opts)
 }

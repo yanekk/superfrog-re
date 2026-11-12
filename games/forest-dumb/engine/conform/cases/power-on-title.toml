@@ -1,0 +1,13 @@
+# The translated program from power-on to the idle title (translator T32, DESIGN §2.7, §2.8),
+# boot-to-title's input: the program's entry from the oracle's first step running h0+$0 (frame
+# 3461), the disk 2 prompt, fire at 3700, read_marker's load, the screen set-up, load_list_title's
+# four loads, and 280 frames of the title. The loads are instant on the translated side, so the
+# frames are lined up at each load's return (`align = "loads"`). Translated engine only.
+sync = { script = "boot-to-title", frame = 0 }
+start = "entry"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 5200
+compare = ["memory", "picture", "writes"]
+# The title's music has run five ticks on both sides: mt_counter counts 0 to 5 from frame 4922.
+goal = { all = [{ var = "mt_counter", value = 5 }], by_frame = 4930 }

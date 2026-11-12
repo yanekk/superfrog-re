@@ -794,6 +794,10 @@ pub enum Outcome {
     /// The engine stopped (translator DESIGN §2.4): the translated program met an address with no
     /// translation, a write into its code, an instruction it cannot run, or a cap.
     Stopped { pass: u32, frame: u32, stop: String },
+    /// A power-on case's loads went apart (`align = "loads"`, T32): the original's load was not
+    /// over within `sync::LOAD_CAP` frames of the engine's, or the two returned from different
+    /// numbers of loads by the case's end.
+    LoadApart { pass: u32, frame: u32, why: String },
 }
 
 /// A case's result and its report.
@@ -843,11 +847,23 @@ pub struct Verdict {
     /// The frame runner's first difference in each channel, in the order met; `outcome` is the
     /// first of them ([`Options::every_channel`]).
     pub firsts: Vec<Outcome>,
+    /// A power-on case (T32): frames whose hunks' memory was compared; frames compared, outside a
+    /// load on both sides; of those, frames whose custom writes were not, the OS having had the
+    /// machine on the original; the loads both sides returned from; the original's frames run
+    /// inside loads, not compared.
+    pub memory_frames: u32,
+    /// A power-on case: the oracle frame after the step that first ran the entry, and the line
+    /// it ran on, where the engine started.
+    pub entry: Option<(u32, u16)>,
+    pub aligned_frames: u32,
+    pub os_frames: u32,
+    pub loads: u32,
+    pub load_frames: u32,
     pub coverage: Coverage,
 }
 
 impl Verdict {
-    fn new(register: &[Ported]) -> Verdict {
+    pub(crate) fn new(register: &[Ported]) -> Verdict {
         Verdict {
             outcome: Outcome::Same,
             passes: 0,
@@ -868,6 +884,12 @@ impl Verdict {
             custom_writes: 0,
             custom_frames: 0,
             firsts: Vec::new(),
+            memory_frames: 0,
+            entry: None,
+            aligned_frames: 0,
+            os_frames: 0,
+            loads: 0,
+            load_frames: 0,
             coverage: Coverage::new(register),
         }
     }
@@ -933,6 +955,10 @@ impl fmt::Display for Outcome {
                 f,
                 "the engine stopped in frame {pass} (oracle frame {frame}): {stop}"
             ),
+            Outcome::LoadApart { pass, frame, why } => write!(
+                f,
+                "loads apart at frame {pass} (oracle frame {frame}): {why}"
+            ),
         }
     }
 }
@@ -962,6 +988,28 @@ impl fmt::Display for Verdict {
                 f,
                 "\n{} other custom writes in {} frames, as (register, value) multisets",
                 self.custom_writes, self.custom_frames
+            )?;
+        }
+        if let Some((frame, line)) = self.entry {
+            write!(
+                f,
+                "\nthe program's entry ran in the step ending at oracle frame {frame}, line {line}"
+            )?;
+        }
+        if self.memory_frames > 0 {
+            write!(
+                f,
+                "\n{} frames' hunks compared byte for byte, the OS's values left out",
+                self.memory_frames
+            )?;
+        }
+        if self.aligned_frames > 0 {
+            write!(
+                f,
+                "\n{} frames compared outside loads; {} loads returned on both sides, the original's \
+                 {} frames inside them not compared; {} frames' custom writes not compared, the OS \
+                 having the machine",
+                self.aligned_frames, self.loads, self.load_frames, self.os_frames
             )?;
         }
         if self.unseen > 0 {
@@ -1040,6 +1088,13 @@ impl fmt::Display for Verdict {
 /// Run `case` on the real disks and Kickstart. Every missing input is an error naming its path, and
 /// the cheap checks come first so a wrong setup fails before any emulation.
 pub fn run(case: &Case) -> Result<Verdict, String> {
+    if case.is_entry() {
+        return Err(format!(
+            "{}: a power-on case (`start = \"entry\"`) runs on `--engine translated`; the hand \
+             engine starts at level 1",
+            case.name
+        ));
+    }
     if case.is_level() {
         let mut game = Game::new(game_data()?, Start::Level1);
         return run_with(case, &mut game, &Options::default());
@@ -1099,7 +1154,7 @@ fn title_value(scene: &TitleScene, var: &Var) -> u32 {
     }
 }
 
-fn layout_vars(names: &[String]) -> Result<Vec<&'static Var>, String> {
+pub(crate) fn layout_vars(names: &[String]) -> Result<Vec<&'static Var>, String> {
     names
         .iter()
         .map(|v| layout_var(v).ok_or_else(|| format!("`{v}` is not in fd-core's LAYOUT")))
