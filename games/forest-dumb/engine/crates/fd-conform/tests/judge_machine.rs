@@ -372,3 +372,60 @@ fn fd_judge_machine_prints_its_line_and_needs_translated() {
     assert_eq!(alone.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&alone.stderr).contains("--machine judges a translated tree"));
 }
+
+/// `move.l d0,(a0); rts`: one long stored where a0 points.
+fn lay_store(m: &mut [u8]) {
+    lay(m, &[0x2080, 0x4e75]);
+}
+
+/// A long into hunk 0's data (`beam_sample_unread`, `h0+$8dfa`), which the A500 holds in slow RAM.
+fn slow_store_case(g: &mut Gen) -> Setup {
+    let mut s = Setup::random(g);
+    s.a[0] = h(0, 0x8dfa);
+    s
+}
+
+fn store_at_a0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    store(bus, img, r.a(0), 4, r.d(0) as u64)?;
+    pop_return(r, bus, img)
+}
+
+fn store_nothing(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    pop_return(r, bus, img)
+}
+
+/// Hunk 0 is in slow RAM ($C0xxxx): the machine's slow RAM writes are compared, at their flat
+/// address, so a store there passes and a port that leaves it out fails (T27 review).
+#[test]
+fn a_write_into_slow_ram_is_compared_on_the_machine() {
+    assert!(h(0, 0x8dfa) >= 0xC0_0000 && h(0, 0x8dfa) < 0xC8_0000);
+    let mut r = rig();
+    let g = Generator {
+        base: Some(lay_store),
+        case: slow_store_case,
+    };
+    let j = translated::check_on(
+        &mut r,
+        "slow",
+        50,
+        AT,
+        &g,
+        Some(store_at_a0),
+        &[],
+        Hardware::Machine,
+    );
+    assert_eq!(j.verdict.unwrap_or_else(|f| panic!("{f}")).passed, 50);
+    let j = translated::check_on(
+        &mut r,
+        "slow",
+        50,
+        AT,
+        &g,
+        Some(store_nothing),
+        &[],
+        Hardware::Machine,
+    );
+    let f = j.verdict.unwrap_err();
+    assert!(f.failures > 40, "{f}");
+    assert!(f.first.contains("port left it"), "{f}");
+}
