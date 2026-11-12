@@ -35,11 +35,15 @@ made to differ in exactly one way. `stub-level.toml` fails on `Game` until the c
 `--engine translated` (translator T29) runs a level case on the translated program
 (`fd_conform::translated_engine::run_translated`, the tree from `tools/translate.py --build`), judged
 on the frame bar (translator DESIGN §2.7) by the frame runner, `fd_conform::frames`: the engine starts at
-the same pass end and then runs one frame per oracle step on that step's input, and at every frame's
-end both sides' state (the case's `vars`, or every play variable in `LAYOUT` where it lists none), the
-picture in the play window, Paula's writes of the frame in order (`amiga_conform::compare::paula`,
-beam positions ignored), and the CPU's other custom-chip writes of the frame as a (register, value)
-multiset (T45: the same writes, each as many times, order not checked) must be equal. The multiset
+the same pass end and then runs one frame per oracle step on that step's input. At every pass end
+(the CPU's `INTREQ=$4010`, paired by `irq_count`; T30) both sides' state (the case's `vars`, or every
+play variable in `LAYOUT` where it lists none), Paula's writes of the pass in order
+(`amiga_conform::compare::paula`, beam positions ignored) and the CPU's other custom-chip writes of the
+pass as a (register, value) multiset (T45: the same writes, each as many times, order not checked)
+must be equal, and at every frame's end the picture in the play window. The original's pass straddles
+the frame's end on almost every moving frame and the machine has no DMA contention, so a pass may end
+a frame apart on the two sides, and a non-Paula write may fall a pass early or late, its counts
+agreeing again by the next pass end (owner, 2026-11-12). The multiset
 leaves Paula's registers (`$96`, `$9A`, `$9C`, `$9E`, `$A0..=$DE`) out, as they are compared in order
 already, and takes the CPU's writes only on both sides, because the oracle keeps no Copper write; its
 first difference names the frame, the register and both counts (`custom writes` in the reading). An

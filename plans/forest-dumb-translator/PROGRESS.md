@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Status:** Building phase 5; T30 awaiting review.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T30; T46 (level1-cases-a-rest) after it.
 
 ## Tasks
 
@@ -44,7 +44,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
 | T28 | translated-engine | T26, T27 | ✅ | |
 | T29 | conform-translated | T28 | ✅ | |
-| T30 | level1-cases-a | T29 | ⬜ | |
+| T30 | level1-cases-a | T29 | 🔍 | Pass-end frame bar: state and writes at each PASS_END, a pass one frame of slack, a non-Paula write one pass (owner's decisions, DESIGN §2.7). pcode-machine models CLXDAT (collision.rs; Amiga::clxdat seeds snapshots). 19 of 23 cases pass; four split to T46 (owner). Deviation: runner rule changed, not only the machine, by owner's decision. 10 tests added. |
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
@@ -60,8 +60,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
+| T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T30
 
 ## Blocked on the user
 
