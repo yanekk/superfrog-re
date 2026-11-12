@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
-| T34 | generated-purity | T28 | ⬜ | |
+| T34 | generated-purity | T28 | 🔍 | purity.rs scans the tree fd-translated builds in (FD_TRANSLATED, else build/translator/tree/), saying it scanned nothing when absent, and every committed pcode_rust.py file; owner-approved exemption for CODE only. 6 new tests. Deviations: generated files found by header so irq.rs fixture passes; pcode_rust.py unchanged; fd-app links no fd-translated yet, deps.rs passes as is; stub not scanned (buildscript). |
 | T35 | seam | T00, T28 | ⬜ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T34
 
 ## Blocked on the user
 

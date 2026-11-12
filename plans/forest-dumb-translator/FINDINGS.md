@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | **Owner exempted `CODE` from the table bar** (T34), a deliberate exception to DESIGN §3.1: only in `pcode_rust.py` output, only `const CODE: &[(u32, u32, u32)]` of (hunk, start, end) triples. It is the translator's index, not game data. |
 | 2026-11-12 | 📌 | **T28 snapshot starts:** at every step's end the original is inside `level3_handler`, so translated code resumes mid-function: `pcode_rust.py` emits `NAME_from(start)` and `resume(k)`. T08's 15 routines still pass; whole gate not rerun. |
 | 2026-11-12 | 📌 | **T28 w1-idle on the translated engine:** 199 of 199 passes equal (vars only), no stop; 50 frames from the sync point 10 s. Review: power-on 400 frames, fire held 100, no stop; deepest `Regs::depth` unrecorded. |
 | 2026-11-12 | 📌 | **T43:** Ghidra's no-return analysis set `CALL_RETURN` on all 82 `jsr load_file`; the export now follows each instruction's own fall-through (`check.no_return_calls`). Whole export 7 716 instructions, 291 kinds; power-on reaches the title with no stop. |
@@ -22,7 +23,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 📌 | `translator_trial.py --whole` builds fd-judge optimised: unoptimised, `view_tiles` took 340 s for 2 000 translated states (original 5 s), past `JUDGE_SECONDS` 120. pcode_rust's `computed_unresolved` 28 counts per function, the export's 24 per instruction. |
 | 2026-11-12 | 📌 | **T24 title picture:** the CPU strobes COPJMP1 on line 3 of frame 4921 and writes 185 chip bytes in 4922; a snapshot at 4922's end gives 4923 and 4924 pixel-equal on the machine (`machine_title.rs`, full). |
 | 2026-11-12 | 📌 | T24 stops rather than guess: a copper MOVE to COPJMP1/2 (`unsupported: copper jump`), line and fill blits (`blit line`, `blit fill`), HAM. |
-| 2026-11-12 | 🐞 | `purity.rs` fails on the feature branch: T23's generated `pcode-machine/tests/fixtures/irq.rs:7` holds an 18-element integer array (tables over 16 elements come from the disks). Found merging into T24; left alone. |
 | 2026-11-11 | 📌 | **T23 interrupts:** the pushed PC is a marker, `IRQ_RETURN` ($FFFFFF), not the interrupted address. `from_snapshot` takes INTENA/INTREQ from `custom[0x0E]`, `custom[0x0F]` (INTENAR, INTREQR). |
 | 2026-11-11 | 📌 | **T25 CIA-A:** its interrupt reaches INTREQ only via `Machine::take_cia_interrupts()` (PORTS `$0008`); a snapshot needs `cia_a_mut().set_icr_mask(0x08)`. fd-translated's host does both (T28). |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |
