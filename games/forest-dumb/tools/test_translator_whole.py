@@ -32,7 +32,9 @@ class WholeTree(unittest.TestCase):
         # Every judgeable routine passes on 2 000 states with no hint. 100 judgeable at T16: a drop
         # means a generator or the survey broke, not a pass.
         self.assertGreaterEqual(s['judgeable'], 100)
-        self.assertEqual(s['pass'], s['judgeable'], open(os.path.join(OUT, 'table.md'), encoding='utf-8').read())
+        with open(os.path.join(OUT, 'table.md'), encoding='utf-8') as f:
+            table = f.read()
+        self.assertEqual(s['pass'], s['judgeable'], table)
         self.assertEqual((s['untranslated'], s['write_into_code'], s['unsupported']), (0, 0, 0))
         self.assertTrue(s['gate'], whole['why'])
 
