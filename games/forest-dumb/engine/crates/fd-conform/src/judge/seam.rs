@@ -59,8 +59,12 @@ struct Ran {
     hw_writes: Vec<(u16, u16)>,
 }
 
-fn run(f: impl FnOnce(&mut Regs, &mut Mem, &Image) -> Result<(), pcode_rt::Stop> + Send,
-       mut r: Regs, before: &Mem, img: &Image) -> Ran {
+fn run(
+    f: impl FnOnce(&mut Regs, &mut Mem, &Image) -> Result<(), pcode_rt::Stop> + Send,
+    mut r: Regs,
+    before: &Mem,
+    img: &Image,
+) -> Ran {
     let mut mem = before.clone();
     let ran = catch_unwind(AssertUnwindSafe(|| {
         on_run_stack(|| f(&mut r, &mut mem, img).map_err(|s| s.to_string()))
@@ -214,19 +218,33 @@ fn differences(rig: &Rig, old: &Ran, new: &Ran, regs: RegsCompared) -> Vec<Strin
             (Some(&(p, u)), Some(&(q, v))) if p == q => {
                 i += 1;
                 j += 1;
-                (u != v).then(|| format!("{}: replaced wrote ${u:02x}, replacing ${v:02x}", rig.name(p)))
+                (u != v).then(|| {
+                    format!(
+                        "{}: replaced wrote ${u:02x}, replacing ${v:02x}",
+                        rig.name(p)
+                    )
+                })
             }
             (Some(&(p, u)), Some(&(q, _))) if p < q => {
                 i += 1;
-                Some(format!("{}: replaced wrote ${u:02x}, replacing nothing", rig.name(p)))
+                Some(format!(
+                    "{}: replaced wrote ${u:02x}, replacing nothing",
+                    rig.name(p)
+                ))
             }
             (Some(&(p, u)), None) => {
                 i += 1;
-                Some(format!("{}: replaced wrote ${u:02x}, replacing nothing", rig.name(p)))
+                Some(format!(
+                    "{}: replaced wrote ${u:02x}, replacing nothing",
+                    rig.name(p)
+                ))
             }
             (_, Some(&(q, v))) => {
                 j += 1;
-                Some(format!("{}: replacing wrote ${v:02x}, replaced nothing", rig.name(q)))
+                Some(format!(
+                    "{}: replacing wrote ${v:02x}, replaced nothing",
+                    rig.name(q)
+                ))
             }
             (None, None) => unreachable!(),
         };
@@ -240,7 +258,9 @@ fn differences(rig: &Rig, old: &Ran, new: &Ran, regs: RegsCompared) -> Vec<Strin
             .take_while(|(x, y)| x == y)
             .count();
         let show = |w: Option<&(u16, u16)>| {
-            w.map_or("none".to_string(), |&(reg, v)| format!("${reg:03x}=${v:04x}"))
+            w.map_or("none".to_string(), |&(reg, v)| {
+                format!("${reg:03x}=${v:04x}")
+            })
         };
         out.push(format!(
             "custom write {k}: replaced {}, replacing {} ({} against {} writes)",

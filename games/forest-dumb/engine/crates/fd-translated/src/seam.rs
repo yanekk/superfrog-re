@@ -118,7 +118,9 @@ impl Mem for BusMem<'_, '_> {
     fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
         let mut bus = self.bus.borrow_mut();
         let at = self.img.h(hunk as u32, offset);
-        (0..len as u32).map(|k| bus.rb(at.wrapping_add(k))).collect()
+        (0..len as u32)
+            .map(|k| bus.rb(at.wrapping_add(k)))
+            .collect()
     }
 }
 
@@ -155,7 +157,11 @@ impl WriteBack for SpriteControl {
     fn write_back(&self, mem: &mut dyn MemMut) {
         for n in 0..4u32 {
             // Sprites 2 and 3 sit 16 pixels right: `addi.l #$80000` in the original.
-            let ctl = if n < 2 { self.0 } else { self.0.wrapping_add(0x8_0000) };
+            let ctl = if n < 2 {
+                self.0
+            } else {
+                self.0.wrapping_add(0x8_0000)
+            };
             mem.put(1, SPRITES + n * SPRITE_STRIDE, &ctl.to_be_bytes());
         }
     }
@@ -238,7 +244,11 @@ impl WriteBack for CameraState {
             // `st.b` writes `$ff`, `clr.l` 0: `camera_update` clears all four before it sets any, so
             // a flag's byte is one of the two whatever it held before.
             let e = &c.edges;
-            mem.put(0, CROSSED + i as u32, &[if e.crossed[i] { 0xff } else { 0 }]);
+            mem.put(
+                0,
+                CROSSED + i as u32,
+                &[if e.crossed[i] { 0xff } else { 0 }],
+            );
             put(mem, LATCH[i], e.latch[i] as u32);
             put(mem, AT[i].0, e.at[i].0 as u32);
             put(mem, AT[i].1, e.at[i].1 as u32);

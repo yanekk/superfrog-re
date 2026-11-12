@@ -61,13 +61,26 @@ fn panics(_: &mut Regs, _: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
 
 fn judge(replaced: Option<Entry>, replacing: Mounted, regs: RegsCompared) -> SeamReport {
     let rig = Rig::from_memory(vec![0; 0x10000]);
-    seam::check(&rig, "made-up", CASES, AT, &states(), replaced, replacing, regs)
+    seam::check(
+        &rig,
+        "made-up",
+        CASES,
+        AT,
+        &states(),
+        replaced,
+        replacing,
+        regs,
+    )
 }
 
 #[test]
 fn a_replacement_that_does_the_same_passes() {
     let r = judge(Some(translated), same, RegsCompared::NONE);
-    assert_eq!((r.passed, r.failures, r.replaced_stopped), (CASES, 0, 0), "{r:?}");
+    assert_eq!(
+        (r.passed, r.failures, r.replaced_stopped),
+        (CASES, 0, 0),
+        "{r:?}"
+    );
     assert!(r.pass());
 }
 
@@ -102,10 +115,20 @@ fn a_panicking_replacement_fails_and_no_translation_fails_every_state() {
     let r = judge(Some(translated), panics, RegsCompared::NONE);
     let _ = std::panic::take_hook();
     assert_eq!(r.failures, CASES);
-    assert!(r.first.contains("the replacing routine stopped: panicked: an overflow"), "{}", r.first);
+    assert!(
+        r.first
+            .contains("the replacing routine stopped: panicked: an overflow"),
+        "{}",
+        r.first
+    );
     let r = judge(None, same, RegsCompared::NONE);
     assert_eq!((r.passed, r.failures), (0, CASES), "{r:?}");
-    assert!(r.first.contains("the replaced routine stopped: untranslated: $001000"), "{}", r.first);
+    assert!(
+        r.first
+            .contains("the replaced routine stopped: untranslated: $001000"),
+        "{}",
+        r.first
+    );
 }
 
 #[test]

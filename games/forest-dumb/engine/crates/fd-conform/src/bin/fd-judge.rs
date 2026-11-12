@@ -164,7 +164,12 @@ fn args() -> Result<Args, String> {
         }
     }
     let routine = routine.ok_or(USAGE)?;
-    if [survey, cover, translated, seam].iter().filter(|&&m| m).count() > 1 {
+    if [survey, cover, translated, seam]
+        .iter()
+        .filter(|&&m| m)
+        .count()
+        > 1
+    {
         return Err(format!(
             "--survey, --cover, --translated and --seam are four modes: {USAGE}"
         ));
