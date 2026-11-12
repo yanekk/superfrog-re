@@ -57,7 +57,8 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag, and
   the next waits for the handshake (CRA bit 6 set then cleared) plus `KEY_BYTE_CYCLES` (3 405, the
   manual's 8 bits at 60 µs, unmeasured). A keyboard never acknowledged waits for ever; the real one
-  resyncs. Reset state: all masked, all inputs; at a snapshot set the mask (`cia_a_mut`), since the
+  resyncs. `keys_held` tells it which keys a snapshot's keyboard had already sent, so the first
+  `set_input` sends only what changed (T31). Reset state: all masked, all inputs; at a snapshot set the mask (`cia_a_mut`), since the
   oracle's snapshot holds no CIA state. TOD registers keep their byte.
 - **CIA-B:** each register keeps its last byte written; the program only latches the drive motor off
   through PRB.

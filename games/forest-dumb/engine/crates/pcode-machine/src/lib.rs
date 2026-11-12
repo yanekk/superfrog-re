@@ -837,6 +837,13 @@ impl Machine {
     /// The next frame's input, at the current cycle count: JOY1DAT reads `i.joy1`, CIA-A's PRA
     /// the fire buttons, and the keyboard queues a byte for each key gone down or up, sending the
     /// first at once if the program acknowledged the last (`cia`).
+    /// The keys `i` holds were already down, and sent, when this machine's state was taken (a
+    /// snapshot between frames): the next [`Machine::set_input`] sends only what changed from them.
+    /// Its other inputs are not edges and are set by `set_input` alone.
+    pub fn keys_held(&mut self, i: &Input) {
+        self.cia_a.set_held(i.key_set());
+    }
+
     pub fn set_input(&mut self, i: &Input) {
         self.custom[custom::JOY1DAT as usize >> 1] = i.joy1;
         self.cia_a.fire = i.fire;

@@ -59,6 +59,8 @@ pub struct CaseStart {
     pub pass: u32,
     /// The oracle frame the step ended at.
     pub frame: u32,
+    /// The step's input: the keys it holds the original's keyboard has sent by its end.
+    pub input: FrameInput,
 }
 
 /// [`CaseStart`] of `case`: the original from power-on along `reach_case`'s way (the level 1
@@ -111,8 +113,8 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
     am.watch_write(Some(PASS_END));
     let irq_count = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
     for step in 0..cap - case.sync_frame {
-        am.step(inputs.at(case.sync_frame + step))
-            .map_err(|e| e.to_string())?;
+        let input = inputs.at(case.sync_frame + step);
+        am.step(input).map_err(|e| e.to_string())?;
         collect(&am);
         if let Some(mem) = am.watched_memory() {
             let pass = OracleMem(&mem).value(irq_count);
@@ -143,6 +145,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
                 disk2,
                 pass,
                 frame: am.frame(),
+                input,
             });
         }
     }
@@ -229,6 +232,7 @@ impl TranslatedEngine {
                     custom: &start.custom,
                     disks: Disks { df0: start.disk2 },
                 });
+                g.held_at_start(&Input::from(start.input));
                 g.set_input(first);
                 g.run(&mut |out| {
                     let mut mem = out.chip.to_vec();
