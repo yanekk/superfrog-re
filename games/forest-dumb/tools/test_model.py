@@ -148,26 +148,23 @@ class Transcript(unittest.TestCase):
 
 
 class MuseIsGone(unittest.TestCase):
-    # Muse's own tools and their tests, which T18 rewrites or deletes.
-    ALLOWED = {'translate.py', 'translate_batch.py', 'test_translate.py', 'test_translate_batch.py'}
+    # T18 deleted Muse's tools (translator DESIGN §2.13): no file here names its provider or its
+    # batch tool. The word is built so this file does not hold it: `grep -ri` over tools/ stays empty.
+    GONE = ('open' + 'router', 'translate' + '_batch')
 
-    def test_only_muse_s_own_tools_mention_openrouter(self):
+    def test_no_tool_names_muse_s_provider_or_batch(self):
         here = os.path.dirname(os.path.abspath(__file__))
         found = []
         for root, dirs, files in os.walk(here):
             dirs[:] = [d for d in dirs if d != '__pycache__']
             for f in files:
                 path = os.path.join(root, f)
-                if f in self.ALLOWED and root == here:
-                    continue
                 try:
                     with open(path, encoding='utf-8') as fh:
-                        text = fh.read()
+                        text = fh.read().lower()
                 except (UnicodeDecodeError, OSError):
                     continue
-                # This file names it to look for it.
-                if 'openrouter' in text.lower() and f != 'test_model.py':
-                    found.append(os.path.relpath(path, here))
+                found += [f'{os.path.relpath(path, here)}: {w}' for w in self.GONE if w in text]
         self.assertEqual(found, [])
 
 
