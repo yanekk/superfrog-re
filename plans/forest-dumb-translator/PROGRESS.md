@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
 | T25 | machine-sound-input | T22 | ✅ | |
-| T26 | os-answers | T01, T22 | ✅ | Reviewed: one fix, T43's doc lacked its Interface section. Ran full `os_run.rs`: `load-napis` equals the original's 18 720 bytes; power-on stops `untranslated: h4+$1a0f6`, absent from `pcode.json`, so that Done-when item is carried by T43. Mutated the rts pop, read position and vector stride: each caught. |
+| T26 | os-answers | T01, T22 | ✅ | Reviewed: T43's doc lacked Interface (fixed); after merging T23, an interrupt on the OS's handler stopped `untranslated`, reproduced by test, fixed, test locks it. Full `os_run.rs`: `load-napis` equals the original; power-on stops `untranslated: h4+$1a0f6`, absent from `pcode.json`, carried by T43. Mutated rts pop, read position, vector stride: each caught. |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |
 | T29 | conform-translated | T28 | ⬜ | |
