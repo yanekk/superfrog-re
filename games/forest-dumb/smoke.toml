@@ -9,6 +9,8 @@ workspace = "engine"
 "crates/pcode-rt/tests/translated.rs" = "smoke"
 # Translator T22: the machine's unit tests on a made-up hunk file, no disks, under a second.
 "crates/pcode-machine/src" = "smoke"
+# Translator T23: interrupts on a made-up translated program, under a second.
+"crates/pcode-machine/tests/irq.rs" = "smoke"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [
@@ -200,6 +202,9 @@ workspace = "engine"
 "crates/fd-conform/tests/play_measured.rs" = "full"
 # One boot to W1-1 (title and play), 12 to 27 s: picture_in on the whole play picture (T04).
 "crates/fd-conform/tests/play_picture.rs" = "full"
+# Translator T24: one boot to the title (about 10 s, needs the disks): the machine's title picture
+# from a snapshot against the original's.
+"crates/fd-conform/tests/machine_title.rs" = "full"
 "crates/fd-assets/src" = "smoke"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"

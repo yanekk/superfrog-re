@@ -6,7 +6,7 @@
 
 mod keyboard;
 
-pub use keyboard::{CiaKeyboard, key_byte};
+pub use keyboard::{CiaKeyboard, key_byte, key_bytes};
 
 /// Joystick bits. Directions and fire are the joystick in port 2, the game's controller.
 /// `PORT1_BUTTON` is the left mouse button in port 1 (the same pin as a port-1 joystick's fire),
@@ -33,6 +33,15 @@ impl Joy {
 
     pub fn bits(self) -> u8 {
         self.0
+    }
+
+    /// The JOYxDAT word the port-2 joystick's directions give (JOY1DAT): right sets bit 1, left
+    /// bit 9, down flips bit 0 from bit 1, up flips bit 8 from bit 9. The counters' other bits a
+    /// joystick leaves at 0, and fire is not on JOYxDAT (CIA-A PRA bit 7).
+    pub fn joydat(self) -> u16 {
+        let (l, r) = (self.contains(Joy::LEFT) as u16, self.contains(Joy::RIGHT) as u16);
+        let (u, d) = (self.contains(Joy::UP) as u16, self.contains(Joy::DOWN) as u16);
+        l << 9 | (l ^ u) << 8 | r << 1 | (r ^ d)
     }
 }
 
@@ -180,6 +189,18 @@ pub fn parse_tokens(s: &str) -> Result<FrameInput, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn joydat_encodes_the_directions_as_the_counters_read() {
+        assert_eq!(Joy::NONE.joydat(), 0);
+        assert_eq!(Joy::FIRE.joydat(), 0, "fire is not on JOYxDAT");
+        assert_eq!(Joy::RIGHT.joydat(), 0x0003);
+        assert_eq!(Joy::LEFT.joydat(), 0x0300);
+        assert_eq!(Joy::DOWN.joydat(), 0x0001);
+        assert_eq!(Joy::UP.joydat(), 0x0100);
+        assert_eq!((Joy::RIGHT | Joy::DOWN).joydat(), 0x0002);
+        assert_eq!((Joy::LEFT | Joy::UP).joydat(), 0x0200);
+    }
 
     #[test]
     fn joy_bits_combine_and_test() {

@@ -37,9 +37,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
-| T23 | interrupts | T22 | ⬜ | |
-| T24 | machine-chips | T22 | ⬜ | |
-| T25 | machine-sound-input | T22 | ⬜ | |
+| T23 | interrupts | T22 | ✅ | |
+| T24 | machine-chips | T22 | ✅ | |
+| T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ⬜ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |

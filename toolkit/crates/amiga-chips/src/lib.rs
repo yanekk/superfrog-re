@@ -10,7 +10,7 @@ pub mod memory;
 pub mod picture;
 pub mod sprite;
 
-pub use blit::{Blit, BlitMem, FIXED_TO, bltsize_words, logic, word_times};
+pub use blit::{Blit, BlitEnd, BlitMem, FIXED_TO, bltsize_words, logic, word_times};
 pub use memory::{AmigaMemory, Ram, SLOW_BASE};
 pub use picture::{Picture, Split, to_rgb12};
 

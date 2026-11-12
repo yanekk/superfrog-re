@@ -36,8 +36,17 @@ impl Blit {
         amiga_clock::rough_blit_cycles(self.con0, h * w)
     }
 
-    /// Run the blit. Returns the pointers as the blitter leaves them.
+    /// Run the blit. Returns the pointers as the blitter leaves them. A channel that is off reads
+    /// 0 here; [`Blit::run_with`] gives it its data register, as the hardware does.
     pub fn run<M: BlitMem>(&self, s: &mut M) -> [u32; 4] {
+        self.run_with([0; 3], s).pt
+    }
+
+    /// Run the blit, a channel that is off (BLTCON0 USEA, USEB, USEC clear) reading its data
+    /// register from `dat` (BLTADAT, BLTBDAT, BLTCDAT) on every word, through A's masks and the
+    /// shifters as a fetched word would go. Returns the pointers as the blitter leaves them and
+    /// whether every D result was zero (DMACONR's BZERO), counted whether or not D is written.
+    pub fn run_with<M: BlitMem>(&self, dat: [u16; 3], s: &mut M) -> BlitEnd {
         let (h, w) = bltsize_words(self.size);
         let uses = [
             self.con0 & 0x800 != 0,
@@ -51,9 +60,10 @@ impl Blit {
         let mut pt = self.pt.map(|p| p & 0x7_fffe);
         let step: i32 = if desc { -2 } else { 2 };
         let (mut a_old, mut b_old) = (0u16, 0u16);
+        let mut zero = true;
         for _ in 0..h {
             for i in 0..w {
-                let mut v = [0u16; 3];
+                let mut v = dat;
                 for (k, val) in v.iter_mut().enumerate() {
                     if uses[k] {
                         *val = s.blit_w(pt[k]);
@@ -81,6 +91,7 @@ impl Blit {
                 a_old = a;
                 b_old = v[1];
                 let d = logic(minterm, a_sh as u16, b_sh as u16, v[2]);
+                zero &= d == 0;
                 if uses[3] {
                     s.blit_set_w(pt[3], d);
                     pt[3] = (pt[3] as i32 + step) as u32;
@@ -96,8 +107,17 @@ impl Blit {
                 }
             }
         }
-        pt
+        BlitEnd { pt, zero }
     }
+}
+
+/// What a blit leaves: the pointers, and DMACONR's BZERO.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BlitEnd {
+    /// A, B, C, D pointers as the blitter leaves them.
+    pub pt: [u32; 4],
+    /// Every D result was zero.
+    pub zero: bool,
 }
 
 /// BLTSIZE as (rows, words): height in bits 15–6, width in bits 5–0, 0 meaning 1024 / 64.
@@ -217,6 +237,62 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// Chip RAM as a flat array for the tests.
+    struct Flat(Vec<u8>);
+    impl BlitMem for Flat {
+        fn blit_w(&self, a: u32) -> u16 {
+            u16::from_be_bytes([self.0[a as usize], self.0[a as usize + 1]])
+        }
+        fn blit_set_w(&mut self, a: u32, v: u16) {
+            self.0[a as usize..a as usize + 2].copy_from_slice(&v.to_be_bytes());
+        }
+    }
+
+    #[test]
+    fn a_channel_that_is_off_reads_its_data_register() {
+        // D = A AND B with only B fetched: A comes from BLTADAT through the first-word mask.
+        let b = Blit {
+            con0: 0x05c0, // USEB, USED, D = AB
+            afwm: 0x0ff0,
+            alwm: 0xffff,
+            pt: [0, 0x10, 0, 0x20],
+            size: 0x0042, // 1 row, 2 words
+            ..Blit::default()
+        };
+        let mut m = Flat(vec![0; 0x40]);
+        m.0[0x10..0x14].copy_from_slice(&[0xff, 0xff, 0x12, 0x34]);
+        let end = b.run_with([0xf00f, 0, 0], &mut m);
+        assert_eq!(&m.0[0x20..0x24], &[0x00, 0x00, 0x10, 0x04]);
+        assert_eq!(end.pt, [0, 0x14, 0, 0x24]);
+        assert!(!end.zero);
+        // `run` keeps its old meaning: an unused channel reads 0.
+        let mut m0 = Flat(m.0.clone());
+        b.run(&mut m0);
+        assert_eq!(&m0.0[0x20..0x24], &[0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn bzero_counts_results_whether_or_not_d_is_written() {
+        let mut m = Flat(vec![0; 0x40]);
+        m.0[0x10] = 0x80;
+        // A to nowhere (USED clear): a non-zero A clears BZERO, memory unchanged.
+        let a_only = Blit {
+            con0: 0x09f0 & !0x0100,
+            afwm: 0xffff,
+            alwm: 0xffff,
+            pt: [0x10, 0, 0, 0x20],
+            size: 0x0041,
+            ..Blit::default()
+        };
+        assert!(!a_only.run_with([0; 3], &mut m).zero);
+        assert_eq!(m.0[0x20], 0);
+        let zeros = Blit {
+            pt: [0x30, 0, 0, 0x20],
+            ..a_only
+        };
+        assert!(zeros.run_with([0; 3], &mut m).zero);
     }
 
     #[test]

@@ -62,23 +62,23 @@ impl CiaKeyboard {
     /// The keys held this frame: the keyboard sends a byte for each key gone down (by code), then
     /// each gone up, and the register keeps the last.
     pub fn feed(&mut self, keys: KeySet) {
-        for (code, up) in keys
-            .codes()
-            .map(|c| (c, false))
-            .chain(self.held.codes().map(|c| (c, true)))
-        {
-            let changed = if up {
-                !keys.contains(code)
-            } else {
-                !self.held.contains(code)
-            };
-            if changed {
-                self.sdr = key_byte(code, up);
-                self.new = true;
-            }
+        if let Some(&last) = key_bytes(self.held, keys).last() {
+            self.sdr = last;
+            self.new = true;
         }
         self.held = keys;
     }
+}
+
+/// The bytes the keyboard sends, in order, when the keys held go from `held` to `keys`: one for
+/// each key gone down (lowest code first), then one for each gone up. A host that models the
+/// handshake delivers them one at a time; [`CiaKeyboard`] keeps only the last.
+pub fn key_bytes(held: KeySet, keys: KeySet) -> Vec<u8> {
+    let down = keys.codes().filter(|&c| !held.contains(c));
+    let up = held.codes().filter(|&c| !keys.contains(c));
+    down.map(|c| key_byte(c, false))
+        .chain(up.map(|c| key_byte(c, true)))
+        .collect()
 }
 
 #[cfg(test)]
@@ -108,6 +108,21 @@ mod tests {
         assert_eq!(decoded(&k), (0x45, 1));
         k.feed(KeySet::key(0x45));
         assert_eq!(decoded(&k), (0x10, 1));
+    }
+
+    #[test]
+    fn key_bytes_are_downs_then_ups_in_code_order() {
+        let held = KeySet::key(0x10).with(0x45);
+        let keys = KeySet::key(0x45).with(0x20).with(0x19);
+        assert_eq!(
+            key_bytes(held, keys),
+            vec![
+                key_byte(0x19, false),
+                key_byte(0x20, false),
+                key_byte(0x10, true)
+            ]
+        );
+        assert!(key_bytes(keys, keys).is_empty());
     }
 
     #[test]
