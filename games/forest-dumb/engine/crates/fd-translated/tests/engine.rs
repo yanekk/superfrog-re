@@ -14,6 +14,11 @@ use pcode_rt::{Bus, Image, PC, Regs, Stop, ops};
 #[path = "../../pcode-machine/tests/fixtures/irq.rs"]
 mod prog;
 
+/// `h0+$0`: `bsr $10; bsr $20; rts`, both calling `$30`: two calls in one block.
+#[rustfmt::skip]
+#[path = "../../pcode-rt/tests/fixtures/shared_call.rs"]
+mod shared_call;
+
 const BASE: u32 = 0x4000;
 const STACK: u32 = 0x8000;
 const LIST: u32 = 0x2000;
@@ -306,4 +311,124 @@ fn a_mounted_routine_runs_in_place_of_the_translated_one_in_a_run() {
     });
     assert_eq!(stop, None);
     assert_eq!(counts, [2, 4, 6, 8], "the mounted handler, once a frame");
+}
+
+/// A watched routine's returns land in the frame each happened in (translator T32): the handler
+/// `h0+$40` returns once a frame; the foreground loop, never entered through its entry here
+/// (the run resumes it from the snapshot's PC), is not seen, nor is a routine nobody watches.
+#[test]
+fn watched_returns_are_reported_in_their_frame() {
+    let (mem, custom) = memory();
+    let mut g = TranslatedGame::with_program(
+        PROG,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    g.watch_returns(&[(0, 0x40), (0, 0x0)]);
+    let mut returns = Vec::new();
+    g.run(&mut |out| {
+        returns.push(out.returns.clone());
+        assert!(out.inside.is_empty(), "the handler ends within its frame");
+        if returns.len() == 4 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    assert_eq!(
+        returns,
+        vec![vec![(0, 0x40)]; 4],
+        "one handler return a frame"
+    );
+
+    let mut g = TranslatedGame::with_program(
+        PROG,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    let mut returns = Vec::new();
+    g.run(&mut |out| {
+        returns.extend(out.returns.iter().copied());
+        if out.chip[COUNT + 1] == 3 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    assert!(returns.is_empty(), "nothing watched, nothing reported");
+}
+
+/// `jsr a; jsr b` in one block reaches `b`'s entry with no block of the caller between: `a`'s
+/// return is reported there, before `b`'s, and `b`'s when the program returns and stops.
+#[test]
+fn a_return_followed_by_a_call_in_the_same_block_is_seen_in_order() {
+    let prog = Program {
+        code: shared_call::CODE,
+        hunk_sizes: shared_call::HUNK_SIZES,
+        entry: shared_call::entry,
+        resume: shared_call::resume,
+    };
+    let (mut mem, _) = memory();
+    mem[STACK as usize - 4..STACK as usize].copy_from_slice(&0x00F0_0000u32.to_be_bytes());
+    let mut g = TranslatedGame::with_program(
+        prog,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0, STACK - 4),
+            custom: &[0; 256],
+            disks: Disks::default(),
+        },
+    );
+    g.watch_returns(&[(0, 0x10), (0, 0x20), (0, 0x30)]);
+    let mut returns = Vec::new();
+    let stop = g.run(&mut |out| {
+        returns.extend(out.returns.iter().copied());
+        Control::Next(Input::default())
+    });
+    assert_eq!(stop, Some(Stop::Untranslated("$f00000".into())));
+    assert_eq!(returns, [(0, 0x30), (0, 0x10), (0, 0x30), (0, 0x20)]);
+}
+
+/// A run started at line 200 has a first frame of the 113 lines left, then whole frames.
+#[test]
+fn a_run_started_at_a_line_has_a_short_first_frame() {
+    let (mem, custom) = memory();
+    let mut g = TranslatedGame::with_program(
+        PROG,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    g.start_at_line(200);
+    let mut frames = 0;
+    g.run(&mut |_| {
+        frames += 1;
+        if frames == 2 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    let line = 227 * 2;
+    let c = g.regs().cycles();
+    assert!(
+        c >= (113 + 313) * line && c < (114 + 313) * line,
+        "{c} cycles, {} lines",
+        c / line
+    );
 }

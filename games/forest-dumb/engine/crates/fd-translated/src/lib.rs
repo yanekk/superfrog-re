@@ -15,6 +15,8 @@
 //! A function returning to its real Rust caller never reaches that loop: only the frames the
 //! snapshot was taken inside do.
 
+use std::cell::Cell;
+
 use pcode_machine::{Config, Disks, Input, Machine, Picture};
 use pcode_rt::{Bus, Image, Mounted, PC, Regs, SR, Stop, ops};
 
@@ -138,6 +140,11 @@ pub struct FrameOut<'a> {
     /// Chip RAM and slow RAM at the frame's end, for a shell to read the state from.
     pub chip: &'a [u8],
     pub slow: &'a [u8],
+    /// The watched routines ([`TranslatedGame::watch_returns`]) that returned in the frame, in
+    /// order, each as (hunk, offset) of its entry.
+    pub returns: Vec<(u32, u32)>,
+    /// The watched routines still running at the frame's end, outermost first.
+    pub inside: Vec<(u32, u32)>,
 }
 
 /// The translated program on its machine.
@@ -155,6 +162,8 @@ pub struct TranslatedGame {
     picture: Picture,
     /// The hand-written routines run in place of translated ones (DESIGN §2.9).
     seam: Seam,
+    /// The routines whose returns each frame reports ([`FrameOut::returns`]).
+    watched: Vec<(u32, u32)>,
 }
 
 impl TranslatedGame {
@@ -246,12 +255,28 @@ impl TranslatedGame {
             input: Input::default(),
             picture: Picture::blank(0, 0, 0, 0),
             seam: Seam::new(),
+            watched: Vec::new(),
         }
     }
 
     /// Run `f` in place of the translated routine at `addr` (hunk, offset) from the next run on.
     pub fn mount(&mut self, addr: (u8, u32), f: Mounted) {
         self.seam.mount(addr, f);
+    }
+
+    /// Report each return from the routines entered at `addrs` (hunk, offset) in the frame it
+    /// happened in ([`FrameOut::returns`]): a case lines frames up at a load's return
+    /// (translator T32). Only a call through the routine's entry counts, and a routine mounted
+    /// through the seam is not seen.
+    pub fn watch_returns(&mut self, addrs: &[(u8, u32)]) {
+        self.watched = addrs.iter().map(|&(h, o)| (h as u32, o)).collect();
+    }
+
+    /// Start the run with the beam at `line`, so the first frame is only the rest of it: a power-on
+    /// case starts the program on the line the original's entry ran on (translator T32). Before
+    /// the first run only; a snapshot's beam is its VPOSR and VHPOSR.
+    pub fn start_at_line(&mut self, line: u16) {
+        self.m.sync_beam(self.r.cycles(), line, 0);
     }
 
     /// What is mounted.
@@ -292,6 +317,10 @@ impl TranslatedGame {
             each,
             picture: &mut self.picture,
             host_stop: false,
+            watched: &self.watched,
+            entered: Cell::new(None),
+            inside: Vec::new(),
+            returns: Vec::new(),
         };
         let stop = match self.stopped.clone() {
             Some(s) => s,
@@ -316,6 +345,13 @@ impl TranslatedGame {
         if host.host_stop {
             return None;
         }
+        // The program has stopped: what it had returned from since the last block is over too.
+        while let Some(&(k, depth)) = host.inside.last()
+            && self.r.depth < depth
+        {
+            host.inside.pop();
+            host.returns.push(k);
+        }
         let paula = host.paula();
         let out = FrameOut {
             picture: host.picture.clone(),
@@ -325,6 +361,8 @@ impl TranslatedGame {
             stop: Some(stop.clone()),
             chip: host.m.chip(),
             slow: host.m.slow(),
+            returns: std::mem::take(&mut host.returns),
+            inside: host.inside.iter().map(|&(k, _)| k).collect(),
         };
         (host.each)(&out);
         self.stopped = Some(stop.clone());
@@ -341,6 +379,18 @@ struct Host<'a, 'b> {
     picture: &'a mut Picture,
     /// `each` said stop: the stop unwinding the run is the host's, not the program's.
     host_stop: bool,
+    /// Routines whose returns are reported, (hunk, offset).
+    watched: &'a [(u32, u32)],
+    /// A function's entry asked `mounted` and its first block has not polled yet, with the
+    /// routine if it is watched. `mounted` is the one hook every entry reaches, and it has no
+    /// `Regs`; the first block's `poll` comes next, after `fn_entry` counted the function in.
+    entered: Cell<Option<Option<(u32, u32)>>>,
+    /// Watched routines running, each with `Regs::depth` inside it. One has returned once a block
+    /// polls at a smaller depth, or a function is entered at its depth or above: a call is not a
+    /// block's end, so `jsr a; jsr b` reaches `b`'s entry with no block of the caller between.
+    inside: Vec<((u32, u32), u32)>,
+    /// Watched returns since the last frame's end.
+    returns: Vec<(u32, u32)>,
 }
 
 impl Host<'_, '_> {
@@ -366,6 +416,8 @@ impl Host<'_, '_> {
             stop: None,
             chip: self.m.chip(),
             slow: self.m.slow(),
+            returns: std::mem::take(&mut self.returns),
+            inside: self.inside.iter().map(|&(k, _)| k).collect(),
         };
         let next = (self.each)(&out);
         *self.picture = out.picture;
@@ -387,6 +439,19 @@ impl Host<'_, '_> {
 
 impl Bus for Host<'_, '_> {
     fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let entered = self.entered.take();
+        // Running at depth `d`, everything deeper has returned; a function just entered at `d`
+        // follows the return of whatever ran at `d` too.
+        let running = r.depth - entered.is_some() as u32;
+        while let Some(&(k, depth)) = self.inside.last()
+            && depth > running
+        {
+            self.inside.pop();
+            self.returns.push(k);
+        }
+        if let Some(Some(k)) = entered {
+            self.inside.push((k, r.depth));
+        }
         while r.cycles() >= self.m.frame_end() {
             self.end_frame(r)?;
         }
@@ -408,6 +473,10 @@ impl Bus for Host<'_, '_> {
         self.m.call_outside(a, r, img)
     }
     fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
+        if !self.watched.is_empty() {
+            self.entered
+                .set(Some(self.watched.contains(&k).then_some(k)));
+        }
         self.seam.get(k)
     }
     fn rb(&mut self, a: u32) -> u8 {
