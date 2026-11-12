@@ -47,6 +47,37 @@ The judge is built optimised: unoptimised, `view_tiles` (368 tile blits a state)
 translated states, past the 120 s a run, where the original alone took 5 s; optimised the whole judging
 takes about 25 s and the run about 1 minute warm. Guarded by `tools/test_translator_whole.py` (full).
 
+## Stage 3: the routines on the machine (T27, 2026-11-12)
+
+**The reading:** `translator_trial.py --whole --machine --cases 2000` judges the same 100 routines with
+the translated tree running on `pcode-machine` (`fd-judge --translated --machine`,
+`judge::translated::machine`) instead of the judge's copy of the oracle's hardware mode: blits,
+DMACONR's busy bit, the beam and every custom register read come from the machine's models.
+**88 of 100 pass**; nothing stops untranslated, unsupported or writing into code. The owner closed T27
+on it with the 12 others named (2026-11-12). About 1 minute warm.
+
+How a state is laid on the machine: chip RAM, slow RAM and the custom registers are the machine's;
+every other address (the rig's stack, chip RAM's mirrors, memory an A500 lacks) is the oracle's flat
+16 MB, because generators give random pointers the original follows there; the CIAs' `$BFxxxx` read
+the case's bytes or 0, as on the oracle; the case's custom register reads are answered by a device on
+exactly those registers; the beam starts on the case's line; DMACON is DMAEN and BLTEN only.
+
+**The 12 that differ** are the oracle's hardware mode, not the machine, each pinned with its evidence
+in `tools/test_translator_whole.py` (`MACHINE_PINNED`, full):
+
+- **Beam, 8:** `game_frame`, `char_object_cells`, `h0_26ec`, `h0_3adc`, `char_hit_check`,
+  `char_update`, `char_step`, `h0_3ea8`. The oracle steps VHPOSR's byte by one a read; the machine
+  reads it from counted cycles. Each but `game_frame` waits for four line changes
+  (`move.b $dff006,d1; cmp.b $dff006,d1; beq`): from line b the oracle reads b to b+7 and leaves
+  d1 = b+6, the machine waits a real line each time and leaves b+3 (`h0_3adc` from line $01: $07
+  against $04). `game_frame` stores VHPOSR in `beam_sample_unread` (`h0+$8dfa`), $0304 against $3e86.
+  With an oracle-style beam in the judge all 8 pass (measured, not kept). The case gives only the
+  first read (`Setup::beam`), which the machine gets.
+- **Blit, 4:** `h0_a06`, `h0_ce4`, `h0_21c0`, `h0_29ca`. A generated blit runs past the top of chip
+  RAM; the oracle's writes on at `$08xxxx`, the machine's wraps to `$00xxxx` as a 512 KB A500's does
+  (`h0_a06` case 71: the same 23 bytes at `$080004..$0805c4` and `$000004..$0005c4`). The game's own
+  blits never cross the top.
+
 ## Writes into code (T15, 2026-11-11)
 
 Translated code cannot follow a write into its own instructions, so a store onto a translated
