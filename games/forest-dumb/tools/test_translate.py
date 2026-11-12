@@ -30,10 +30,22 @@ shutil.copy(sys.argv[1], sys.argv[sys.argv.index('--out') + 1] + '/pcode.json')
 print('{"instructions":11}')
 '''
 
-# Records the tree it was handed, as cargo would build it in.
+# Records the tree it was handed, as cargo would build it in. With FAKE_BUILD_ERROR set to a routine's
+# function name, fails as rustc --message-format short would, on the line after that function's head
+# in whichever part of the folder tree holds it.
 BUILD = '''
 import os, sys
-open(os.environ['FAKE_BUILT'], 'w').write(os.environ['FD_TRANSLATED'])
+tree = os.environ['FD_TRANSLATED']
+open(os.environ['FAKE_BUILT'], 'w').write(tree)
+fn = os.environ.get('FAKE_BUILD_ERROR')
+if fn:
+    for part in sorted(os.listdir(tree)):
+        lines = open(os.path.join(tree, part)).read().splitlines()
+        for i, l in enumerate(lines, 1):
+            if l.startswith(f'pub fn {fn}('):
+                print(f'{tree}/{part}:{i + 1}:5: error[E0425]: cannot find value `x`', file=sys.stderr)
+                sys.exit(101)
+    sys.exit('no such function')
 '''
 
 # Answers from FAKE_ANSWERS by mode and routine; each call is appended to FAKE_CALLS.
@@ -127,6 +139,7 @@ class Translate(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         os.environ.pop('FAKE_EXPORT_FAIL', None)
+        os.environ.pop('FAKE_BUILD_ERROR', None)
         self.paths = t.Paths(translator=os.path.join(d, 'translator'), out=os.path.join(d, 'translate'),
                              program=os.path.join(d, 'program'), inventory=os.path.join(d, 'inventory.toml'),
                              symbols=os.path.join(d, 'symbols.toml'), plans=os.path.join(d, 'plans'),
@@ -331,6 +344,12 @@ class Translate(unittest.TestCase):
         self.assertIn('export:', err)
         self.assertIn('no JDK', err)
         self.assertFalse(os.path.exists(self.paths.stamp))
+
+    def test_a_compile_error_in_the_folder_tree_names_its_routine(self):
+        os.environ['FAKE_BUILD_ERROR'] = 'h0_20'
+        code, lines, err = self.run_cmd('h0+$0')
+        self.assertEqual((code, lines), (1, []))
+        self.assertIn('does not compile, in h0+$20:', err)
 
     # --- usage ---
 
