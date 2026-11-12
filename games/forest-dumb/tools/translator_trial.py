@@ -41,15 +41,12 @@ run has judge_run's JUDGE_SECONDS; past it the routine fails with first stop `ti
 The run holds judge_run's build/translate/judge.lock from start to end, taken without waiting: the
 judge binary is shared with every tool building fd-judge, and build/translator/ with any other trial run.
 
-Muse's column is `result` from T40's build/translate/batch.json, in this checkout or else the main
-checkout's (where the batch ran), `none` without it.
-
 Test only: FD_TRIAL_EXPORT, FD_TRIAL_BUILD and FD_TRIAL_JUDGE each replace one step's command with
 the one they hold (split as a shell would); the build stub is given FD_TRANSLATED, the export stub
 `--out <dir>`, the judge stub the judge's own arguments. Standard library only, for `python3 -I`.
 """
 import argparse, concurrent.futures as cf, fcntl, json, os, re, shlex, subprocess, sys, time, tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -84,20 +81,6 @@ class Paths:
     inventory: str = jr.INVENTORY
     hints: str = os.path.join(GAME, 're', 'translator-hints.toml')
     symbols: str = jr.SYMBOLS
-    batches: list = field(default_factory=lambda: [os.path.join(d, 'batch.json') for d in batch_dirs()])
-
-
-def batch_dirs():
-    """Where T40's batch.json is looked for: this checkout's build/translate, then the main checkout's."""
-    dirs = [jr.JUDGE_DIR]
-    try:
-        r = subprocess.run(['git', '-C', HERE, 'rev-parse', '--path-format=absolute', '--git-common-dir'],
-                           capture_output=True, text=True, timeout=30)
-        if r.returncode == 0:
-            dirs.append(os.path.join(os.path.dirname(r.stdout.strip()), 'games', 'forest-dumb', 'build', 'translate'))
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return dirs
 
 
 def command(var, default):
@@ -109,7 +92,7 @@ def command(var, default):
 
 def entries(path):
     """The inventory's routines in address order: dicts with label, name, gen (None for sound),
-    port_task, split_at (labels). Copied from translate_batch.py (T17), which T18 deletes."""
+    port_task, split_at (labels)."""
     with open(path, 'rb') as f:
         inv = tomllib.load(f)
     out = []
@@ -138,19 +121,6 @@ def routines(inventory, only=None):
             raise Usage(f"not in {inventory}: {', '.join(missing)}")
         rows = [r for r in rows if r['name'] in only or r['label'] in only]
     return rows
-
-
-def muse_results(batches):
-    """label -> Muse's result from the first batch.json found, or {} with none."""
-    for p in batches:
-        try:
-            with open(p, encoding='utf-8') as f:
-                return {k: r.get('result', 'none') for k, r in json.load(f).get('rows', {}).items()}
-        except FileNotFoundError:
-            continue
-        except (OSError, ValueError) as e:
-            raise StepFailed(f'muse: {p} is unreadable: {e}')
-    return {}
 
 
 def judge_bin(release):
@@ -302,9 +272,14 @@ def build(tree, release=False):
     errs = [l for l in p.stderr.splitlines() if re.search(r'\berror\b', l)]
     first = errs[0] if errs else (p.stderr.strip().splitlines() or ['(no output)'])[-1]
     name = os.path.basename(tree)
-    # rustc names fd-conform's build.rs copy (OUT_DIR/tree.rs, line for line the same), not `tree`.
-    m = re.search(r'(?:^|[/\\])(?:tree\.rs|' + re.escape(name) + r'):(\d+):\d+', first)
-    where = routine_at_line(tree, int(m.group(1))) if m else None
+    if os.path.isdir(tree):
+        # A directory tree is compiled where it is (build.rs's `#[path]`): rustc names the part.
+        m = re.search(r'(?:^|[/\\])((?:mod|p\d+)\.rs):(\d+):\d+', first)
+        where = routine_at_line(os.path.join(tree, m.group(1)), int(m.group(2))) if m else None
+    else:
+        # rustc names fd-conform's build.rs copy (OUT_DIR/tree.rs, line for line the same), not `tree`.
+        m = re.search(r'(?:^|[/\\])(?:tree\.rs|' + re.escape(name) + r'):(\d+):\d+', first)
+        where = routine_at_line(tree, int(m.group(1))) if m else None
     raise StepFailed(f"build: the generated {name} does not compile, in "
                      f"{where or 'no generated routine'}: {first}")
 
@@ -398,19 +373,19 @@ def cell(s):
 
 def table(rows, s, cases, whole=None):
     lines = ['| Routine | Subsystem | Instructions | Without hints | First difference or stop | Untranslated '
-             '| Write into code | Self-modifying | Unsupported | With hints | Muse |',
-             '|---|---|---|---|---|---|---|---|---|---|---|']
+             '| Write into code | Self-modifying | Unsupported | With hints |',
+             '|---|---|---|---|---|---|---|---|---|---|']
     for x in rows:
         name = f" `{x['name']}`" if x['name'] != x['routine'] else ''
         if x['unjudgeable']:
             v = f"unjudgeable: {x['unjudgeable']}"
             lines.append(f"| `{x['routine']}`{name} | {x['subsystem'] or ''} | {x['instructions'] or ''} | {cell(v)} "
-                         f"|  |  |  |  |  | {cell(v)} | {x['muse']} |")
+                         f"|  |  |  |  |  | {cell(v)} |")
             continue
         p, h = x['plain'], x['hints']
         lines.append(f"| `{x['routine']}`{name} | {x['subsystem'] or ''} | {x['instructions'] or ''} | {p['verdict']} "
                      f"| {cell(p['first'])} | {p['untranslated']} | {p['write_into_code']} | {p.get('self_modifying', 0)} | {p['unsupported']} "
-                     f"| {h['verdict']} | {x['muse']} |")
+                     f"| {h['verdict']} |")
     if whole is None:
         met = 'met' if s['judgeable'] and s['pass_pct'] >= GATE_PCT else 'not met'
         lines += ['', f"Gate: {s['pass']} of {s['judgeable']} judgeable routines pass with no hand edit "
@@ -503,11 +478,10 @@ def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None,
             results[kind] = judge_all(judged, cases, release=whole)
             log(f'judge {kind}: {round(time.time() - t)} s')
 
-        muse = muse_results(paths.batches)
         rows = [{'routine': r['label'], 'name': r['name'], 'subsystem': r['subsystem'],
                  'instructions': r['instructions'], 'gen': r['gen'], 'unjudgeable': reasons[r['label']],
-                 'plain': results['plain'].get(r['label']), 'hints': results['hints'].get(r['label']),
-                 'muse': muse.get(r['label'], 'none')} for r in rows_in]
+                 'plain': results['plain'].get(r['label']), 'hints': results['hints'].get(r['label'])}
+                for r in rows_in]
         s = summary(rows)
         w = None
         if whole:

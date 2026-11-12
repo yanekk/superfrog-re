@@ -398,10 +398,11 @@ workspace = "engine"
 # Translator T04: fd-judge built with the split fixture as FD_TRANSLATED, about 3 s warm. Full: it
 # rebuilds fd-conform twice (with the fixture, then without for the next test), and smoke is over budget.
 "tools/test_pcode_rust_build.py" = "full"
-# Model calls stubbed, no network. The second builds canned ports into fd-judge: about 8 s warm.
+# Translator T18: the one command with stub export, build and judge, the real translator: about 2 s.
 "tools/test_translate.py" = "smoke"
-"tools/test_translate_batch.py" = "smoke"
-"tools/test_translate_judge.py" = "smoke"
+# Translator T18: char_sprite_position on the real program (Ghidra, optimised fd-judge), twice, the
+# second warm under 2 minutes; needs Ghidra and the disks.
+"tools/test_translate_game.py" = "full"
 # Translator T15: h0_6852 on the real export, translator and judge, its self-modifying states left
 # out: about 20 s (Ghidra, a fd-judge build).
 "tools/test_code_write_rule.py" = "full"
@@ -482,8 +483,8 @@ name = "entering level 1 on the engine"
 covers = ["crates/fd-conform/tests/level_entry.rs"]
 
 [[area]]
-name = "translating a routine through Muse, judged on the original"
-covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py", "tools/test_translate_judge.py"]
+name = "translating a routine with the translator, judged on the original"
+covers = ["crates/fd-conform/tests/judge.rs", "tools/test_translate.py"]
 
 [[area]]
 name = "having Muse write a generator, judged by its coverage on the original"

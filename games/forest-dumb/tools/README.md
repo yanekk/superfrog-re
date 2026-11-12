@@ -9,13 +9,38 @@ ports, packs, pictures) stays under `games/forest-dumb/build/` (git-ignored) and
 writes `build/files/disk1/FOREST_DUMB_FOREVER` and the rest of `build/files/` (disk location:
 `docs/01-disk-location.md`).
 
+## Translate a routine first: translate.py (stdlib)
+
+The one command for turning the original's code into Rust (translator DESIGN §2.12): name a routine or
+a task, get the translated Rust and one judge line. No model, no hand edit.
+```
+python3 -I games/forest-dumb/tools/translate.py 'h0+$5462'            # or a name: char_sprite_position
+python3 -I games/forest-dumb/tools/translate.py --task T08            # a task's routines, one line each
+python3 -I games/forest-dumb/tools/translate.py <routine> [--gen <generator>] [--cases 2000] [--fresh]
+python3 -I games/forest-dumb/tools/translate.py --build               # the whole tree only, no judging
+```
+```
+{"routine":"h0+$5462","name":"char_sprite_position","result":"pass","first":"","states":2000,
+ "rust":"games/forest-dumb/build/translate/h0-5462/translated.rs"}
+```
+It exports the whole program (Ghidra, `pcode_export.py`) and translates it (`pcode_rust.py`) into
+`build/translator/tree/` once, kept while the program's SHA-1 and the translator's sources are unchanged
+(`--fresh` redoes it); builds `fd-judge` optimised with the tree in it; judges the routine on its
+generator's states against the original. `rust` is the routine's generated function and every function
+it calls, routine first, for reading. Results: `pass`; `fail` (`first` is the first difference); `stop`
+(the translation stopped on some state: untranslated, a write into code, unsupported; `first` names it);
+`no-gen` (no generator registered: write one, `generate.py`); `no-oracle` (the original never returns, or
+blits lines). The generator is `--gen`, else the one registered under the routine's name or address.
+`--task` takes the rows of `re/translate.toml` whose `port_task` or `gen_task` is the task, else the
+`hN+$off` and backticked symbols of its task doc's `## Routines` section (or `--task path/to/doc.md`).
+Needs the extracted program and Ghidra the first time; about a minute warm. Exit 0 when every routine
+passes, 1 otherwise (a failed step named on stderr), 2 on usage. Holds `build/translate/judge.lock`.
+
 ## Model services
 
 generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
 haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no call answered: result
-`no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). translate and
-translate_batch still call Muse, a paid model, with their own key and dollar cap (their docstrings);
-T18 of `plans/forest-dumb-translator/` replaces them. All need the listing
+`no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). Both need the listing
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line
 per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason on
 stderr). Model calls log to `<out>/calls.jsonl`, a line a call; generate and reshape log each judged
@@ -27,16 +52,6 @@ answer to `<out>/tries.jsonl`. Procedure, results table and when to translate by
 `model.transcript(messages)` folds earlier tries into one prompt, since `claude -p` keeps no
 conversation. `judge_run` holds the routine's listing (`flow_text`), the judge lock
 (`build/translate/judge.lock`) and `fd-judge`'s build and run, shared by every tool here.
-
-### translate.py (stdlib)
-One routine to a literal Rust port by Muse, judged by `fd-judge` on its generator's 2 000 states.
-```
-python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen <generator> [--tries 3] [--max-usd 0.10] [--out DIR]
-```
-Routine is `hN+$off` or a name from `re/symbols.toml`; `--gen` is required (registered in
-`fd-conform/src/gen/`). Default out `build/translate/`; port at `<out>/h0-5462/port.rs`. Results:
-pass, fail, too-big (over 180 instructions; see call_tree `split_at`), no-oracle, no-key. A split callee
-with no passing port yet is a usage error.
 
 ### generate.py (stdlib)
 Haiku writes one routine's test-state generator, judged by branch coverage on the original.
@@ -58,14 +73,6 @@ python3 -I games/forest-dumb/tools/reshape.py --opus-cost [--conversations DIR]
 the unit's literal port in `build/translate`. Default out `build/reshape/`; it works in a scratch copy
 there and never changes committed `fd-core`. `quality` lists what the builder still has to tidy.
 `--all`'s units share one `--max-calls`. `--opus-cost` makes no model call.
-
-### translate_batch.py (stdlib)
-translate.py over every routine of `re/translate.toml`, one unattended run.
-```
-python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5 [--parallel 8] [--resume] [--out DIR]
-```
-`--max-usd` is required and caps the whole run. Writes `<out>/batch.json` and `<out>/table.md`, prints a
-one-line summary. `--resume` keeps finished rows. Exit 1 when any routine is `not-attempted` or `error`.
 
 ## Listing and inventory
 
@@ -188,8 +195,7 @@ python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,… | --
 (instructions, unsupported, unresolved computed jumps, library calls `jsr -n(An)` the machine answers,
 hints). The gate is met with nothing unsupported or unresolved, no hint and every judgeable routine
 passing; `test_translator_whole.py` (full) runs it. About 1 minute warm.
-Writes `build/translator/trial.json` and `table.md` (with Muse's `batch.json` results beside, from this
-checkout or the main one), prints the gate summary line. A state on which the original itself
+Writes `build/translator/trial.json` and `table.md`, prints the gate summary line. A state on which the original itself
 changes a translated instruction's byte is not judged: the table's `Self-modifying` column counts them
 and the summary's `self_modifying` the routines that have any (translator DESIGN §2.5). Holds `build/translate/judge.lock` for the run and
 refuses a second. Exit 0 when the table was written, 1 when a step failed (named), 2 on usage.

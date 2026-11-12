@@ -1,315 +1,418 @@
 #!/usr/bin/env python3
-"""Translate one routine of the main program into a literal Rust port through Muse, judged on the
-routine oracle (plans/forest-dumb-level-1 T33, DESIGN §4.3, §5.2, §5.3; docs/11-translation.md).
+"""The translator's one command: a routine's, or a task's, translation and its judge result
+(translator DESIGN §2.12, §2.13; T18). It replaces Muse's translate.py under the same name, and the
+trial's two steps (`pcode_export.py`, then `translator_trial.py --skip-export`).
 
-    python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen <name> [--tries 3] [--max-usd 0.10] [--out build/translate]
+    python3 -I games/forest-dumb/tools/translate.py 'hN+$off' | <symbol> | --task T{nn} [--gen <generator>] [--cases 2000] [--fresh]
+    python3 -I games/forest-dumb/tools/translate.py --build
 
-Prints one JSON line and nothing else on stdout:
+Exports the whole program (`pcode_export.py`) and translates it (`pcode_rust.py`, no hints: a hint is
+a hand edit, DESIGN §2.2) into build/translator/tree/, once: the tree is kept while the program's SHA-1
+and the translator's own version (a hash of its sources and the export's seed files) are those of
+build/translator/translate-stamp.json; `--fresh` redoes both. Then builds fd-judge optimised with the
+tree in it (FD_TRANSLATED), finds the routine's generator (`--gen`, else the first `fd-judge
+--generators` registers for its address, by name, `hN_off` or a symbol of re/symbols.toml), surveys
+the original alone and judges the translated routine on `--cases` states. Writes
+build/translate/<hN-off>/translated.rs, the routine's generated function and every function it calls,
+routine first, then callees in the order first called (for reading: it is not compiled on its own),
+and prints one line a routine:
 
-    {"routine":"h0+$5462","result":"pass|fail|too-big|no-oracle|no-key","tries":n,"tokens_in":n,
-     "tokens_out":n,"usd":x,"paths":n,"port":"<out>/h0-5462/port.rs" or null}
+    {"routine":"h0+$5462","name":"char_sprite_position","result":"pass|fail|no-gen|no-oracle|stop",
+     "first":"...","states":2000,"rust":"games/forest-dumb/build/translate/h0-5462/translated.rs"}
 
-Exit 0 on `pass`, 1 on any other result, 2 on a usage error (an unknown routine, a split callee
-with no passing port yet, a missing listing), with the reason on stderr.
+`fail`: the translation differs from the original, `first` the first difference. `stop`: on some
+state the translation stopped (untranslated, a write into code, an unsupported instruction, a cap),
+`first` the first stop. `no-gen`: no generator registered for the routine. `no-oracle`: the original
+returned on no state, or drew with a blit the rig does not model. `states` is how many were judged.
 
-Each answer is judged by `fd-judge` (fd-conform) over the generator's 2 000 states; a wrong one gets
-the judge's first failing case (or the compiler's errors) back, up to --tries answers. A 429, 502 or
-503 is waited out and is not a try; an answer with no code is. No call starts whose worst case (its
-prompt and `max_tokens` of answer at the model's prices) would take the spend past --max-usd.
-Every call appends a line to <out>/calls.jsonl. The listing, prompts, answers and ports derive from
-the game's code: they stay under build/ and are never committed.
+`--task T{nn}` takes the routines whose `port_task` or `gen_task` is T{nn} in re/translate.toml, else
+the routines its task doc names (`hN+$off`, or a backticked symbol of re/symbols.toml, from its
+`## Routines` section if it has one, else the whole doc): the doc in plans/*/tasks/T{nn}-*.md, the
+current branch's plan first when several plans have one; `--task <path.md>` names the doc. One line a
+routine. `--build` stops after the tree: what fd-translated includes; it prints the translation's
+stats line.
 
-The routine is quoted, since `$5` is a shell parameter. It is `hN+$off` or a name from
-re/symbols.toml. Python's standard library only, so it runs under `python3 -I`.
+Exit 0 when every routine passes (or `--build` built), 1 otherwise or when a step failed (named on
+stderr), 2 on usage. Holds judge_run's build/translate/judge.lock from the build to the end, waiting for
+it: the fd-judge binary is shared with every tool that builds it.
+
+Test only: FD_TRIAL_EXPORT, FD_TRIAL_BUILD and FD_TRIAL_JUDGE replace the export, the cargo build and
+fd-judge, as for translator_trial.py. Standard library only, for `python3 -I`.
 """
-import argparse, bisect, fcntl, json, os, re, subprocess, sys, time, tomllib, urllib.error, urllib.request
+import argparse, fcntl, glob, hashlib, json, os, re, subprocess, sys, tomllib
+from dataclasses import dataclass
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import judge_run  # noqa: E402
-from judge_run import (  # noqa: E402  moved there by T17
-    GAME, ENGINE, LISTING, SYMBOLS, INVENTORY, CASES, JUDGE_SECONDS, Usage, symbols, resolve, label, slug,
-    load_listing, _CC, BRANCH_RE, flow_text, callee_fn, judge_bin, run_judge, judge_answer, survey, compose,
-    read_result)
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import judge_run as jr  # noqa: E402
+import translator_trial as trial  # noqa: E402
 
-OUT = judge_run.JUDGE_DIR
-
-MODEL = 'meta/muse-spark-1.3-contributor'
-MAX_TOKENS = 96_000
-# The spike's measured line (README, rounds 2 and 3): 24 of 24 passed up to 183 instructions, 2 of 6
-# at 298 to 461. Larger routines are split at their callees first (T34).
-MAX_INSTRUCTIONS = 180
-URL = 'https://openrouter.ai/api/v1'
-# Used when OpenRouter's model list cannot be read: above what the spike paid ($0.20 a million out).
-FALLBACK_PRICE = (0.5e-6, 1.0e-6)
-# A busy provider or a rate limit is waited out, this long before each retry, then counts as a try.
-WAITS = (20, 40, 80, 160, 320)
-sleep = time.sleep  # a parameter of the module, so tests wait no time
-
-SYSTEM = """You translate one routine of an Amiga game from its 68000 disassembly into Rust, exactly.
-
-Write one Rust file. It is included in a module that already has `use super::*;`, which gives you:
-
-    pub struct Cpu { pub d: [u32; 8], pub a: [u32; 8], pub mem: Mem }  // a[7] is the stack pointer
-    impl Mem {
-        pub fn rb(&self, addr: u32) -> u8;   pub fn rw(&self, addr: u32) -> u16;   pub fn rl(&self, addr: u32) -> u32;
-        pub fn wb(&mut self, addr: u32, v: u8); pub fn ww(&mut self, addr: u32, v: u16); pub fn wl(&mut self, addr: u32, v: u32);
-    }   // big-endian, addresses wrap to 24 bits, every address is readable
-    pub fn h(hunk: usize, off: u32) -> u32;  // the address of hN+$off in the listing
-
-The file must define `pub fn port(cpu: &mut Cpu)`: entered with the registers and memory the routine
-is called with, it must leave d0-d7, a0-a6 and every memory byte exactly as the original does on return.
-Condition codes are not compared. Bytes the routine pushes on its own stack are not compared.
-
-How the judge checks: it runs the original routine on a 68000 emulator and your port from the same
-generated states (registers random, game variables set to many values), about 2000 of them.
-
-The listing: `0000abcd  <bytes>  <instruction>` lines, labels like `h0+$2014:`. An absolute operand
-hN+$x is the address h(N, 0x x); a listing address 0000abcd is h0+$abcd only inside hunk 0.
-Routines it calls (bsr/jsr) are in the listing too and must be translated as part of it. Constant
-tables are in memory; read them through cpu.mem. Data may sit between instructions and be decoded as
-nonsense instructions; a label the code writes to with move is a variable.
-
-Mind the 68000's semantics: .b/.w operations on a data register change only its low byte/word;
-operations on an address register are 32-bit (a .w source is sign-extended); mulu.w multiplies the
-low words; lsr/lsl/asr/rol by a register count use it modulo 64; dbra counts the low word down to -1.
-Use wrapping arithmetic: the build panics on overflow.
-
-The hardware: $DFF000-$DFF1FF are the custom chips' registers and $BFxxxx the CIAs. Reach them
-through cpu.mem like any other address, with the access size the instruction uses. The judge
-compares every custom-chip write, in order, with the original's: a long write is two word writes,
-high word first; a byte write reaches the register as that byte on both halves. A write to BLTSIZE
-($DFF058) runs the blit at once; cpu.mem does it for you from the blitter registers written before.
-A read of $DFF006 or $DFF007 (VHPOSR) returns a counter that steps by one on every byte read, so a
-raster wait ends; any other hardware read returns what the judge set for that state, often 0. Make
-the hardware reads and writes the original makes, in the same order and sizes: an instruction that
-reads and writes (and.b, or.b, bset on a register) is a read, then a write. Labels named in the
-listing (mt_counter and the like) are listed with their addresses after it.
-
-Answer with the whole file in one ```rust block and nothing else after it."""
+GAME = jr.GAME
+REPO = os.path.dirname(os.path.dirname(GAME))
+PROGRAM = os.path.join(GAME, 'build', 'files', 'disk1', 'FOREST_DUMB_FOREVER')
+# What the tree is made from besides the program: a change to any of these is a new translator.
+SOURCES = ('tools/pcode_export.py', 'tools/ghidra/ExportPcode.java', 'tools/ghidra/SetFlowOverride.java',
+           'tools/pcode_rust.py', 'tools/pcode_fix/*.py', 're/symbols.toml', 're/entries.toml')
+RESULTS = ('pass', 'fail', 'no-gen', 'no-oracle', 'stop')
+STOP_KEYS = ('untranslated', 'write_into_code', 'unsupported', 'stopped_hangs')
 
 
-
-# --- The routine and its listing ------------------------------------------------------------------
-
-def split_at(hunk, off):
-    """The callees T34's inventory splits this routine at, as (hunk, offset); none without one."""
-    if not os.path.exists(INVENTORY):
-        return []
-    with open(INVENTORY, 'rb') as f:
-        inv = tomllib.load(f)
-    syms = symbols()
-    for entries in inv.values():
-        if not isinstance(entries, list):
-            continue
-        for e in entries:
-            if isinstance(e, dict) and e.get('hunk') == hunk and e.get('offset') == off:
-                return [resolve(c, syms) for c in e.get('split_at', [])]
-    return []
+class Usage(Exception):
+    """exit 2"""
 
 
-def prompt(hunk, off, text, n, splits, syms=None):
-    name = {(s['hunk'], s['offset']): s['name'] for s in (syms if syms is not None else symbols())}.get((hunk, off))
-    head = f"Translate the routine at {label(hunk, off)}{f' ({name})' if name else ''} ({n} instructions with what it calls)."
-    if splits:
-        head += ('\n\nThese routines it calls are translated already and are not in the listing: '
-                 'where the original calls one (bsr or jsr), call its function with the same cpu, '
-                 'which leaves registers and memory as that routine does.\n' +
-                 '\n'.join(f'    {label(h, o)}: {callee_fn(h, o)}(cpu)' for h, o in splits))
-    return f'{head}\n\n```\n{text}\n```'
+@dataclass
+class Paths:
+    translator: str = os.path.join(GAME, 'build', 'translator')
+    out: str = jr.JUDGE_DIR
+    program: str = PROGRAM
+    inventory: str = jr.INVENTORY
+    symbols: str = jr.SYMBOLS
+    plans: str = os.path.join(REPO, 'plans')
+    game: str = GAME
+    # Paths in the result line are shown from here when inside it.
+    root: str = REPO
+
+    @property
+    def tree(self):
+        return os.path.join(self.translator, 'tree')
+
+    @property
+    def pcode(self):
+        return os.path.join(self.translator, 'pcode.json')
+
+    @property
+    def stamp(self):
+        return os.path.join(self.translator, 'translate-stamp.json')
 
 
-# --- The key, the model and its price -------------------------------------------------------------
+def sha1_file(path, h=None):
+    h = h or hashlib.sha1()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 16), b''):
+            h.update(chunk)
+    return h
 
-def find_key():
-    """-> (key or None, where it looked)."""
-    zshrc = os.path.join(os.path.expanduser('~'), '.zshrc')
-    looked = f'the environment variable OPENROUTER_API_KEY and an `export OPENROUTER_API_KEY=` line in {zshrc}'
-    if os.environ.get('OPENROUTER_API_KEY', '').strip():
-        return os.environ['OPENROUTER_API_KEY'].strip(), looked
+
+def tool_version(game):
+    """One hash over the translator's sources and the export's seeds, each with its path."""
+    h = hashlib.sha1()
+    for pat in SOURCES:
+        for p in sorted(glob.glob(os.path.join(game, pat))):
+            h.update(os.path.relpath(p, game).encode() + b'\0')
+            sha1_file(p, h)
+    return h.hexdigest()
+
+
+def stamp_of(paths):
+    if not os.path.exists(paths.program):
+        raise Usage(f'no program at {paths.program}: run `cargo run -p fd-tools -- extract` in '
+                    'games/forest-dumb/engine/ (disks: docs/01-disk-location.md)')
+    return {'program_sha1': sha1_file(paths.program).hexdigest(), 'tool': tool_version(paths.game)}
+
+
+def read_json(path):
     try:
-        with open(zshrc, encoding='utf-8', errors='replace') as f:
-            for l in f:
-                m = re.match(r'\s*export\s+OPENROUTER_API_KEY=["\']?([^"\'\s]+)', l)
-                if m:
-                    return m.group(1), looked
-    except OSError:
-        pass
-    return None, looked
+        with open(path, encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
 
 
-def price(key):
-    """(dollars per prompt token, per answer token) from OpenRouter's model list."""
+def ensure_tree(paths, fresh, log):
+    """Export and translate the whole program unless the stamp says the tree is current.
+    -> the translation's stats."""
+    want = stamp_of(paths)
+    have = read_json(paths.stamp)
+    if not fresh and have and have.get('stamp') == want and os.path.exists(os.path.join(paths.tree, 'mod.rs')):
+        log('tree: current, export and translation reused')
+        return have.get('stats', {})
+    os.makedirs(paths.translator, exist_ok=True)
+    # The stamp goes first: a run killed between export and translation leaves no stale claim.
+    if os.path.exists(paths.stamp):
+        os.remove(paths.stamp)
+    log(f'export: {trial.export(paths.translator)}')
+    stats = trial.translate_tree(paths.pcode, paths.tree)
+    log(f'translate: {json.dumps(stats)}')
+    trial.write(paths.stamp, json.dumps({'stamp': want, 'stats': stats}))
+    return stats
+
+
+def take_lock(lock_dir):
+    """judge_run's judge.lock, waited for: one fd-judge build at a time."""
+    os.makedirs(lock_dir, exist_ok=True)
+    f = open(os.path.join(lock_dir, 'judge.lock'), 'w')
+    fcntl.flock(f, fcntl.LOCK_EX)
+    return f
+
+
+# --- Which routines ---------------------------------------------------------------------------------
+
+def load_symbols(path):
+    with open(path, 'rb') as f:
+        return [s for s in tomllib.load(f).get('sym', []) if s.get('exe', 'forest_dumb_forever') == 'forest_dumb_forever']
+
+
+def name_of(hunk, off, syms):
+    for s in syms:
+        if (s['hunk'], s['offset']) == (hunk, off):
+            return s['name']
+    return f'h{hunk}_{off:x}'
+
+
+def resolve(arg, syms):
     try:
-        req = urllib.request.Request(f'{URL}/models', headers={'Authorization': f'Bearer {key}'})
-        with urllib.request.urlopen(req, timeout=60) as r:
-            for m in json.load(r)['data']:
-                if m['id'] == MODEL:
-                    p = m['pricing']
-                    return float(p['prompt']), float(p['completion'])
-    except (OSError, ValueError, KeyError):
-        pass
-    return FALLBACK_PRICE
+        return jr.resolve(arg, syms)
+    except jr.Usage as e:
+        raise Usage(str(e))
 
 
-class CallError(Exception):
-    pass
+def current_plan():
+    """The plan of this checkout's pir branch (`pir/{plan}` or `pir/{plan}-T{nn}`), or None."""
+    try:
+        r = subprocess.run(['git', '-C', HERE, 'branch', '--show-current'], capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    m = re.fullmatch(r'pir/(.+?)(?:-T\d+)?', r.stdout.strip())
+    return m.group(1) if m else None
 
 
-def call_model(messages, key):
-    """One answer: (text, usage) with usage's in, out, reasoning and cost. A 429, 502 or 503 is
-    waited out (WAITS) and not returned; any other failure raises CallError."""
-    body = {'model': MODEL, 'max_tokens': MAX_TOKENS, 'usage': {'include': True}, 'messages': messages}
-    d = None
-    for wait in WAITS + (None,):
-        req = urllib.request.Request(f'{URL}/chat/completions', json.dumps(body).encode(),
-                                     {'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'})
-        try:
-            with urllib.request.urlopen(req, timeout=1200) as r:
-                d = json.load(r)
-        except urllib.error.HTTPError as e:
-            msg = e.read().decode(errors='replace')[:400]
-            if e.code in (429, 502, 503) and wait is not None:
-                sleep(wait)
-                continue
-            raise CallError(f'HTTP {e.code}: {msg}')
-        except (OSError, ValueError) as e:
-            raise CallError(str(e)[:400])
-        if 'choices' in d or wait is None:
-            break
-        sleep(wait)
-    if not d or 'choices' not in d:
-        raise CallError(json.dumps(d)[:400])
-    text = d['choices'][0]['message'].get('content') or ''
-    u = d.get('usage') or {}
-    return text, {'in': u.get('prompt_tokens', 0), 'out': u.get('completion_tokens', 0),
-                  'reasoning': (u.get('completion_tokens_details') or {}).get('reasoning_tokens', 0),
-                  'cost': u.get('cost', 0.0) or 0.0,
-                  'finish': d['choices'][0].get('finish_reason')}
+def task_doc(task, plans_dir):
+    if task.endswith('.md'):
+        if not os.path.exists(task):
+            raise Usage(f'no task doc at {task}')
+        return task
+    hits = sorted(glob.glob(os.path.join(plans_dir, '*', 'tasks', f'{task}-*.md')))
+    if len(hits) > 1:
+        plan = current_plan()
+        mine = [h for h in hits if plan and os.path.basename(os.path.dirname(os.path.dirname(h))) == plan]
+        if len(mine) == 1:
+            return mine[0]
+        raise Usage(f'{task} is in no re/translate.toml row and several plans have its doc; name one: '
+                    + ', '.join(os.path.relpath(h, os.path.dirname(plans_dir)) for h in hits))
+    if not hits:
+        raise Usage(f'{task}: no routine in re/translate.toml and no task doc plans/*/tasks/{task}-*.md')
+    return hits[0]
 
 
+def doc_routines(path, syms):
+    with open(path, encoding='utf-8') as f:
+        text = f.read()
+    m = re.search(r'(?ms)^## Routines\s*\n(.*?)(?=^## |\Z)', text)
+    text = m.group(1) if m else text
+    names = {s['name'] for s in syms}
+    out = []
+    for m in re.finditer(r'h[0-4]\+\$[0-9a-fA-F]+|`([A-Za-z_][A-Za-z0-9_]*)`', text):
+        if m.group(1) is None:
+            out.append(resolve(m.group(0), syms))
+        elif m.group(1) in names:
+            out.append(resolve(m.group(1), syms))
+    return out
 
-# --- The service ----------------------------------------------------------------------------------
 
-def translate(routine, gen, tries=3, max_usd=0.10, out=OUT):
-    """-> the result line as a dict. Raises Usage."""
-    hunk, off = resolve(routine)
-    out = os.path.abspath(out)
-    res = {'routine': label(hunk, off), 'result': None, 'tries': 0, 'tokens_in': 0, 'tokens_out': 0,
-           'usd': 0.0, 'paths': 0, 'port': None}
+def task_routines(task, paths, syms):
+    """The task's routines as (hunk, offset), in address order for the inventory, doc order else."""
+    if not re.fullmatch(r'T\d+', task) and not task.endswith('.md'):
+        raise Usage(f'--task takes T{{nn}} or a task doc path, not `{task}`')
+    with open(paths.inventory, 'rb') as f:
+        rows = tomllib.load(f).get('routine', [])
+    picked = sorted({(r['hunk'], r['offset']) for r in rows if task in (r.get('port_task'), r.get('gen_task'))})
+    if picked:
+        return picked
+    seen, out = set(), []
+    for k in doc_routines(task_doc(task, paths.plans), syms):
+        if k not in seen:
+            seen.add(k)
+            out.append(k)
+    if not out:
+        raise Usage(f'{task}: no routine in re/translate.toml or in its task doc')
+    return out
 
-    key, looked = find_key()
-    if not key:
-        print(f'translate: no OpenRouter key: looked in {looked}', file=sys.stderr)
-        return dict(res, result='no-key')
 
-    splits = split_at(hunk, off)
-    text, n = flow_text(hunk, off, splits)
-    if n > MAX_INSTRUCTIONS:
-        print(f'translate: {label(hunk, off)} is {n} instructions with its callees, over {MAX_INSTRUCTIONS}: '
-              'split it at its callees in re/translate.toml (`split_at`)', file=sys.stderr)
-        return dict(res, result='too-big')
-    d = os.path.join(out, slug(hunk, off))
-    # A split routine is judged with its callees' passing ports: missing ones stop it here.
-    compose(out, '', splits)
+def find_gen(hunk, off, names, syms):
+    """The generator registered for the routine at (hunk, off): its own name first, then the first
+    whose name is `hN_off` or a symbol at that address."""
+    own = name_of(hunk, off, syms)
+    if own in names:
+        return own
+    for n in names:
+        m = re.fullmatch(r'h([0-4])_([0-9a-f]+)', n)
+        if m and (int(m.group(1)), int(m.group(2), 16)) == (hunk, off):
+            return n
+        if any(s['name'] == n and (s['hunk'], s['offset']) == (hunk, off) for s in syms):
+            return n
+    return None
 
-    s = survey(hunk, off, gen, out)
-    res['paths'] = s['paths']
-    if s['passed'] == 0:
-        print(f"translate: the original returned on none of {s['cases']} states of `{gen}` "
-              f"({s['hangs']} hang(s), {s['faults']} fault(s)): nothing to judge a port against", file=sys.stderr)
-        return dict(res, result='no-oracle')
-    if s.get('unmodelled_blits', 0):
-        print(f"translate: on {s['unmodelled_blits']} of {s['passed']} states the original started a line or fill "
-              "blit, which the routine oracle does not model: a port agreeing there proves nothing", file=sys.stderr)
-        return dict(res, result='no-oracle')
 
+# --- The routine's Rust ---------------------------------------------------------------------------
+
+FN_RE = re.compile(r'^pub fn h(\d+)_([0-9a-f]+)\(', re.M)
+CALL_RE = re.compile(r'(?:super::p\d+::)?\bh(\d+)_([0-9a-f]+)\(r, bus, img\)')
+
+
+def tree_functions(tree):
+    """(hunk, off) -> the function's text, from its `pub fn` to the next, from every part of the tree.
+    The lint attribute above each function is dropped: noise when reading."""
+    fns = {}
+    for p in sorted(glob.glob(os.path.join(tree, '*.rs'))):
+        with open(p, encoding='utf-8') as f:
+            text = f.read()
+        found = list(FN_RE.finditer(text))
+        for i, m in enumerate(found):
+            end = found[i + 1].start() if i + 1 < len(found) else len(text)
+            body = re.sub(r'(?:\n#\[allow\([^\n]*\)\]\s*)+\Z', '\n', text[m.start():end])
+            fns[(int(m.group(1)), int(m.group(2), 16))] = body.rstrip() + '\n'
+    return fns
+
+
+def routine_rust(fns, hunk, off):
+    """The routine's function and its callees, depth first in call order, cross-part paths dropped.
+    None when the tree has no function at the routine."""
+    if (hunk, off) not in fns:
+        return None
+    order, seen = [], set()
+
+    def walk(k):
+        seen.add(k)
+        order.append(k)
+        for m in CALL_RE.finditer(fns[k]):
+            c = (int(m.group(1)), int(m.group(2), 16))
+            if c in fns and c not in seen:
+                walk(c)
+
+    walk((hunk, off))
+    return order, ''.join(re.sub(r'super::p\d+::', '', fns[k]) + '\n' for k in order)
+
+
+def write_rust(paths, fns, hunk, off, name):
+    got = routine_rust(fns, hunk, off)
+    if got is None:
+        return None
+    order, text = got
+    d = os.path.join(paths.out, jr.slug(hunk, off))
     os.makedirs(d, exist_ok=True)
-    for f in os.listdir(d):
-        if re.fullmatch(r'(answer\d+\.md|try\d+\.rs|judged\d+\.rs|port\.rs|result\.json|prompt\.md)', f):
-            os.remove(os.path.join(d, f))
-    user = prompt(hunk, off, text, n, splits)
-    with open(os.path.join(d, 'prompt.md'), 'w', encoding='utf-8') as f:
-        f.write(user)
-    per_in, per_out = price(key)
-    messages = [{'role': 'system', 'content': SYSTEM}]
-    log_path = os.path.join(out, 'calls.jsonl')
-
-    def log(rec):
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(rec) + '\n')
-
-    for n_try in range(1, tries + 1):
-        messages.append({'role': 'user', 'content': user})
-        # The worst case: the whole conversation at three characters a token, and a full answer.
-        worst = sum(len(m['content']) for m in messages) / 3 * per_in + MAX_TOKENS * per_out
-        if res['usd'] + worst > max_usd:
-            res['stopped'] = 'max-usd'
-            print(f"translate: stopped before try {n_try}: it could cost ${worst:.4f}, which would take "
-                  f"${res['usd']:.4f} past --max-usd {max_usd}", file=sys.stderr)
-            break
-        res['tries'] = n_try
-        t0 = time.time()
-        rec = {'time': time.strftime('%Y-%m-%dT%H:%M:%S'), 'routine': res['routine'], 'gen': gen, 'model': MODEL,
-               'try': n_try}
-        try:
-            answer, usage = call_model(messages, key)
-        except CallError as e:
-            # A lost try, as a broken answer is; the question stands for the next.
-            messages.pop()
-            log(dict(rec, outcome='error', error=str(e), secs=round(time.time() - t0)))
-            continue
-        messages.append({'role': 'assistant', 'content': answer})
-        res['tokens_in'] += usage['in']
-        res['tokens_out'] += usage['out']
-        res['usd'] += usage['cost']
-        rec.update(secs=round(time.time() - t0), tokens_in=usage['in'], tokens_out=usage['out'],
-                   reasoning=usage['reasoning'], usd=usage['cost'], finish=usage.get('finish'))
-        with open(os.path.join(d, f'answer{n_try}.md'), 'w', encoding='utf-8') as f:
-            f.write(answer)
-        blocks = re.findall(r'```rust\n(.*?)```', answer, re.S)
-        if not blocks:
-            log(dict(rec, outcome='no-code'))
-            user = 'Your answer had no ```rust block. Answer with the whole file in one ```rust block.'
-            continue
-        port = os.path.join(d, f'try{n_try}.rs')
-        with open(port, 'w', encoding='utf-8') as f:
-            f.write(blocks[-1])
-        judged = os.path.join(d, f'judged{n_try}.rs')
-        with open(judged, 'w', encoding='utf-8') as f:
-            f.write(compose(out, blocks[-1], splits))
-        j = judge_answer(judged, hunk, off, gen, out)
-        log(dict(rec, outcome=j['outcome'], failures=j.get('failures'), feedback=j.get('feedback', '')[:300]))
-        if j['outcome'] == 'pass':
-            final = os.path.join(d, 'port.rs')
-            with open(final, 'w', encoding='utf-8') as f:
-                f.write(blocks[-1])
-            res['result'], res['port'] = 'pass', os.path.relpath(final)
-            res['paths'] = j['paths']
-            break
-        user = j['feedback']
-    if res['result'] is None:
-        res['result'] = 'fail'
-    res['usd'] = round(res['usd'], 6)
-    with open(os.path.join(d, 'result.json'), 'w', encoding='utf-8') as f:
-        json.dump(dict(res, gen=gen, split_at=[label(h, o) for h, o in splits]), f)
-    return res
+    head = (f'// {jr.label(hunk, off)} `{name}` as the translator generated it, with its {len(order) - 1} '
+            f'callee(s), routine first.\n// Read-only: copied from build/translator/tree/ for reading, never '
+            f'compiled from here. Derived from the game\'s code: never commit it.\n\n')
+    path = os.path.join(d, 'translated.rs')
+    trial.write(path, head + text)
+    return path
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('routine', help="`hN+$off` (quoted) or a name from re/symbols.toml")
-    ap.add_argument('--gen', required=True, help='the generator registered in fd-conform/src/gen/')
-    ap.add_argument('--tries', type=int, default=3)
-    ap.add_argument('--max-usd', type=float, default=0.10)
-    ap.add_argument('--out', default=OUT)
-    a = ap.parse_args(argv)
+def shown(path, paths):
+    """The path as the command line shows it: from the repo root when inside it."""
+    rel = os.path.relpath(path, paths.root)
+    return path if rel.startswith('..') else rel
+
+
+# --- One routine --------------------------------------------------------------------------------------
+
+def one(paths, fns, hunk, off, gen, names, cases, syms):
+    lab, name = jr.label(hunk, off), name_of(hunk, off, syms)
+    rust = write_rust(paths, fns, hunk, off, name)
+    line = {'routine': lab, 'name': name, 'result': None, 'first': '', 'states': 0,
+            'rust': shown(rust, paths) if rust else None}
+    if rust is None:
+        line.update(result='stop', first=f'untranslated: {lab} is no routine of the tree')
+        return line
+    gen = gen or find_gen(hunk, off, names, syms)
+    if gen is None:
+        line.update(result='no-gen', first=f'no generator registered for {lab}: write one (tools/generate.py)')
+        return line
+    s = trial.judge(lab, gen, cases, '--survey', release=True)
+    if s.get('outcome') == 'usage':
+        if 'no generator' in s['why']:
+            line.update(result='no-gen', first=f'no generator `{gen}` registered')
+            return line
+        raise trial.StepFailed(f'survey {lab}: {s["why"]}')
+    if 'outcome' in s:
+        raise trial.StepFailed(f'survey {lab}: {s["why"]}')
+    if s['passed'] == 0:
+        line.update(result='no-oracle', first=f"the original returned on none of {s['cases']} states "
+                                               f"({s['hangs']} hang(s), {s['faults']} fault(s))")
+        return line
+    if s.get('unmodelled_blits', 0):
+        line.update(result='no-oracle', first=f"a line or fill blit on {s['unmodelled_blits']} of {s['passed']} states")
+        return line
+    j = trial.judge(lab, gen, cases, '--translated', release=True)
+    if j.get('outcome') == 'usage':
+        raise trial.StepFailed(f'judge {lab}: {j["why"]}')
+    if 'outcome' in j:
+        line.update(result='fail', first=j['why'])
+        return line
+    line['states'] = j.get('passed', 0) + j.get('failures', 0)
+    if j['pass']:
+        line['result'] = 'pass'
+    elif any(j.get(k, 0) for k in STOP_KEYS):
+        line.update(result='stop', first=j.get('first_stop') or j.get('first_failure', ''))
+    else:
+        line.update(result='fail', first=j.get('first_failure', ''))
+    return line
+
+
+def run(paths, targets, build_only, gen, cases, fresh, log, emit):
+    """targets: [(hunk, off)]. Emits one line a routine; -> exit code."""
+    lock = take_lock(paths.out)
     try:
-        res = translate(a.routine, a.gen, a.tries, a.max_usd, a.out)
+        stats = ensure_tree(paths, fresh, log)
+        if build_only:
+            emit({'tree': shown(paths.tree, paths), **stats})
+            return 0
+        trial.build(paths.tree, release=True)
+        syms = load_symbols(paths.symbols)
+        names = [] if gen else trial.generators(release=True)
+        fns = tree_functions(paths.tree)
+        ok = True
+        for hunk, off in targets:
+            line = one(paths, fns, hunk, off, gen, names, cases, syms)
+            ok &= line['result'] == 'pass'
+            emit(line)
+        return 0 if ok else 1
+    finally:
+        lock.close()
+
+
+def main(argv=None, paths=None):
+    paths = paths or Paths()
+    ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    ap.add_argument('routine', nargs='?', help="`hN+$off` (quoted) or a name from re/symbols.toml")
+    ap.add_argument('--task', help='T{nn}: its routines from re/translate.toml or its task doc')
+    ap.add_argument('--build', action='store_true', help='export and translate the whole program, no judging')
+    ap.add_argument('--gen', help='the generator to judge on (default: the one registered for the routine)')
+    ap.add_argument('--cases', type=int, default=jr.CASES)
+    ap.add_argument('--fresh', action='store_true', help='export and translate again, whatever the cache says')
+    try:
+        a = ap.parse_args(argv)
+    except SystemExit as e:
+        return 2 if e.code else 0
+    log = lambda m: print(f'translate: {m}', file=sys.stderr, flush=True)  # noqa: E731
+    emit = lambda d: print(json.dumps(d, separators=(',', ':')), flush=True)  # noqa: E731
+    try:
+        if sum(map(bool, (a.routine, a.task, a.build))) != 1:
+            raise Usage('name one of: a routine, --task T{nn}, --build')
+        if a.cases <= 0:
+            raise Usage('--cases takes a whole number above 0')
+        if a.build and a.gen:
+            raise Usage('--build judges nothing: --gen does not go with it')
+        syms = load_symbols(paths.symbols)
+        if a.routine:
+            targets = [resolve(a.routine, syms)]
+        elif a.task:
+            if a.gen:
+                raise Usage("--task judges each routine on its own generator: --gen does not go with it")
+            targets = task_routines(a.task, paths, syms)
+        else:
+            targets = []
+        return run(paths, targets, a.build, a.gen, a.cases, a.fresh, log, emit)
     except Usage as e:
         print(f'translate: {e}', file=sys.stderr)
         return 2
-    print(json.dumps(res, separators=(',', ':')))
-    return 0 if res['result'] == 'pass' else 1
+    except trial.Usage as e:
+        print(f'translate: {e}', file=sys.stderr)
+        return 2
+    except trial.StepFailed as e:
+        print(f'translate: {e}', file=sys.stderr)
+        return 1
 
 
 if __name__ == '__main__':

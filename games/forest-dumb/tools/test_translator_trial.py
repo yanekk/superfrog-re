@@ -156,8 +156,7 @@ class Trial(unittest.TestCase):
         self.addCleanup(patcher.stop)
         self.paths = t.Paths(out=os.path.join(d, 'translator'), lock_dir=os.path.join(d, 'translate'),
                              inventory=os.path.join(d, 'inventory.toml'), hints=os.path.join(d, 'hints.toml'),
-                             symbols=os.path.join(d, 'symbols.toml'),
-                             batches=[os.path.join(d, 'here', 'batch.json'), os.path.join(d, 'main', 'batch.json')])
+                             symbols=os.path.join(d, 'symbols.toml'))
 
     def write(self, name, text):
         p = os.path.join(self.d, name)
@@ -186,8 +185,8 @@ class Trial(unittest.TestCase):
                              'unsupported': 0, 'untranslated': 1, 'write_into_code': 0, 'self_modifying': 0})
         tab = self.table()
         self.assertIn('| Routine | Subsystem | Instructions | Without hints | First difference or stop | Untranslated '
-                      '| Write into code | Self-modifying | Unsupported | With hints | Muse |', tab)
-        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | fail | untranslated: h0+$10 | 2000 | 0 | 0 | 0 | pass | none |', tab)
+                      '| Write into code | Self-modifying | Unsupported | With hints |', tab)
+        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | fail | untranslated: h0+$10 | 2000 | 0 | 0 | 0 | pass |', tab)
         rows = {m.group(1): m.group(0) for m in re.finditer(r'^\| `(h0\+\$\w+)`.*$', tab, re.M)}
         self.assertIn('unjudgeable: no generator (sound)', rows['h0+$40'])
         self.assertIn('unjudgeable: no-oracle: the original returned on none of 2000 states', rows['h0+$80'])
@@ -208,7 +207,7 @@ class Trial(unittest.TestCase):
         s = json.loads(out)
         self.assertEqual((s['pass'], s['judgeable'], s['self_modifying'], s['write_into_code']), (1, 1, 1, 0))
         tab = self.table()
-        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | pass |  | 0 | 0 | 34 | 0 | pass | none |', tab)
+        self.assertIn('| `h0+$0` `h0_0` | camera | 9 | pass |  | 0 | 0 | 34 | 0 | pass |', tab)
         self.assertIn('1 routine(s) with self-modifying states, each judged on the rest.', tab)
 
     def test_percentage_counts_only_judgeable_routines(self):
@@ -228,17 +227,6 @@ class Trial(unittest.TestCase):
         code, _, err = self.run_trial('--skip-export', '--routines', 'h0_0')
         self.assertEqual(code, 0, err)
         self.assertEqual(self.run_trial('--routines', 'nonesuch')[0], 2)
-
-    def test_muse_column_reads_batch_json_then_the_main_checkout(self):
-        self.write('main/batch.json', json.dumps({'rows': {'h0+$0': {'result': 'fail'}, 'h0+$40': {'result': 'no-gen'}}}))
-        self.assertEqual(self.run_trial()[0], 0)
-        self.assertRegex(self.table(), r'\| `h0\+\$0` .*\| 0 \| pass \| fail \|\n')
-        self.assertRegex(self.table(), r'\| `h0\+\$40` `mt_music` .*\| no-gen \|\n')
-        self.assertRegex(self.table(), r'\| `h0\+\$80` `waits_forever` .*\| none \|\n')
-        # This checkout's batch wins over the main checkout's.
-        self.write('here/batch.json', json.dumps({'rows': {'h0+$0': {'result': 'pass'}}}))
-        self.assertEqual(self.run_trial()[0], 0)
-        self.assertRegex(self.table(), r'\| `h0\+\$0` .*\| 0 \| pass \| pass \|\n')
 
     def test_a_second_run_while_the_lock_is_held_refuses_naming_it(self):
         os.makedirs(self.paths.lock_dir)
