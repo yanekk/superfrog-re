@@ -23,6 +23,7 @@ pub mod cia;
 pub mod collide;
 pub mod copper;
 pub mod custom;
+mod dma;
 pub mod input;
 pub mod irq;
 pub mod journal;
@@ -171,6 +172,12 @@ pub struct Machine {
     now: u64,
     /// The beam's offset into a frame at cycle count 0.
     phase: u64,
+    /// The cycle count up to which the bus's slots have been run (`dma`): every slot before it has
+    /// its owner, and a blit has got as far as those slots let it.
+    dma_at: u64,
+    /// `Regs`' cycles and cycles off the bus at the last `poll_time`, with the CPU's waits for the
+    /// bus added: the next block's work is what the counts have grown by since.
+    cpu_mark: Option<(u64, u64)>,
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
@@ -225,6 +232,8 @@ impl Machine {
             hunk_sizes: Vec::new(),
             now: 0,
             phase: 0,
+            dma_at: 0,
+            cpu_mark: None,
             bus: 0,
             fault: None,
             os: os::Os::new(),
@@ -375,6 +384,8 @@ impl Machine {
         self.now
     }
     pub fn set_cycles(&mut self, cycles: u64) {
+        self.dma_idle(cycles);
+        self.cpu_mark = None;
         self.advance(cycles);
         self.now = cycles;
     }
@@ -443,6 +454,7 @@ impl Machine {
         let pc = r.get(PC, 4);
         ops::sr_set(r, irq::handler_sr(old, level) as u64);
         r.tick(irq::IRQ_CYCLES);
+        r.off_bus(irq::IRQ_OFF_BUS);
         self.now = r.cycles();
         let sp = r.a(7).wrapping_sub(6);
         pcode_rt::store(self, img, sp.wrapping_add(2), 4, irq::IRQ_RETURN as u64)?;
@@ -475,10 +487,12 @@ impl Machine {
         Ok(())
     }
 
-    /// What [`Bus::poll`] does before taking an interrupt: time the block's accesses at `r`'s
-    /// count, run the chips up to it, tick the keyboard, and end the run on an access outside
-    /// memory made since.
-    pub fn poll_time(&mut self, r: &Regs) -> Result<(), Stop> {
+    /// What [`Bus::poll`] does before taking an interrupt: fit the CPU's work since the last call
+    /// into the bus slots the chips leave it, ticking `r` by the CPU's waits (`dma`), time the
+    /// block's accesses at `r`'s count, run the chips up to it, tick the keyboard, and end the run
+    /// on an access outside memory made since.
+    pub fn poll_time(&mut self, r: &mut Regs) -> Result<(), Stop> {
+        self.contend(r);
         self.advance(r.cycles());
         self.now = r.cycles();
         // The keyboard's next byte, if its time has come since the last block.
@@ -601,18 +615,80 @@ impl Machine {
                 .as_ref()
                 .and_then(|c| c.next_at())
                 .filter(|&c| c <= t as i64);
-            let blit = self.blitter.busy_until.filter(|&b| b <= t);
-            // The earlier first; a blit ending on a copper write's cycle ends before it.
-            match (cop, blit) {
-                (Some(c), Some(b)) if c < b as i64 => self.copper_deliver(),
-                (_, Some(b)) => {
-                    self.now = b;
-                    self.blitter.busy_until = None;
-                    self.raise(blitter::INT_BLIT.trailing_zeros() as u16, b);
-                }
-                (Some(_), None) => self.copper_deliver(),
-                (None, None) => break,
+            // A blit's end is the bus's (`contend`), which raises its interrupt for its cycle.
+            match cop {
+                Some(_) => self.copper_deliver(),
+                None => break,
             }
+        }
+    }
+
+    /// The CPU's work since the last call, fitted into the bus slots the chips leave it (`dma`):
+    /// `r` is ticked by what the CPU waited. A first call, or a count gone back (a new `Regs`),
+    /// only marks where the work starts.
+    fn contend(&mut self, r: &mut Regs) {
+        let (c, o) = (r.cycles(), r.off_bus_cycles());
+        match self.cpu_mark {
+            Some((c0, o0)) if c >= c0 && o >= o0 => {
+                // Slots a host's jump of the count left unrun are the chips' alone.
+                self.dma_idle(c0);
+                let begin = c0.max(self.dma_at);
+                // The trail is the block's instructions one by one, unless something ticked past
+                // it (then the block is one lump).
+                let mut work = [(0u32, 0u32); pcode_rt::TRAIL];
+                let trail = r.trail();
+                let (sum_c, sum_o) = trail
+                    .iter()
+                    .fold((0u64, 0u64), |(a, b), &(x, y)| (a + x as u64, b + y as u64));
+                let n = if (sum_c, sum_o) == (c - c0, o - o0) {
+                    work[..trail.len()].copy_from_slice(trail);
+                    trail.len()
+                } else {
+                    work[0] = ((c - c0) as u32, (o - o0) as u32);
+                    1
+                };
+                let end = self.with_slots(|s, beam| s.cpu(begin, &work[..n], beam));
+                self.dma_at = end;
+                let late = end - c;
+                if late > 0 {
+                    r.tick(late as u32);
+                }
+            }
+            _ => self.dma_idle(c),
+        }
+        r.clear_trail();
+        self.cpu_mark = Some((r.cycles(), r.off_bus_cycles()));
+        self.blit_settle();
+    }
+
+    /// Run the bus's slots up to cycle count `t` with no CPU access.
+    fn dma_idle(&mut self, t: u64) {
+        if t > self.dma_at {
+            let from = self.dma_at;
+            self.with_slots(|s, beam| s.idle(from, t, beam));
+            self.dma_at = t;
+            self.blit_settle();
+        }
+    }
+
+    /// The bus as the registers hold it now, handed to `f` with the beam at a cycle count.
+    fn with_slots<R>(&mut self, f: impl FnOnce(&mut dma::Slots, &dyn Fn(u64) -> (u16, u16)) -> R) -> R {
+        let (phase, lines) = (self.phase, self.cfg.frame_lines);
+        let beam = move |t: u64| beam::position(phase.wrapping_add(t), lines);
+        let mut slots = dma::Slots {
+            fetch: self.fetch(),
+            dmacon: self.dmacon,
+            blit: self.blitter.run.as_mut(),
+            frame_lines: lines,
+        };
+        f(&mut slots, &beam)
+    }
+
+    /// A blit whose BLTDONE the bus has run: its interrupt a slot later, and the blitter free.
+    fn blit_settle(&mut self) {
+        if let Some(done) = self.blitter.run.as_ref().and_then(|b| b.done_at) {
+            self.blitter.run = None;
+            self.raise(blitter::INT_BLIT.trailing_zeros() as u16, done + 2);
         }
     }
 
@@ -1089,3 +1165,5 @@ impl Bus for Machine {
 mod tests;
 #[cfg(test)]
 mod tests_chips;
+#[cfg(test)]
+mod tests_dma;

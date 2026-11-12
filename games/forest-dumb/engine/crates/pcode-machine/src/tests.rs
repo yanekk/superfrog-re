@@ -75,7 +75,10 @@ fn img() -> Image<'static> {
     }
 }
 
+/// The machine's time set to `n` cycles with no CPU work behind it (`set_cycles`: no bus
+/// contention to fit), then a block start.
 fn at_cycles(m: &mut Machine, n: u64) {
+    m.set_cycles(n);
     let mut r = Regs::new();
     r.tick(n as u32);
     m.poll(&mut r, &img()).unwrap();

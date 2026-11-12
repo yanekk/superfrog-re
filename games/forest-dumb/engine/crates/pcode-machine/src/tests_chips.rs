@@ -1,7 +1,7 @@
 //! The blitter, the copper and the picture on the machine (translator T24), on made-up memory.
 
 use amiga_chips::copper::{self, Fetch, Write as CopWrite};
-use amiga_chips::{AmigaMemory, Blit, BlitMem, display, word_times};
+use amiga_chips::{AmigaMemory, Blit, BlitMem, display};
 
 use super::*;
 
@@ -42,7 +42,10 @@ fn machine(dma: u16, cop1lc: u32, mem: &[(u32, &[u16])]) -> Machine {
 }
 
 /// Bring the machine's time to `n` cycles, as a block start does.
+/// Bring the machine's time to `n` cycles with no CPU work behind it (`set_cycles`: no bus
+/// contention to fit), then a block start.
 fn at(m: &mut Machine, n: u64) -> Result<(), Stop> {
+    m.set_cycles(n);
     let mut r = Regs::new();
     r.tick(n as u32);
     m.poll(&mut r, &img())
@@ -137,27 +140,30 @@ fn an_area_blit_through_the_registers_is_blit_run_directly() {
         };
         assert_eq!([BLTAPT, BLTBPT, BLTCPT, BLTDPT].map(ptr), end.pt);
 
-        // Busy until word_times' last word: 24 words from the beam at cycle 1000, no bitplanes.
-        let (line, h) = beam::position(1000, 313);
-        let times = word_times(24, line, h, 313, |_, _| false);
-        let (ll, lh) = *times.last().unwrap();
-        let done = beam::offset(ll, lh) + 2;
-        assert!(done > 1000 + 24 * 4 - 8, "two slots a word: {done}");
+        // The bus's time (`dma`, vAmiga's SlowBlitter): from the write at cycle 1000, two start-up
+        // slots, then a micro-instruction a slot, 4 a word for A B C D, 3 for A C D (no bitplanes,
+        // no refresh slot on the way). BBUSY clears at the last word's end; the last D write and
+        // its interrupt follow two and three slots later. A slot is run once time has passed it.
+        let per = if con0 == 0x4FCA { 4 } else { 3 };
+        let free = 1004 + 2 * per * 23 + 2 * (per - 1);
+        let done = free + 4;
         assert_ne!(
             get(&mut m, custom::DMACONR) & 0x4000,
             0,
             "busy at the write"
         );
-        at(&mut m, done - 1).unwrap();
+        at(&mut m, free).unwrap();
         assert_ne!(
             get(&mut m, custom::DMACONR) & 0x4000,
             0,
-            "busy a cycle before"
+            "busy to the last word's end"
         );
+        at(&mut m, free + 2).unwrap();
+        assert_eq!(get(&mut m, custom::DMACONR) & 0x4000, 0, "free");
+        at(&mut m, done + 1).unwrap();
         assert_eq!(get(&mut m, irq::INTREQR) & INT_BLIT, 0);
-        at(&mut m, done).unwrap();
+        at(&mut m, done + 2).unwrap();
         let dmaconr = get(&mut m, custom::DMACONR);
-        assert_eq!(dmaconr & 0x4000, 0, "done");
         assert_eq!(dmaconr & 0x2000 != 0, end.zero, "BZERO");
         assert_eq!(dmaconr & 0x07FF, DMAEN | BLTEN);
         assert_eq!(
