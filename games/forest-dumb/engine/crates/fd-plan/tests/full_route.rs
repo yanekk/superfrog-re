@@ -24,9 +24,9 @@ const PLANNED: &str = include_str!("routes/W1-1-planned.txt");
 /// The one route's steps; `main_loop` finds the level's end in the last.
 const FRAMES: usize = 22464;
 /// The planner's route's steps.
-const PLANNED_FRAMES: usize = 22528;
-/// The rounds the search is given; the exit comes in round 2 095 (seed 1, the walk compass).
-const ROUNDS: u64 = 2100;
+const PLANNED_FRAMES: usize = 21632;
+/// The rounds the search is given; the exit comes in round 2 589 (seed 1, the walk compass).
+const ROUNDS: u64 = 2600;
 /// Lives at the level's start (docs/09).
 const LIVES: i16 = 32;
 
@@ -189,7 +189,7 @@ fn the_planners_route_finishes_on_the_engine_alone() {
 /// The planner finds the whole level (DESIGN §2.11): the same route as the committed planner's
 /// route, to the exit, the rounds ending the search and never the clock.
 #[test]
-#[ignore = "full: a 2 095-round search, 20 million engine frames, 2.5 to 4 minutes on 10 threads"]
+#[ignore = "full: a 2 589-round search, 25 million engine frames, 3 to 5 minutes on 10 threads"]
 fn the_planner_finds_its_committed_route() {
     let run = RunOptions {
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
@@ -203,7 +203,9 @@ fn the_planner_finds_its_committed_route() {
     };
     let p = plan(&data(), opt, &run);
     assert_eq!(p.stalled, None, "stalled at {}", p.end);
-    assert_eq!(p.end.to_string(), "W1-1:208,92");
+    // The character's cell on the step that finds the level's end: its body reaches the exit
+    // (`W1-1:207,91` to `208,93`, docs/10) from the row above (measured 2026-11-12).
+    assert_eq!(p.end.to_string(), "W1-1:207,90");
     assert_eq!(p.route.hearts_lost, 0);
     assert!(
         p.route.inputs == steps(PLANNED),

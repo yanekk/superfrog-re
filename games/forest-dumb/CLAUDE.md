@@ -76,8 +76,8 @@ holds disk graphics: keep it under `build/`.
 `--budget-mins N`, `--guide waypoints.txt`), writes the route as an input script to
 `build/routes/W1-1.txt` (`--out`), draws it on the map page as `fd-routeview` does (`--page`), and plays
 it on the original, nothing frozen, saying for how many passes the two agree and whether the route ends
-where the planner's engine ended it. The whole level is planned (T27): `--rounds 2100` reaches the
-level's end in round 2 095, about 4 minutes, with no life lost on the engine alone; on the original
+where the planner's engine ended it. The whole level is planned (T27): `--rounds 2600` reaches the
+level's end in round 2 589, about 3 to 4 minutes, with no life lost on the engine alone; on the original
 it ends elsewhere. The one route both sides finish with no life lost (T84,
 `engine/crates/fd-plan/tests/routes/W1-1.txt`, the route the app plays) is that route searched again
 with both sides in the loop; both are committed and guarded, and
