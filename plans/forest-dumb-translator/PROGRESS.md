@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T26; T43 (call-fallthrough) before T16 and T28.
 
 ## Tasks
 
@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T23 | interrupts | T22 | ⬜ | |
 | T24 | machine-chips | T22 | ⬜ | |
 | T25 | machine-sound-input | T22 | ✅ | |
-| T26 | os-answers | T01, T22 | ⬜ | |
+| T26 | os-answers | T01, T22 | 🔍 | OS answered on the machine: exec, graphics, dos vectors through new `Bus::call_outside`, `Stop::Os`; files from df0's OFS. 10 unit tests, `os_answers.rs` smoke, `os_run.rs` full: `load_file` loads `_NAPIS` equal to the original; power-on check fails until T43. Deviations: pcode-rt and `pcode_rust.py` CALLIND changed; `gfx.rs` not `input.rs`; `$4` set at `new`/`from_snapshot`. |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |
 | T29 | conform-translated | T28 | ⬜ | |
@@ -57,8 +57,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
+| T43 | call-fallthrough | T03; blocks T16, T28 | ⬜ | Added by T26 with the owner's yes: keep every call's fall-through in the export, by a general rule. |
 
-**Review queue:** *(empty)*
+**Review queue:** T26
 
 ## Blocked on the user
 

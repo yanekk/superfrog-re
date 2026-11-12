@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | T43 (call-fallthrough) added with the owner's yes, blocking T16 and T28: the export must keep every call's fall-through by a general rule, so power-on passes the title's load lists. |
 | 2026-11-12 | 🐞 | **T26:** Ghidra marks `load_file` (`h0+$8ec4`) non-returning, so its 8 callers, hunk 4's load lists (`h4+$19fda`..`$1c314`), lose their fall-through: power-on stops `untranslated: h4+$1a0f6` after `_NAPIS`. Export (T03) defect, open. |
 | 2026-11-12 | 📌 | DESIGN §2.8 says disk 2's prompt does not appear; the entry always calls `prompt_disk_2` (`h0+$7b70`) and waits for fire (docs/03). T26's `os_run` holds fire for that poll; T28 and T32 must too. |
 | 2026-11-12 | 📌 | **T26 OS values are the machine's:** dos base `h0+$908e`, handle `$909e`, font fields `$1e54`/`$1e58`, copinit/LOFlist `$1e32`/`$1e36`, saved vectors `$1e26`/`$1e2e` differ from Kickstart's. T32 must not compare them. |
