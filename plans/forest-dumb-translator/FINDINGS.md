@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | T16 review: the whole-tree gate stays 100 of 100 with `pcode_fix` `arith` and `shift_bit` both off (dead flags, write-only chip registers); only `insn_gate.rs` guards those corrections. A broken `INT_CARRY` drops it to 97. |
 | 2026-11-12 | 📌 | **T16 whole tree:** 6 684 instructions, 0 unsupported, 0 unresolved computed jumps, 0 hints; the 24 targetless `jsr -n(a5|a6)` are library calls for the machine (`h0+$943a`..`$94ae` absent from `re/os-calls.toml`). 100 of 100 judgeable routines pass, 2 000 states. |
 | 2026-11-12 | 📌 | `translator_trial.py --whole` builds fd-judge optimised: unoptimised, `view_tiles` took 340 s for 2 000 translated states (original 5 s), past `JUDGE_SECONDS` 120. pcode_rust's `computed_unresolved` 28 counts per function, the export's 24 per instruction. |
 | 2026-11-11 | 📌 | **T22 machine:** the bus is not handed `Regs`, so `pcode-machine` times every access at the block's start (`poll`), and an unmapped access becomes `Stop::Outside` (`outside-memory: $xxxxxx`, new in pcode-rt) at the next block. |

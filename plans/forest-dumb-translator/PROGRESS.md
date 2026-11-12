@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T16 (whole-tree-judge); then T18 (translate-command) and T27 once their other dependencies are ✅.
+**Next `pir-work` will:** T18 (translate-command) and T27 once their other dependencies are ✅.
 
 ## Tasks
 
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T13 | insn-gate | T07, T08, T09, T10, T12 | ✅ | |
 | T14 | run-stops | T04 | ✅ | |
 | T15 | code-write-rule | T02, T14 | ✅ | |
-| T16 | whole-tree-judge | T13, T15 | 🔍 | `translator_trial.py --whole`, `fd-judge --generators`; 6 stub tests, 1 Rust, full `test_translator_whole.py`. 100/100 pass, 0 unsupported, unresolved, hints. Deviations: 24 `jsr -n(An)` library calls listed apart, not unresolved (DESIGN §2.8); judge built optimised (unoptimised `view_tiles` 340 s, past 120 s); work list from the generator registry, 105, not translate.toml. |
+| T16 | whole-tree-judge | T13, T15 | ✅ | Reviewed: clean but one review fix (test leaked a file handle). Reran the real gate: 100/100, 24 a5/a6 library calls, 0 unresolved, 19 in os-calls.toml, 105 generators. Mutations: broken carry 97/100 red; library, gate, work-list mutations red in stubs. Unoptimised 340 s `read-only`. |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ⬜ | |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T16
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
