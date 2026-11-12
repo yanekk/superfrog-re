@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
-| T34 | generated-purity | T28 | ⬜ | |
+| T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | Review: one fix, `--seam`'s custom-write comparison had no test (mutation survived), `custom_writes_are_held_in_order` added. Probed: `fd-judge --seam` both adapters 2 000/2 000, `--regs all` fails d0 d1 d7, callers restore via the handler's movem; both mounted 150 frames, memory equal but the beam word. Mutations of adapter, judge, emitter caught. |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
