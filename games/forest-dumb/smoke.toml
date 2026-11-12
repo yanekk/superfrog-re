@@ -17,6 +17,11 @@ workspace = "engine"
 # Translator T28: 50 frames and w1-idle from the sync point on the generated tree; about 10 and 15 s
 # warm, but the tree's build (about 40 s) and the disks put them in full.
 "crates/fd-conform/tests/translated_engine.rs" = "full"
+# Translator T29: the frame runner against a stand-in copy of the original from the cached sync point,
+# Paula's writes swapped, dropped and kept: five runs of 10 to 40 frames, about 2 s warm.
+"crates/fd-conform/tests/frames.rs" = "smoke"
+# Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
+"crates/fd-conform/tests/engine_hand.rs" = "full"
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [
@@ -680,3 +685,7 @@ covers = ["crates/fd-e2e/tests/finish_short.rs::the_routes_first_stretch_plays_i
 [[area]]
 name = "the translated program run frame by frame from a snapshot"
 covers = ["crates/fd-translated/tests/engine.rs"]
+
+[[area]]
+name = "judging the translated program on the frame bar: state, picture and Paula's writes each frame"
+covers = ["crates/fd-conform/tests/frames.rs"]

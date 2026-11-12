@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T29; then T30 and T31 work from `build/translated-cases.md` (FINDINGS T29 rows).
 
 ## Tasks
 
@@ -43,7 +43,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T26 | os-answers | T01, T22 | ✅ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
 | T28 | translated-engine | T26, T27 | ✅ | |
-| T29 | conform-translated | T28 | ⬜ | |
+| T29 | conform-translated | T28 | 🔍 | frames.rs frame-bar runner (state, picture, Paula writes per frame, one engine frame per oracle step), `--engine`, `run-all --report`; 6 tests. Deviations: translated runs force picture and writes, drop case exclusions, fall back to all LAYOUT vars; `every_channel` records each channel's first difference; new `reading.rs`. |
 | T30 | level1-cases-a | T29 | ⬜ | |
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T29
 
 ## Blocked on the user
 

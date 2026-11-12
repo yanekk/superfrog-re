@@ -40,9 +40,9 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `run(&Case) -> Result<Verdict, String>`: title or level; the default options.
 - `run_with(&Case, &mut dyn Engine, &Options) -> Result<Verdict, String>`: level cases only.
 - `run_inputs(&Case, &Inputs, &mut dyn Engine, &Options)`: the same on inputs held in memory (bug zips).
-- `Options { mode, register, diff_dir }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
-- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, skipped_redraws, edge_cuts, creature_cuts, excluded, events, goal_met, game_over, level_end, coverage }`, `.passed()`; `Display` prints the report.
-- `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers}`. An unused exclusion fails the case.
+- `Options { mode, register, diff_dir, every_channel }`: `Default` is `Mode::Faithful`, `fd_core::PORTED`, no diff PNGs.
+- `Verdict { outcome, passes, pictures, unseen, tolerated, cut_redraws, skipped_redraws, edge_cuts, creature_cuts, excluded, events, goal_met, game_over, level_end, writes, write_frames, firsts, coverage }`, `.passed()`; `Display` prints the report.
+- `Outcome::{Same, Differs, PictureDiffers, ComparedNothing, GoalMissed, NotIdle, Unported, ExclusionUnused, SceneDiffers, WritesDiffer, Stopped}` (the last two the frame runner's). An unused exclusion fails the case.
 - `trait Engine: Transplant` (`pass`, `picture`, `events`, `off_play`, `game_over`, `level_end`, `cut_redraw`, `foreground_cut`, `creatures_uncut`, `redraw_skipped`); `Game` implements it. A wrapper of `Game` forwards the last four, or fails the cases that meet them.
 
 **Reaching the original** (`src/lib.rs`, `src/sync.rs`)
@@ -97,7 +97,14 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 
 **The translated engine** (`src/translated_engine.rs`, translator T28)
 - `translated_engine::case_start(&Case) -> Result<CaseStart, String>`: the original from power-on along the case's way (uncached, about 8 s), RAM, CPU and the CPU's custom writes at the step whose pass end `run_with` transplants at.
-- `TranslatedEngine::new(CaseStart)`: `Engine` and `Transplant` over `fd-translated`'s `TranslatedGame` on a thread of its own; one frame a pass; `.stop()`, `.passes()`, `.mem()`. The crate: `crates/fd-translated/README.md`.
+- `TranslatedEngine::new(CaseStart)`: `Engine`, `FrameEngine` and `Transplant` over `fd-translated`'s `TranslatedGame` on a thread of its own; one frame a pass; `.stop()`, `.passes()`, `.mem()`. The crate: `crates/fd-translated/README.md`.
+- `translated_engine::run_translated(&Case, &Options) -> Result<Verdict, String>`: a level case on the translated program on the frame bar; `frame_bar(&Case)` is the case it runs (vars, picture, writes; no exclusions).
+
+**The frame bar's runner** (`src/frames.rs`, translator T29)
+- `trait FrameEngine: Transplant` (`frame(input)`, `picture()` whole, cut to `PLAY_WINDOW` by the runner, `paula() -> &[PaulaWrite]`, `stopped() -> Option<String>`).
+- `run_frames(&Case, &mut dyn FrameEngine, &Options)`, `run_frames_inputs`: transplanted at the first pass end after the sync point, then one engine frame per oracle step, judged at each frame's end. `Options::every_channel` goes on past a channel's first difference; `Verdict::firsts` holds each channel's first, `Verdict::{writes, write_frames}` the writes compared.
+- `Outcome::WritesDiffer { pass, frame, why }`, `Outcome::Stopped { pass, frame, stop }`; `pass` counts engine frames from the transplant.
+- `reading::{EngineKind, run_on, group, Row, Reading}`: `fd-conform run-all`'s results and its Markdown (`Row::{kind, then, result}`, `Reading::{summary, markdown}`). `tests/frames.rs` drives the runner with a stand-in copy of the original that swaps, drops or bumps one thing.
 
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
