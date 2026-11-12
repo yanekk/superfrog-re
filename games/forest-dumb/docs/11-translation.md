@@ -30,20 +30,27 @@ working (a model writing literal ports, then engine code) is under [History](#hi
      for one address or an edit to generated Rust (DESIGN §2.2, the hand-edit rule), then rerun what
      the fix affects (`insn_check.py` for an instruction family, `translator_trial.py --whole` for the
      tree).
-   - `no-gen`: the routine has no test-state generator. Write one by hand into
-     `engine/crates/fd-conform/src/gen/` (the generator sections below show the shape), then rerun.
-     `tools/generate.py` (Haiku) exists but is not the default until the owner decides on Haiku's
-     trial (translator T44, DESIGN §2.13).
+   - `no-gen`: the routine has no test-state generator. Haiku writes it first (owner, 2026-11-12,
+     translator T44): run `tools/generate.py` (`tools/README.md`, "generate.py"). `covered`: read the
+     generator and commit it into `engine/crates/fd-conform/src/gen/`. `partial`: commit it and add by
+     hand the states its `uncovered` branches need. `fail`, `no-oracle` or `no-model`: write it by hand
+     (the generator sections below show the shape), saying why in the task's record. Then rerun.
    - `no-oracle`: the original never returns on the generator's states, or blits lines or fills.
      Fix the generator, or check the routine through a case instead (`engine/conform/README.md`).
 4. **Rewrite only where the owner chose.** A level plan says which routines get hand-written Rust.
-   Each starts from the translated routine (`build/translate/<hN-off>/translated.rs`), is written by
-   hand on the engine's typed state (`toolkit/docs/porting-routines.md`), and is checked against the
+   Each starts from the translated routine (`build/translate/<hN-off>/translated.rs`), is written
+   on the engine's typed state (`toolkit/docs/porting-routines.md`), and is checked against the
    translated routine it replaces on the same states through the seam (DESIGN §2.9, `fd-judge --seam`,
-   translator T35), with the level's cases green while it is mounted. `tools/reshape.py` (Haiku drafts
-   the rewrite from the translated routine) waits on the same decision as `generate.py`.
+   translator T35), with the level's cases green while it is mounted. Haiku drafts it first (owner,
+   2026-11-12, translator T44): run `tools/reshape.py`; `pass`, fit and tidy its answer as any draft;
+   any other result, write it by hand from the translated routine, saying why in the task's record.
 5. **Record** in the plan's PROGRESS and FINDINGS: which routines passed as translated, which defects
    were fixed by pattern, which routines were rewritten and why.
+
+The rig judges every answer Haiku gives, so a miss costs calls, never a wrong routine; that is why the
+owner accepted it in spite of the trial's 19 of 21 rewrites (History, "Haiku's trial"). `no-model` is
+no verdict on Haiku (logged out, or every call past `model.py`'s 300 s): check `claude auth status`
+before writing by hand for that reason.
 
 What a pass proves and what it cannot is the judge's, below. Every translated or derived file
 (`build/translator/`, `build/translate/`) comes from the game's code: never commit it.
@@ -1138,6 +1145,5 @@ try 2 differed on 6 153 of 10 000 states, try 3 on all 10 000. Its mirror `run_l
 3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, about
 160 to 2 500 lines a routine after ticks are cut, so the two runs differ in input as well as model.
 
-Below the mark, the choice between accepting Haiku and no model is the owner's (DESIGN §2.13), set
-aside as translator T44 on 2026-11-12. Until it is answered, sessions write generators and rewrites by
-hand; `generate.py` and `reshape.py` work but are not the default.
+Below the mark, the choice between accepting Haiku and no model was the owner's (DESIGN §2.13), set
+aside as translator T44. **The owner accepted Haiku, 2026-11-12**: "The procedure", steps 3 and 4.

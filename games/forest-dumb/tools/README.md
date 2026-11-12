@@ -29,7 +29,7 @@ It exports the whole program (Ghidra, `pcode_export.py`) and translates it (`pco
 generator's states against the original. `rust` is the routine's generated function and every function
 it calls, routine first, for reading. Results: `pass`; `fail` (`first` is the first difference); `stop`
 (the translation stopped on some state: untranslated, a write into code, unsupported; `first` names it);
-`no-gen` (no generator registered: write one by hand; `generate.py` is not the default until translator T44); `no-oracle` (the original never returns, or
+`no-gen` (no generator registered: run `generate.py` first, by hand after a miss; owner 2026-11-12, translator T44); `no-oracle` (the original never returns, or
 blits lines). The generator is `--gen`, else the one registered under the routine's name or address.
 `--task` takes the rows of `re/translate.toml` whose `port_task` or `gen_task` is the task, else the
 `hN+$off` and backticked symbols of its task doc's `## Routines` section (or `--task path/to/doc.md`).
@@ -38,8 +38,9 @@ passes, 1 otherwise (a failed step named on stderr), 2 on usage. Holds `build/tr
 
 ## Model services
 
-Not the default: until the owner decides on Haiku's trial (translator T44), sessions write generators
-and chosen rewrites by hand; these tools work and may be tried. generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
+The default since the owner accepted Haiku (2026-11-12, translator T44): a session runs them first and
+writes the generator or rewrite by hand only after a result other than `covered` or `pass` (`partial`
+is completed by hand). generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
 haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no call answered: result
 `no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). Both need the listing
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line

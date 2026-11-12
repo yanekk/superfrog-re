@@ -45,6 +45,10 @@ class Pack(unittest.TestCase):
         for r in rows:
             self.assertIn(f"### `{r['name']}` h0+${r['offset']:x}", text)
         self.assertIn('## Translate first: the procedure', text)
+        # The owner's choice (translator T44): Haiku first for generators and rewrites, by hand after a miss.
+        proc = text.split('## Translate first: the procedure', 1)[1]
+        self.assertIn('run `tools/generate.py`', proc)
+        self.assertIn('run `tools/reshape.py`', proc)
         # The opening reads and the porting sections always fit; a later section may be left out as
         # the tree grows past --max-kb (T22's files did once T22 was built), named with where to read it.
         for name in ('how', 'task', 'progress', 'findings', 'design', 'listings', 'procedure', 'rules'):

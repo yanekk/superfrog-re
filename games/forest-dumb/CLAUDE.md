@@ -17,8 +17,8 @@ Translate with the translator first: `python3 -I games/forest-dumb/tools/transla
 `build/translate/<hN-off>/translated.rs`. A `pass` is the engine for that routine; a `fail` or `stop` is
 a translator defect, fixed by mnemonic or P-code pattern, never by a hint or an edit to generated Rust;
 hand-written Rust replaces a translated routine only where the owner chose, checked against it through
-the seam. Generators (`no-gen`) and chosen rewrites are written by hand until the owner decides on
-Haiku (translator T44). The procedure: [docs/11-translation.md](docs/11-translation.md), "The
+the seam. Haiku writes generators (`no-gen`) and drafts chosen rewrites first
+(`generate.py`, `reshape.py`; owner 2026-11-12, translator T44), by hand after a miss. The procedure: [docs/11-translation.md](docs/11-translation.md), "The
 procedure"; a task's pack (`tools/task_pack.py`) carries it.
 
 ## Its disks and where they live
@@ -115,7 +115,7 @@ source; open the source only for what the README lacks.
 
 - [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
 - [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
-- [tools/README.md](tools/README.md): every Python script here; `tools/translate.py` first (the translator's one command), then listing, call tree, the translator's parts, generate and reshape (Haiku, not the default), task pack, renders.
+- [tools/README.md](tools/README.md): every Python script here; `tools/translate.py` first (the translator's one command), then listing, call tree, the translator's parts, generate and reshape (Haiku, the first try for generators and rewrites), task pack, renders.
 - [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
 - The toolkit crates' READMEs: `toolkit/crates/<crate>/README.md` (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`).
 
