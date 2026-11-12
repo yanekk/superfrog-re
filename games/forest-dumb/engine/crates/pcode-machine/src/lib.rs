@@ -136,6 +136,9 @@ pub struct Frame {
     /// Every custom-register write of the frame, the CPU's and the copper's, in order: (cycle,
     /// register offset from `$DFF000`, word). A copper interrupt is its MOVE to INTREQ here.
     pub writes: Vec<(u64, u16, u16)>,
+    /// The CPU's of `writes` alone, in order: what the oracle keeps (`Amiga::cpu_writes`), so the
+    /// frame bar compares like with like (translator T45).
+    pub cpu_writes: Vec<(u64, u16, u16)>,
 }
 
 /// The machine: memory, the custom registers' last written values, the beam and the devices.
@@ -187,6 +190,9 @@ pub struct Machine {
     watch: Watch,
     /// The current frame's custom writes, in order.
     log: Vec<(u64, u16, u16)>,
+    /// The CPU's of them, tagged as each is made: a register filter could not tell a copper MOVE
+    /// from the CPU's write to the same register.
+    cpu_log: Vec<(u64, u16, u16)>,
     /// The registers and DMACON as the current frame found them.
     frame_custom: [u16; 256],
     frame_dmacon: u16,
@@ -221,6 +227,7 @@ impl Machine {
             journal: Journal::default(),
             watch: Watch::default(),
             log: Vec::new(),
+            cpu_log: Vec::new(),
             frame_custom: [0; 256],
             frame_dmacon: 0,
         }
@@ -509,8 +516,13 @@ impl Machine {
             Picture::blank(0, 0, 0, 0)
         });
         let writes = std::mem::take(&mut self.log);
+        let cpu_writes = std::mem::take(&mut self.cpu_log);
         self.start_frame(end as i64, end as i64);
-        Frame { picture, writes }
+        Frame {
+            picture,
+            writes,
+            cpu_writes,
+        }
     }
 
     /// Start the frame the beam is in now, if none is: a machine's first access to time.
@@ -697,6 +709,9 @@ impl Machine {
     /// A write to custom register `reg` by the CPU (`cpu`) or the copper, at the access time.
     pub(crate) fn reg_write(&mut self, reg: u16, v: u16, cpu: bool) {
         self.log.push((self.now, reg, v));
+        if cpu {
+            self.cpu_log.push((self.now, reg, v));
+        }
         if custom::read_only(reg) {
             return;
         }
@@ -787,6 +802,12 @@ impl Machine {
     /// a frame (the routine judge, translator T27) reads them here without ending one.
     pub fn custom_writes(&self) -> &[(u64, u16, u16)] {
         &self.log
+    }
+
+    /// The CPU's of [`Machine::custom_writes`] alone, in order: what `end_frame` will return in
+    /// `Frame::cpu_writes`.
+    pub fn cpu_writes(&self) -> &[(u64, u16, u16)] {
+        &self.cpu_log
     }
 
     /// Paula's writes this frame, in order: the cycle count each was made at, and the write with

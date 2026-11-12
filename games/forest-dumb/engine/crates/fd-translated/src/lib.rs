@@ -128,6 +128,9 @@ pub struct FrameOut<'a> {
     /// Every custom-register write of the frame, the CPU's and the copper's, in order: (cycle,
     /// register offset from `$DFF000`, word).
     pub writes: Vec<(u64, u16, u16)>,
+    /// The CPU's of `writes` alone, in order, tagged as each was made: the oracle keeps the CPU's
+    /// only (`Amiga::cpu_writes`), so the frame bar compares these (translator T45).
+    pub cpu_writes: Vec<(u64, u16, u16)>,
     /// Paula's writes of the frame, in order: (cycle, register, word).
     pub paula: Vec<(u64, u16, u16)>,
     /// Set on the last frame of a run the program stopped: how it stopped.
@@ -317,6 +320,7 @@ impl TranslatedGame {
         let out = FrameOut {
             picture: host.picture.clone(),
             writes: host.m.custom_writes().to_vec(),
+            cpu_writes: host.m.cpu_writes().to_vec(),
             paula,
             stop: Some(stop.clone()),
             chip: host.m.chip(),
@@ -357,6 +361,7 @@ impl Host<'_, '_> {
         let out = FrameOut {
             picture: frame.picture,
             writes: frame.writes,
+            cpu_writes: frame.cpu_writes,
             paula,
             stop: None,
             chip: self.m.chip(),

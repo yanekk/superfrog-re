@@ -143,6 +143,7 @@ fn kind(o: &Outcome) -> String {
         Outcome::Differs { var, .. } => format!("state: {var}"),
         Outcome::PictureDiffers { .. } => "picture".to_string(),
         Outcome::WritesDiffer { .. } => "Paula writes".to_string(),
+        Outcome::CustomWritesDiffer { .. } => "custom writes".to_string(),
         Outcome::GoalMissed { .. } => "goal missed".to_string(),
         Outcome::SceneDiffers { .. } => "scene".to_string(),
         Outcome::ComparedNothing { .. } => "compared nothing".to_string(),
@@ -159,6 +160,7 @@ fn frame_of(o: &Outcome) -> Option<(u32, u32)> {
         | Outcome::Differs { pass, frame, .. }
         | Outcome::PictureDiffers { pass, frame, .. }
         | Outcome::WritesDiffer { pass, frame, .. }
+        | Outcome::CustomWritesDiffer { pass, frame, .. }
         | Outcome::Unported { pass, frame, .. } => Some((*pass, *frame)),
         _ => None,
     }

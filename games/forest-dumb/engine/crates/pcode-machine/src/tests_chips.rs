@@ -246,6 +246,31 @@ fn a_copper_move_to_intreq_raises_the_copper_interrupt_at_its_line() {
     assert_eq!(f.writes, [(FRAME + cyc, irq::INTREQ, 0x8010)]);
 }
 
+/// The frame bar compares the CPU's custom writes with the oracle's, which keeps the CPU's alone
+/// (translator T45): a copper MOVE to the same register as a CPU write is in `writes`, not in
+/// `cpu_writes`, so the split is by who wrote, not by register.
+#[test]
+fn cpu_writes_hold_the_cpus_alone_not_the_coppers_to_the_same_register() {
+    let colour = copper::reg::COLOR00;
+    let list = wait_move(0x40, colour, 0x0111);
+    let (cyc, _) = first_write_cycle(&list);
+    let mut m = machine(DMAEN | COPEN, 0x400, &[(0x400, &list)]);
+    at(&mut m, 0x10 * 454).unwrap();
+    put(&mut m, colour, 0x0222);
+    assert_eq!(m.cpu_writes(), [(0x10 * 454, colour, 0x0222)]);
+    let f = m.end_frame();
+    assert_eq!(
+        f.writes,
+        [(0x10 * 454, colour, 0x0222), (cyc, colour, 0x0111)]
+    );
+    assert_eq!(f.cpu_writes, [(0x10 * 454, colour, 0x0222)]);
+    // Emptied with the frame, as `writes` is.
+    assert!(m.cpu_writes().is_empty());
+    let f = m.end_frame();
+    assert_eq!(f.writes, [(FRAME + cyc, colour, 0x0111)]);
+    assert!(f.cpu_writes.is_empty());
+}
+
 #[test]
 fn a_list_word_the_cpu_rewrites_before_the_copper_reads_it_is_read_new() {
     let colour = copper::reg::COLOR00;

@@ -780,6 +780,17 @@ pub enum Outcome {
     /// Paula's writes in a frame differ in register, value or order, or one side wrote more
     /// ([`frames`], T29): `why` is `amiga_conform::compare::paula`'s.
     WritesDiffer { pass: u32, frame: u32, why: String },
+    /// The CPU's other custom-chip writes of a frame differ as a multiset of (register, value)
+    /// ([`frames`], T45): `value` was written to `reg` `original` times in the original, `engine`
+    /// times in the engine. Order is not compared, Paula's registers are the channel above.
+    CustomWritesDiffer {
+        pass: u32,
+        frame: u32,
+        reg: u16,
+        value: u16,
+        original: u32,
+        engine: u32,
+    },
     /// The engine stopped (translator DESIGN §2.4): the translated program met an address with no
     /// translation, a write into its code, an instruction it cannot run, or a cap.
     Stopped { pass: u32, frame: u32, stop: String },
@@ -826,6 +837,9 @@ pub struct Verdict {
     /// Paula writes compared, and the frames they were compared in ([`frames`], T29).
     pub writes: u32,
     pub write_frames: u32,
+    /// The CPU's other custom writes compared, as multisets, and the frames ([`frames`], T45).
+    pub custom_writes: u32,
+    pub custom_frames: u32,
     /// The frame runner's first difference in each channel, in the order met; `outcome` is the
     /// first of them ([`Options::every_channel`]).
     pub firsts: Vec<Outcome>,
@@ -851,6 +865,8 @@ impl Verdict {
             level_end: None,
             writes: 0,
             write_frames: 0,
+            custom_writes: 0,
+            custom_frames: 0,
             firsts: Vec::new(),
             coverage: Coverage::new(register),
         }
@@ -901,6 +917,18 @@ impl fmt::Display for Outcome {
                 f,
                 "Paula writes differ at frame {pass} (oracle frame {frame}): {why}"
             ),
+            Outcome::CustomWritesDiffer {
+                pass,
+                frame,
+                reg,
+                value,
+                original,
+                engine,
+            } => write!(
+                f,
+                "custom writes differ at frame {pass} (oracle frame {frame}): ${reg:03x} = \
+                 ${value:04x} written {original} times in the original, {engine} in the engine"
+            ),
             Outcome::Stopped { pass, frame, stop } => write!(
                 f,
                 "the engine stopped in frame {pass} (oracle frame {frame}): {stop}"
@@ -927,6 +955,13 @@ impl fmt::Display for Verdict {
                 f,
                 "\n{} Paula writes in {} frames, in order",
                 self.writes, self.write_frames
+            )?;
+        }
+        if self.custom_frames > 0 {
+            write!(
+                f,
+                "\n{} other custom writes in {} frames, as (register, value) multisets",
+                self.custom_writes, self.custom_frames
             )?;
         }
         if self.unseen > 0 {
