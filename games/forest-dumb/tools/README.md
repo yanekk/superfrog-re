@@ -44,8 +44,10 @@ haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no c
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line
 per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason on
 stderr). Model calls log to `<out>/calls.jsonl`, a line a call; generate and reshape log each judged
-answer to `<out>/tries.jsonl`. Procedure, results table and when to translate by hand:
-[docs/11-translation.md](../docs/11-translation.md). Quote the routine: `$5` is a shell parameter.
+answer to `<out>/tries.jsonl`. Both are the default since the owner accepted Haiku (2026-11-12, translator
+T44): a session runs them first and writes the generator or rewrite by hand only after a result other than
+`covered` or `pass`. Procedure, results table and what to do on each result:
+[docs/11-translation.md](../docs/11-translation.md), "Generators and rewrites: Haiku first". Quote the routine: `$5` is a shell parameter.
 
 ### model.py, judge_run.py (stdlib, libraries)
 `model.ask(system, prompt, log=...)` is one Haiku call: `ok`, `no-model`, `timeout` or `max-calls`;

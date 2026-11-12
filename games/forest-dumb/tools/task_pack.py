@@ -361,7 +361,8 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
             'at, so a callee at a lower address can come first. '
             f'The listing of the whole program is `{rel(listing_path())}`; `re/symbols.toml` names its labels.\n\n'
             + '\n\n'.join(blocks), True)
-        add('reshape', '## Muse writes the engine code\n\n' + reshape_how() + '\n\n' + reshape_entry(task), True)
+        add('reshape', '## Muse writes the engine code\n\n' + haiku_how() + '\n\n' + reshape_how() + '\n\n'
+            + reshape_entry(task), True)
         add('rules', '## toolkit/docs/porting-routines.md\n\n'
             + read(os.path.join(REPO, 'toolkit', 'docs', 'porting-routines.md')))
     if 'frame-matching' in kinds:
@@ -402,6 +403,13 @@ def reshape_how():
     text = read(os.path.join(GAME, 'docs', '11-translation.md'))
     m = re.search(r'(?ms)^## Reshaping by Muse.*?(?=^## |\Z)', text)
     return m.group(0).strip() if m else 'See docs/11-translation.md, "Reshaping by Muse".'
+
+
+def haiku_how():
+    """docs/11's procedure for generators and rewrites, as the owner chose it (translator T44)."""
+    text = read(os.path.join(GAME, 'docs', '11-translation.md'))
+    m = re.search(r'(?ms)^## Generators and rewrites: Haiku first.*?(?=^## |\Z)', text)
+    return m.group(0).strip() if m else 'See docs/11-translation.md, "Generators and rewrites: Haiku first".'
 
 
 def main(argv=None):

@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-12 | 📌 | T44 added (coordinator's instruction): the owner's Haiku decision, set aside so T20 is not held. Until answered, sessions write generators and rewrites by hand (DESIGN §2.13). |
+| 2026-11-12 | 🔄 | **Owner accepted Haiku** (T44) as the default for `generate.py` and `reshape.py` despite rewrites 19 of 21: sessions call them first and write by hand after any other result (docs/11, "Generators and rewrites: Haiku first"). |
 | 2026-11-12 | 🐞 | **T19 Haiku trial below the mark:** generators 5 of 5 at Muse's branch ways; rewrites 19 of 21, `left_pressed` no answer in 300 s thrice, `run_right_step` three failed tries. 29 calls, $0.36 list. Recommended: accept. |
 | 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |
 | 2026-11-12 | 🐞 | **T26:** Ghidra marks `load_file` (`h0+$8ec4`) non-returning, so hunk 4's 8 load lists (`h4+$19fda`..`$1c314`) lose their fall-through: power-on stops `untranslated: h4+$1a0f6` after `_NAPIS`. T43 added (owner's yes) to fix the export generally. |
@@ -35,8 +35,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | **T14 caps measured:** longest trial run 3 968 blocks (`h0+$b20`), `game_frame` 737; call graph 8 deep from `h0+$0`, no recursion. `STEP_CAP_GLOBAL` stays 10 000 000: no task measures whole frames' steps or resets `Regs::steps` per frame. |
 | 2026-11-11 | 📌 | The trial builds `fd-judge` unoptimised: one translated frame takes up to 49 KB of stack (`h0+$9b06`), 66 KB at `game_frame`'s depth 6. Hence `RUN_STACK` 64 MB; at 1 MB the judge's recursion test aborts (SIGABRT). |
 | 2026-11-11 | 📌 | With other workers building (load 6 to 7), one `fd-judge` binary's CPU over the trial's 85 routines varied 139 to 174 s. Compare run time by alternating several runs of each build (T14 did three and five). |
-| 2026-11-11 | 📌 | The T06 `clr.w` row was COPJMP1 (`$dff088`), a translation gap: the 68000's clr reads first, and a write-only register's read writes the next instruction word. The music player's `clr.w AUDxVOL` (`h4+$184e2`..) does it too; `pcode_fix.arith` emits it. |
-| 2026-11-11 | 📌 | Moira's `clr.l` writes the low word before the high (custom writes `(aa,0)` then `(a8,0)`); the sinc's long store is high first, so arith emits clr.l as two word stores. |
+| 2026-11-11 | 📌 | 68000 `clr` reads first, so `clr.w` of a write-only register (T06's COPJMP1 row, the music player's `clr.w AUDxVOL` `h4+$184e2`..) writes too; Moira's `clr.l` writes low word first. `pcode_fix.arith` emits both. |
 | 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |
 | 2026-11-11 | 📌 | New `Stop::Trap { vector, at }` (pcode-rt): a zero divisor ends the run, `trap: vector 5 at hN+$off`; the machine (T22, T23) decides what vector 5 does. The judge counts `traps`; fd-judge's JSON shows it only as `first_stop`. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 register-form shifts beyond the census (T09, made-up program on Moira): rotates by a register count past the size give wrong values, `asr` by a register wrong X. Memory forms, bit ops, scc, tas, swap match. |

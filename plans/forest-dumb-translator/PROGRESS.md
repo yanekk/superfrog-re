@@ -5,7 +5,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-12
 **Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
@@ -58,9 +58,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
-| T44 | haiku-decision | T19; blocks T42 | ⬜ | |
+| T44 | haiku-decision | T19; blocks T42 | 🔍 | Owner accepted Haiku 2026-11-12. docs/11 gains "Generators and rewrites: Haiku first"; README, CLAUDE.md say it; the porting pack carries it (`haiku_how`), 3 new asserts in `test_task_pack.py`. Deviation: the Muse header and text stay for T20, which has not run. |
 
-**Review queue:** *(empty)*
+**Review queue:** T44
 
 ## Blocked on the user
 

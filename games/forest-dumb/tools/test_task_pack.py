@@ -45,6 +45,10 @@ class Pack(unittest.TestCase):
         for r in rows:
             self.assertIn(f"### `{r['name']}` h0+${r['offset']:x}", text)
         self.assertIn('## Muse writes the engine code', text)
+        # The owner's choice (translator T44): Haiku first, by hand after a miss.
+        self.assertIn('## Generators and rewrites: Haiku first (owner, 2026-11-12)', text)
+        self.assertIn('run `generate.py` first', text)
+        self.assertIn('run `reshape.py` first', text)
         # Before T22 adds its table the pack shows the fields to fill; after, T22's own.
         self.assertTrue("re/reshape.toml` has no `[T22]` yet" in text or "re/reshape.toml` has `[T22]`" in text)
         # The opening reads and the porting sections always fit; a later section may be left out as

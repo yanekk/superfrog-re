@@ -1081,6 +1081,21 @@ try 2 differed on 6 153 of 10 000 states, try 3 on all 10 000. Its mirror `run_l
 3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, about
 160 to 2 500 lines a routine after ticks are cut, so the two runs differ in input as well as model.
 
-Below the mark, the choice between accepting Haiku and no model is the owner's (DESIGN §2.13), set
-aside as translator T44 on 2026-11-12. Until it is answered, sessions write generators and rewrites by
-hand; `generate.py` and `reshape.py` work but are not the default.
+Below the mark, the choice between accepting Haiku and no model was the owner's (DESIGN §2.13), set
+aside as translator T44. **The owner accepted Haiku, 2026-11-12**: the next section is the procedure.
+
+## Generators and rewrites: Haiku first (owner, 2026-11-12)
+
+`generate.py` and `reshape.py` are the default for the two jobs a model keeps (translator DESIGN §2.13,
+T44), in spite of the trial's 19 of 21 rewrites: the rig judges every answer, so a miss costs calls,
+never a wrong routine.
+
+1. **A generator** (a routine with `no-gen`, or one a task must check): run `generate.py` first. `covered`:
+   read the generator and commit it into `fd-conform/src/gen/`. `partial`: commit it and add by hand the
+   states its `uncovered` branches need. `fail`, `no-oracle` or `no-model` (logged out, or every call past
+   `model.py`'s 300 s): write it by hand, saying why in the task's record.
+2. **A rewrite** (a routine the owner chose to hand-write): run `reshape.py` first. `pass`: fit and tidy
+   its answer, as the builder does any draft. Any other result: write it by hand from the translated
+   routine, saying why in the task's record.
+
+`no-model` is not a verdict on Haiku: check `claude auth status` before writing by hand for that reason.
