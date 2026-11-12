@@ -119,7 +119,7 @@ impl Row {
             .iter()
             .skip(1)
             .map(|o| match frame_of(o) {
-                Some((pass, _)) => format!("{} at frame {pass}", kind(o)),
+                Some((pass, _)) => format!("{} at {} {pass}", kind(o), unit(o)),
                 None => kind(o),
             })
             .collect::<Vec<_>>()
@@ -146,6 +146,7 @@ fn kind(o: &Outcome) -> String {
         Outcome::PictureDiffers { .. } => "picture".to_string(),
         Outcome::WritesDiffer { .. } => "Paula writes".to_string(),
         Outcome::CustomWritesDiffer { .. } => "custom writes".to_string(),
+        Outcome::PassEndsApart { .. } => "pass ends apart".to_string(),
         Outcome::GoalMissed { .. } => "goal missed".to_string(),
         Outcome::SceneDiffers { .. } => "scene".to_string(),
         Outcome::ComparedNothing { .. } => "compared nothing".to_string(),
@@ -165,8 +166,18 @@ fn frame_of(o: &Outcome) -> Option<(u32, u32)> {
         | Outcome::WritesDiffer { pass, frame, .. }
         | Outcome::CustomWritesDiffer { pass, frame, .. }
         | Outcome::LoadApart { pass, frame, .. }
+        | Outcome::PassEndsApart { pass, frame, .. }
         | Outcome::Unported { pass, frame, .. } => Some((*pass, *frame)),
         _ => None,
+    }
+}
+
+/// What an outcome's `pass` counts: the frame runner compares the picture and a stop by frame,
+/// everything else by pass (T30).
+fn unit(o: &Outcome) -> &'static str {
+    match o {
+        Outcome::PictureDiffers { .. } | Outcome::Stopped { .. } => "frame",
+        _ => "pass",
     }
 }
 

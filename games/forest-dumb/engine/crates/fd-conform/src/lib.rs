@@ -777,12 +777,13 @@ pub enum Outcome {
     /// One side went to the game over screen, or left it, or found the level's end, and the other
     /// did not (T23, T26).
     SceneDiffers { frame: u32, why: String },
-    /// Paula's writes in a frame differ in register, value or order, or one side wrote more
-    /// ([`frames`], T29): `why` is `amiga_conform::compare::paula`'s.
+    /// Paula's writes in a pass differ in register, value or order, or one side wrote more
+    /// ([`frames`], T29; by pass since T30): `why` is `amiga_conform::compare::paula`'s.
     WritesDiffer { pass: u32, frame: u32, why: String },
-    /// The CPU's other custom-chip writes of a frame differ as a multiset of (register, value)
-    /// ([`frames`], T45): `value` was written to `reg` `original` times in the original, `engine`
-    /// times in the engine. Order is not compared, Paula's registers are the channel above.
+    /// The CPU's other custom-chip writes differ as a multiset of (register, value) ([`frames`],
+    /// T45), with a pass of slack (T30, `frames::custom_carried`): `value` was written to `reg`
+    /// `original` times in the original, `engine` times in the engine, since the two last agreed
+    /// on it. Order is not compared, Paula's registers are the channel above.
     CustomWritesDiffer {
         pass: u32,
         frame: u32,
@@ -798,6 +799,10 @@ pub enum Outcome {
     /// over within `sync::LOAD_CAP` frames of the engine's, or the two returned from different
     /// numbers of loads by the case's end.
     LoadApart { pass: u32, frame: u32, why: String },
+    /// A pass ended on one side more than `frames::PASS_LAG` frames before the other ended it
+    /// ([`frames`], T30): `pass` is its `irq_count` (state) or its number (writes), `frame` the
+    /// oracle frame the first side ended it in.
+    PassEndsApart { pass: u32, frame: u32, why: String },
 }
 
 /// A case's result and its report.
@@ -838,10 +843,10 @@ pub struct Verdict {
     /// `next_world`, the engine entered its level end, `world_index` equal. The comparison ends
     /// there; [`AFTER_NEXT_WORLD`] is not compared.
     pub level_end: Option<u32>,
-    /// Paula writes compared, and the frames they were compared in ([`frames`], T29).
+    /// Paula writes compared, and the passes they were compared in ([`frames`], T29; passes, T30).
     pub writes: u32,
     pub write_frames: u32,
-    /// The CPU's other custom writes compared, as multisets, and the frames ([`frames`], T45).
+    /// The CPU's other custom writes compared, as multisets, and the passes ([`frames`], T45, T30).
     pub custom_writes: u32,
     pub custom_frames: u32,
     /// The frame runner's first difference in each channel, in the order met; `outcome` is the
@@ -937,7 +942,7 @@ impl fmt::Display for Outcome {
             }
             Outcome::WritesDiffer { pass, frame, why } => write!(
                 f,
-                "Paula writes differ at frame {pass} (oracle frame {frame}): {why}"
+                "Paula writes differ at pass {pass} (oracle frame {frame}): {why}"
             ),
             Outcome::CustomWritesDiffer {
                 pass,
@@ -948,9 +953,12 @@ impl fmt::Display for Outcome {
                 engine,
             } => write!(
                 f,
-                "custom writes differ at frame {pass} (oracle frame {frame}): ${reg:03x} = \
+                "custom writes differ at pass {pass} (oracle frame {frame}): ${reg:03x} = \
                  ${value:04x} written {original} times in the original, {engine} in the engine"
             ),
+            Outcome::PassEndsApart { frame, why, .. } => {
+                write!(f, "pass ends apart at oracle frame {frame}: {why}")
+            }
             Outcome::Stopped { pass, frame, stop } => write!(
                 f,
                 "the engine stopped in frame {pass} (oracle frame {frame}): {stop}"
@@ -979,14 +987,14 @@ impl fmt::Display for Verdict {
         if self.write_frames > 0 {
             write!(
                 f,
-                "\n{} Paula writes in {} frames, in order",
+                "\n{} Paula writes in {} passes, in order",
                 self.writes, self.write_frames
             )?;
         }
         if self.custom_frames > 0 {
             write!(
                 f,
-                "\n{} other custom writes in {} frames, as (register, value) multisets",
+                "\n{} other custom writes in {} passes, as (register, value) multisets",
                 self.custom_writes, self.custom_frames
             )?;
         }

@@ -171,6 +171,9 @@ impl FrameEngine for StandIn {
     fn custom_writes(&self) -> &[(u16, u16)] {
         &self.custom
     }
+    fn pass_ends(&self, _: &[&Var]) -> Vec<Vec<u32>> {
+        unreachable!("a power-on case is lined up by loads, not pass ends")
+    }
     fn stopped(&self) -> Option<String> {
         None
     }

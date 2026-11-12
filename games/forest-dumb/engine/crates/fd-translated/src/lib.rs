@@ -143,6 +143,9 @@ pub struct FrameOut<'a> {
     pub paula: Vec<(u64, u16, u16)>,
     /// Set on the last frame of a run the program stopped: how it stopped.
     pub stop: Option<Stop>,
+    /// Chip RAM then slow RAM at each CPU write of the frame that [`TranslatedGame::watch_write`]
+    /// names, in order: where the program marks its own work's end (translator T30).
+    pub watched: Vec<Vec<u8>>,
     /// Chip RAM and slow RAM at the frame's end, for a shell to read the state from.
     pub chip: &'a [u8],
     pub slow: &'a [u8],
@@ -291,6 +294,12 @@ impl TranslatedGame {
         &self.seam
     }
 
+    /// Keep RAM at every CPU write of `w` (register offset from `$DFF000`, word) in
+    /// `FrameOut::watched` ([`Machine::watch_write`]).
+    pub fn watch_write(&mut self, w: Option<(u16, u16)>) {
+        self.m.watch_write(w);
+    }
+
     /// The input of the frame that ended where a [`Start::Snapshot`] was taken: its keys were
     /// already sent by the original's keyboard, so the first frame sends only what changed.
     pub fn held_at_start(&mut self, input: &Input) {
@@ -372,6 +381,7 @@ impl TranslatedGame {
             cpu_writes: host.m.cpu_writes().to_vec(),
             paula,
             stop: Some(stop.clone()),
+            watched: host.m.take_watched(),
             chip: host.m.chip(),
             slow: host.m.slow(),
             returns: std::mem::take(&mut host.returns),
@@ -427,6 +437,7 @@ impl Host<'_, '_> {
             cpu_writes: frame.cpu_writes,
             paula,
             stop: None,
+            watched: frame.watched,
             chip: self.m.chip(),
             slow: self.m.slow(),
             returns: std::mem::take(&mut self.returns),

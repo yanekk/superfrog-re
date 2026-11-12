@@ -48,6 +48,12 @@ enum Meddle {
     /// Add a write the CPU did not make, as the copper's MOVE of BPL1PTH (`$0e0`) would be: an
     /// engine mixing the copper's writes into its CPU's must fail.
     AddCopperLike(u32),
+    /// Hold the frame's last non-Paula write back to the next frame, before its pass end: the
+    /// write a pass late, as a cut redraw's blit is on a machine of another pace (T30).
+    LateCustom(u32),
+    /// Hand this frame's pass end and writes over `n` frames late (T30): a machine whose pass
+    /// ends a frame from the original's passes, two frames apart fails.
+    Hold(u32, u32),
 }
 
 /// The index of the last non-Paula write in `w`.
@@ -66,6 +72,12 @@ struct StandIn {
     pic: Option<Rgb12Frame>,
     paula: Vec<PaulaWrite>,
     custom: Vec<(u16, u16)>,
+    /// A write `LateCustom` holds back a frame.
+    late: Option<(u16, u16)>,
+    /// RAM at the pass end of the last frame (the oracle keeps a step's first).
+    ends: Vec<AmigaMemory>,
+    /// What a `Hold` keeps back: (the frame it is handed in, pass ends, Paula's, custom writes).
+    held: Option<(u32, Vec<AmigaMemory>, Vec<PaulaWrite>, Vec<(u16, u16)>)>,
     /// `char_x` at each frame's end, to show a moving case moved.
     char_x: Vec<u32>,
 }
@@ -81,6 +93,9 @@ impl StandIn {
             pic: None,
             paula: Vec::new(),
             custom: Vec::new(),
+            late: None,
+            ends: Vec::new(),
+            held: None,
             char_x: Vec::new(),
         }
     }
@@ -100,7 +115,6 @@ impl Transplant for StandIn {
                 break m;
             }
         };
-        self.am.watch_write(None);
         assert_eq!(
             fd_conform::OracleMem(&at_pass_end).value(irq),
             mem.value(irq),
@@ -131,6 +145,7 @@ impl FrameEngine for StandIn {
             .iter()
             .map(|w| (w.reg & 0x1FE, w.value))
             .collect();
+        self.ends = self.am.watched_memory().into_iter().collect();
         let x =
             fd_conform::OracleMem(self.mem.as_ref().unwrap()).value(layout_var("char_x").unwrap());
         self.char_x.push(x);
@@ -143,7 +158,13 @@ impl FrameEngine for StandIn {
                     self.paula.swap(0, k);
                 }
                 Meddle::Drop(f) if f == self.frames => {
-                    self.paula.pop().expect("a write to drop");
+                    // Not an INTREQ write: the pass end is one, and dropping it would join passes.
+                    let k = self
+                        .paula
+                        .iter()
+                        .rposition(|w| w.reg != 0x9C)
+                        .expect("a write to drop");
+                    self.paula.remove(k);
                 }
                 Meddle::DropCustom(f) if f == self.frames => {
                     let k = last_other(&self.custom);
@@ -165,10 +186,33 @@ impl FrameEngine for StandIn {
                     self.custom.swap(a, b);
                 }
                 Meddle::AddCopperLike(f) if f == self.frames => {
-                    self.custom.push((0x0E0, 0x0000));
+                    // First in the frame: before its pass end, so in the pass that ends in it.
+                    self.custom.insert(0, (0x0E0, 0x0000));
+                }
+                Meddle::LateCustom(f) if f == self.frames => {
+                    let k = last_other(&self.custom);
+                    self.late = Some(self.custom.remove(k));
+                }
+                Meddle::LateCustom(f) if f + 1 == self.frames => {
+                    let w = self.late.take().expect("held a frame ago");
+                    self.custom.insert(0, w);
+                }
+                Meddle::Hold(f, n) if f == self.frames => {
+                    self.held = Some((
+                        f + n,
+                        std::mem::take(&mut self.ends),
+                        std::mem::take(&mut self.paula),
+                        std::mem::take(&mut self.custom),
+                    ));
                 }
                 _ => {}
             }
+        }
+        if self.held.as_ref().is_some_and(|h| h.0 == self.frames) {
+            let (_, ends, paula, custom) = self.held.take().unwrap();
+            self.ends.splice(0..0, ends);
+            self.paula.splice(0..0, paula);
+            self.custom.splice(0..0, custom);
         }
     }
 
@@ -182,6 +226,24 @@ impl FrameEngine for StandIn {
 
     fn custom_writes(&self) -> &[(u16, u16)] {
         &self.custom
+    }
+
+    fn pass_ends(&self, vars: &[&Var]) -> Vec<Vec<u32>> {
+        let bumped = self
+            .meddle
+            .iter()
+            .any(|m| matches!(m, Meddle::Bump(f) if *f == self.frames));
+        self.ends
+            .iter()
+            .map(|m| {
+                vars.iter()
+                    .map(|v| {
+                        let n = fd_conform::OracleMem(m).value(v);
+                        n + (bumped && v.name == "countdown") as u32
+                    })
+                    .collect()
+            })
+            .collect()
     }
 
     fn stopped(&self) -> Option<String> {
@@ -224,15 +286,16 @@ fn custom_first(meddle: Meddle) -> (u32, u16, u32, u32) {
     };
     // The report names the frame and the register.
     let shown = v.outcome.to_string();
-    assert!(shown.contains(&format!("at frame {pass}")), "{shown}");
+    assert!(shown.contains(&format!("at pass {pass}")), "{shown}");
     assert!(shown.contains(&format!("${reg:03x}")), "{shown}");
     (pass, reg, original, engine)
 }
 
 #[test]
 fn a_dropped_custom_write_fails_naming_the_frame_register_and_counts() {
+    // Late or missing cannot be told apart until the next pass end (T30's slack).
     let (pass, reg, original, engine) = custom_first(Meddle::DropCustom(5));
-    assert_eq!(pass, 5);
+    assert_eq!(pass, 6);
     assert!(!amiga_chips::is_paula(reg), "{reg:#x}");
     assert_eq!(original, engine + 1);
 }
@@ -240,7 +303,7 @@ fn a_dropped_custom_write_fails_naming_the_frame_register_and_counts() {
 #[test]
 fn a_changed_custom_write_fails() {
     let (pass, _, original, engine) = custom_first(Meddle::ChangeCustom(6));
-    assert_eq!(pass, 6);
+    assert_eq!(pass, 7);
     assert_ne!(original, engine);
 }
 
@@ -252,7 +315,15 @@ fn two_custom_writes_swapped_pass_as_order_is_not_compared() {
 
 #[test]
 fn a_copper_like_write_the_cpu_did_not_make_fails() {
-    assert_eq!(custom_first(Meddle::AddCopperLike(3)), (3, 0x0E0, 0, 1));
+    assert_eq!(custom_first(Meddle::AddCopperLike(3)), (4, 0x0E0, 0, 1));
+}
+
+/// A non-Paula write a pass late is the same write (owner, 2026-11-12, T30): `main_loop`'s blits
+/// are cut by the pass end wherever they have got to.
+#[test]
+fn a_custom_write_a_pass_late_passes() {
+    let v = run(&made_up(20), &[Meddle::LateCustom(4)], &Options::default());
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
 }
 
 #[test]
@@ -268,12 +339,12 @@ fn every_channel_records_the_custom_writes_beside_the_others() {
     );
     assert_eq!(v.firsts.len(), 2, "{v}");
     assert!(
-        matches!(v.firsts[1], Outcome::CustomWritesDiffer { pass: 8, .. }),
+        matches!(v.firsts[1], Outcome::CustomWritesDiffer { pass: 9, .. }),
         "{v}"
     );
     let row = Row::new("w1-idle-made-up", Ok(v));
     assert_eq!(row.kind(), "Paula writes");
-    assert_eq!(row.then(), "custom writes at frame 8");
+    assert_eq!(row.then(), "custom writes at pass 9");
 }
 
 #[test]
@@ -293,7 +364,43 @@ fn a_missing_write_fails() {
         panic!("{v}");
     };
     assert_eq!(*pass, 3, "{v}");
-    assert!(why.contains("engine nothing"), "{why}");
+    // One write fewer in the same pass: the counts name it.
+    let counts: Vec<u32> = why
+        .split(" writes in the original, ")
+        .flat_map(|s| {
+            s.split_whitespace()
+                .rev()
+                .take(1)
+                .chain(s.split_whitespace().take(1))
+        })
+        .filter_map(|w| w.parse().ok())
+        .collect();
+    assert_eq!(counts.len(), 2, "{why}");
+    assert_eq!(counts[0], counts[1] + 1, "{why}");
+}
+
+/// The original's pass ends near line 310 or in the next frame's first lines (docs/09), so a
+/// machine ending the same pass a frame from it is judged on the pass, not the frame (T30).
+#[test]
+fn a_pass_ending_a_frame_late_on_the_engine_is_compared_as_the_same_pass() {
+    let v = run(&made_up(20), &[Meddle::Hold(5, 1)], &Options::default());
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert_eq!(v.passes + 1, 20, "{v}");
+}
+
+#[test]
+fn a_pass_ending_two_frames_late_fails_as_pass_ends_apart() {
+    let v = run(&made_up(20), &[Meddle::Hold(5, 2)], &Options::default());
+    let Outcome::PassEndsApart { frame, why, .. } = &v.outcome else {
+        panic!("{v}");
+    };
+    assert!(
+        why.contains("in the original, ") && why.contains("in the engine"),
+        "{why}"
+    );
+    let row = Row::new("w1-idle-made-up", Ok(v.clone()));
+    assert_eq!(row.kind(), "pass ends apart");
+    assert_eq!(*frame, row.frame().unwrap());
 }
 
 #[test]
@@ -316,7 +423,7 @@ fn every_channel_goes_on_past_the_writes_to_the_states_first_difference() {
     assert_eq!(v.pictures + 1, 40, "{v}");
     let row = Row::new("death-made-up", Ok(v));
     assert_eq!(row.kind(), "Paula writes");
-    assert_eq!(row.then(), "state: countdown at frame 9");
+    assert_eq!(row.then(), "state: countdown at pass 9");
     let md = Reading {
         engine: "stand-in",
         rows: vec![row],
@@ -341,7 +448,13 @@ fn an_equal_engine_given_each_frames_input_stays_in_step_while_the_character_mov
     let mut stand_in = StandIn::new(&case, &[Meddle::None]);
     let v = run_frames(&case, &mut stand_in, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert_eq!(v.passes + 1, case.frames, "{v}");
+    // A step now and then shows two pass ends, the oracle keeping the first (docs/09): those are
+    // counted unseen, every other pass is compared.
+    assert_eq!(v.passes + v.unseen + 1, case.frames, "{v}");
+    assert!(
+        v.unseen > 0,
+        "collect-ledge's first 60 steps show two pass ends twice: {v}"
+    );
     let xs = &stand_in.char_x;
     assert!(
         xs.windows(2).filter(|w| w[0] != w[1]).count() >= 10,
