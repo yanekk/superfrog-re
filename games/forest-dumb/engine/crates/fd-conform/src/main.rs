@@ -1,5 +1,15 @@
-//! `fd-conform run <case.toml>`: one case, prints the verdict and its report; exit 0 only when the
-//! case passes. Format and how to run it: `engine/conform/README.md`.
+//! `fd-conform run <case.toml> [--engine hand|translated]`: one case, prints the verdict and its
+//! report; exit 0 only when the case passes. Format and how to run it: `engine/conform/README.md`.
+//! `--engine translated` runs a level case on the translated program judged on the frame bar
+//! (`fd_conform::translated_engine::run_translated`, translator T29); `hand` (the default) is
+//! fd-core's engine.
+//!
+//! `fd-conform run-all [--engine hand|translated] [--cases <glob>] [--report FILE]`: every case
+//! under `engine/conform/cases/` whose stem matches the glob, in parallel, one line each
+//! (`<case>: <verdict's first line>`), then a summary; `--report` also writes it as Markdown,
+//! grouped by the task that works from it and sorted by first difference (`fd_conform::reading`).
+//! A case the engine cannot run (a title case on `translated`) is listed as not run. Exit 0 only
+//! when every case ran and passed.
 //!
 //! `fd-conform bug replay <zip> [--out DIR]`: a bug zip replayed headlessly (DESIGN §2.8,
 //! `fd_conform::bug`): `frames N`, `stopped-at`, `replay-at` and `screenshot equal` or
@@ -44,14 +54,30 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use fd_conform::{Case, run};
+use fd_conform::reading::{EngineKind, run_on};
+use fd_conform::Case;
 
-const USAGE: &str = "usage: fd-conform run <case.toml> | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
+const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] | run-all [--engine hand|translated] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let outcome = match &args[..] {
-        [cmd, path] if cmd == "run" => run_case(Path::new(path)),
+        [cmd, path, rest @ ..] if cmd == "run" && !path.starts_with("--") => {
+            match engine_arg(rest) {
+                Some(engine) => run_case(Path::new(path), engine),
+                None => {
+                    eprintln!("{USAGE}");
+                    return ExitCode::from(2);
+                }
+            }
+        }
+        [cmd, rest @ ..] if cmd == "run-all" => match run_all_args(rest) {
+            Some((engine, glob, report)) => run_all(engine, &glob, report.as_deref()),
+            None => {
+                eprintln!("{USAGE}");
+                return ExitCode::from(2);
+            }
+        },
         [cmd, rest @ ..] if cmd == "code-writes" => match code_writes_args(rest) {
             Some((glob, max, all)) => code_writes(&glob, max, all),
             None => {
@@ -94,11 +120,101 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_case(path: &Path) -> Result<bool, String> {
+fn run_case(path: &Path, engine: EngineKind) -> Result<bool, String> {
     let case = Case::load(path)?;
-    let verdict = run(&case)?;
+    let verdict = run_on(&case, engine)?;
     println!("{}: {verdict}", case.name);
     Ok(verdict.passed())
+}
+
+fn engine_arg(rest: &[String]) -> Option<EngineKind> {
+    match rest {
+        [] => Some(EngineKind::Hand),
+        [flag, e] if flag == "--engine" => EngineKind::parse(e),
+        _ => None,
+    }
+}
+
+fn run_all_args(rest: &[String]) -> Option<(EngineKind, String, Option<PathBuf>)> {
+    let (mut engine, mut glob, mut report) = (EngineKind::Hand, "*".to_string(), None);
+    let mut it = rest.iter();
+    while let Some(flag) = it.next() {
+        match flag.as_str() {
+            "--engine" => engine = EngineKind::parse(it.next()?)?,
+            "--cases" => glob = it.next()?.clone(),
+            "--report" => report = Some(PathBuf::from(it.next()?)),
+            _ => return None,
+        }
+    }
+    Some((engine, glob, report))
+}
+
+/// Every matching case on `engine`, in parallel (each run its own oracle), printed in name order.
+fn run_all(engine: EngineKind, glob: &str, report: Option<&Path>) -> Result<bool, String> {
+    use fd_conform::code_writes::glob_match;
+    use fd_conform::reading::{Reading, Row};
+    let dir = fd_conform::conform_dir().join("cases");
+    let mut paths: Vec<PathBuf> = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .filter(|p| {
+            p.file_stem()
+                .is_some_and(|s| glob_match(glob, &s.to_string_lossy()))
+        })
+        .collect();
+    paths.sort();
+    let cases = paths
+        .iter()
+        .map(|p| Case::load(p))
+        .collect::<Result<Vec<_>, _>>()?;
+    if cases.is_empty() {
+        return Err(format!("no case in {} matches `{glob}`", dir.display()));
+    }
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let results: Vec<std::sync::Mutex<Option<Result<fd_conform::Verdict, String>>>> =
+        cases.iter().map(|_| std::sync::Mutex::new(None)).collect();
+    std::thread::scope(|s| {
+        for _ in 0..workers.min(cases.len()) {
+            s.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(case) = cases.get(i) else { break };
+                    let r = run_on(case, engine);
+                    let line = match &r {
+                        Ok(v) => v.to_string().lines().next().unwrap_or("").to_string(),
+                        Err(e) => format!("not run: {e}"),
+                    };
+                    eprintln!("{}: {line}", case.name);
+                    *results[i].lock().unwrap() = Some(r);
+                }
+            });
+        }
+    });
+    let rows: Vec<Row> = cases
+        .iter()
+        .zip(results)
+        .map(|(c, r)| Row::new(&c.name, r.into_inner().unwrap().expect("every case ran")))
+        .collect();
+    let reading = Reading {
+        engine: engine.name(),
+        rows,
+    };
+    for r in &reading.rows {
+        println!("{}: {}", r.case, r.result());
+    }
+    println!("{}", reading.summary());
+    if let Some(path) = report {
+        let tmp = path.with_extension("md.tmp");
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
+        }
+        std::fs::write(&tmp, reading.markdown()).map_err(|e| format!("{}: {e}", tmp.display()))?;
+        std::fs::rename(&tmp, path).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!("{}", path.display());
+    }
+    Ok(reading.all_passed())
 }
 
 fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {

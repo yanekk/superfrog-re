@@ -99,7 +99,7 @@ fn known_gaps() -> Vec<Exclusion> {
 
 /// The variables a bug compare holds at every pass end: every play variable in `LAYOUT` less the
 /// known gaps ([`known_gaps`]). `mt_counter` is the title's.
-fn compared_vars() -> Vec<String> {
+pub(crate) fn compared_vars() -> Vec<String> {
     let gaps = known_gaps();
     fd_core::LAYOUT
         .iter()
@@ -552,6 +552,7 @@ pub fn compare_with(
         compare: Compare {
             vars: true,
             picture: true,
+            writes: false,
         },
         vars: compared_vars(),
         goal: None,

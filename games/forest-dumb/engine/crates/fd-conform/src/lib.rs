@@ -14,12 +14,14 @@ pub mod code_seen;
 pub mod code_writes;
 pub mod coverage;
 pub mod disks;
+pub mod frames;
 // `gen` is a reserved word in edition 2024; the files keep the task's folder name.
 #[path = "gen/mod.rs"]
 pub mod generators;
 pub mod judge;
 pub mod os_run;
 pub mod os_surface;
+pub mod reading;
 pub mod routine;
 pub mod sync;
 pub mod translated_engine;
@@ -48,6 +50,7 @@ use fd_core::{
 
 pub use case::{Case, Compare, Exclusion, Goal, Swap};
 pub use coverage::Coverage;
+pub use frames::{FrameEngine, run_frames};
 
 /// The main program's hunks where the boot of `boot-to-title` loads them, and `boot-to-level1`'s too
 /// (it shares the boot up to the title)
@@ -728,6 +731,10 @@ pub struct Options<'a> {
     pub register: &'a [Ported],
     /// Where a picture difference's PNG goes (it shows the original, so outside git).
     pub diff_dir: Option<PathBuf>,
+    /// The frame runner ([`frames`]) goes on past a channel's first difference with the channels
+    /// that have not differed, recording each one's first in [`Verdict::firsts`]. The pass runner
+    /// ignores it.
+    pub every_channel: bool,
 }
 
 impl Default for Options<'_> {
@@ -736,6 +743,7 @@ impl Default for Options<'_> {
             mode: Mode::Faithful,
             register: PORTED,
             diff_dir: None,
+            every_channel: false,
         }
     }
 }
@@ -769,6 +777,12 @@ pub enum Outcome {
     /// One side went to the game over screen, or left it, or found the level's end, and the other
     /// did not (T23, T26).
     SceneDiffers { frame: u32, why: String },
+    /// Paula's writes in a frame differ in register, value or order, or one side wrote more
+    /// ([`frames`], T29): `why` is `amiga_conform::compare::paula`'s.
+    WritesDiffer { pass: u32, frame: u32, why: String },
+    /// The engine stopped (translator DESIGN §2.4): the translated program met an address with no
+    /// translation, a write into its code, an instruction it cannot run, or a cap.
+    Stopped { pass: u32, frame: u32, stop: String },
 }
 
 /// A case's result and its report.
@@ -809,6 +823,12 @@ pub struct Verdict {
     /// `next_world`, the engine entered its level end, `world_index` equal. The comparison ends
     /// there; [`AFTER_NEXT_WORLD`] is not compared.
     pub level_end: Option<u32>,
+    /// Paula writes compared, and the frames they were compared in ([`frames`], T29).
+    pub writes: u32,
+    pub write_frames: u32,
+    /// The frame runner's first difference in each channel, in the order met; `outcome` is the
+    /// first of them ([`Options::every_channel`]).
+    pub firsts: Vec<Outcome>,
     pub coverage: Coverage,
 }
 
@@ -829,6 +849,9 @@ impl Verdict {
             goal_met: None,
             game_over: None,
             level_end: None,
+            writes: 0,
+            write_frames: 0,
+            firsts: Vec::new(),
             coverage: Coverage::new(register),
         }
     }
@@ -874,6 +897,14 @@ impl fmt::Display for Outcome {
             Outcome::SceneDiffers { frame, why } => {
                 write!(f, "scene differs at oracle frame {frame}: {why}")
             }
+            Outcome::WritesDiffer { pass, frame, why } => write!(
+                f,
+                "Paula writes differ at frame {pass} (oracle frame {frame}): {why}"
+            ),
+            Outcome::Stopped { pass, frame, stop } => write!(
+                f,
+                "the engine stopped in frame {pass} (oracle frame {frame}): {stop}"
+            ),
         }
     }
 }
@@ -887,6 +918,16 @@ impl fmt::Display for Verdict {
                 self.passes, self.pictures
             )?,
             ref other => write!(f, "{other}")?,
+        }
+        for o in self.firsts.iter().skip(1) {
+            write!(f, "\nthen, in another channel: {o}")?;
+        }
+        if self.write_frames > 0 {
+            write!(
+                f,
+                "\n{} Paula writes in {} frames, in order",
+                self.writes, self.write_frames
+            )?;
         }
         if self.unseen > 0 {
             write!(f, "\n{} pass ends unseen, not compared", self.unseen)?;
@@ -1354,6 +1395,13 @@ pub fn run_inputs(
     if !case.is_level() {
         return Err(format!(
             "{}: run_with runs level cases; a title case runs with `run`",
+            case.name
+        ));
+    }
+    if case.compare.writes {
+        return Err(format!(
+            "{}: compare \"writes\" needs an engine that plays sound, run frame by frame \
+             (`run_frames`, `--engine translated`)",
             case.name
         ));
     }
