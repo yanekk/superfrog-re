@@ -34,7 +34,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
 | T19 | haiku-trial | T17, T18 | ✅ | |
-| T20 | docs-and-packs | T18, T19 | ⬜ | |
+| T20 | docs-and-packs | T18, T19 | ✅ | |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
