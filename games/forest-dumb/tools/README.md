@@ -243,6 +243,16 @@ python3 -I games/forest-dumb/tools/pack_check.py [--conversations DIR] [--since 
 ```
 Default logs: the main checkout's `plans/forest-dumb-level-1/.parallel/control/conversations/`.
 
+### default_check.py (stdlib)
+Stage 7's check: do fresh sessions, given a porting task and only the docs, run `translate.py` before
+anything else that makes Rust? Each run is `claude -p` (default model) in a scratch worktree of HEAD,
+removed after; commit a doc fix before rerunning. Spends the owner's subscription (DESIGN §5.3).
+```
+python3 -I games/forest-dumb/tools/default_check.py [--runs 3] [--max-turns 15] [--minutes 10] [--routine char_sprite_position]
+```
+Prints `{"runs":3,"pass":n,"per_run":[...]}`; transcripts in `build/default-check/run-<n>.jsonl`. Exit 0
+when every run passes.
+
 ## Tests
 
 `test_<script>.py` (and `test_*_judge.py` for the judge halves) test the script of that name; model calls
