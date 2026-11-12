@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T19 Haiku trial missed the mark:** generators 5 of 5 at Muse's branch ways; rewrites 19 of 21 (`left_pressed` timed out thrice at 300 s, `run_right_step` failed three tries). 29 calls, $0.36 list. Owner's decision pending. |
 | 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |
 | 2026-11-12 | 🐞 | **T26:** Ghidra marks `load_file` (`h0+$8ec4`) non-returning, so hunk 4's 8 load lists (`h4+$19fda`..`$1c314`) lose their fall-through: power-on stops `untranslated: h4+$1a0f6` after `_NAPIS`. T43 added (owner's yes) to fix the export generally. |
 | 2026-11-12 | 📌 | DESIGN §2.8 says disk 2's prompt does not appear; the entry always calls `prompt_disk_2` (`h0+$7b70`) and waits for fire (docs/03). T26's `os_run` holds fire for that poll; T28 and T32 must too. |
@@ -55,7 +56,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | `world_index` cannot be poked before `load_world`: `title_code_world` writes it in the same step. T01 sets the immediate at `h0+$778e` (the no-code branch `h0+$778c`) instead; T33's `set` meets the same step. |
 | 2026-11-11 | 📌 | `claude -p --tools ""` from a temp folder (claude 2.1.322): no tools, 631 input tokens, no user CLAUDE.md in context. `--max-turns` works though `claude --help` does not list it. |
 | 2026-11-11 | 📌 | First real `generate.py` on Haiku: `h0+$513c` covered, 4 of 4 branches, 2 000 returns, 2 tries (the first left its name out of `ALL`), 22 s, $0.011 list. `claude -p` keeps no conversation; retries go as one transcript prompt. |
-| 2026-11-11 | 📌 | `docs/11-translation.md` still describes Muse's translate.py; `reshape.py` and `task_pack.py` still read Muse's `build/translate/<hN-off>/port.rs`, where translate.py now writes `translated.rs` (T18). Left for T19, T20. |
+| 2026-11-11 | 📌 | `docs/11-translation.md` still describes Muse's translate.py; `task_pack.py` still reads Muse's `build/translate/<hN-off>/port.rs`, where translate.py now writes `translated.rs` (T18). Left for T20; `reshape.py` reads `translated.rs` since T19. |
 | 2026-11-11 | 📌 | **T00 seam: mount `game_frame` whole.** Transplant in, `game_frame_on`, write back what differs: 2 000/2 000 `game_frame` states, 34.5 bytes changed a pass, max 59 (review's count). T35 mounts by address; T36 mounts only `h0+$1fec`. |
 | 2026-11-11 | 📌 | Per routine also passes: `char_sprite_position` and `camera_update` mounted alone, and both inside translated `game_frame`, 2 000/2 000 each with no registers compared. All registers fail: ports leave scratch d0-d3, d7 (487/2 000 at `game_frame`'s exit). |
 | 2026-11-11 | 🐞 | A write-back compares with memory's bytes, not the typed state before: `camera_update`'s `crossed` flags are bools, so a poked `$6c` stayed and 288/2 000 failed. Camera needed four values outside `LAYOUT` (`h0+$4d76`, `$4d7a`, `$51f8`, `frame_flag`). |
