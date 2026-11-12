@@ -13,6 +13,8 @@
 //!   original's frame as a PNG.
 //! - [`bug_compare`]: the verdict line of a bug recording compared with the original.
 //! - [`script`]: input scripts, with a hook for a game's own tokens.
+//! - [`loads`]: an engine that loads at once against the original, run on past each load and
+//!   compared once it is over.
 //! - [`sync_cache`]: a sync point's oracle snapshot, cached outside git under a game's key.
 //!
 //! A game keeps its cases, its memory map, its levels and milestones, and the run loop that drives
@@ -22,6 +24,7 @@ pub mod bug_compare;
 pub mod channels;
 pub mod compare;
 pub mod feed;
+pub mod loads;
 pub mod report;
 pub mod screenshot;
 pub mod script;

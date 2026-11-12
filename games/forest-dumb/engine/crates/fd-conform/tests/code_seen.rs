@@ -29,7 +29,8 @@ fn a_fresh_run_writes_the_committed_entries_and_every_executed_func_is_in_them()
         &mut skipped,
     )
     .unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(skipped, ["first-case"]);
+    // The power-on cases (T32) are not level cases; the power-on run below covers their way.
+    assert_eq!(skipped, ["first-case", "power-on-level-1", "power-on-title"]);
     let runs: Vec<&str> = seen.runs.iter().map(|r| r.0.as_str()).collect();
     for w in [
         "power-on", "world-2", "world-3", "world-4", "world-5", "world-6",

@@ -49,7 +49,9 @@ pub fn run_on(case: &Case, engine: EngineKind) -> Result<Verdict, String> {
 /// The task that works from a level 1 case's translated result, and the case's group, by its name
 /// (translator PLAN: T30 character, camera, stretch, picture, idle; T31 the rest of play).
 pub fn group(case: &str) -> (&'static str, &'static str) {
-    const BY_PREFIX: [(&str, &str, &str); 14] = [
+    const BY_PREFIX: [(&str, &str, &str); 16] = [
+        ("power-on-", "T32", "power-on"),
+        ("first-case", "T32", "title"),
         ("character-", "T30", "character"),
         ("stub-level", "T30", "character"),
         ("camera-", "T30", "camera"),
@@ -151,6 +153,7 @@ fn kind(o: &Outcome) -> String {
         Outcome::NotIdle { .. } => "not idle".to_string(),
         Outcome::Unported { .. } => "unported object".to_string(),
         Outcome::ExclusionUnused { .. } => "exclusion unused".to_string(),
+        Outcome::LoadApart { .. } => "loads apart".to_string(),
     }
 }
 
@@ -162,6 +165,7 @@ fn frame_of(o: &Outcome) -> Option<(u32, u32)> {
         | Outcome::PictureDiffers { pass, frame, .. }
         | Outcome::WritesDiffer { pass, frame, .. }
         | Outcome::CustomWritesDiffer { pass, frame, .. }
+        | Outcome::LoadApart { pass, frame, .. }
         | Outcome::PassEndsApart { pass, frame, .. }
         | Outcome::Unported { pass, frame, .. } => Some((*pass, *frame)),
         _ => None,
