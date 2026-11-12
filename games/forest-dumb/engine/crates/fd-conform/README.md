@@ -65,6 +65,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `rig.survey(...) -> RigReport` (original alone); `rig.coverage(...) -> routine::Coverage` (`branches`, `reads`, `.uncovered()`).
 - `rig.memory_for(&g)`, `set_max_instr`, `last_regs`, `name(addr)`; `seed(name)`.
 - `judge::translated::check_on(.., Hardware::Machine)` (`fd-judge --translated --machine`, translator T27): the translated entry on `pcode-machine`; chip and slow RAM and the custom registers are the machine's, every other address the rig's flat memory, the CIA window and the case's register reads answered as the oracle answers them (`judge/translated/machine.rs`).
+- `judge::seam::check(&rig, name, cases, entry, &g, replaced, replacing, regs) -> SeamReport` (`fd-judge --seam`, translator T35): a mounted routine against the translated one on the same states, bytes off the stack, custom writes, the return, the named registers; `.pass()`, `first` names the first difference.
 - `rig.set_code(ranges)`: absolute `[start, end)` translated-instruction ranges; a state on which the original changes one of their bytes counts as `self_modifying` and is not compared (translator T15). `judge::translated::check` sets it from the tree's `CODE` and clears it after.
 - `RegsCompared::{ALL, NONE, d(&[usize])}`: an engine port names only the registers a caller reads.
 - `RigReport { passed, paths, hangs, faults, unmodelled_blits, self_modifying }`. A hang or fault never passes, and a check that compared nothing fails.
@@ -126,6 +127,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | `cargo run --release -p fd-conform -- os-surface [--frames N] [--worlds 1,2] [--out FILE]` | The program's OS calls, OS memory, interrupts and CIA accesses on the original, written to `re/os-calls.toml`; about 25 s |
 | `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --gen <name> [--cases N] [--survey \| --cover]` | One routine against the built-in port; prints one JSON line |
 | `cargo run -p fd-conform --bin fd-judge -- --insn <word> --at 'hN+$off' \| --insn-all [--shard K/N] [--states N] [--columns ..]` | One instruction (or every one) of `FD_INSN`'s module against Moira's step (`judge::insn`, `tools/insn_check.py`); one JSON line a site |
+| `cargo run -p fd-conform --bin fd-judge -- 'hN+$off' --seam [--gen <name>] [--regs all\|d0,a1,..]` | The seam's adapter at the address against the translated routine it replaces (translator T35); one JSON line |
 | `cargo run -p fd-conform --bin fd-judge -- --generators` | Every registered generator's name, `{"generators":[..]}` (`translator_trial.py --whole`'s work list) |
 
 Output formats: the `//!` headers of `src/main.rs` and `src/bin/fd-judge.rs`.

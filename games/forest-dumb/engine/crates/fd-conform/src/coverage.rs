@@ -76,12 +76,14 @@ mod tests {
             hunk: 0,
             offset: 0x10,
             port: "x::a",
+            mounted: false,
         },
         Ported {
             name: "b",
             hunk: 0,
             offset: 0x20,
             port: "x::b",
+            mounted: false,
         },
     ];
 

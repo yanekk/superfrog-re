@@ -131,6 +131,7 @@ const fn entry(name: &'static str, hunk: u8, offset: u32) -> Ported {
         hunk,
         offset,
         port: "level::x",
+        mounted: false,
     }
 }
 
