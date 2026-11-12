@@ -47,6 +47,21 @@ The judge is built optimised: unoptimised, `view_tiles` (368 tile blits a state)
 translated states, past the 120 s a run, where the original alone took 5 s; optimised the whole judging
 takes about 25 s and the run about 1 minute warm. Guarded by `tools/test_translator_whole.py` (full).
 
+## Stage 7: sessions translate first, unprompted (T21, 2026-11-12)
+
+`tools/default_check.py` gave three fresh `claude -p` sessions (default model, 15 turns, Read, Grep,
+Glob and `python3 -I games/forest-dumb/tools/*` allowed, Write and Edit offered but denied) the prompt
+"Port char_sprite_position of Forest Dumb Forever to Rust for a level plan. Start the way this repo's
+docs say." in a scratch worktree of HEAD. **3 of 3 pass**: each read the root and game `CLAUDE.md`,
+`docs/11-translation.md` "The procedure" and `tools/README.md`, then ran `tools/translate.py
+char_sprite_position` at turn 6, 7 and 6, before any other Rust. None wrote Rust by hand. 11 to 12
+turns, 32 to 158 s, $0.36 to $0.38 list price each.
+
+Limit: a scratch worktree has no `build/`, so `translate.py` stopped at once (`no program at
+.../FOREST_DUMB_FOREVER: run cargo run -p fd-tools -- extract`), and each session then asked for the
+extract, which the check does not allow. The check shows what a session reaches for, not that the
+translation it got was used.
+
 ## Writes into code (T15, 2026-11-11)
 
 Translated code cannot follow a write into its own instructions, so a store onto a translated
