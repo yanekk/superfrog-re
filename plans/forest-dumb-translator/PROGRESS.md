@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** T29 (conform-translated) and T35 (seam), both unblocked by T28.
 
 ## Tasks
 
@@ -48,7 +48,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T31 | level1-cases-b | T29 | ⬜ | |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
-| T34 | generated-purity | T28 | 🔍 | purity.rs scans the tree fd-translated builds in (FD_TRANSLATED, else build/translator/tree/), saying it scanned nothing when absent, and every committed pcode_rust.py file; owner-approved exemption for CODE only. 6 new tests. Deviations: generated files found by header so irq.rs fixture passes; pcode_rust.py unchanged; fd-app links no fd-translated yet, deps.rs passes as is; stub not scanned (buildscript). |
+| T34 | generated-purity | T28 | ✅ | Reviewed: one defect, the lexer read hex `0x18f32` as a float, 48 false hits on the real tree (`translate.py --build`, 17 files); reproduced, fixed, test locks it; real tree passes. A surviving CODE-shape mutation got float-in-slot cases. Probed dir, single-file and stub trees; deps.rs held by `cargo tree`. CODE exemption's owner approval read-only. |
 | T35 | seam | T00, T28 | ⬜ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
-**Review queue:** T34
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
