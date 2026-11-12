@@ -216,7 +216,7 @@ A porting task proves each routine it ports on the routine rig before any case r
   routine's name in `re/symbols.toml` (or `hN+$off` until it has one) with `generator(name)`. The
   translation service's judge and an engine port's rig test use the same one. A generator task adds
   its own module with a `pub const ALL` list and one line in `MODULES`. `spike.rs` holds the eleven
-  generators of the Muse spike.
+  generators of the 2026-11-04 model spike (`spikes/muse-spark/`).
 - **The port register**, `fd-core/src/ported.rs`. Every routine ported into `fd-core`, by hunk and
   offset, with its Rust function. Porting tasks only append. `fd-conform/tests/ported.rs` fails on
   two entries for one address and on an entry that is not a `func` of the same name, hunk and offset

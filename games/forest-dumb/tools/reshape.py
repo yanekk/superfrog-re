@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""A model (Haiku, through `claude -p`) turns a literal port into engine code on typed state, judged by the task's own rig test, then
+"""A model (Haiku, through `claude -p`) turns a translated routine into engine code on typed state, judged by the task's own rig test, then
 tidies it against an automatic quality check: the engine-shape trial (plans/forest-dumb-level-1 T62),
 used by every porting task from T22 on (owner, 2026-11-06; DESIGN §4.3, §4.4, §5.3;
 docs/11-translation.md, "Reshaping by Muse").
@@ -15,14 +15,16 @@ Prints one JSON line a unit and nothing else on stdout:
      "quality":["what the builder still has to tidy", ...] or null}
 
 Exit 0 when every unit passes, 1 on any other result, 2 on a usage error (a routine the task has no
-unit for, a missing literal port), with the reason on stderr.
+unit for, a missing translated routine), with the reason on stderr.
 
 Leave one out. A unit is one engine function of a task in re/reshape.toml and the routines its rig
 test checks with it: one routine for most, four for T09's `follow` and `scroll`, which serve four each.
-The prompt holds the unit's literal ports (T40's, from `build/translate`), the subsystem's typed
+The prompt holds the unit's translated routines (`translate.py`'s `build/translate/h0-<off>/translated.rs`,
+here or in the main checkout; translator T19), each with the callees no unit ports, ticks taken out, and a
+line naming the engine function of each callee one does; the subsystem's typed
 state as a skeleton (structs, enums, consts in full; every other function's doc and signature, no
 body) with the unit's function and the helpers only it calls removed, and one other unit's engine
-function, literal port and rig line as the example. The judge copies the engine workspace into
+function, translated routine and rig line as the example. The judge copies the engine workspace into
 build/reshape/scratch, cuts the unit's functions out of the copy, appends the answer, and runs the task's
 existing rig test there on that unit's routines only (10 000 states each, the test's own
 generators). The committed `fd-core` is never changed. A wrong answer gets the rig's first failing
@@ -32,7 +34,7 @@ model.py's (translator T17): at most --max-calls calls a run, --all's units incl
 <out>/tries.jsonl; `no-model` when there is no `claude` on PATH or no call answered. `usd` is `claude`'s list-price figure.
 
 Tidy. The prompt asks for the file's own style (docs naming the routine, names not numbers, no repeats).
-A passing answer goes through quality(): no model call, it lists what still reads like a literal port,
+A passing answer goes through quality(): no model call, it lists what still reads like the translation,
 plus the compiler's warnings on the answer's lines. Issues go back to the model for up to --tidy rounds;
 each tidied answer must pass the rig again. `port` is the passing answer with the fewest issues and
 `quality` what is left of them, for the builder.
@@ -44,7 +46,7 @@ import argparse, fcntl, glob, json, os, re, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import judge_run as jr  # noqa: E402  read_result, Usage, where the literal ports are
+import judge_run as jr  # noqa: E402  Usage, where build/translate is
 import model  # noqa: E402
 
 GAME = os.path.dirname(HERE)
@@ -71,7 +73,7 @@ def main_checkout():
 
 
 def port_dirs():
-    """Where literal ports are looked for: this checkout's build/translate, then the main checkout's."""
+    """Where translated routines are looked for: this checkout's build/translate, then the main checkout's."""
     dirs = [jr.JUDGE_DIR]
     main = main_checkout()
     if main:
@@ -136,7 +138,7 @@ def find_unit(task, routine):
         for name, o in u['routines']:
             if o == off or name == routine:
                 return cfg, u
-    raise Usage(f'{routine} is not a {task} routine with a literal port and an engine function: '
+    raise Usage(f'{routine} is not a {task} routine with an engine function: '
                 + ', '.join(f'h0+${o:x}' for u in cfg['units'] for _, o in u['routines']))
 
 
@@ -304,14 +306,36 @@ def read(path):
         return f.read()
 
 
-def literal_port(name, off, dirs=None):
-    """T40's passing literal port of `h0+$off`."""
+TICK = re.compile(r'r\.tick\([^;]*\);[ \t]*')
+FN_HEAD = re.compile(r'(?m)^pub fn (h\d+_[0-9a-f]+)\(')
+
+
+def translated(task, u_or_name, off, dirs=None):
+    """The translated routine `h0+$off` as translate.py wrote it (build/translate/h0-<off>/translated.rs),
+    for the prompt: the routine's function, then each callee it carries that no unit of `task` ports, with
+    a line naming the engine function of each that one does, and the cycle ticks taken out (the engine
+    keeps no cycles). The translation is the gate's (translator DESIGN §2.13): no pass is checked here."""
     for d in dirs if dirs is not None else port_dirs():
-        r = jr.read_result(os.path.join(d, f'h0-{off:x}'))
-        if r and r.get('result') == 'pass':
-            return read(os.path.join(d, f'h0-{off:x}', 'port.rs'))
-    raise Usage(f'{name} (h0+${off:x}) has no passing literal port in ' + ' or '.join(dirs or port_dirs())
-                + ': run translate.py on it first')
+        path = os.path.join(d, f'h0-{off:x}', 'translated.rs')
+        if os.path.exists(path):
+            text = read(path)
+            break
+    else:
+        raise Usage(f'{u_or_name} (h0+${off:x}) has no translated routine in ' + ' or '.join(dirs or port_dirs())
+                    + f': run `translate.py --task {task}` first')
+    ported = {f'h0_{o:x}': x['fn'] for x in TASKS[task]['units'] for _, o in x['routines']}
+    heads = list(FN_HEAD.finditer(text))
+    if not heads:
+        raise Usage(f'h0+${off:x}: build/translate/h0-{off:x}/translated.rs holds no `pub fn hN_off(`')
+    own, calls, notes = f'h0_{off:x}', [], []
+    for i, m in enumerate(heads):
+        body = text[m.start():heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+        name = m.group(1)
+        if name != own and name in ported:
+            notes.append(f'// `{name}(r, bus, img)?` is ported as `{ported[name]}`: call that.')
+            continue
+        calls.append(re.sub(r'(?m)^[ \t]+\n', '', TICK.sub('', body)).rstrip() + '\n')
+    return '\n'.join(notes + ([''] if notes else []) + calls)
 
 
 def rig_text(cfg, u, test_src):
@@ -330,7 +354,7 @@ def rig_text(cfg, u, test_src):
 
 def example_unit(cfg, u):
     """The first of the task's examples that is not `u`: a hand-written unit whose routine has a
-    passing literal port. Raises Usage when there is none."""
+    translated routine. Raises Usage when there is none."""
     for f in cfg['examples']:
         if f == u['fn']:
             continue
@@ -346,34 +370,45 @@ def removed(u):
     return [u['fn']] + u['helpers']
 
 
-SYSTEM = """You rewrite literal Rust ports of a 68000 Amiga game's routines as engine code on typed state.
+SYSTEM = """You rewrite a 68000 Amiga game's routines, translated to Rust instruction by instruction, as engine
+code on typed state.
 
-A literal port works on `Cpu { d, a, mem }`: registers and memory at their original addresses. The
-engine keeps the game's state in typed structs instead, each field named and at the original's
-width; an address in the literal port is the variable LAYOUT names (hunk 0 offset), and the
-struct field documented with that name or address. You get:
+A translated routine works on the machine: `r: &mut Regs` holds the registers, read and written as
+`r.get(offset, size)` and `r.set(offset, size, value)` with `size` in bytes: d0-d7 at 0x00 + 4n, a0-a7 at
+0x20 + 4n (a7, the stack pointer, at 0x3c), the flags X N Z V C one byte each at 0x43, 0x44, 0x45, 0x46,
+0x47. `load(bus, addr, size)` reads memory and `store(bus, img, addr, size, value)` writes it,
+big-endian; `img.h(hunk, off)` is the address of the original's `hN+$off`. The `pc` loop walks the
+original's blocks, a comment naming each instruction (`// h0+$4274 move.b`); `h0_xxxx(r, bus, img)?` calls
+another routine; `int_sless`, `int_equal`, `int_and` and the like are P-code operations, the last
+argument the size in bytes.
+Most flag writes are never read: what matters is what the routine leaves in memory and in the registers
+the rig compares. The engine keeps the game's state in typed structs instead, each field named and at
+the original's width; an address in the translation is the variable LAYOUT names (hunk 0 offset), and
+the struct field documented with that name or address. You get:
 
-- the literal port of the routine (or the routines one engine function serves);
+- the translated routine (or the routines one engine function serves), with the routines it calls that
+  no other engine function ports, and a line naming the engine function of each one that does;
 - the subsystem's typed state: its structs, enums and consts in full, and every other function as
   its doc and signature (the bodies are left out, but they exist and you may call them);
-- an example: another routine's literal port, the engine function written for it, and how the rig
+- an example: another routine's translation, the engine function written for it, and how the rig
   test calls that function.
 
 Write the engine function named in the request, with exactly the signature given, as a method in
-an `impl` block of the type named, behaving exactly as the literal port does on every input: it is
+an `impl` block of the type named, behaving exactly as the translated routine does on every input: it is
 judged against the original routine on a 68000 emulator over 10 000 generated states by the rig
 test. Where the original calls a routine another function here ports, call that function. You may
 add private helper functions, named so they do not clash with any name shown. Use wrapping
 arithmetic: the build panics on overflow. No `unsafe`, no new crates, no I/O.
 
-Write it as the file's own code is written, not as the literal port is: a person maintains it.
+Write it as the file's own code is written, not as the translation is: a person maintains it.
 - Every function you write, the engine function and each helper, has a `///` doc comment: what it
   does in the game's terms, and which routine of the original it is (its label and `h0+$offset`).
 - Use names, never numbers that have one: a variable is its struct field, a value the typed state
   already names is its const. A new number that means something gets its own `const` with a doc
   comment; only bit masks and shifts may stay bare.
 - No register shuffling: keep a value in a local, and set `scratch` registers only where the rig
-  compares them, as the example does. No `Cpu`, no memory reads or writes by address.
+  compares them, as the example does. No `Regs`, `Cpu`, `load` or `store`, no memory reads or
+  writes by address.
 - Say a thing once. Mirror-image cases (left and right, up and down) are one helper taking the
   direction; no block of lines appears twice.
 - Match the example's style and length: it was written by hand for this file.
@@ -404,7 +439,7 @@ def prompt(task, u, root=ENGINE, dirs=None):
             f"{cfg['compared']}")
     parts = [head]
     for n, o in u['routines']:
-        parts.append(f'The literal port of {n} (h0+${o:x}):\n\n```rust\n{literal_port(n, o, dirs)}```')
+        parts.append(f'The translated routine {n} (h0+${o:x}):\n\n```rust\n{translated(task, n, o, dirs)}```')
     state = []
     for path in cfg['state']:
         text = read(os.path.join(root, path))
@@ -419,7 +454,7 @@ def prompt(task, u, root=ENGINE, dirs=None):
     top = {x['name']: x for x in items(test_src)}
     harness = '\n\n'.join(test_src[top[h]['start']:top[h]['end']] for h in cfg['harness'])
     parts.append(
-        f"The example, {en} (h0+${eo:x}). Its literal port:\n\n```rust\n{literal_port(en, eo, dirs)}```\n\n"
+        f"The example, {en} (h0+${eo:x}). Its translated routine:\n\n```rust\n{translated(task, en, eo, dirs)}```\n\n"
         f"The engine function written for it:\n\n```rust\n{fn_text(src, ex['fn'])}```\n\n"
         f"The rig test's adapter, shared by every routine:\n\n```rust\n{harness}```\n\n"
         f"How the rig test calls the example:\n\n```rust\n" + '\n\n'.join(rig_text(cfg, ex, test_src)) + '\n```')
@@ -434,8 +469,8 @@ MASKS = {0xff, 0xff00, 0xffff, 0xffff0000, 0xffffff00, 0xffffffff, 0x7f, 0x80, 0
 CONST = re.compile(r'(?m)^\s*(?:pub(?:\([a-z]+\))?\s+)?const\s+([A-Z][A-Z0-9_]*)\s*:\s*[^=]+=\s*(0x[0-9a-fA-F_]+|\d+)\s*;')
 NUM = re.compile(r'\b(0x[0-9a-fA-F_]+|\d[\d_]*)(?:_?[iu](?:8|16|32|64|size))?\b')
 # `h(0, NAME)` is how the engine loads a table's address into a scratch register; `h(0, 0x...)` is the
-# literal port's addressing left in.
-LEFTOVER = re.compile(r'\bcpu\.|\bmem\.[rw][bwl]\b|\bh\(\s*0\s*,\s*(?:0x|\d)')
+# translation's addressing left in.
+LEFTOVER = re.compile(r'\bcpu\.|\bmem\.[rw][bwl]\b|\bh\(\s*0\s*,\s*(?:0x|\d)|\br\.[gs]et\(|\b(?:load|store)\(bus\b')
 REPEAT = 4  # lines
 
 
@@ -463,7 +498,7 @@ def named_values(cfg, root=ENGINE):
 
 
 def quality(code, cfg, root=ENGINE):
-    """What in a passing answer still reads like a literal port: a list of plain sentences, empty when
+    """What in a passing answer still reads like the translation: a list of plain sentences, empty when
     it reads like the file's own code. Deterministic and free; the compiler's warnings come from the rig's
     build (run_rig's `lint`)."""
     issues = []
@@ -473,7 +508,8 @@ def quality(code, cfg, root=ENGINE):
             issues.append(f'`fn {hit.group(1)}` has no `///` doc comment: say what it does in the game\'s terms '
                           'and which routine of the original it is (label, h0+$offset).')
     if LEFTOVER.search(m):
-        issues.append('It still reads or writes memory by address (`cpu.`, `mem.rb`/`wb`/`rl`/`wl`, `h(0, 0x...)`): '
+        issues.append('It still reads or writes registers or memory by address (`cpu.`, `mem.rb`/`wb`/`rl`/`wl`, '
+                      '`r.get`/`r.set`, `load(bus`/`store(bus`, `h(0, 0x...)`): '
                       'work on the typed fields instead.')
     names = named_values(cfg, root)
     defined = {mm.group(1) for mm in CONST.finditer(m)}

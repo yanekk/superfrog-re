@@ -192,7 +192,11 @@ public class ExportPcode extends GhidraScript {
                 }
                 if (in == null) { undecoded.add(rel(a.getOffset())); continue; }
                 seen.put(a.getOffset(), in);
-                if (in.getDefaultFallThrough() != null) work.push(in.getDefaultFallThrough());
+                // The instruction's own fall-through, not Ghidra's: when its no-return analysis judges a
+                // callee non-returning (data after enough of its calls, e.g. a relocated long the loader
+                // marked inside the next instruction), it puts CALL_RETURN on every call to it and
+                // getDefaultFallThrough() turns null, yet a 68000 jsr/bsr always returns to the next one.
+                if (rawFlow(in).hasFallthrough()) work.push(a.add(in.getLength()));
                 for (Address t : in.getFlows()) {
                     if (hunkOf(t.getOffset()) >= 0) work.push(t);
                     else outside.add(rel(a.getOffset()) + " -> " + String.format("$%x", t.getOffset()));
@@ -215,6 +219,8 @@ public class ExportPcode extends GhidraScript {
         }
 
         int unresolved = 0, relocsIn = 0, relocsMatched = 0, pcrel = 0;
+        // calls Ghidra judged non-returning whose next instruction the walk kept anyway
+        List<String> noReturnCalls = new ArrayList<>();
         List<String> unmatched = new ArrayList<>(), unexplained = new ArrayList<>(), mismatched = new ArrayList<>();
         List<String> unresolvedAt = new ArrayList<>();
         Set<Function> functions = new HashSet<>();
@@ -299,6 +305,8 @@ public class ExportPcode extends GhidraScript {
             if (computed) for (Address t : computedTargets(in)) targets.add(rel(t.getOffset()));
             else for (Address t : in.getFlows()) targets.add(hunkOf(t.getOffset()) >= 0 ? rel(t.getOffset())
                                                                  : String.format("$%x", t.getOffset()));
+            if (ft.isCall() && ft.hasFallthrough() && !in.getFlowType().hasFallthrough())
+                noReturnCalls.add(rel(a));
             if (ft.isCall()) kind = "call";
             else if (ft.isJump() && computed) kind = "computed";
             else if (ft.isJump() && ft.isConditional()) kind = "cbranch";
@@ -345,6 +353,7 @@ public class ExportPcode extends GhidraScript {
         js.append(",\"unexplained\":").append(list(unexplained));
         js.append(",\"undecoded\":").append(list(undecoded));
         js.append(",\"outside\":").append(list(new ArrayList<>(outside)));
+        js.append(",\"no_return_calls\":").append(list(noReturnCalls));
         js.append("}}\n");
         try (PrintWriter w = new PrintWriter(args[2])) {
             w.print(js);

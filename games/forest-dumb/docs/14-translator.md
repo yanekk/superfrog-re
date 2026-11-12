@@ -4,14 +4,15 @@ What the static translator (plan `plans/forest-dumb-translator/`) was measured t
 dated. How to run it: `tools/README.md` (`translator_trial.py`) and
 `engine/crates/fd-conform/README.md` (`fd-judge --translated`, `fd-conform code-writes`).
 
-## Stage 1's gate: every instruction kind (T13, 2026-11-11)
+## Stage 1's gate: every instruction kind (T13, 2026-11-11; re-run T43, 2026-11-12)
 
-**The census:** 290 instruction kinds (mnemonic, size, source and destination mode) over the 6 684
-instructions of the whole-program export (`pcode_export.py --whole`), 815 distinct opcode words, one
-site each (`pcode_census.py`, T04).
+**The census:** 291 instruction kinds (mnemonic, size, source and destination mode) over the 7 716
+instructions of the whole-program export (`pcode_export.py --whole`), 821 distinct opcode words, one
+site each (`pcode_census.py`, T04). T13 read 290 kinds over 6 684 instructions; T43's call
+fall-throughs (below) added `or.w Dn,Dn` (`h4+$1c946`, `$1c948`).
 
 **The reading:** `insn_check.py --states 2000 --seed insn-gate-T13`, every kind translated alone and
-stepped on Moira from 2 000 generated states a site: 1 630 000 states, **0 failing** in every column
+stepped on Moira from 2 000 generated states a site: 1 642 000 states, **0 failing** in every column
 (registers, X N Z V C, memory and custom-chip writes, cycles, stops), every kind's cycles counted.
 26 780 states (1.6%) are skipped, each one the original taking an exception: an odd address from a
 random `(d8,An,Xn)` index or a popped return address, or a zero divisor. The kind skipping most,
@@ -19,13 +20,22 @@ random `(d8,An,Xn)` index or a popped return address, or a zero divisor. The kin
 
 The gate is guarded by `fd-conform`'s `insn_gate.rs` (full, `cargo test --release -p fd-conform
 --test insn_gate -- --ignored`, about 20 s warm), which exports, runs the check with this seed and
-fails on any failing kind, column, uncounted cycles or a census other than 290 kinds. With
+fails on any failing kind, column, uncounted cycles or a census other than 291 kinds. With
 `pcode_fix.shift_bit` switched off it fails on 9 kinds (33 137 states, ccr), as T09 found them.
 Cycles follow Moira; real hardware is unmeasured (the plan's FINDINGS).
 
 ## Stage 2's gate: the whole tree (T16, 2026-11-12)
 
-**The tree:** the whole-program export (`pcode_export.py`, 143 entries) holds 6 684 instructions;
+**Every call falls through (T43, 2026-11-12).** Ghidra 12.0's no-return analysis judges `load_file`
+(`h0+$8ec4`) non-returning: in hunk 4's load lists the instruction after each `jsr load_file` holds a
+relocated long Ghidra had marked data. It then sets `CALL_RETURN` on all 82 calls to it, which drops
+their fall-through. The export follows each instruction's own fall-through, never Ghidra's, and lists
+such calls under `check.no_return_calls` (82). The export grew from 6 684 to 7 716 instructions,
+hunk 4 from 910 to 1 898, and reaches two routines in data hunk 1 (`h1+$484`, `$49e`) that copy colour
+tables. Power-on now reaches the title with no stop (`os_run.rs`).
+
+**The tree:** the whole-program export (`pcode_export.py`, 143 entries) holds 7 716 instructions
+(6 684 at T16's reading, before T43; re-checked 2026-11-12: 100 of 100 still pass);
 `pcode_rust.py` translates every one, **0 unsupported**. **0 unresolved computed jumps**: Ghidra finds
 no jump table it cannot follow. The 24 computed sites it gives no target are all calls through a
 library base, `jsr -n(a5)` or `jsr -n(a6)` (exec, graphics and dos.library), whose target is the OS's
@@ -77,6 +87,21 @@ in `tools/test_translator_whole.py` (`MACHINE_PINNED`, full):
   RAM; the oracle's writes on at `$08xxxx`, the machine's wraps to `$00xxxx` as a 512 KB A500's does
   (`h0_a06` case 71: the same 23 bytes at `$080004..$0805c4` and `$000004..$0005c4`). The game's own
   blits never cross the top.
+
+## Stage 7: sessions translate first, unprompted (T21, 2026-11-12)
+
+`tools/default_check.py` gave three fresh `claude -p` sessions (default model, 15 turns, Read, Grep,
+Glob and `python3 -I games/forest-dumb/tools/*` allowed, Write and Edit offered but denied) the prompt
+"Port char_sprite_position of Forest Dumb Forever to Rust for a level plan. Start the way this repo's
+docs say." in a scratch worktree of HEAD. **3 of 3 pass**: each read the root and game `CLAUDE.md`,
+`docs/11-translation.md` "The procedure" and `tools/README.md`, then ran `tools/translate.py
+char_sprite_position` at turn 6, 7 and 6, before any other Rust. None wrote Rust by hand. 11 to 12
+turns, 32 to 158 s, $0.36 to $0.38 list price each.
+
+Limit: a scratch worktree has no `build/`, so `translate.py` stopped at once (`no program at
+.../FOREST_DUMB_FOREVER: run cargo run -p fd-tools -- extract`), and each session then asked for the
+extract, which the check does not allow. The check shows what a session reaches for, not that the
+translation it got was used.
 
 ## Writes into code (T15, 2026-11-11)
 

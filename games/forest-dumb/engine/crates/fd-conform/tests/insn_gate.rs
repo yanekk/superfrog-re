@@ -61,10 +61,11 @@ fn every_census_kind_passes_every_column_on_fresh_states() {
     let disks = fd_tools::disk_dir().unwrap_or_else(|e| panic!("{e}"));
     fd_tools::extract(&disks, &game().join("build")).unwrap_or_else(|e| panic!("{e}"));
     let export = python(&["tools/pcode_export.py", "--whole"]);
-    // T03's whole export; a different count means the census below is not the one recorded.
+    // T03's whole export with T43's call fall-throughs; a different count means the census below is
+    // not the one recorded.
     assert_eq!(
         field(export.lines().last().unwrap(), "instructions"),
-        6684,
+        7716,
         "{export}"
     );
 
@@ -78,7 +79,7 @@ fn every_census_kind_passes_every_column_on_fresh_states() {
         SEED,
     ]);
     let s = out.lines().last().expect("a summary line");
-    assert_eq!(field(s, "kinds"), 290, "{s}");
+    assert_eq!(field(s, "kinds"), 291, "{s}");
     assert_eq!(
         field(s, "failing_kinds"),
         0,
@@ -96,7 +97,7 @@ fn every_census_kind_passes_every_column_on_fresh_states() {
     // skipped whole, which then "passes" on nothing. The original's exceptions skip at most about half
     // of a kind's states (`move.l (d8,An,Xn),(An)`, 1 051 of 2 000, from a random odd index).
     let kinds = per_kind(&json);
-    assert_eq!(kinds.len(), 290);
+    assert_eq!(kinds.len(), 291);
     for (kind, states, pass) in kinds {
         assert!(
             pass * 4 >= states,

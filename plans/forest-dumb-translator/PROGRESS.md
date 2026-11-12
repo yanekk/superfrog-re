@@ -33,9 +33,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
-| T19 | haiku-trial | T17, T18 | ⬜ | |
-| T20 | docs-and-packs | T18, T19 | ⬜ | |
-| T21 | default-check | T20 | ⬜ | |
+| T19 | haiku-trial | T17, T18 | ✅ | |
+| T20 | docs-and-packs | T18, T19 | ✅ | |
+| T21 | default-check | T20 | ✅ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
@@ -57,7 +57,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
-| T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
+| T43 | call-fallthrough | T03; blocks T28 | ✅ | |
+| T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
 **Review queue:** empty
 

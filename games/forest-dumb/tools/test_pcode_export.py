@@ -85,6 +85,34 @@ DEFECTS_FUNCS = [(0, 0x0, 'start'), (0, 0x52, 'other')]
 DEFECTS_TAIL = 'h0+$4a'
 
 
+# Translator T43: a made-up program shaped as the game's load lists, each call to `loader` followed by a
+# store to a relocated address. On the game Ghidra reads such bytes as data after the call and judges
+# load_file non-returning; it does not on this small program, so test_pcode_export_ghidra.py marks
+# `loader` non-returning first (SetNoReturn.java), as Ghidra did. `loader` loops for ever on one path
+# and returns on the other. Hunk 1 is code the entry in hunk 0 never reaches, as hunk 4 is on the game.
+NORETURN_H0 = bytes.fromhex('4E754E71')    # $00 rts; padding: the program's entry
+NORETURN_H1 = bytes.fromhex(
+    '6100001E' '23C000000000'               # $00 bsr.w loader; $04 move.l d0,h2+$0  relocated
+    '61000014' '23C000000004'               # $0a bsr.w loader; $0e move.l d0,h2+$4  relocated
+    '6100000A' '23C000000008'               # $14 bsr.w loader; $18 move.l d0,h2+$8  relocated
+    '4E75'                                  # $1e rts
+    '4A41' '6702' '60FE'                    # $20 loader: tst.w d1; beq.s $26; $24 bra.s $24, for ever
+    '7001' '4E75' '4E71')                   # $26 moveq #1,d0; rts; padding
+NORETURN_H2 = bytes(16)
+NORETURN_RELOCS = (0x06, 0x10, 0x1a)
+NORETURN_FUNCS = [(0, 0x0, 'start'), (1, 0x0, 'lists'), (1, 0x20, 'loader')]
+NORETURN_CALLS = ['h1+$0', 'h1+$a', 'h1+$14']
+NORETURN_LOADER = 'h1+$20'
+
+
+def noreturn_program():
+    return (longs(0x3F3, 0, 3, 0, 2, len(NORETURN_H0) // 4, len(NORETURN_H1) // 4, len(NORETURN_H2) // 4)
+            + longs(0x3E9, len(NORETURN_H0) // 4) + NORETURN_H0 + longs(0x3F2)
+            + longs(0x3E9, len(NORETURN_H1) // 4) + NORETURN_H1
+            + longs(0x3EC, len(NORETURN_RELOCS), 2, *NORETURN_RELOCS, 0, 0x3F2)
+            + longs(0x3EA, len(NORETURN_H2) // 4) + NORETURN_H2 + longs(0x3F2))
+
+
 def defects_program():
     return (longs(0x3F3, 0, 2, 0, 1, len(DEFECTS_H0) // 4, len(DEFECTS_H1) // 4)
             + longs(0x3E9, len(DEFECTS_H0) // 4) + DEFECTS_H0 + longs(0x3EC, 1, 1, DEFECTS_RELOC, 0, 0x3F2)
@@ -156,6 +184,11 @@ class HunkWalk(unittest.TestCase):
         h = P.read_hunks(defects_program())
         self.assertEqual(h.kinds, ['CODE', 'DATA'])
         self.assertEqual(h.relocs, [(0, DEFECTS_RELOC, 1, 4)])
+
+    def test_the_noreturn_programs_three_relocated_stores(self):
+        h = P.read_hunks(noreturn_program())
+        self.assertEqual(h.kinds, ['CODE', 'CODE', 'DATA'])
+        self.assertEqual(h.relocs, [(1, 0x06, 2, 0), (1, 0x10, 2, 4), (1, 0x1a, 2, 8)])
 
     def test_bss_and_a_declared_but_absent_hunk(self):
         data = longs(0x3F3, 0, 3, 0, 2, 1, 4, 2) + longs(0x3E9, 1, 0x4E754E75, 0x3F2) + longs(0x3EB, 4, 0x3F2)
