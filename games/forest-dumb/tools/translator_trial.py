@@ -2,7 +2,7 @@
 """Run the translator trial end to end and write the table the owner decides on (translator-trial
 T06; its DESIGN §2.1 to §2.4, §2.7, §2.8, §3.5).
 
-    python3 -I games/forest-dumb/tools/translator_trial.py [--routines <name,…> | --whole] [--skip-export] [--cases N]
+    python3 -I games/forest-dumb/tools/translator_trial.py [--routines <name,…> | --whole] [--machine] [--skip-export] [--cases N]
 
 Steps, each named when it fails: export (`pcode_export.py`, skipped with --skip-export, which then
 needs build/translator/pcode.json), translate (`pcode_rust.py`, once without and once with
@@ -33,6 +33,11 @@ convention: its target is the OS's jump table outside every hunk, answered by th
 need a hint. The gate is met when nothing is unsupported or unresolved, re/translator-hints.toml
 holds no hint, and every judgeable routine passes; the summary line gains WHOLE_KEYS, trial.json a
 "whole" object and table.md the gate with every site that fails it.
+
+`--machine` (translator T27, its DESIGN §2.8, §4) judges the translated tree on `pcode-machine`
+(`fd-judge --translated --machine`) instead of the judge's copy of the oracle's hardware mode, and
+writes trial-machine.json and table-machine.md, leaving the plain reading's files alone. The survey
+is the original alone either way.
 
 Unjudgeable (DESIGN §2.4): no generator (`gen_task` absent in re/translate.toml, or none registered
 in fd-conform), or `no-oracle` exactly as translate.py answers it from the judge's survey. Each judge
@@ -284,10 +289,11 @@ def build(tree, release=False):
                      f"{where or 'no generated routine'}: {first}")
 
 
-def judge(routine, gen, cases, mode, release=False):
-    """One fd-judge run (`--survey` or `--translated`) -> its JSON line, or {'outcome': ...} for a
-    timeout, a crash, or exit 2 (`usage`, the stderr in `why`)."""
-    argv = command('FD_TRIAL_JUDGE', [judge_bin(release)]) + [routine, '--gen', gen, '--cases', str(cases), mode]
+def judge(routine, gen, cases, mode, release=False, machine=False):
+    """One fd-judge run (`--survey` or `--translated`, on the machine with `machine`) -> its JSON
+    line, or {'outcome': ...} for a timeout, a crash, or exit 2 (`usage`, the stderr in `why`)."""
+    extra = ['--machine'] if machine and mode == '--translated' else []
+    argv = command('FD_TRIAL_JUDGE', [judge_bin(release)]) + [routine, '--gen', gen, '--cases', str(cases)] + extra + [mode]
     limit = SURVEY_SECONDS if mode == '--survey' else jr.JUDGE_SECONDS
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=limit)
@@ -331,9 +337,9 @@ def flat(s, n=160):
     return s if len(s) <= n else s[:n - 1] + '…'
 
 
-def verdict(r, cases, release=False):
+def verdict(r, cases, release=False, machine=False):
     """The translated tree built now, judged at the routine -> the row's half for this tree."""
-    j = judge(r['label'], r['gen'], cases, '--translated', release)
+    j = judge(r['label'], r['gen'], cases, '--translated', release, machine)
     if j.get('outcome') == 'usage':
         raise StepFailed(f"judge {r['label']}: {j['why']}")
     if 'outcome' in j:
@@ -346,9 +352,9 @@ def verdict(r, cases, release=False):
             'failures': j.get('failures', 0), 'passed': j.get('passed', 0)}
 
 
-def judge_all(rows, cases, parallel=PARALLEL, release=False):
+def judge_all(rows, cases, parallel=PARALLEL, release=False, machine=False):
     with cf.ThreadPoolExecutor(max_workers=parallel) as pool:
-        return dict(zip([r['label'] for r in rows], pool.map(lambda r: verdict(r, cases, release), rows)))
+        return dict(zip([r['label'] for r in rows], pool.map(lambda r: verdict(r, cases, release, machine), rows)))
 
 
 # --- The table -------------------------------------------------------------------------------------
@@ -428,7 +434,7 @@ def take_lock(lock_dir):
     return f
 
 
-def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None, whole=False):
+def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None, whole=False, machine=False):
     """The whole trial -> the summary dict (with WHOLE_KEYS under --whole). Raises Usage, StepFailed."""
     rows_in = routines(paths.inventory, only)
     lock = take_lock(paths.lock_dir)
@@ -475,7 +481,7 @@ def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None,
                 build(trees[kind], whole)
                 log(f'build {kind}: {round(time.time() - t)} s')
             t = time.time()
-            results[kind] = judge_all(judged, cases, release=whole)
+            results[kind] = judge_all(judged, cases, release=whole, machine=machine)
             log(f'judge {kind}: {round(time.time() - t)} s')
 
         rows = [{'routine': r['label'], 'name': r['name'], 'subsystem': r['subsystem'],
@@ -495,8 +501,11 @@ def run(paths, only=None, skip_export=False, cases=jr.CASES, log=lambda m: None,
                'hints_changed_tree': not same, 'translate': stats, 'summary': s, 'rows': rows}
         if w:
             doc['whole'] = w
-        write(os.path.join(paths.out, 'trial.json'), json.dumps(doc, indent=1))
-        write(os.path.join(paths.out, 'table.md'), table(rows, s, cases, w))
+        if machine:
+            doc['hardware'] = 'machine'
+        suffix = '-machine' if machine else ''
+        write(os.path.join(paths.out, f'trial{suffix}.json'), json.dumps(doc, indent=1))
+        write(os.path.join(paths.out, f'table{suffix}.md'), table(rows, s, cases, w))
         return s
     finally:
         lock.close()
@@ -508,6 +517,8 @@ def main(argv=None, paths=None):
     mode.add_argument('--routines', help='comma-separated names or `hN+$off` labels of re/translate.toml')
     mode.add_argument('--whole', action='store_true',
                       help='every routine with a registered generator, and the whole-tree gate (T16)')
+    ap.add_argument('--machine', action='store_true',
+                    help='judge on pcode-machine; writes trial-machine.json and table-machine.md (T27)')
     ap.add_argument('--skip-export', action='store_true', help='reuse build/translator/pcode.json')
     ap.add_argument('--cases', type=int, default=jr.CASES)
     a = ap.parse_args(argv)
@@ -517,7 +528,8 @@ def main(argv=None, paths=None):
     only = [x.strip() for x in a.routines.split(',') if x.strip()] if a.routines else None
     try:
         s = run(paths or Paths(), only, a.skip_export, a.cases,
-                log=lambda m: print(f'translator_trial: {m}', file=sys.stderr, flush=True), whole=a.whole)
+                log=lambda m: print(f'translator_trial: {m}', file=sys.stderr, flush=True), whole=a.whole,
+                machine=a.machine)
     except Usage as e:
         print(f'translator_trial: {e}', file=sys.stderr)
         return 2

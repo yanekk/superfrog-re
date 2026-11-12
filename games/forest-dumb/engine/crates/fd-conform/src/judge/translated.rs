@@ -16,6 +16,10 @@
 //! Each state runs on a thread of its own with a [`RUN_STACK`]-byte stack, so a run that nests
 //! `pcode_rt::DEPTH_CAP` translated frames stops as `hang (depth)` instead of overflowing the stack,
 //! which aborts the process (translator T14).
+//!
+//! [`Hardware::Machine`] (translator T27, DESIGN §2.8, §4) runs the entry on `pcode-machine` instead
+//! of [`Mem`], so its blits, beam waits and register reads are the models the app runs on; see
+//! [`machine`] for how a state is laid on it.
 
 use std::panic::resume_unwind;
 use std::thread;
@@ -25,6 +29,8 @@ use pcode_rt::{Bus, Image, Stop};
 
 use super::Mem;
 use crate::HUNK_BASES;
+
+pub mod machine;
 use crate::routine::{
     Effects, Generator, PortStop, RegsCompared, Rig, RigFailure, RigReport, STACK,
 };
@@ -108,6 +114,26 @@ impl Stops {
     }
 }
 
+/// Count `stop` and fail the state with it: not a panic, so no hook runs, and the rig names it as
+/// a stop.
+fn fail(stops: &mut Stops, stop: Stop) -> ! {
+    stops.count(&stop);
+    resume_unwind(Box::new(PortStop(stop.to_string())));
+}
+
+/// Run `f` on a thread with [`RUN_STACK`] bytes of stack; a panic in it goes on unwinding here,
+/// where the rig catches it.
+fn on_run_stack<T: Send>(f: impl FnOnce() -> T + Send) -> T {
+    thread::scope(|scope| {
+        thread::Builder::new()
+            .stack_size(RUN_STACK)
+            .spawn_scoped(scope, f)
+            .expect("a thread for a judged state")
+            .join()
+            .unwrap_or_else(|e| resume_unwind(e))
+    })
+}
+
 /// A translated entry's verdict and the stops behind it.
 pub struct Judged {
     pub verdict: Result<RigReport, RigFailure>,
@@ -130,7 +156,33 @@ pub fn check(
     run: Option<Entry>,
     code: &[(u32, u32, u32)],
 ) -> Judged {
+    check_on(rig, name, cases, entry, generator, run, code, Hardware::Mem)
+}
+
+/// What a judged entry's memory and hardware are.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Hardware {
+    /// The judge's own [`Mem`]: the routine oracle's hardware mode copied by hand.
+    Mem,
+    /// `pcode-machine`, as the app runs the translated program ([`machine`], translator T27).
+    Machine,
+}
+
+/// [`check`] on `hw`.
+#[allow(clippy::too_many_arguments)]
+pub fn check_on(
+    rig: &mut Rig,
+    name: &str,
+    cases: usize,
+    entry: u32,
+    generator: &Generator,
+    run: Option<Entry>,
+    code: &[(u32, u32, u32)],
+    hw: Hardware,
+) -> Judged {
     let base = rig.memory_for(generator);
+    // The machine's RAM as the base lays it out, cut once: each state copies it.
+    let ram = (hw == Hardware::Machine).then(|| machine::ram(&base));
     let sizes = rig.hunk_sizes();
     let at = rig.name(entry);
     let mut stops = Stops::default();
@@ -145,6 +197,14 @@ pub fn check(
             .collect(),
     );
     let verdict = rig.check_regs(name, cases, entry, generator, RegsCompared::ALL, |s| {
+        if let Some(ram) = &ram {
+            let img = Image {
+                bases: &HUNK_BASES,
+                sizes: &sizes,
+                code,
+            };
+            return machine::run(ram, &base, s, run, &at, &img, &mut stops);
+        }
         let mut before = Mem::new(base.clone(), &s.pokes);
         before.beam.set(s.beam as u16);
         before.hw_reads = s.hw_reads.iter().copied().collect();
@@ -166,20 +226,11 @@ pub fn check(
             code,
         };
         let ran = match run {
-            Some(f) => thread::scope(|scope| {
-                let t = thread::Builder::new()
-                    .stack_size(RUN_STACK)
-                    .spawn_scoped(scope, || f(&mut r, &mut mem, &img))
-                    .expect("a thread for a judged state");
-                // A panic in the run goes on unwinding here, where the rig catches it.
-                t.join().unwrap_or_else(|e| resume_unwind(e))
-            }),
+            Some(f) => on_run_stack(|| f(&mut r, &mut mem, &img)),
             None => Err(Stop::Untranslated(at.clone())),
         };
         if let Err(stop) = ran {
-            stops.count(&stop);
-            // Not a panic: no hook runs, and the rig names it as a stop.
-            resume_unwind(Box::new(PortStop(stop.to_string())));
+            fail(&mut stops, stop);
         }
         Effects {
             regs: Regs {

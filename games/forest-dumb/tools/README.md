@@ -190,8 +190,11 @@ address, a division by zero) is skipped and counted. One kind alone: `fd-judge -
 The whole trial: export, translate without and with `re/translator-hints.toml`, build `fd-judge` once a
 tree, survey and judge every routine of `re/translate.toml` (DESIGN §2.1 to §2.4, §2.7).
 ```
-python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,… | --whole] [--skip-export] [--cases N]
+python3 -I games/forest-dumb/tools/translator_trial.py [--routines name,… | --whole] [--machine] [--skip-export] [--cases N]
 ```
+`--machine` (translator T27) judges the tree on `pcode-machine` (`fd-judge --translated --machine`) and
+writes `trial-machine.json` and `table-machine.md` beside the plain ones; the 12 routines that differ there
+because of the oracle's hardware mode are pinned in `test_translator_whole.py` (`docs/14-translator.md`).
 `--whole` (translator T16) is the whole-tree gate: it builds `fd-judge` optimised, judges every routine of
 `re/translate.toml` and every generator `fd-judge --generators` lists, and adds the tree's reading
 (instructions, unsupported, unresolved computed jumps, library calls `jsr -n(An)` the machine answers,

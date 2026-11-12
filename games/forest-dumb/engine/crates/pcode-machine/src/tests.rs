@@ -296,6 +296,21 @@ fn a_read_only_register_write_changes_nothing_but_the_bus() {
     );
 }
 
+/// The routine judge (translator T27) reads the CPU's custom writes without ending a frame: every
+/// one, read-only registers and a write-only read's write included, in order with its cycle.
+#[test]
+fn custom_writes_lists_the_frame_so_far_in_order() {
+    let mut m = machine();
+    at_cycles(&mut m, 5);
+    m.ww(0xDF_F180, 0x0123);
+    m.wb(0xDF_F01C, 0x40); // INTENAR: read-only, still written on the bus
+    let _ = m.rw(0xDF_F0A8); // AUD0VOL: write-only, the read writes the bus's word
+    assert_eq!(
+        m.custom_writes(),
+        &[(5, 0x180, 0x0123), (5, 0x01C, 0x4040), (5, 0x0A8, 0x4040)]
+    );
+}
+
 #[test]
 fn custom_writes_reach_their_device_and_bytes_fill_both_halves() {
     let mut m = machine();
