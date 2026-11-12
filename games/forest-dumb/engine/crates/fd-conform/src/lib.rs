@@ -22,6 +22,7 @@ pub mod os_run;
 pub mod os_surface;
 pub mod routine;
 pub mod sync;
+pub mod translated_engine;
 
 use std::fmt;
 use std::ops::{Range, RangeInclusive};

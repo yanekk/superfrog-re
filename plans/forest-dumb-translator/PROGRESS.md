@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T28 (translated-engine); then T29, T34 and T35 can start.
 
 ## Tasks
 
@@ -42,7 +42,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ✅ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
-| T28 | translated-engine | T26, T27 | ⬜ | |
+| T28 | translated-engine | T26, T27 | 🔍 | fd-translated (TranslatedGame, Program), fd-conform translated_engine (case_start, TranslatedEngine); 6 tests, w1-idle 199/199 equal. Deviations: pcode_rust.py emits resume(k) for mid-function snapshot starts; pcode-machine splits interrupt taking so the host sees frame ends in handlers; build script in engine/buildscripts/ (purity scan); FrameOut carries chip/slow; case_start reruns the original for registers. |
 | T29 | conform-translated | T28 | ⬜ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
 | T31 | level1-cases-b | T29 | ⬜ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T28
 
 ## Blocked on the user
 

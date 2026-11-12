@@ -265,7 +265,12 @@ impl TranslatedGame {
             Some(s) => s,
             None => loop {
                 let res = match img.hunk_of(at).and_then(self.prog.resume) {
-                    Some(f) => f(img.hunk_of(at).expect("in a hunk"), &mut self.r, &mut host, &img),
+                    Some(f) => f(
+                        img.hunk_of(at).expect("in a hunk"),
+                        &mut self.r,
+                        &mut host,
+                        &img,
+                    ),
                     None => Err(Stop::Untranslated(img.describe(at))),
                 };
                 match res {

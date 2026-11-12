@@ -35,8 +35,9 @@ fn main() {
             // Cargo watches a directory's files, so a regenerated part rebuilds.
             println!("cargo:rerun-if-changed={}", p.display());
             let root = p.join("mod.rs");
-            let root = fs::canonicalize(&root)
-                .unwrap_or_else(|e| panic!("FD_TRANSLATED={}: {}: {e}", p.display(), root.display()));
+            let root = fs::canonicalize(&root).unwrap_or_else(|e| {
+                panic!("FD_TRANSLATED={}: {}: {e}", p.display(), root.display())
+            });
             format!(
                 "#[path = {:?}]\nmod generated;\npub use generated::*;\n",
                 root.display().to_string()

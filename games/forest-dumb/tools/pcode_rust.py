@@ -33,6 +33,11 @@ with the address after its call and, on a mismatch, jumps there the same way, si
 return to an address it pushed. An op the translator does not carry out makes its whole
 instruction `Stop::Unsupported`, and only that instruction.
 
+Each function `NAME` is an inline wrapper of `NAME_from(start, ..)`, whose block arms name every
+instruction of the block and skip those before the one entered; `resume(k)` in the root gives the
+function to enter at any instruction (translator T28: a host starting from a snapshot of the
+original, whose PC and stacked return addresses are anywhere).
+
 Python's standard library only, so it runs under `python3 -I`.
 """
 import argparse, json, os, re, sys, tomllib

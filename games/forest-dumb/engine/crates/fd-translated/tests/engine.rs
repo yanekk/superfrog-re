@@ -86,7 +86,11 @@ fn on_the_stub_a_run_stops_untranslated_at_once() {
     });
     assert!(matches!(stop, Some(Stop::Untranslated(_))), "{stop:?}");
     assert_eq!(frames, vec![stop.clone()], "one frame, carrying the stop");
-    assert_eq!(g.run(&mut |_| Control::Stop), stop, "a stopped game stays stopped");
+    assert_eq!(
+        g.run(&mut |_| Control::Stop),
+        stop,
+        "a stopped game stays stopped"
+    );
 }
 
 #[test]
@@ -109,7 +113,11 @@ fn each_is_called_once_a_frame_and_the_handler_runs_once_in_each() {
         counts.push(word(out, COUNT));
         ends.push(out.writes.iter().map(|w| w.0).max());
         // The copper's MOVE to INTREQ is a write of the frame.
-        assert!(out.writes.iter().any(|w| w.1 == irq::INTREQ && w.2 == 0x8020));
+        assert!(
+            out.writes
+                .iter()
+                .any(|w| w.1 == irq::INTREQ && w.2 == 0x8020)
+        );
         if counts.len() == 5 {
             Control::Stop
         } else {
@@ -117,7 +125,11 @@ fn each_is_called_once_a_frame_and_the_handler_runs_once_in_each() {
         }
     });
     assert_eq!(stop, None, "each said stop");
-    assert_eq!(counts, [1, 2, 3, 4, 5], "one interrupt a frame, every frame seen");
+    assert_eq!(
+        counts,
+        [1, 2, 3, 4, 5],
+        "one interrupt a frame, every frame seen"
+    );
     // The frames are a frame apart: 313 lines of 227 slots, two cycles a slot.
     let frame = 313 * 227 * 2;
     assert!(

@@ -95,6 +95,10 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 - `os_surface::run(&Options { frames, worlds }) -> Result<Report, String>`, `run_in(kickstart, disk_dir, ...)`: the original from power-on through level 1 and each world's load, every program address and library jump-table slot watched.
 - `Report { steps, vectors, calls, mem, cia, jumps, irqs, undecoded }`, `.toml(frames, worlds)` (the committed `re/os-calls.toml`, `committed_path()`), `.calls_named(name)`; `Survey` and `Observation` for made-up runs; `lvo_name`, `cia_name`, `read_libs`. Reading: `games/forest-dumb/docs/15-os-surface.md`.
 
+**The translated engine** (`src/translated_engine.rs`, translator T28)
+- `translated_engine::case_start(&Case) -> Result<CaseStart, String>`: the original from power-on along the case's way (uncached, about 8 s), RAM, CPU and the CPU's custom writes at the step whose pass end `run_with` transplants at.
+- `TranslatedEngine::new(CaseStart)`: `Engine` and `Transplant` over `fd-translated`'s `TranslatedGame` on a thread of its own; one frame a pass; `.stop()`, `.passes()`, `.mem()`. The crate: `crates/fd-translated/README.md`.
+
 **Coverage and the ported register** (`src/coverage.rs`)
 - `Coverage { hits }`, `Coverage::new(register)`, `.add`, `.unreached()`; `coverage::address(&Ported)`. The register itself is `fd_core::PORTED`. This `Coverage` is not `routine::Coverage`.
 

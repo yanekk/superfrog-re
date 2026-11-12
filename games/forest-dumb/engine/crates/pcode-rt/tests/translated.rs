@@ -430,7 +430,7 @@ fn a_run_resumed_mid_block_runs_from_that_instruction_on() {
     // A function's own entry is run by that function.
     assert_eq!(
         pushed_return::resume((0, 0x20)).map(|f| f as usize),
-        Some(pushed_return::h0_20_from as usize)
+        Some(pushed_return::h0_20_from as pushed_return::Resume as usize)
     );
 }
 
