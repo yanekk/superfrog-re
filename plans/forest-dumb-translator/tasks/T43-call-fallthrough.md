@@ -17,6 +17,10 @@ DESIGN §2.1, §2.2, §2.3.
 - `games/forest-dumb/tools/ghidra/ExportPcode.java`, `tools/pcode_export.py`, `tools/test_pcode_export_ghidra.py` (a made-up program whose callee loops for ever on one path and returns on another: the call's next instruction is exported).
 - The instruction count and census the whole export changes, wherever a test asserts them (`fd-conform/tests/insn_gate.rs` asserts 6 684 instructions and 290 kinds); `docs/14-translator.md` if its readings change. Re-run T13's gate if new instruction kinds appear.
 
+## Interface
+
+No new interface: `pcode_export.py --whole` writes the same `build/translator/pcode.json` shape, with the instruction after every `flow.kind == "call"` present in `insns`. T26's `fd-judge --os-run power-on` line is the end-to-end check.
+
 ## Tests
 
 - [ ] Made-up program on Ghidra: a call to a routine Ghidra marks non-returning still has its fall-through exported and translated.
