@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T45; then T30, T31 and T32, each counting a case as passing only with the custom-writes channel on.
 
 ## Tasks
 
@@ -59,9 +59,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
-| T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ⬜ | |
+| T45 | custom-writes-compared | T29; blocks T30, T31, T32 | 🔍 | Frame runner's fourth channel: the CPU's non-Paula custom writes per frame as a (register, value) multiset, CPU-tagged at source (`Machine::cpu_writes`, `FrameOut::cpu_writes`). Folded into `compare = "writes"`, Paula's registers left out. 6 tests (5 stand-in, 1 machine); engine_hand full passes. No deviation; a difference names the lowest differing register. |
 
-**Review queue:** *(empty)*
+**Review queue:** T45
 
 ## Blocked on the user
 

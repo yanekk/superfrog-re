@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T45 custom writes:** `build/translated-cases.md` regenerated, 42 level cases, 0 pass, first differences unchanged. The new channel is first in 0 cases, a later difference in 33; its first register `$040` (BLTCON0) in 31, `$080` (COP1LCH) 2. |
 | 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
 | 2026-11-12 | 📌 | **T29 first reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 14, `char_y` 11, `clxdat_copy` 7, `char_x` 6, `edge_latch_left` 4. Six held state and picture all their frames (w1-idle 199). |
 | 2026-11-12 | 🐞 | **T29 Paula writes:** translated `game_frame` ends at line 301, the original's at 310 (no DMA contention), so the music's 12 AUD writes land at line 307, not line 4 of the next frame: one frame early. |
@@ -13,8 +14,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |
 | 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |
 | 2026-11-12 | 📌 | **T35 seam:** `fd-judge --seam` passes `camera_update` and `char_sprite_position` 2 000/2 000 against the generated tree. A mounted routine counts no cycles or `Regs::depth`; T36 should measure whether `game_frame`'s missing cycles show at a frame boundary. |
-| 2026-11-12 | 🐞 | `toolkit-checks/tests/purity.rs:162` lexes a hex literal ending in `f32`/`f64` (`0x18f32`) as a float literal: a false purity violation. Fixed in fd-conform's copy (T34 review sweep); left alone. |
-| 2026-11-12 | 🐞 | `sf-conform/tests/purity.rs:183` lexes a hex literal ending in `f32`/`f64` as a float literal, the same false violation (T34 review sweep). Left alone. |
+| 2026-11-12 | 🐞 | `toolkit-checks/tests/purity.rs:162` and `sf-conform/tests/purity.rs:183` lex a hex literal ending in `f32`/`f64` (`0x18f32`) as a float literal: a false purity violation. Fixed in fd-conform's copy (T34 review sweep); both left alone. |
 | 2026-11-12 | 🔄 | **Owner exempted `CODE` from the table bar** (T34), a deliberate exception to DESIGN §3.1: only in `pcode_rust.py` output, only `const CODE: &[(u32, u32, u32)]` of (hunk, start, end) triples. It is the translator's index, not game data. |
 | 2026-11-12 | 📌 | **T28 snapshot starts:** at every step's end the original is inside `level3_handler`, so translated code resumes mid-function: `pcode_rust.py` emits `NAME_from(start)` and `resume(k)`. T08's 15 routines still pass; whole gate not rerun. |
 | 2026-11-12 | 📌 | **T28 w1-idle on the translated engine:** 199 of 199 passes equal (vars only), no stop; 50 frames from the sync point 10 s. Review: power-on 400 frames, fire held 100, no stop; deepest `Regs::depth` unrecorded. |
