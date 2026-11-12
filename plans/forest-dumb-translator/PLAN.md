@@ -61,6 +61,7 @@ At the end every census kind matches Moira in every column (DESIGN §2.6).
 | [T14](tasks/T14-run-stops.md) | run-stops | T04 |
 | [T15](tasks/T15-code-write-rule.md) | code-write-rule | T02, T14 |
 | [T16](tasks/T16-whole-tree-judge.md) | whole-tree-judge | T13, T15 |
+| [T43](tasks/T43-call-fallthrough.md) | call-fallthrough | T03; blocks T28 |
 
 At the end the whole program translates with no unsupported instruction, and every judgeable routine passes on the full tree.
 

@@ -99,6 +99,8 @@ impl Stops {
             Stop::Hang { .. } => self.hangs += 1,
             Stop::Trap { .. } => self.traps += 1,
             Stop::Outside(_) => self.outside += 1,
+            // The judge's memory has no OS; a machine's unanswered OS call is a thing not carried out.
+            Stop::Os(_) => self.unsupported += 1,
         }
         if self.first.is_empty() {
             self.first = s.to_string();

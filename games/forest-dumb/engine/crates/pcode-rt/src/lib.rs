@@ -58,6 +58,14 @@ pub trait Bus {
         let _ = (r, img);
         Ok(())
     }
+    /// A `jsr`/`bsr` to `a`, outside every hunk, made with the return address already pushed: where a
+    /// machine answers the operating system's library vectors (translator T26). The answer returns
+    /// as `rts` would, popping that address into `PC`, which the generated caller then checks.
+    /// Plain memory has no OS, so control has reached an address with no translation.
+    fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let _ = r;
+        Err(Stop::Untranslated(img.describe(a)))
+    }
     fn rb(&mut self, a: u32) -> u8;
     fn rw(&mut self, a: u32) -> u16;
     fn rl(&mut self, a: u32) -> u32;
@@ -243,6 +251,9 @@ pub enum Stop {
     /// autoconfig, the clock chip, nothing). The bus cannot fail an access, so the machine records
     /// it and returns this at the next block start (pcode-machine).
     Outside(String),
+    /// A call into the operating system the machine does not answer (an unknown library vector, an
+    /// argument it cannot honour), its reason and the calling instruction's address (pcode-machine).
+    Os(String),
 }
 
 /// Which cap a `Stop::Hang` reached.
@@ -264,6 +275,7 @@ impl fmt::Display for Stop {
             Stop::Hang { why: Hang::Depth } => write!(f, "hang (depth)"),
             Stop::Trap { vector, at } => write!(f, "trap: vector {vector} at {at}"),
             Stop::Outside(a) => write!(f, "outside-memory: {a}"),
+            Stop::Os(why) => write!(f, "os: {why}"),
         }
     }
 }
@@ -570,6 +582,10 @@ mod tests {
         assert_eq!(
             Stop::Outside("$f80000".into()).to_string(),
             "outside-memory: $f80000"
+        );
+        assert_eq!(
+            Stop::Os("unknown dos.library LVO -48 at h0+$10".into()).to_string(),
+            "os: unknown dos.library LVO -48 at h0+$10"
         );
     }
 }

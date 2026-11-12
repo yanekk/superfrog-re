@@ -42,6 +42,8 @@ mod shared_call;
 mod shared_call_split;
 #[path = "fixtures/unsupported.rs"]
 mod unsupported;
+#[path = "fixtures/os_call.rs"]
+mod os_call;
 
 /// Hunk 0 at $1000 and hunk 1 at $3000: neither at 0, so an address left absolute shows.
 const BASES: [u32; 2] = [0x1000, 0x3000];
@@ -447,4 +449,17 @@ fn a_tree_split_into_parts_runs_as_the_unsplit_one() {
     for at in ["h0+$0", "h0+$10", "h0+$20", "h0+$30"] {
         assert!(shared_call_split::entry(at).is_some(), "{at}");
     }
+}
+
+/// A library call (`jsr -408(a6)`) leaves the hunks; on plain memory, which has no OS, the bus's
+/// default `call_outside` stops naming the vector's address (translator T26).
+#[test]
+fn a_call_outside_every_hunk_goes_to_the_bus_which_by_default_stops() {
+    let (mut r, mut m) = (Regs::new(), ram());
+    m.wl(4, 0xc000);
+    let f = os_call::entry("h0+$0").unwrap();
+    let e = call(f, os_call::HUNK_SIZES, os_call::CODE, &mut r, &mut m).unwrap_err();
+    assert_eq!(e, Stop::Untranslated(format!("${:06x}", 0xc000 - 408)));
+    assert_eq!(r.a(7), STACK - 8, "the jsr pushed its return address");
+    assert_eq!(m.rl(STACK - 8), BASES[0] + 0xe);
 }
