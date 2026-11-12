@@ -267,7 +267,14 @@ fn the_command_plans_a_longer_search_confirms_it_and_draws_it() {
         String::from_utf8_lossy(&run.stderr),
     );
     assert_eq!(run.status.code(), Some(1), "{stdout}\n{stderr}");
-    assert!(stdout.contains("the original agrees for "), "{stdout}");
+    // Creatures live on both sides since T79: as the 100-round route in
+    // the_routes_stretch_is_confirmed_on_the_original_where_modelled, every pass agrees and the
+    // route ends elsewhere than the engine alone (measured 2026-11-12: all 10 354 passes).
+    assert!(
+        stdout.contains("the original agrees on all ")
+            && stdout.contains("ends elsewhere than the engine alone"),
+        "{stdout}"
+    );
     assert!(dir.join("page/index.html").exists());
     let s = script::parse(&std::fs::read_to_string(&out).unwrap()).unwrap();
     let n = s.lines.last().unwrap().0;
