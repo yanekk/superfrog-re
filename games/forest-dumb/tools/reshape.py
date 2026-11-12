@@ -306,7 +306,7 @@ def read(path):
         return f.read()
 
 
-TICK = re.compile(r'r\.tick\([^;]*\);[ \t]*')
+TICK = re.compile(r'r\.(?:tick|off_bus)\([^;]*\);[ \t]*')
 FN_HEAD = re.compile(r'(?m)^pub fn (h\d+_[0-9a-f]+)\(')
 
 

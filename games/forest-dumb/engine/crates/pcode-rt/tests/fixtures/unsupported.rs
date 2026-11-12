@@ -93,8 +93,8 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x4 {
                     // h0+$4 beq.b h0+$8
                     {
-                        if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x8); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) });
+                        if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x8); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x6);

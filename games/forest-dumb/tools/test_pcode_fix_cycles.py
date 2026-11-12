@@ -25,7 +25,13 @@ def shift_bit(text):
 
 
 def tick(op, size, src, dst):
-    return f'r.tick(const {{ cy::of(cy::Op::{op}, cy::Size::{size}, cy::Ea::{src}, cy::Ea::{dst}) }});'
+    args = f'cy::Op::{op}, cy::Size::{size}, cy::Ea::{src}, cy::Ea::{dst}'
+    return f'r.tick(const {{ cy::of({args}) }}); r.off_bus(const {{ cy::off_of({args}) }});'
+
+
+def rt(own, off):
+    """A run-time tick and its cycles off the bus (T49)."""
+    return f'r.tick({own}); r.off_bus({off});'
 
 
 class Kinds(unittest.TestCase):
@@ -47,13 +53,15 @@ class Kinds(unittest.TestCase):
         # Not fixed-time rows, so no `kind`; T12 counts them at run time (test_cycles_dynamic.py has
         # the multiply, divide, dbcc and movem forms).
         for text, want in [
-            ('lsl.l d1,d0', 'r.tick(cy::shift_cycles(cy::Size::L, r.d(1)));'),
-            ('roxr.w d1,d0', 'r.tick(cy::shift_cycles(cy::Size::W, r.d(1)));'),
-            ('bset d1,d0', 'r.tick(cy::of(cy::Op::Bset(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
-            ('bchg d1,d0', 'r.tick(cy::of(cy::Op::Bset(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
-            ('bclr d1,d0', 'r.tick(cy::of(cy::Op::Bclr(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn));'),
-            ('st d0', 'r.tick(cy::scc_reg(cy::cc_holds(0, r)));'),
-            ('sne d0', 'r.tick(cy::scc_reg(cy::cc_holds(6, r)));'),
+            ('lsl.l d1,d0', rt(sh := 'cy::shift_cycles(cy::Size::L, r.d(1))', f'cy::one_word_off({sh})')),
+            ('roxr.w d1,d0', rt(sh := 'cy::shift_cycles(cy::Size::W, r.d(1))', f'cy::one_word_off({sh})')),
+            ('bset d1,d0', rt(f'cy::of({(b := "cy::Op::Bset(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn")})',
+                              f'cy::off_of({b})')),
+            ('bchg d1,d0', rt(f'cy::of({b})', f'cy::off_of({b})')),
+            ('bclr d1,d0', rt(f'cy::of({(c := "cy::Op::Bclr(r.d(1) & 31), cy::Size::L, cy::Ea::Dn, cy::Ea::Dn")})',
+                              f'cy::off_of({c})')),
+            ('st d0', rt(sc := 'cy::scc_reg(cy::cc_holds(0, r))', f'cy::one_word_off({sc})')),
+            ('sne d0', rt(sc := 'cy::scc_reg(cy::cc_holds(6, r))', f'cy::one_word_off({sc})')),
         ]:
             ins = shift_bit(text)
             self.assertIsNone(cy.kind(ins), text)
@@ -74,19 +82,22 @@ class Emitted(unittest.TestCase):
         self.assertEqual(lines[2].strip(), tick('Shift(8)', 'L', 'Imm', 'Dn'))
         # A register count is emitted by shift_bit too, its tick computed from d1 before (T12).
         lines, _ = pr.Emit({}, {}).instruction((0, 0x48), shift_bit('lsl.l d1,d0'))
-        self.assertEqual(lines[2].strip(), 'r.tick(cy::shift_cycles(cy::Size::L, r.d(1)));')
+        sh = 'cy::shift_cycles(cy::Size::L, r.d(1))'
+        self.assertEqual(lines[2].strip(), rt(sh, f'cy::one_word_off({sh})'))
         self.assertTrue(lines[3].strip().startswith('let cnt'))
 
     def test_a_conditional_branch_counts_each_path_on_its_own(self):
         doc = pr.load_export(os.path.join(FIXTURES, 'flags_call.json'))
         text, _ = pr.render(doc, 'flags_call.json')
         body = text[text.index('beq.b'):]
-        taken = "if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x8); continue 'b; }"
+        taken = ("if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); "
+                 "r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x8); continue 'b; }")
         self.assertEqual(body.split('\n')[2].strip(), taken)
-        self.assertEqual(body.split('\n')[3].strip(), 'r.tick(const { cy::bcc(false, cy::Size::B) });')
+        self.assertEqual(body.split('\n')[3].strip(),
+                         'r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });')
         self.assertEqual(cy.branch_cycles({'mnem': 'bra.w', 'ops': []}), None)
         self.assertEqual(cy.branch_cycles({'mnem': 'bne.w', 'ops': []})[1],
-                         'r.tick(const { cy::bcc(false, cy::Size::W) });')
+                         'r.tick(const { cy::bcc(false, cy::Size::W) }); r.off_bus(const { cy::bcc_off(false) });')
 
 
 if __name__ == '__main__':

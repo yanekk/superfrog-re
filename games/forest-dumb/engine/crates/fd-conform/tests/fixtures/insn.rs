@@ -34,7 +34,7 @@ pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[
 pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$0 moveq
     {
-        r.tick(const { cy::of(cy::Op::Moveq, cy::Size::L, cy::Ea::Imm, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::Moveq, cy::Size::L, cy::Ea::Imm, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::Moveq, cy::Size::L, cy::Ea::Imm, cy::Ea::Dn) });
         let v = 0xffffffffu64;
         r.set(0x0, 4, v);
         let v = int_sless(r.get(0x0, 4), 0x0u64, 4);
@@ -54,7 +54,7 @@ pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2 add.l
     {
-        r.tick(const { cy::of(cy::Op::AluToDn, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::AluToDn, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::AluToDn, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let v = int_carry(r.get(0x0, 4), r.get(0x4, 4), 4);
         r.set(0x47, 1, v);
         let v = int_scarry(r.get(0x0, 4), r.get(0x4, 4), 4);
@@ -76,7 +76,7 @@ pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4 abcd (corrected: pcode_fix.bcd)
     {
-        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let (v, x, o) = pcode_rt::bcd::bcd_add(r.get(0x7, 1), r.get(0x3, 1), r.get(0x43, 1));
         r.set(0x3, 1, v);
         pcode_rt::bcd::bcd_flags(r, v, x, o);
@@ -89,7 +89,7 @@ pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$6 cmpi.b
     {
-        r.tick(const { cy::of(cy::Op::Cmpi, cy::Size::B, cy::Ea::Imm, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::Cmpi, cy::Size::B, cy::Ea::Imm, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::Cmpi, cy::Size::B, cy::Ea::Imm, cy::Ea::Dn) });
         let mut u_20b00: u64 = 0;
         let mut u_20c00: u64 = 0;
         let v = r.get(0xf, 1);
@@ -116,8 +116,8 @@ pub fn i_h0_a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
         let mut u_100: u64 = 0;
         let v = bool_negate(r.get(0x45, 1));
         u_100 = v & 0xff;
-        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(()); }
-        r.tick(const { cy::bcc(false, cy::Size::B) });
+        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(()); }
+        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
     }
     r.set(PC, 4, img.h(0, 0xc) as u64);
     Ok(())
@@ -127,7 +127,7 @@ pub fn i_h0_a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$c move.w
     {
-        r.tick(const { cy::of(cy::Op::Move, cy::Size::W, cy::Ea::Dn, cy::Ea::PostInc) });
+        r.tick(const { cy::of(cy::Op::Move, cy::Size::W, cy::Ea::Dn, cy::Ea::PostInc) }); r.off_bus(const { cy::off_of(cy::Op::Move, cy::Size::W, cy::Ea::Dn, cy::Ea::PostInc) });
         let mut u_200: u64 = 0;
         let v = r.get(0x20, 4);
         u_200 = v & 0xffffffff;
@@ -152,7 +152,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$e move.l
     {
-        r.tick(const { cy::of(cy::Op::Move, cy::Size::L, cy::Ea::Dn, cy::Ea::AbsL) });
+        r.tick(const { cy::of(cy::Op::Move, cy::Size::L, cy::Ea::Dn, cy::Ea::AbsL) }); r.off_bus(const { cy::off_of(cy::Op::Move, cy::Size::L, cy::Ea::Dn, cy::Ea::AbsL) });
         let v = r.get(0x0, 4);
         store(bus, img, (img.h(1, 0x4) as u64) as u32, 4, v)?;
         let v = int_sless(r.get(0x0, 4), 0x0u64, 4);

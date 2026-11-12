@@ -149,15 +149,18 @@ class Ticks(unittest.TestCase):
             self.assertTrue(lines[0].startswith('r.tick('), text)
 
     def test_a_register_operand_is_read_at_run_time(self):
-        self.assertEqual(cy.cycles(by_text('mulu.w d1,d0')), ['r.tick(cy::mulu_cycles(r.d(1) as u16));'])
-        self.assertEqual(cy.cycles(by_text('divs.w d1,d0')),
-                         ['r.tick(cy::divs_cycles(r.d(0) as i32, r.d(1) as i16));'])
+        mul = 'cy::mulu_cycles(r.d(1) as u16)'
+        self.assertEqual(cy.cycles(by_text('mulu.w d1,d0')), [f'r.tick({mul}); r.off_bus(cy::one_word_off({mul}));'])
+        div = 'cy::divs_cycles(r.d(0) as i32, r.d(1) as i16)'
+        self.assertEqual(cy.cycles(by_text('divs.w d1,d0')), [f'r.tick({div}); r.off_bus(cy::one_word_off({div}));'])
         self.assertEqual(cy.cycles(by_text('dbgt d1,next')),
-                         ['r.tick(cy::dbcc(cy::cc_holds(14, r), r.d(1) as u16));'])
+                         ['r.tick(cy::dbcc(cy::cc_holds(14, r), r.d(1) as u16)); '
+                          'r.off_bus(cy::dbcc_off(cy::cc_holds(14, r)));'])
 
     def test_an_immediate_multiply_and_a_movem_are_constants(self):
         self.assertEqual(cy.cycles(by_text('muls.w #$aaaa,d0')),
-                         ['r.tick(const { cy::muls_cycles(0xaaaau16) + cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });'])
+                         ['r.tick(const { cy::muls_cycles(0xaaaau16) + cy::ea_cycles(cy::Ea::Imm, cy::Size::W) }); '
+                          'r.off_bus(const { cy::one_word_off(cy::muls_cycles(0xaaaau16)) });'])
         self.assertEqual(cy.cycles(by_text('movem.w (a1)+,d0-d7/a0/a2-a7')),
                          ['r.tick(const { cy::movem_cycles(cy::Dir::ToRegs, cy::Ea::PostInc, cy::Size::W, 15) });'])
         self.assertEqual(cy.cycles(by_text('movem.l d1-d7/a0-a6,-(a7)')),
@@ -165,7 +168,8 @@ class Ticks(unittest.TestCase):
 
     def test_an_immediate_divide_reads_its_dividend_at_run_time(self):
         self.assertEqual(cy.cycles(by_text('divu.w #7,d0')),
-                         ['r.tick(cy::divu_cycles(r.d(0), 0x0007u16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });'])
+                         ['r.tick(cy::divu_cycles(r.d(0), 0x0007u16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) }); '
+                          'r.off_bus(cy::one_word_off(cy::divu_cycles(r.d(0), 0x0007u16)));'])
 
     def test_a_memory_source_multiply_stops_rather_than_guess(self):
         # mulu.w (a0),d0 and divs.w 4(a2),d3: the operand would be read twice, so the run stops.
