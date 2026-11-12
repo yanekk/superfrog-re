@@ -58,9 +58,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
-| T44 | haiku-decision | T19; blocks T42 | 🔍 | Owner accepted Haiku 2026-11-12. docs/11 gains "Generators and rewrites: Haiku first"; README, CLAUDE.md say it; the porting pack carries it (`haiku_how`), 3 new asserts in `test_task_pack.py`. Deviation: the Muse header and text stay for T20, which has not run. |
+| T44 | haiku-decision | T19; blocks T42 | ✅ | Owner accepted Haiku 2026-11-12 (read-only, from the builder). docs/11 "Generators and rewrites: Haiku first", README, CLAUDE.md, porting pack (`haiku_how`). Review clean, no fix commit: result names checked against generate/reshape, mutated the section regex (pack test red), T22-T52 packs omit nothing new. Muse header stays for T20. |
 
-**Review queue:** T44
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
