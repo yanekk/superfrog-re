@@ -139,8 +139,14 @@ pub struct FrameOut<'a> {
     /// The CPU's of `writes` alone, in order, tagged as each was made: the oracle keeps the CPU's
     /// only (`Amiga::cpu_writes`), so the frame bar compares these (translator T45).
     pub cpu_writes: Vec<(u64, u16, u16)>,
+    /// Indices into `cpu_writes` of the writes a read of a write-only register made, whose word
+    /// is the bus's leftover (`pcode_rt::Bus::ww_leftover`): the frame bar compares them by
+    /// register only (translator T47).
+    pub cpu_leftover: Vec<usize>,
     /// Paula's writes of the frame, in order: (cycle, register, word).
     pub paula: Vec<(u64, u16, u16)>,
+    /// Indices into `paula` of the writes made with a leftover bus word, as `cpu_leftover`.
+    pub paula_leftover: Vec<usize>,
     /// Set on the last frame of a run the program stopped: how it stopped.
     pub stop: Option<Stop>,
     /// Chip RAM then slow RAM at each CPU write of the frame that [`TranslatedGame::watch_write`]
@@ -374,12 +380,14 @@ impl TranslatedGame {
             host.inside.pop();
             host.returns.push(k);
         }
-        let paula = host.paula();
+        let (paula, paula_leftover) = host.paula();
         let out = FrameOut {
             picture: host.picture.clone(),
             writes: host.m.custom_writes().to_vec(),
             cpu_writes: host.m.cpu_writes().to_vec(),
+            cpu_leftover: host.m.cpu_leftover().to_vec(),
             paula,
+            paula_leftover,
             stop: Some(stop.clone()),
             watched: host.m.take_watched(),
             chip: host.m.chip(),
@@ -417,25 +425,28 @@ struct Host<'a, 'b> {
 }
 
 impl Host<'_, '_> {
-    fn paula(&mut self) -> Vec<(u64, u16, u16)> {
-        self.m
-            .take_paula_writes()
+    fn paula(&mut self) -> (Vec<(u64, u16, u16)>, Vec<usize>) {
+        let (writes, leftover) = self.m.take_paula_writes_marked();
+        let writes = writes
             .into_iter()
             .map(|(at, w)| (at, w.reg, w.value))
-            .collect()
+            .collect();
+        (writes, leftover)
     }
 
     /// The frame that ended at `frame_end()`: drawn, handed to `each`, the next one's input taken.
     fn end_frame(&mut self, r: &mut Regs) -> Result<(), Stop> {
         let frame = self.m.end_frame();
-        let paula = self.paula();
+        let (paula, paula_leftover) = self.paula();
         // One step count per frame (pcode-rt: a host running frame by frame resets it).
         r.steps = 0;
         let out = FrameOut {
             picture: frame.picture,
             writes: frame.writes,
             cpu_writes: frame.cpu_writes,
+            cpu_leftover: frame.cpu_leftover,
             paula,
+            paula_leftover,
             stop: None,
             watched: frame.watched,
             chip: self.m.chip(),
@@ -517,6 +528,9 @@ impl Bus for Host<'_, '_> {
     }
     fn ww(&mut self, a: u32, v: u16) {
         self.m.ww(a, v)
+    }
+    fn ww_leftover(&mut self, a: u32, v: u16) {
+        self.m.ww_leftover(a, v)
     }
     fn wl(&mut self, a: u32, v: u32) {
         self.m.wl(a, v)

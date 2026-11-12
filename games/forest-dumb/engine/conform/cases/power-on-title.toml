@@ -3,11 +3,11 @@
 # 3461), the disk 2 prompt, fire at 3700, read_marker's load, the screen set-up, load_list_title's
 # four loads, and 280 frames of the title. The loads are instant on the translated side, so the
 # frames are lined up at each load's return (`align = "loads"`). Translated engine only.
-# Fails today, measured 2026-11-12 (T32), on machine gaps, not the line-up: every channel is equal
-# from frame 3977 to 5200. The disk 2 prompt is blank on the machine, 3463 to 3700 and 3889 to 3967
-# (Kickstart's DMA at power-on, T47). The machine's processor is faster while the program draws
-# (no display time-stealing or OS interrupt time; T30's question to the owner): memory 3462 and
-# 3965 to 3972, the custom and Paula writes 3972 to 3976.
+# Fails today, measured 2026-11-12 (T47), on the machine's processor being faster while the program
+# draws (no display time-stealing or OS interrupt time; T30's question to the owner) and nothing
+# else: memory 3462, the prompt cleared at 3967 (one frame early), the custom and Paula writes 3972
+# to 3976. The disk 2 prompt draws since T47 (Kickstart's DMACON at power-on): the picture is equal
+# 3463 to 3966. Every channel is equal from frame 3977 to 5200 (T32).
 sync = { script = "boot-to-title", frame = 0 }
 start = "entry"
 align = "loads"

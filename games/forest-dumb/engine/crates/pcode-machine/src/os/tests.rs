@@ -482,3 +482,58 @@ fn an_interrupt_on_the_os_handler_stops_naming_it() {
         Stop::Os("the OS's level 3 interrupt handler, not modelled, entered by an interrupt".into())
     );
 }
+
+/// A one-hunk program (`rts`) at `$1000`, from power-on.
+fn powered_on() -> Machine {
+    let hunk: Vec<u8> = [0x3F3u32, 0, 1, 0, 0, 1, 0x3E9, 1, 0x4E75_4E71, 0x3F2]
+        .iter()
+        .flat_map(|l| l.to_be_bytes())
+        .collect();
+    Machine::new(Config::a500(vec![0x1000]), &hunk).unwrap()
+}
+
+#[test]
+fn power_on_hands_over_the_registers_kickstart_leaves() {
+    // Measured on the oracle (T47): the game's entry reads DMACONR $03f0, INTENAR $602c,
+    // ADKCONR $1100 before it touches any of them.
+    let mut m = powered_on();
+    assert_eq!(m.rw(0xDF_F002), 0x03F0, "DMACONR");
+    assert_eq!(m.rw(0xDF_F01C), 0x602C, "INTENAR");
+    assert_eq!(m.rw(0xDF_F010), 0x1100, "ADKCONR");
+    // COP1LC names a list in chip RAM that only ends: copper DMA is on from the start.
+    let lc = (m.custom()[0x40] as u32) << 16 | m.custom()[0x41] as u32;
+    assert_eq!(lc, POWER_ON_COPPER);
+    assert!(lc < m.config().chip);
+    assert_eq!(m.rl(lc), 0xFFFF_FFFE);
+    // Nothing on the machine raises what Kickstart enabled: a whole frame in user mode with
+    // the mask at 0, up to its last cycle, has no interrupt to take, so the OS's handlers are never entered.
+    let mut r = Regs::new();
+    let end = m.frame_end();
+    r.tick((end - 1) as u32);
+    m.poll_time(&r).unwrap();
+    assert_eq!(m.due(&r), None);
+    assert_eq!(m.fault(), None);
+}
+
+#[test]
+fn a_snapshot_keeps_its_own_registers() {
+    let mut m = bare();
+    assert_eq!(m.rw(0xDF_F002), 0, "DMACONR");
+    assert_eq!(m.rw(0xDF_F01C), 0, "INTENAR");
+    assert_eq!(m.rw(0xDF_F010), 0, "ADKCONR");
+}
+
+#[test]
+fn adkconr_reads_what_adkcon_set_and_cleared() {
+    let mut m = powered_on();
+    m.ww(0xDF_F09E, 0x7FFF);
+    assert_eq!(m.rw(0xDF_F010), 0);
+    // As the game's load hands it back: the saved value with the set bit.
+    m.ww(0xDF_F09E, 0x8000 | 0x1100);
+    assert_eq!(m.rw(0xDF_F010), 0x1100);
+    m.ww(0xDF_F09E, 0x0100);
+    assert_eq!(m.rw(0xDF_F010), 0x1000);
+    // A CPU write to ADKCONR itself, read-only, changes nothing.
+    m.ww(0xDF_F010, 0xFFFF);
+    assert_eq!(m.rw(0xDF_F010), 0x1000);
+}

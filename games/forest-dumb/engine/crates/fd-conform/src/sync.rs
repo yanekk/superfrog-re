@@ -122,15 +122,14 @@ pub const LOAD_CAP: u32 = 3000;
 
 /// Bytes of the program's hunks that hold what the OS handed it, (hunk, offset, length): the
 /// machine answers the OS with values of its own (T26: dos base, file handle, the font's fields,
-/// copinit and LOFlist, the saved level 2 and 3 vectors), and the INTENAR, DMACONR and ADKCONR the
-/// entry saves at `h0+$1e3a` (T32, measured: the OS's `$602c`, `$03f0`, `$11..` against the
-/// machine's 0). A power-on case does not compare them; everything else in the hunks it does.
-pub const OS_VALUES: [(u8, u32, u32); 9] = [
+/// copinit and LOFlist, the saved level 2 and 3 vectors). A power-on case does not compare them;
+/// everything else in the hunks it does. The INTENAR, DMACONR and ADKCONR the entry saves at
+/// `h0+$1e3a` are compared: the machine starts with Kickstart's (T47, `pcode_machine::os`).
+pub const OS_VALUES: [(u8, u32, u32); 8] = [
     (0, 0x1e26, 4),
     (0, 0x1e2e, 4),
     (0, 0x1e32, 4),
     (0, 0x1e36, 4),
-    (0, 0x1e3a, 6),
     (0, 0x1e54, 4),
     (0, 0x1e58, 2),
     (0, 0x908e, 4),

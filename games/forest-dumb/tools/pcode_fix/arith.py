@@ -14,7 +14,10 @@ Three corrections, each by mnemonic and P-code shape (Ghidra 12.0's 68000.sinc),
               that word is the prefetch, the word after the instruction. The sinc has no read, so a
               word or long clr of memory writes that word first when its address is such a register
               (`clr.w AUD0VOL` writes the next opcode as a volume, then 0). A clr.l writes its low word
-              first, as the 68000 does.
+              first, as the 68000 does. On the reference the word is the bus's last, which a DMA slot
+              before the read may have filled (T47, measured: bitplane data at frame 5001), so the write
+              goes through `store_leftover`, which a machine marks and the frame bar compares by
+              register only.
 
 Not in the census, so not corrected: the sinc's subx V ignores X, and negx's C and V are computed from the
 wrapped `src + X` (FINDINGS). Their Z (only ever cleared) is already right.
@@ -123,7 +126,7 @@ def clear(ins):
     for wa in words:
         lines += [f'if pcode_rt::ops::custom_write_only({wa}) {{',
                   f'    let w = load(bus, img.h({h}, {hex_lit(off + ins["len"])}), 2);',
-                  f'    store(bus, img, {wa}, 2, w)?;', '}']
+                  f'    pcode_rt::store_leftover(bus, img, {wa}, w)?;', '}']
     if size == 4:
         # The 68000's clr.l writes its low word first (Moira's bus order), which a pair of custom
         # registers sees; the sinc's one long store writes the high word first.

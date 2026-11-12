@@ -42,7 +42,10 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   reads its half of the word. A write to a read-only register (`$000..$01E`, `$07C`) changes nothing.
   A read of a write-only register writes the data bus's last word into it and returns it (vAmiga
   `peekCustomFaulty16`; the list is `pcode_rt::ops::custom_write_only`). The bus's last word is the
-  last word read or written through this bus. VPOSR and VHPOSR read the beam: LOF set for a
+  last word read or written through this bus. On the oracle it is often a DMA slot's word instead
+  (bitplane data under `clr.w AUDxVOL`, T47), which the machine cannot know: such a write, and one
+  made through `Bus::ww_leftover` (the translated `clr`), is marked, in `Frame::cpu_leftover` and
+  `take_paula_writes_marked`, for the frame bar to compare by register only. VPOSR and VHPOSR read the beam: LOF set for a
   313-line frame, chip id 0 (OCS). Other readable registers read their device, else their last
   written value (a snapshot's, at first). Every written value is kept in `custom()`.
 - **CIAs:** register `(a >> 8) & $F`; A on odd bytes with bit 12 low, B on even bytes with bit 13
@@ -123,6 +126,14 @@ finish at once (owner, 2026-11-11). d1, a0 and a1, scratch to the real OS, are l
 | dos `Read` (-42) | the next bytes, at most `d3`, into RAM at `d2`; `d0` = how many (0 at the end). A buffer over translated code stops as `write-into-code`, outside RAM, an unknown handle or a negative length as `os:` | `d0` must be the file's exact length: the unpacker finds the data's end by it |
 | dos `Close` (-36) | frees the handle; an unknown one stops | after each file |
 
+Power-on (`new`) also hands over the registers as Kickstart leaves them (T47, measured on the
+oracle): DMACON `$03f0` (`os::KICKSTART_DMACON`: bitplane, copper, blitter, sprite and disk DMA on),
+INTENA `$602c`, ADKCON `$1100`, and COP1LC on a list that only ends at `os::POWER_ON_COPPER` (`$400`,
+chip RAM). A program relying on the display Kickstart left on draws; one saving INTENAR, DMACONR and
+ADKCONR to hand back at a load saves Kickstart's values. INTENA comes along although the OS's handlers
+are not run: nothing raises VERTB, and CIA-A starts masked; should an interrupt be taken through the
+OS's vector, the run stops naming it. ADKCONR reads what ADKCON's set/clear writes leave.
+
 OS memory: `$4` holds ExecBase, set by `new` (power-on) and by `from_snapshot` (whose own ExecBase
 would lead into a Kickstart not here; a program reads `$4` afresh before its calls). `new` also points
 the autovectors `$64..$7C` at the OS's interrupt handlers (`os::irq_handler(n)`), so a program can
@@ -142,8 +153,9 @@ stop as `untranslated`; the measured program makes neither.
   (DESIGN §2.6); the beam advances with the CPU's counted cycles alone.
 - **Timing inside a block:** accesses are timed at the block's start (`poll`), not the
   instruction's, which can be one block early. vAmiga's 5-slot read-ahead of VHPOSR is not added.
-- **Instruction fetches** do not go through the bus, so the last word is a data word, where the
-  68000's bus may hold a prefetched instruction word (the translated `clr` loads it itself).
+- **Instruction fetches and DMA** do not go through the bus, so the last word is a data word, where
+  the oracle's bus holds a prefetched instruction word or the last DMA slot's word (the translated
+  `clr` supplies the prefetch itself; the write is marked, above).
 - **VPOSW/VHPOSW** are kept as values; they do not move the beam.
 - **Odd word addresses**: a word access at an odd address is made at it, byte by byte; the 68000
   would take an address error.
