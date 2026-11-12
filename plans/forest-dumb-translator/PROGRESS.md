@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T18 (translate-command); T19 (haiku-trial) follows it.
+**Next `pir-work` will:** T19 (haiku-trial); T20 follows T19.
 
 ## Tasks
 
@@ -32,7 +32,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T15 | code-write-rule | T02, T14 | ✅ | |
 | T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
-| T18 | translate-command | T16, T17 | 🔍 | tools/translate.py rewritten (routine, symbol, --task, --build; tree cached on program SHA-1 and translator sources; release fd-judge); Muse's batch, tests deleted; trial's Muse column gone. 20 smoke tests, test_translate_game.py full. Deviations: `stop` when any stop counted; --task also matches gen_task, else the doc's `## Routines`; translator_trial.build names a folder tree's routine; test_model's Muse check rewritten. |
+| T18 | translate-command | T16, T17 | ✅ | Review: clean but one missing test, added (a folder tree's compile error named by routine; the mutation survived before). Probed on the real program: `char_sprite_position`, `game_frame` (73 functions), `--task T08` 15 of 15 pass, warm. Mutated stop classification and cache stamp, both caught. Cold export path not rerun (tree current). |
 | T19 | haiku-trial | T17, T18 | ⬜ | |
 | T20 | docs-and-packs | T18, T19 | ⬜ | |
 | T21 | default-check | T20 | ⬜ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 
-**Review queue:** T18
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
