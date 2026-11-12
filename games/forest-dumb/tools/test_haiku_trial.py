@@ -69,6 +69,23 @@ class Mark(unittest.TestCase):
         self.assertIsNone(h.summarise(None, reshape_rows(21))['mark_met'])
 
 
+class Timeout(unittest.TestCase):
+    def test_an_item_whose_every_call_timed_out_is_a_failure_not_a_missing_verdict(self):
+        with tempfile.TemporaryDirectory() as d:
+            log = os.path.join(d, 'tries.jsonl')
+            with open(log, 'w') as f:
+                for fn, outcome in (('idle', 'pass'), ('left_pressed', 'timeout'), ('left_pressed', 'timeout'),
+                                    ('move_x', 'no-model'), ('move_x', 'timeout')):
+                    f.write(json.dumps({'fn': fn, 'outcome': outcome}) + '\n')
+            self.assertEqual(h.timed_out({'result': 'no-model', 'tries': 2}, log, 'fn', 'left_pressed')['result'], 'timeout')
+            self.assertEqual(h.timed_out({'result': 'no-model', 'tries': 2}, log, 'fn', 'move_x')['result'], 'no-model')
+            self.assertEqual(h.timed_out({'result': 'fail', 'tries': 2}, log, 'fn', 'left_pressed')['result'], 'fail')
+        rows = reshape_rows(21)
+        rows[6] = h.reshape_row(h.MUSE_RESHAPE[6], {'result': 'timeout', 'tries': 3}, {})
+        s = h.summarise(gen_rows(5), rows)
+        self.assertEqual((s['reshape_pass'], s['no_model'], s['mark_met']), (20, 0, True))
+
+
 class Run(unittest.TestCase):
     def test_main_writes_the_table_and_the_summary_and_exits_on_the_mark(self):
         for gen, reshape, code in ((5, 20, 0), (5, 19, 1)):

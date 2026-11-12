@@ -22,7 +22,8 @@ result) and <out>/summary.json, and prints the summary as one line:
      "no_model": n, "calls": n, "usd": x}
 
 `mark_met` is null when only one half ran (`--only`) or any item got no answer from `claude`
-(`no_model` > 0: not logged in, say), since neither is a verdict on Haiku. Exit 0 when the mark is met,
+(`no_model` > 0: not logged in, say), since neither is a verdict on Haiku. An item whose every call ran
+past model.py's 300 s bound is `timeout`, a failure: Haiku answered nothing a session could use. Exit 0 when the mark is met,
 1 otherwise, 2 on a usage error. All model calls go through model.py in this one process, so
 `--max-calls` (100, the §5.3 row's bound) holds over the whole trial. Standard library only, for
 `python3 -I`.
@@ -89,7 +90,7 @@ def gen_row(muse, res):
             'tries': res.get('tries', 0), 'branches': res.get('branches', 0), 'ways': got,
             'uncovered': res.get('uncovered', []), 'muse_ways': 2 * branches, 'muse': muse_result,
             'at_least_muse': res['result'] in ('covered', 'partial') and got >= 2 * branches,
-            'stopped': res.get('stopped')}
+            'stopped': res.get('stopped'), 'error': res.get('error')}
 
 
 def reshape_row(muse, res, translated):
@@ -128,7 +129,8 @@ def table(gen_rows, reshape_rows, s):
                 '|---|---|---|---|---|---|---|']
         for r in gen_rows:
             un = ', '.join(f"{u['at']} {u['never']}" for u in r['uncovered']) or '—'
-            out.append(f"| `{r['name']}` | {r['subsystem']} | {r['result']}, {r['tries']} | {r['ways']} of "
+            note = f" ({r['error']})" if r.get('error') else ''
+            out.append(f"| `{r['name']}` | {r['subsystem']} | {r['result']}{note}, {r['tries']} | {r['ways']} of "
                        f"{2 * r['branches']} | {un} | {r['muse']}, {r['muse_ways']} ways | "
                        f"{'yes' if r['at_least_muse'] else 'no'} |")
         out.append('')
@@ -171,6 +173,23 @@ def translate_task(task):
     return got
 
 
+def timed_out(res, tries_log, key, value):
+    """`res` with result `timeout` when the tool said `no-model` only because every call of this item ran past
+    model.py's bound: Haiku was reached and gave nothing in time, which a session meets too, so it is a
+    failed item, not a missing verdict as a logged-out `claude` is."""
+    if res.get('result') != 'no-model' or not res.get('tries'):
+        return res
+    try:
+        with open(tries_log, encoding='utf-8') as f:
+            mine = [d for d in map(json.loads, f) if d.get(key) == value]
+    except (OSError, ValueError):
+        return res
+    last = mine[-res['tries']:]
+    if last and all(d.get('outcome') == 'timeout' for d in last):
+        return dict(res, result='timeout')
+    return res
+
+
 def run_gen(tries, out):
     import generate
     rows = []
@@ -179,8 +198,10 @@ def run_gen(tries, out):
             res = generate.generate(m[0], m[1], tries, os.path.join(out, 'generate'))
         except generate.jr.Usage as e:
             res = {'result': 'usage', 'error': str(e)}
+        res = timed_out(res, os.path.join(out, 'generate', 'tries.jsonl'), 'gen', m[1])
         rows.append(gen_row(m, res))
-        print(json.dumps({'gen': m[1], 'result': res['result'], 'ways': rows[-1]['ways']}), file=sys.stderr)
+        print(json.dumps({'gen': m[1], 'result': res['result'], 'ways': rows[-1]['ways'], 'error': res.get('error')}),
+              file=sys.stderr)
     return rows
 
 
@@ -196,8 +217,10 @@ def run_reshape(tries, out):
             res = reshape.reshape(routines[0], task, tries, os.path.join(out, 'reshape'), tidy=0)
         except reshape.jr.Usage as e:
             res = {'result': 'usage', 'error': str(e)}
+        res = timed_out(res, os.path.join(out, 'reshape', 'tries.jsonl'), 'fn', fn)
         rows.append(reshape_row(m, res, translated))
-        print(json.dumps({'reshape': fn, 'result': res['result'], 'tries': res.get('tries', 0)}), file=sys.stderr)
+        print(json.dumps({'reshape': fn, 'result': res['result'], 'tries': res.get('tries', 0), 'error': res.get('error')}),
+              file=sys.stderr)
     return rows
 
 
@@ -229,11 +252,12 @@ def main(argv=None):
     out = os.path.abspath(a.out)
     model.set_max_calls(a.max_calls)
     for sub in ('generate', 'reshape'):
-        # A rerun's calls.jsonl would otherwise count the last run's calls too.
-        try:
-            os.remove(os.path.join(out, sub, 'calls.jsonl'))
-        except OSError:
-            pass
+        # A rerun's logs would otherwise count the last run's calls too.
+        for log in ('calls.jsonl', 'tries.jsonl'):
+            try:
+                os.remove(os.path.join(out, sub, log))
+            except OSError:
+                pass
     gen_rows = run_gen(a.tries, out) if a.only in (None, 'gen') else None
     reshape_rows = run_reshape(a.tries, out) if a.only in (None, 'reshape') else None
     s = summarise(gen_rows, reshape_rows, *spent(out))
