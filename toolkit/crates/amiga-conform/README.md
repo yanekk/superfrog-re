@@ -49,6 +49,11 @@ Scripts and bugs
 - `script::parse(text) -> Result<InputScript, ScriptError>`, `parse_with(text, game_token)`, `parse_with_forms(text, forms, game_token)`: `game_token` sees each token first and returns `None` for one it does not own. `InputScript { lines }`, `idle()`, `input_at`, `from_frame`, `from_steps`, `to_text`, `format_input`. This is not `amiga_oracle::InputScript`; convert with `lines`.
 - `bug_compare::verdict_line(first: Option<(u32, u32, &str)>, left: Option<&Left>) -> String`.
 
+Loads (`loads`): an engine that loads at once against the original, whose loads take frames. The original runs on past each load, its frames not compared, and is compared once its load is over; past a cap it is a divergence (`LoadTooLong`), not a wait.
+- `OriginalLoad::new(LoadEnd::{Reached(a), Left(a)}, cap)`: `over(&chain)` on the original's call chain (return addresses, innermost first; `Reached` looks at the `REACHED_DEPTH` innermost, `Left` must be seen inside first), `frame()` before each frame run inside it (an error at the cap), `frames()`.
+- `ByReturns::new(cap)`, for a game counting returns from its file routines on both sides (an engine running the original's own program): `engine(returned, loading)` after each engine frame; while `behind()`, `skip()` then run the original a frame and `original(returned, loading)`; compare the pair only when `compared()`: the same loads returned and neither side inside one. `returned()`, `skipped()`.
+- learned on: Superfrog (the chain, a hand engine's loads) and Forest Dumb Forever (the returns, a translated program's loads), translator T32.
+
 Sync cache (`sync_cache`): `cache_key`, `key_text`, `hex`, `cache_path(root, key)` (`.sync2` files), `at_snapshot`, `encode`, `decode`. `at_snapshot` takes any `A: AsMut<Amiga>`, so a game's wrapper works.
 
 ## Where the details are

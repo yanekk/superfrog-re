@@ -36,6 +36,14 @@ let stop = g.run(&mut |frame| {
   program's stop, after one last `each` with `stop` set and the last whole frame's picture.
 - **Power-on** enters `h0+$0` with the stack at `POWER_ON_STACK`. The program waits for fire at the
   disk 2 prompt (`h0+$7b70`): hold it in the first frames' input.
+- **Power-on** runs in user mode on `POWER_ON_STACK`, its supervisor stack at
+  `POWER_ON_SUPERVISOR_STACK` (the top of slow RAM, where Kickstart 1.3 keeps it), which the first
+  interrupt it takes switches to. `g.start_at_line(line)` before the run puts the beam on `line`, so
+  the first frame is only the rest of it (the line the original's entry ran on, T32).
+- **Watched returns** (T32): `g.watch_returns(&[(hunk, offset), ..])` before the run, and each frame's
+  `returns` lists the watched routines that returned in it, `inside` those still running at its end.
+  Read off `Regs::depth` at each block's `poll`: entered through the routine's entry only (a mount
+  hides it); a function entered at its depth also means it returned, as a call is not a block's end.
 - **Snapshot**: the original's RAM, registers and custom registers (as `Machine::from_snapshot`
   reads them); CIA-A's mask is set to the keyboard's (`$08`), which the oracle does not expose. The PC
   and every return address on the stack may be any instruction: the run enters through the tree's

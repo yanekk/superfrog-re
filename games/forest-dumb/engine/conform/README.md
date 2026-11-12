@@ -47,8 +47,9 @@ accepted difference goes in the case's notes with the measurement that justifies
 names a hand engine task. A stop (`untranslated: hN+$off` and the rest) fails the case naming the frame.
 `run-all` and `run --engine translated` go on past a channel's first difference with the others
 (`Options::every_channel`) and print each channel's first; `run-all --report` writes a Markdown reading
-grouped by the task that works from it (T30, T31) and sorted by first difference. A title case is not
-run on `translated` (power-on cases are T32's). `--engine hand` is the default and the pass runner,
+grouped by the task that works from it (T30, T31, T32) and sorted by first difference. A title case
+runs on `translated` from a snapshot of the original at the end of its sync frame's step, judged on the
+same bar in `SCREEN_WINDOW` (T32: `first-case`, 15 078 frames). `--engine hand` is the default and the pass runner,
 unchanged.
 
 ## A case
@@ -66,7 +67,9 @@ vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
-swap = { frame = 3600, disk = 2 }                   # title cases only: this disk into df0 then
+swap = { frame = 3600, disk = 2 }                   # title and power-on cases: this disk into df0 then
+start = "entry"              # power-on cases: the engine starts at the program's entry
+align = "loads"              # power-on cases: frames lined up at each load's return
 ```
 
 - **`sync`.** A script of `boot-to-level1` makes a level case: it starts from the cached level sync
@@ -102,6 +105,15 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
 - **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
   the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
   as any unknown key is.
+- **`start = "entry"` and `align = "loads"`** (translator T32): a power-on case, translated engine
+  only (the hand engine refuses it). `sync` is the script with `frame = 0`, and both keys are given
+  together. Below, "Power-on cases".
+- **`compare = ["memory"]`**, power-on cases only: the five hunks byte for byte at every compared
+  frame's end, but for the bytes holding what the OS handed the program (`sync::OS_VALUES`: the
+  dos base, the file handle, the font's fields, copinit and LOFlist, the saved vectors, the saved
+  INTENAR, DMACONR and ADKCONR), which the machine answers with values of its own. On
+  `--engine translated` a power-on case always compares memory, the picture in `SCREEN_WINDOW` and
+  the writes, and its `vars` if it lists any.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
   sets, so HELP ends the level (T26).
@@ -207,6 +219,36 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
 - **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
   the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
   (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.
+
+## Power-on cases
+
+`power-on-title` and `power-on-level-1` run the translated program from power-on (translator DESIGN
+§2.7, §2.8; `fd_conform::frames::run_entry_frames`).
+
+- **The start.** The original runs from power-on on the case's script, line samples on, until the
+  step that first executes the entry `h0+$0` (frame 3461 on boot-to-title's input). The translated
+  program starts there, with the machine's OS answers, its beam on the first line of that step that
+  ended in the program's code (line 179): Kickstart enters the program partway through a frame, and
+  the program draws the disk 2 prompt at once, so a start at line 0 has drawn more by the frame's
+  end. The engine's first frame is paired with that step.
+- **Loads are lined up at their returns.** A load is a call of `load_file`, `load_file_raw` or
+  `read_marker` (`sync::LOAD_ROUTINES`, docs/07). The translated program reads a file at once, the
+  original in seconds. The engine reports each load's return in the frame it happened in
+  (`TranslatedGame::watch_returns`), the original its `rts` instructions (`sync::LOAD_RETURNS`,
+  `Amiga::watch_pcs`). After each engine frame the original runs on, its frames not compared, while
+  it has returned from fewer loads than the engine; a frame with a load running at its end on either
+  side is not compared either, since the engine has read the next file while the original reads it
+  (`amiga_conform::loads::ByReturns`). A load longer than `sync::LOAD_CAP` frames on the original,
+  or a different count of loads by the case's end, fails as `loads apart`. Measured (T32): 18 loads
+  to level 1, 1 794 of the original's frames inside them.
+- **Writes while the OS has the machine are not compared.** Until the entry takes the machine, and
+  while a load list has handed it back (`system_on` to `system_off`), the OS's interrupts write
+  INTREQ and the rest on the original, which the machine does not run. The custom and Paula writes
+  of a frame are compared only when the program's `level3_handler` is the level 3 vector on the
+  original at the step's start and end; the frames left out are counted.
+- **A stand-in** shows the rule (`tests/power_on.rs`): a copy of the original whose loads are 50
+  frames short lines up and passes, and a byte changed in the frame after the load's return fails
+  there.
 
 ## The coverage report
 
