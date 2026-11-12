@@ -29,7 +29,7 @@ It exports the whole program (Ghidra, `pcode_export.py`) and translates it (`pco
 generator's states against the original. `rust` is the routine's generated function and every function
 it calls, routine first, for reading. Results: `pass`; `fail` (`first` is the first difference); `stop`
 (the translation stopped on some state: untranslated, a write into code, unsupported; `first` names it);
-`no-gen` (no generator registered: write one, `generate.py`); `no-oracle` (the original never returns, or
+`no-gen` (no generator registered: run `generate.py` first, by hand after a miss; owner 2026-11-12, translator T44); `no-oracle` (the original never returns, or
 blits lines). The generator is `--gen`, else the one registered under the routine's name or address.
 `--task` takes the rows of `re/translate.toml` whose `port_task` or `gen_task` is the task, else the
 `hN+$off` and backticked symbols of its task doc's `## Routines` section (or `--task path/to/doc.md`).
@@ -38,16 +38,16 @@ passes, 1 otherwise (a failed step named on stderr), 2 on usage. Holds `build/tr
 
 ## Model services
 
-generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
+The default since the owner accepted Haiku (2026-11-12, translator T44): a session runs them first and
+writes the generator or rewrite by hand only after a result other than `covered` or `pass` (`partial`
+is completed by hand). generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
 haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no call answered: result
 `no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). Both need the listing
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line
 per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason on
 stderr). Model calls log to `<out>/calls.jsonl`, a line a call; generate and reshape log each judged
-answer to `<out>/tries.jsonl`. Both are the default since the owner accepted Haiku (2026-11-12, translator
-T44): a session runs them first and writes the generator or rewrite by hand only after a result other than
-`covered` or `pass`. Procedure, results table and what to do on each result:
-[docs/11-translation.md](../docs/11-translation.md), "Generators and rewrites: Haiku first". Quote the routine: `$5` is a shell parameter.
+answer to `<out>/tries.jsonl`. Procedure and the trial's table:
+[docs/11-translation.md](../docs/11-translation.md). Quote the routine: `$5` is a shell parameter.
 
 ### model.py, judge_run.py (stdlib, libraries)
 `model.ask(system, prompt, log=...)` is one Haiku call: `ok`, `no-model`, `timeout` or `max-calls`;
@@ -65,14 +65,14 @@ no-model; `uncovered` lists branches never taken. The builder reads the generato
 `fd-conform/src/gen/` itself.
 
 ### reshape.py (stdlib)
-Haiku turns a literal port into engine code on typed state, judged by the task's rig test, then tidied.
+Haiku drafts a chosen rewrite: engine code on typed state from the translated routine, judged by the task's rig test, then tidied.
 ```
 python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-calls 40] [--out DIR]
 python3 -I games/forest-dumb/tools/reshape.py --task T08 --all [--only fn_a,fn_b]
 python3 -I games/forest-dumb/tools/reshape.py --opus-cost [--conversations DIR]
 ```
 `--task` choices are the tables of `re/reshape.toml`; the routine is `h0+$off` or its rig name. Needs
-the unit's literal port in `build/translate`. Default out `build/reshape/`; it works in a scratch copy
+the unit's translated routines (`translate.py`'s `build/translate/h0-<off>/translated.rs`, here or in the main checkout). Default out `build/reshape/`; it works in a scratch copy
 there and never changes committed `fd-core`. `quality` lists what the builder still has to tidy.
 `--all`'s units share one `--max-calls`. `--opus-cost` makes no model call.
 
@@ -226,7 +226,9 @@ venv/bin/python games/forest-dumb/tools/render_levels.py --spot W1-1:10,20   # w
 
 ### task_pack.py (stdlib)
 One file holding what a task's session would otherwise read in its first steps (task doc, PROGRESS,
-FINDINGS, DESIGN sections, dependencies' commits, file skeletons, routines and listings).
+FINDINGS, DESIGN sections, dependencies' commits, file skeletons, routines with their listings and
+translations, and the translate-first procedure from `docs/11-translation.md`). Its plan is
+`forest-dumb-level-1` (`PLAN` in the script).
 ```
 python3 -I games/forest-dumb/tools/task_pack.py T22 [--review] [--no-prep] [--max-kb 150]
 ```
@@ -241,6 +243,16 @@ then, re-reads of what the pack holds, cost.
 python3 -I games/forest-dumb/tools/pack_check.py [--conversations DIR] [--since T42-implement-2] [--json]
 ```
 Default logs: the main checkout's `plans/forest-dumb-level-1/.parallel/control/conversations/`.
+
+### default_check.py (stdlib)
+Stage 7's check: do fresh sessions, given a porting task and only the docs, run `translate.py` before
+anything else that makes Rust? Each run is `claude -p` (default model) in a scratch worktree of HEAD,
+removed after; commit a doc fix before rerunning. Spends the owner's subscription (DESIGN §5.3).
+```
+python3 -I games/forest-dumb/tools/default_check.py [--runs 3] [--max-turns 15] [--minutes 10] [--routine char_sprite_position]
+```
+Prints `{"runs":3,"pass":n,"per_run":[...]}`; transcripts in `build/default-check/run-<n>.jsonl`. Exit 0
+when every run passes.
 
 ## Tests
 

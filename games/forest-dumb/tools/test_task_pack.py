@@ -1,6 +1,6 @@
 """task_pack.py (plans/forest-dumb-level-1, owner amendment 2026-11-06). Builds real packs from the
-committed plan with --no-prep, so nothing is extracted or run; listings show only where the main
-checkout's build/translate has them."""
+committed plan with --no-prep, so nothing is extracted or run; listings show only where this checkout or
+the main checkout has the program listing (build/re), and the pack must hold its required sections either way."""
 import os
 import re
 import sys
@@ -44,19 +44,41 @@ class Pack(unittest.TestCase):
         self.assertTrue(rows)
         for r in rows:
             self.assertIn(f"### `{r['name']}` h0+${r['offset']:x}", text)
-        self.assertIn('## Muse writes the engine code', text)
-        # The owner's choice (translator T44): Haiku first, by hand after a miss.
-        self.assertIn('## Generators and rewrites: Haiku first (owner, 2026-11-12)', text)
-        self.assertIn('run `generate.py` first', text)
-        self.assertIn('run `reshape.py` first', text)
-        # Before T22 adds its table the pack shows the fields to fill; after, T22's own.
-        self.assertTrue("re/reshape.toml` has no `[T22]` yet" in text or "re/reshape.toml` has `[T22]`" in text)
+        self.assertIn('## Translate first: the procedure', text)
+        # The owner's choice (translator T44): Haiku first for generators and rewrites, by hand after a miss.
+        proc = text.split('## Translate first: the procedure', 1)[1]
+        self.assertIn('run `tools/generate.py`', proc)
+        self.assertIn('run `tools/reshape.py`', proc)
         # The opening reads and the porting sections always fit; a later section may be left out as
         # the tree grows past --max-kb (T22's files did once T22 was built), named with where to read it.
-        for name in ('how', 'task', 'progress', 'findings', 'design', 'listings', 'reshape', 'rules'):
+        for name in ('how', 'task', 'progress', 'findings', 'design', 'listings', 'procedure', 'rules'):
             self.assertIn(name, res['sections'])
         for name in res['omitted']:
             self.assertIn(f'- {name}: read `', text.split('## Omitted to fit the pack', 1)[1])
+
+    def test_a_porting_pack_carries_the_translator_procedure_and_no_muse_procedure(self):
+        # Translator DESIGN §2.12: every pack says translate first. The plan's own records (its task doc,
+        # PROGRESS, FINDINGS, DESIGN, commits) may still name Muse as level 1's history; what the pack
+        # itself writes (how to use it, the listings, the procedure, the rules) may not.
+        _, text = self.build('T22')
+        own = {}
+        for chunk in re.split(r'(?m)^(?=## )', text):
+            own[chunk.splitlines()[0] if chunk.startswith('## ') else 'how'] = chunk
+        procedure = next(v for k, v in own.items() if k.startswith('## Translate first'))
+        self.assertIn('translate.py --task T{nn}', procedure)
+        self.assertIn('by hand', procedure)
+        self.assertIn('fd-judge --seam', procedure)
+        for key in ('how', '## Its routines (re/translate.toml), with their listings', procedure.splitlines()[0],
+                    '## toolkit/docs/porting-routines.md'):
+            with self.subTest(section=key):
+                self.assertNotRegex(own.get(key, ''), r'Muse|reshape\.toml|translate_batch|port\.rs')
+        self.assertIn('translate with the translator first', own['how'])
+        # Each routine names its translation, or the command that writes it.
+        self.assertRegex(own['## Its routines (re/translate.toml), with their listings'], r'Translation: (`|none yet)')
+
+    def test_the_procedure_is_docs_11s_section(self):
+        doc = tp.read(os.path.join(tp.GAME, 'docs', '11-translation.md'))
+        self.assertIn(tp.procedure().splitlines()[0], doc.split('## The procedure', 1)[1])
 
     def test_dependencies_are_this_plans_commits_only(self):
         _, text = self.build('T22')
@@ -90,7 +112,7 @@ class Pack(unittest.TestCase):
         self.assertIn('## Omitted to fit the pack', text)
         for name in res['omitted']:
             self.assertIn(f'- {name}: read', text)
-        for required in ('how', 'task', 'progress', 'findings', 'listings', 'reshape'):
+        for required in ('how', 'task', 'progress', 'findings', 'listings', 'procedure'):
             self.assertIn(required, res['sections'])
 
     def test_every_pending_task_gets_a_pack_within_the_cap(self):
@@ -100,6 +122,32 @@ class Pack(unittest.TestCase):
                 self.assertLessEqual(res['bytes'], tp.MAX_KB * 1024 + 60_000, 'required sections alone stay near the cap')
         for task in pending('case-'):
             self.assertIn('frame-matching', self.build(task)[0]['kinds'])
+
+
+class RoutineBlock(unittest.TestCase):
+    """A routine's block on a made-up listing and build folder: its flow and its translation's path."""
+
+    def test_the_block_holds_the_flow_and_names_the_translation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            lst = os.path.join(tmp, 'x.lst')
+            with open(lst, 'w') as f:
+                f.write('h0+$10:\n00000010  61000004   bsr.w h0+$16\n00000014  4e75   rts\n'
+                        'h0+$16:\n00000016  7001   moveq #1,d0\n00000018  4e75   rts\n')
+            folder = os.path.join(tmp, 'translate', 'h0-10')
+            os.makedirs(folder)
+            open(os.path.join(folder, 'translated.rs'), 'w').close()
+            r = {'name': 'made_up', 'hunk': 0, 'offset': 0x10, 'own': 2, 'instructions': 4}
+            with mock.patch.object(tp, 'listing_path', return_value=lst), \
+                 mock.patch.object(tp, 'port_dirs', return_value=[os.path.join(tmp, 'translate')]):
+                block = tp.routine_block(r)
+                r2 = dict(r, offset=0x16)
+                none_yet = tp.routine_block(r2)
+            self.assertIn('bsr.w h0+$16', block)
+            self.assertIn('moveq #1,d0', block)  # the callee is followed
+            self.assertIn(os.path.join(folder, 'translated.rs'), block)
+            self.assertIn("translate.py 'h0+$16'` writes it", none_yet)
+            # judge_run's listing path is put back
+            self.assertNotEqual(tp.reshape.jr.LISTING, lst)
 
 
 class Paths(unittest.TestCase):

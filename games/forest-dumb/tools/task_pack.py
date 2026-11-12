@@ -20,8 +20,10 @@ in `omitted`, with the path to read instead):
 - the work of the tasks it depends on: their commits and the files they touched;
 - the files the task doc's `## Files` names, Rust as skeletons (types whole, fns as signatures);
 - a porting task's routines from re/translate.toml and re/objects-W1-1.toml, each with its listing
-  from build/translate (here or in the main checkout) and where its literal port is, the porting rules,
-  and how to have Muse write the engine code (re/reshape.toml, tools/reshape.py);
+  (the routine's flow, from the program listing here or in the main checkout) and where its translation
+  is (build/translate/<hN-off>/translated.rs, written by tools/translate.py), the porting rules, and the
+  procedure: translate with the translator first, rewrite by hand only where the owner chose
+  (docs/11-translation.md, "The procedure"; translator DESIGN §2.12);
 - a frame-matching task's runner notes (engine/conform/README.md) and its cases;
 - the engine's map: each source file with its line count and public items.
 With --review: the task branch's commits and diffstat against the plan branch.
@@ -31,7 +33,7 @@ Prep, unless --no-prep: when this checkout has no program listing, extract the p
 session never spends steps finding out how. The listing and the pack derive from the game's code: both
 stay in build/ (git-ignored), never committed.
 
-Python's standard library only (reshape.py's skeleton reader), so it runs under `python3 -I`.
+Python's standard library only (reshape.py's skeleton reader, judge_run's flow), so it runs under `python3 -I`.
 """
 import argparse, glob, json, os, re, subprocess, sys, tomllib
 
@@ -50,7 +52,7 @@ OUT = os.path.join(GAME, 'build', 'pack')
 LISTING = os.path.join(GAME, 'build', 're', 'forest_dumb_forever.lst')
 PROGRAM = os.path.join(GAME, 'build', 'files', 'disk1', 'FOREST_DUMB_FOREVER')
 MAX_KB = 150
-# DESIGN sections every pack carries: the testing rules (porting rules, Muse) and the environment.
+# DESIGN sections every pack carries: the testing rules (porting rules) and the environment.
 ALWAYS = ('4', '5')
 CASE_TASKS = {'T11', 'T27', 'T48'}
 
@@ -61,7 +63,7 @@ def read(path):
 
 
 def rel(path):
-    """From the repo root; absolute when outside this checkout (the main checkout's build/translate)."""
+    """From the repo root; absolute when outside this checkout (the main checkout's build/)."""
     r = os.path.relpath(path, REPO)
     return os.path.abspath(path) if r.startswith('..') else r
 
@@ -185,63 +187,52 @@ def object_values(task):
     return [v for v in tomllib.loads(read(p)).get('value', []) if v.get('port_task') == task]
 
 
-def port_folder(r):
+def translation(r):
+    """translate.py's output for the routine, here or in the main checkout; None before it ran."""
     for d in port_dirs():
-        f = os.path.join(d, f"h{r['hunk']}-{r['offset']:x}")
-        if os.path.isdir(f):
+        f = os.path.join(d, f"h{r['hunk']}-{r['offset']:x}", 'translated.rs')
+        if os.path.exists(f):
             return f
     return None
 
 
-def listing_of(folder):
-    """The listing block of a translate.py prompt: the routine's own flow, labels included."""
-    p = os.path.join(folder, 'prompt.md')
-    if not os.path.exists(p):
+def listing_of(r):
+    """The routine's flow from the program listing (judge_run.flow_text: every branch both ways, callees
+    followed, labels after), or None when no listing is reachable."""
+    path = listing_path()
+    if not os.path.exists(path):
         return None
-    m = re.search(r'```\n(.*?)```', read(p), re.S)
-    return m.group(1) if m else None
+    jr = reshape.jr
+    saved, jr.LISTING = jr.LISTING, path
+    try:
+        return jr.flow_text(r['hunk'], r['offset'])[0]
+    except jr.Usage:
+        return None
+    finally:
+        jr.LISTING = saved
 
 
 def routine_block(r):
-    head = (f"### `{r['name']}` h{r['hunk']}+${r['offset']:x}: own {r.get('own')}, with callees "
-            f"{r.get('instructions')}, unit {r.get('unit')}")
+    head = f"### `{r['name']}` h{r['hunk']}+${r['offset']:x}: own {r.get('own')}, with callees {r.get('instructions')}"
     notes = [x for x in (r.get('note'), r.get('reason')) if x]
-    if r.get('by_hand'):
-        notes.insert(0, f"by hand: {r['by_hand']}")
-    if r.get('split_at'):
-        notes.append('split at ' + ', '.join(r['split_at']))
     parts = [head] + ([' · '.join(notes)] if notes else [])
-    f = port_folder(r)
-    if not f:
-        parts.append('No translation folder: run `tools/translate.py` on it, or port it by hand.')
-        return '\n\n'.join(parts)
-    res = reshape.jr.read_result(f) or {}
-    port = os.path.join(f, 'port.rs')
-    parts.append(f"Literal port: {res.get('result', 'none')}"
-                 + (f" (`{rel(port)}`: Muse's input, which reshape.py sends; read it only to check one)"
-                    if res.get('result') == 'pass' and os.path.exists(port) else f' ({rel(f)})'))
-    lst = listing_of(f)
+    f = translation(r)
+    label = f"'h{r['hunk']}+${r['offset']:x}'"
+    parts.append(f'Translation: `{rel(f)}` (rerun `tools/translate.py {label}` for its judge line; read the Rust '
+                 'only to check one)' if f else
+                 f'Translation: none yet; `python3 -I games/forest-dumb/tools/translate.py {label}` writes it '
+                 'and judges it.')
+    lst = listing_of(r)
     if lst:
         parts.append('```\n' + lst.rstrip() + '\n```')
     return '\n\n'.join(parts)
-
-
-def reshape_entry(task):
-    text = read(reshape.TASKS_FILE)
-    m = re.search(rf'(?ms)^\[{task}\]\n.*?(?=^\[T\d+\]|\Z)', text)
-    if m:
-        return f'`re/reshape.toml` has `[{task}]`:\n\n```toml\n{m.group(0).strip()}\n```'
-    t08 = re.search(r'(?ms)^\[T08\]\n.*?(?=^\[T\d+\]|\Z)', text)
-    head = text[:text.index('[T08]')].strip()
-    return (f'`re/reshape.toml` has no `[{task}]` yet: add it once the typed state and the rig test exist. '
-            f'Its fields:\n\n```toml\n{head}\n\n{t08.group(0).strip() if t08 else ""}\n```')
 
 
 # --- Prep -------------------------------------------------------------------------------------------
 
 def listing_path():
     """This checkout's program listing, else the main checkout's: one built once serves every task
-    worktree, as the main checkout's build/translate serves the literal ports."""
+    worktree, as the main checkout's build/translate serves the translations."""
     if os.path.exists(LISTING):
         return LISTING
     main = reshape.main_checkout()
@@ -282,6 +273,9 @@ context, so this pack replaces the opening reads in one step:
 - Read further only for what the pack does not hold: a function's body, a test you will change, a
   section listed as omitted at the end. Read whole files in one call, and several files per step.
 - Where you would read a listing in pieces, the pack has each routine's listing whole below.
+- Turning the original's code into Rust: translate with the translator first (`tools/translate.py`),
+  rewrite by hand only where the owner chose. Where the plan's DESIGN or FINDINGS describe a model
+  writing ports, that is level 1's history, not the procedure.
 """
 
 
@@ -296,7 +290,7 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
     # A reviewer reads the diff, not the listing whole: no prep for it.
     prep_lines = prep() if do_prep and 'porting' in kinds and not review else []
     head = git('log', '-1', '--format=%h %s').strip()
-    kind_line = {('porting',): "its routines' listings, how Muse writes the engine code, ",
+    kind_line = {('porting',): "its routines' listings and translations, the translate-first procedure, ",
                  ('frame-matching',): "the conformance runner's notes and cases, "}.get(tuple(kinds), '')
     sections = []  # (name, text, required)
 
@@ -357,14 +351,15 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
                              f"{', '.join(v.get('routines', []))})" for v in values)
             add('objects', f'## Object values this task ports (re/objects-W1-1.toml)\n\n{vals}', True)
         add('listings', f'## Its routines (re/translate.toml), with their listings\n\n'
-            'Each listing is the flow translate.py sent Muse: the routine with the callees it was not split '
-            'at, so a callee at a lower address can come first. '
+            'Each listing is the routine\'s flow: every branch both ways and every callee, in address order, '
+            'so a callee at a lower address can come first. '
             f'The listing of the whole program is `{rel(listing_path())}`; `re/symbols.toml` names its labels.\n\n'
             + '\n\n'.join(blocks), True)
-        add('reshape', '## Muse writes the engine code\n\n' + haiku_how() + '\n\n' + reshape_how() + '\n\n'
-            + reshape_entry(task), True)
+        add('procedure', '## Translate first: the procedure (docs/11-translation.md)\n\n' + procedure(), True)
+        # Required: the procedure's rewrite step points at these rules. The listings are whole flows since
+        # T20 (callees followed), and T22's pack crowded the rules out of 150 KB when they were optional.
         add('rules', '## toolkit/docs/porting-routines.md\n\n'
-            + read(os.path.join(REPO, 'toolkit', 'docs', 'porting-routines.md')))
+            + read(os.path.join(REPO, 'toolkit', 'docs', 'porting-routines.md')), True)
     if 'frame-matching' in kinds:
         cases = sorted(os.path.relpath(p, GAME) for p in glob.glob(os.path.join(ENGINE, 'conform', 'cases', '*')))
         add('conform', '## engine/conform/README.md\n\n' + read(os.path.join(ENGINE, 'conform', 'README.md'))
@@ -386,7 +381,7 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
     body = '\n\n'.join(t for _, t in kept)
     if omitted:
         where = {'design': f'plans/{PLAN}/DESIGN.md', 'rules': 'toolkit/docs/porting-routines.md',
-                 'ports': 'build/translate/h0-<offset>/port.rs', 'map': 'engine/crates',
+                 'translations': 'build/translate/h0-<offset>/translated.rs', 'map': 'engine/crates',
                  'files': 'the files under `## Files`', 'dependencies': 'git log --grep',
                  'findings': f'plans/{PLAN}/FINDINGS.md'}
         body += '\n\n## Omitted to fit the pack\n\n' + '\n'.join(f'- {n}: read `{where.get(n, n)}`' for n in omitted)
@@ -398,18 +393,11 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
             'sections': [n for n, _ in kept], 'omitted': omitted, 'prep': prep_lines}
 
 
-def reshape_how():
-    """docs/11's section on reshaping, so the pack carries the current procedure."""
+def procedure():
+    """docs/11's procedure section, so the pack carries the current one."""
     text = read(os.path.join(GAME, 'docs', '11-translation.md'))
-    m = re.search(r'(?ms)^## Reshaping by Muse.*?(?=^## |\Z)', text)
-    return m.group(0).strip() if m else 'See docs/11-translation.md, "Reshaping by Muse".'
-
-
-def haiku_how():
-    """docs/11's procedure for generators and rewrites, as the owner chose it (translator T44)."""
-    text = read(os.path.join(GAME, 'docs', '11-translation.md'))
-    m = re.search(r'(?ms)^## Generators and rewrites: Haiku first.*?(?=^## |\Z)', text)
-    return m.group(0).strip() if m else 'See docs/11-translation.md, "Generators and rewrites: Haiku first".'
+    m = re.search(r'(?ms)^## The procedure\s*\n(.*?)(?=^## |\Z)', text)
+    return m.group(1).strip() if m else 'See docs/11-translation.md, "The procedure".'
 
 
 def main(argv=None):

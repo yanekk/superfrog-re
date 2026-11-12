@@ -34,8 +34,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
 | T19 | haiku-trial | T17, T18 | ✅ | |
-| T20 | docs-and-packs | T18, T19 | ⬜ | |
-| T21 | default-check | T20 | ⬜ | |
+| T20 | docs-and-packs | T18, T19 | ✅ | |
+| T21 | default-check | T20 | ✅ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
@@ -58,7 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
-| T44 | haiku-decision | T19; blocks T42 | ✅ | Owner accepted Haiku 2026-11-12 (read-only, from the builder). docs/11 "Generators and rewrites: Haiku first", README, CLAUDE.md, porting pack (`haiku_how`). Review clean, no fix commit: result names checked against generate/reshape, mutated the section regex (pack test red), T22-T52 packs omit nothing new. Muse header stays for T20. |
+| T44 | haiku-decision | T19; blocks T42 | ✅ | Owner accepted Haiku 2026-11-12 (read-only, from the builder). Merged over T20: docs/11 "The procedure" steps 3-4, README, CLAUDE.md say Haiku first; pack test asserts it. Review clean: result names checked, mutations of pack regex and procedure text both red. |
 
 **Review queue:** *(empty)*
 
