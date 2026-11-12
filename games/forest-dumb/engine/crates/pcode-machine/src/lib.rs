@@ -748,6 +748,13 @@ impl Machine {
         self.cia_a.set_keys(i.key_set(), self.now);
     }
 
+    /// The current frame's custom-register writes so far, the CPU's and the copper's, in order:
+    /// what [`Machine::end_frame`] will return in `Frame::writes`. A host running code that is not
+    /// a frame (the routine judge, translator T27) reads them here without ending one.
+    pub fn custom_writes(&self) -> &[(u64, u16, u16)] {
+        &self.log
+    }
+
     /// Paula's writes this frame, in order: the cycle count each was made at, and the write with
     /// its beam position.
     pub fn paula_writes(&self) -> &[(u64, amiga_paula::PaulaWrite)] {

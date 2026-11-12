@@ -90,6 +90,9 @@ workspace = "engine"
 # Translator trial T04: the judge's translated mode on h0+$5462, stub, hand entry, stops and the
 # binary's line; T15's made-up self-modifying routine; under a second warm.
 "crates/fd-conform/tests/judge_translated.rs" = "smoke"
+# Translator T27: the judge's translated mode on pcode-machine: a hand h0+$5462, case hardware reads,
+# a blit and its busy bit, the stack, the binary's line; about 2 s warm.
+"crates/fd-conform/tests/judge_machine.rs" = "smoke"
 # T37's drawing generators: the 2 000-state survey, the write check and the flip self-test, about 4 s.
 # each_branch_goes_both_ways_or_is_named (about 27 s, three runs a branch) stays in full.
 "crates/fd-conform/tests/gen_drawing.rs" = [

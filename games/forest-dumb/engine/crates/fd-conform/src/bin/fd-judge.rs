@@ -15,7 +15,14 @@
 //! `..,"first_failure":"..","self_modifying":n,"untranslated":n,"write_into_code":n,"unsupported":n,"stopped_hangs":n,"first_stop":".."}`
 //!
 //! `self_modifying` counts the states on which the original changed a byte of the tree's `CODE`
-//! (translator DESIGN §2.5): not judged, and out of `passed` and `failures`.
+//! (translator DESIGN §2.5): not judged, and out of `passed` and `failures`. `outside` counts states
+//! stopped on an access to memory the A500 lacks (only the machine makes one), `traps` those ended
+//! by an exception.
+//!
+//! `--translated --machine` (translator T27) runs the tree on `pcode-machine` instead of the judge's
+//! copy of the oracle's hardware mode (`judge::translated::machine`): blits, the beam and register
+//! reads are the machine's models, the case's hardware reads answered by its devices. The line
+//! gains `"hardware":"machine"`.
 //!
 //! `--cover` judges the generator, not a port (T61, `tools/generate.py`): the original alone,
 //! traced ([`Rig::coverage`]), then each state's pokes and hardware reads against the bytes the
@@ -55,12 +62,11 @@ use std::process::ExitCode;
 
 use fd_conform::generators;
 use fd_conform::judge::insn::{self, Columns, InsnRig, Site};
-use fd_conform::judge::translated::{self, Stops, tree};
+use fd_conform::judge::translated::{self, Hardware, Stops, tree};
 use fd_conform::judge::{self, port};
 use fd_conform::routine::{Coverage, Gen, Generator, Rig, RigReport, STACK_AREA, h, seed};
 
-const USAGE: &str =
-    "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover | --translated]";
+const USAGE: &str = "usage: fd-judge 'hN+$off' --gen <name> [--cases N] [--survey | --cover | --translated [--machine]]";
 
 /// `hN+$off` as (hunk, offset).
 fn parse_routine(r: &str) -> Option<(usize, u32)> {
@@ -93,6 +99,7 @@ struct Args {
     survey: bool,
     cover: bool,
     translated: bool,
+    machine: bool,
 }
 
 fn args() -> Result<Args, String> {
@@ -100,6 +107,7 @@ fn args() -> Result<Args, String> {
     let mut it = v.iter();
     let (mut routine, mut gen_name, mut cases, mut survey, mut cover, mut translated) =
         (None, None, 2000usize, false, false, false);
+    let mut machine = false;
     while let Some(a) = it.next() {
         match a.as_str() {
             "--gen" => gen_name = it.next().cloned(),
@@ -113,6 +121,7 @@ fn args() -> Result<Args, String> {
             "--survey" => survey = true,
             "--cover" => cover = true,
             "--translated" => translated = true,
+            "--machine" => machine = true,
             r if routine.is_none() && !r.starts_with("--") => routine = Some(r.to_string()),
             other => return Err(format!("`{other}`: {USAGE}")),
         }
@@ -122,6 +131,9 @@ fn args() -> Result<Args, String> {
         return Err(format!(
             "--survey, --cover and --translated are three modes: {USAGE}"
         ));
+    }
+    if machine && !translated {
+        return Err(format!("--machine judges a translated tree: {USAGE}"));
     }
     let (hunk, off) = parse_routine(&routine)
         .ok_or_else(|| format!("`{routine}` is not `hN+$off` with N a hunk 0-4"))?;
@@ -133,6 +145,7 @@ fn args() -> Result<Args, String> {
         survey,
         cover,
         translated,
+        machine,
     })
 }
 
@@ -260,7 +273,12 @@ fn main() -> ExitCode {
     } else if a.translated {
         // The tree names entries `hN+$off` in lower-case hex, whatever the argument's case.
         let key = rig.name(a.entry);
-        let j = translated::check(
+        let hw = if a.machine {
+            Hardware::Machine
+        } else {
+            Hardware::Mem
+        };
+        let j = translated::check_on(
             &mut rig,
             &a.gen_name,
             a.cases,
@@ -268,6 +286,7 @@ fn main() -> ExitCode {
             &generator,
             tree::entry(&key),
             tree::CODE,
+            hw,
         );
         stops = Some(j.stops);
         match j.verdict {
@@ -290,12 +309,19 @@ fn main() -> ExitCode {
     let pass = !a.survey && failures == 0 && report.passed > 0;
     let stops = stops.map_or(String::new(), |s| {
         format!(
-            ",\"self_modifying\":{},\"untranslated\":{},\"write_into_code\":{},\"unsupported\":{},\"stopped_hangs\":{},\"first_stop\":\"{}\"",
+            ",\"self_modifying\":{},\"untranslated\":{},\"write_into_code\":{},\"unsupported\":{},\"stopped_hangs\":{},\"outside\":{},\"traps\":{}{},\"first_stop\":\"{}\"",
             report.self_modifying,
             s.untranslated,
             s.write_into_code,
             s.unsupported,
             s.hangs,
+            s.outside,
+            s.traps,
+            if a.machine {
+                ",\"hardware\":\"machine\""
+            } else {
+                ""
+            },
             esc(&s.first)
         )
     });
