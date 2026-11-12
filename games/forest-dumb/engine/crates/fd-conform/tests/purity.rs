@@ -172,7 +172,8 @@ fn lex(src: &str) -> Vec<(Tok, usize)> {
             if !hex && (digits.contains('e') || digits.contains('E')) {
                 float = true; // 1e3
             }
-            if text.ends_with("f32") || text.ends_with("f64") {
+            // `0x18f32` is hex digits: a hex, binary or octal literal takes no float suffix
+            if !hex && (text.ends_with("f32") || text.ends_with("f64")) {
                 float = true;
             }
             out.push((if float { Tok::Float } else { Tok::Int }, line));
@@ -797,6 +798,14 @@ fn code_of_any_other_shape_still_fails() {
         let src = format!("{HEADER}{c}\n");
         assert!(!scan_generated("tree/mod.rs", &src).is_empty(), "not flagged: {c}");
     }
+}
+
+#[test]
+fn a_hex_literal_ending_in_f32_or_f64_is_an_integer() {
+    // The generated tree's block addresses, `pc = (4, 0x18f32)`: hex digits, no float suffix.
+    let src = "fn f() { let pc = (4, 0x18f32); let q = (0, 0x6f64); }\n";
+    assert!(scan_generated("tree/p01.rs", src).is_empty());
+    assert_eq!(scan("fd-core/src/x.rs", "const X: f32 = 1f32 + 2f64;\n").len(), 3);
 }
 
 #[test]
