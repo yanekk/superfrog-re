@@ -87,12 +87,12 @@ fn load_file_on_the_machine_loads_napis_as_the_original_does() {
     assert!(!l.contains("\"nonzero\":0,"), "{l}");
 }
 
-/// **Fails until T43 lands, by design (owner, 2026-11-12): not a T26 defect.** The export has no
-/// code after the 8 `jsr load_file` in hunk 4's load lists (Ghidra marks `load_file` non-returning),
-/// so today the run stops `untranslated: h4+$1a0f6` right after `_NAPIS`, every OS call before it
-/// answered. T43 (call-fallthrough) fixes the export by a general rule and makes this pass.
+/// Power-on to the title's first fire poll on the whole translated program. Before T43 the export had
+/// no code after the `jsr load_file` in hunk 4's load lists (Ghidra marks `load_file` non-returning)
+/// and the run stopped `untranslated: h4+$1a0f6` right after `_NAPIS`; the export now keeps every
+/// call's fall-through.
 #[test]
-#[ignore = "full: Ghidra's export and the tree built in; power-on to the title. FAILS until T43 (export gap)"]
+#[ignore = "full: Ghidra's export and the tree built in; power-on to the title"]
 fn power_on_reaches_the_title_with_no_stop() {
     let l = os_run("power-on");
     assert!(l.contains("\"at_title\":true"), "{l}");

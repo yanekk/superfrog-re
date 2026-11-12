@@ -10,8 +10,9 @@ from unittest import mock
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pcode_export as P  # noqa: E402
-from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, MOVES_FUNCS, defects_program,  # noqa: E402
-                               moves_program, two_hunk_program, whole_program)
+from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, MOVES_FUNCS, NORETURN_CALLS,  # noqa: E402
+                               NORETURN_FUNCS, NORETURN_LOADER, defects_program, moves_program, noreturn_program,
+                               two_hunk_program, whole_program)
 import ghidra_headless as G  # noqa: E402
 
 GAME = os.path.dirname(HERE)
@@ -160,6 +161,50 @@ class WholeProgramExport(unittest.TestCase):
     def test_every_relocation_lands_on_an_operand(self):
         c = self.doc['check']
         self.assertEqual((c['relocs'], c['relocs_matched'], c['undecoded'], c['outside']), (2, 2, [], []))
+
+
+class NoReturnExport(unittest.TestCase):
+    """Translator T43: a callee Ghidra judges non-returning still has every call's next instruction."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        exe = os.path.join(cls.tmp.name, 'n.exe')
+        with open(exe, 'wb') as f:
+            f.write(noreturn_program())
+        P.check_inputs(exe, P.SYMBOLS, P.ENTRIES)
+        syms = [P.Sym(h, off, n, 'func', 0, '') for h, off, n in NORETURN_FUNCS]
+        run_import = G.run_import
+
+        def with_no_return(*a, **k):
+            k['post_scripts'] = [('SetNoReturn.java', [NORETURN_LOADER])] + list(k['post_scripts'])
+            return run_import(*a, **k)
+        out = io.StringIO()
+        with mock.patch.object(P.ghidra_headless, 'run_import', with_no_return), redirect_stdout(out):
+            cls.doc = P.export(exe, syms, [(h, off, 'routine') for h, off, _ in NORETURN_FUNCS],
+                               os.path.join(cls.tmp.name, 'out'), name='n')
+        cls.ghidra = out.getvalue()
+        cls.insns = cls.doc['insns']
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_ghidra_leaves_every_call_to_the_loader_without_its_fall_through(self):
+        # Ghidra's own flow for each call, as on the game's 8 calls to load_file: no fall-through
+        self.assertIn(f'no-return loader at {NORETURN_LOADER}', self.ghidra)
+        self.assertEqual(self.doc['check']['no_return_calls'], NORETURN_CALLS)
+
+    def test_every_call_keeps_its_next_instruction(self):
+        for at in NORETURN_CALLS:
+            self.assertEqual(self.insns[at]['flow'], {'kind': 'call', 'targets': ['h1+$20']})
+        self.assertEqual(sorted(self.insns, key=P.parse_rel),
+                         ['h0+$0', 'h1+$0', 'h1+$4', 'h1+$a', 'h1+$e', 'h1+$14', 'h1+$18', 'h1+$1e',
+                          'h1+$20', 'h1+$22', 'h1+$24', 'h1+$26', 'h1+$28'])
+        # the store after each call, its relocated address read from the pointer the loader marked
+        self.assertEqual([[r['target'] for r in self.insns[a]['relocs']] for a in ('h1+$4', 'h1+$e', 'h1+$18')],
+                         [['h2+$0'], ['h2+$4'], ['h2+$8']])
+        self.assertEqual(P.reach_counts(self.doc)['h1+$0'], 12)
 
 
 def export_defects(tmp):
@@ -326,6 +371,13 @@ class GameWholeExport(unittest.TestCase):
                                  if i['flow'].get('computed') or i['flow']['kind'] == 'computed'
                                  if not i['flow']['targets']), key=P.parse_rel)
         self.assertEqual(sorted(c['unresolved_computed'], key=P.parse_rel), computed_empty)
+
+    def test_every_call_keeps_its_next_instruction(self):
+        # T43: Ghidra judges load_file (h0+$8ec4) non-returning; its 8 calls in hunk 4 still fall through
+        missing = sorted((a for a, i in self.doc['insns'].items() if i['flow']['kind'] == 'call'
+                          if P.rel(P.parse_rel(a)[0], P.parse_rel(a)[1] + i['len']) not in self.doc['insns']),
+                         key=P.parse_rel)
+        self.assertEqual(missing, [])
 
     def test_flows_out_of_the_program_come_only_from_unresolved_calls(self):
         # Ghidra aims an OS call `jsr -n(a6)` at the loader's stand-in library, outside every hunk

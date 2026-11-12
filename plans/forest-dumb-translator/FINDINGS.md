@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T43:** Ghidra's no-return analysis set `CALL_RETURN` on all 82 `jsr load_file`; the export now follows each instruction's own fall-through (`check.no_return_calls`). Whole export 7 716 instructions, 291 kinds; power-on reaches the title with no stop. |
 | 2026-11-12 | 🔄 | **Owner accepted Haiku** (T44) as the default for `generate.py` and `reshape.py` despite rewrites 19 of 21: sessions call them first and write by hand after any other result (docs/11 "The procedure", steps 3 and 4). |
 | 2026-11-12 | 📌 | T21 review: `default_check.py`'s scratch worktree sits inside the checkout, so nested sessions load the enclosing checkouts' root `CLAUDE.md` and the main repo's auto-memory (init `memory_paths`). Neither names the translator today; left as the task doc specifies. |
 | 2026-11-12 | 📌 | **T21 stage 7:** `default_check.py` 3 of 3 pass, `translate.py char_sprite_position` first at turns 6, 7, 6, no hand Rust; about $0.37 a run. Scratch worktrees lack `build/`, so translate stopped `no program` and sessions asked to extract. |
@@ -13,7 +14,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 📌 | `task_pack.py` hard-codes `PLAN = 'forest-dumb-level-1'`, so a level 2 plan's tasks get no pack until it takes the plan. Stale Muse wording left: `re/reshape.toml` header, smoke.toml `[[area]]` "having Muse write a generator" (T20). |
 | 2026-11-12 | 🐞 | **T19 Haiku trial below the mark:** generators 5 of 5 at Muse's branch ways; rewrites 19 of 21, `left_pressed` no answer in 300 s thrice, `run_right_step` three failed tries. 29 calls, $0.36 list. Recommended: accept. |
 | 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |
-| 2026-11-12 | 🐞 | **T26:** Ghidra marks `load_file` (`h0+$8ec4`) non-returning, so hunk 4's 8 load lists (`h4+$19fda`..`$1c314`) lose their fall-through: power-on stops `untranslated: h4+$1a0f6` after `_NAPIS`. T43 added (owner's yes) to fix the export generally. |
 | 2026-11-12 | 📌 | DESIGN §2.8 says disk 2's prompt does not appear; the entry always calls `prompt_disk_2` (`h0+$7b70`) and waits for fire (docs/03). T26's `os_run` holds fire for that poll; T28 and T32 must too. |
 | 2026-11-12 | 📌 | **T26 OS values are the machine's:** ExecBase at `$4`, dos base `h0+$908e`, handle `$909e`, font fields `$1e54`/`$1e58`, copinit/LOFlist `$1e32`/`$1e36`, saved vectors `$1e26`/`$1e2e` differ from Kickstart's. T32 must not compare them. |
 | 2026-11-12 | 📌 | T16 review: the whole-tree gate stays 100 of 100 with `pcode_fix` `arith` and `shift_bit` both off (dead flags, write-only chip registers); only `insn_gate.rs` guards those corrections. A broken `INT_CARRY` drops it to 97. |
