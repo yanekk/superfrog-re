@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T31; T30 (its three frame-1 defects, which T31's cases also wait on) and T32 run beside it.
 
 ## Tasks
 
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | translated-engine | T26, T27 | ✅ | |
 | T29 | conform-translated | T28 | ✅ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
-| T31 | level1-cases-b | T29 | ⬜ | |
+| T31 | level1-cases-b | T29 | 🔍 | CLXDAT on `pcode-machine` (`collide.rs`), oracle `Amiga::clxdat` for a start's unread bits, keys held at a snapshot not re-sent; 10 machine tests, 1 oracle. Owner's split: no case passes yet, first differences Paula 4, `char_x` 7, `char_y` 6, `edge_latch_left` 1, all T30's. Deviation: toolkit `amiga-oracle` changed, the start needs it. |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ✅ | |
@@ -61,7 +61,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T31
 
 ## Blocked on the user
 
