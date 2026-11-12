@@ -33,9 +33,16 @@ The trial (stage 0, plan `forest-dumb-translator-trial`, [13-translator-trial.md
 84 of 85 judgeable routines pass with no hand edit (98.8% against 90%) and level 1's path writes into
 no executed code. Owner's go, 2026-11-07: the second plan, `forest-dumb-translator` (stages 1 to 6), is
 next once level 1 merges. Level 1 merged 2026-11-11; the brief was rewritten that day for stages 1 to 6
-plus stage 7, which makes the translator the default first pass for new sessions instead of Muse.
+plus stage 7, which makes the translator the default first pass for new sessions.
 
 ## After level 1
+
+**What a level plan is now** (translator plan, 2026-11-12): the translated program is the engine. A
+level plan checks it on the level's cases from power-on and its world start against the original, fixes
+what fails in the translator by pattern (never by a hint or an edit to generated Rust), and rewrites by
+hand only the routines the owner chooses, each starting from the translated routine and checked against
+it through the seam, the level's cases green with it mounted. It no longer ports routine by routine;
+`docs/11-translation.md` holds the procedure.
 
 One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
 2026-10-31.

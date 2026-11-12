@@ -10,6 +10,17 @@ Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31)
 the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is built
 and judged against the original (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
+## Turning the original's code into Rust
+
+Translate with the translator first: `python3 -I games/forest-dumb/tools/translate.py --task T{nn}` (or
+`'hN+$off'`, or a symbol) prints one judge line a routine and writes its Rust to
+`build/translate/<hN-off>/translated.rs`. A `pass` is the engine for that routine; a `fail` or `stop` is
+a translator defect, fixed by mnemonic or P-code pattern, never by a hint or an edit to generated Rust;
+hand-written Rust replaces a translated routine only where the owner chose, checked against it through
+the seam. Haiku writes generators (`no-gen`) and drafts chosen rewrites first
+(`generate.py`, `reshape.py`; owner 2026-11-12, translator T44), by hand after a miss. The procedure: [docs/11-translation.md](docs/11-translation.md), "The
+procedure"; a task's pack (`tools/task_pack.py`) carries it.
+
 ## Its disks and where they live
 
 Two AmigaDOS (OFS) `.adf` images in zips, kept outside the repo and never committed.
@@ -104,7 +115,7 @@ source; open the source only for what the README lacks.
 
 - [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
 - [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
-- [tools/README.md](tools/README.md): every Python script here (listing, call tree, translate, reshape, generate, task pack, renders).
+- [tools/README.md](tools/README.md): every Python script here; `tools/translate.py` first (the translator's one command), then listing, call tree, the translator's parts, generate and reshape (Haiku, the first try for generators and rewrites), task pack, renders.
 - [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
 - The toolkit crates' READMEs: `toolkit/crates/<crate>/README.md` (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`).
 
@@ -117,7 +128,7 @@ source; open the source only for what the README lacks.
 - [docs/frame-length.md](docs/frame-length.md): the measured frame length, 313 lines, dated.
 - [docs/09-play-measured.md](docs/09-play-measured.md): W1-1 play measured: sync frame, passes, input, display, sprites, state variables, level end, the character's routines.
 - [docs/10-object-system.md](docs/10-object-system.md): what each object value of W1-1 does, measured; how the freeze went; contact (creatures, water, tiles) measured.
-- [docs/11-translation.md](docs/11-translation.md): translation by Muse: `tools/translate.py` (how to call it, what a pass proves), `tools/generate.py` (Muse writes a generator, judged by branch coverage) and the inventory of routines to translate, sized and given tasks in [re/translate.toml](re/translate.toml) by `tools/call_tree.py`.
+- [docs/11-translation.md](docs/11-translation.md): the procedure (translate with `tools/translate.py` first, judge, rewrite by hand only where the owner chose, through the seam), what a pass proves, the committed generators, the inventory in [re/translate.toml](re/translate.toml) (`tools/call_tree.py`), and level 1's model procedure under History.
 - [docs/12-level-start-draw.md](docs/12-level-start-draw.md): `level_init`'s first view (tiles, shapes) and what the plane's slack holds at the sync point (the title's music, `_BALLA`), measured.
 - [docs/13-full-route.md](docs/13-full-route.md): the routes through the whole of W1-1 (the one route for both sides, the planner's, T48's on the original), how each is guarded and found again.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
@@ -125,16 +136,22 @@ source; open the source only for what the README lacks.
 - [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 done.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 - [docs/13-translator-trial.md](docs/13-translator-trial.md): the translator trial (stage 0): 84 of 85 judgeable routines pass with no hand edit, no write into code on level 1's path; how to rerun it; owner's go (2026-11-07).
-- [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass instead of Muse.
+- [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass.
 - [docs/14-translator.md](docs/14-translator.md): the translator's readings, dated: stage 1's gate (all 291 instruction kinds match Moira in every column, cycles included, 2 000 states each; `insn_gate.rs`); writes into code (no write on any game path; generated states the original writes into code on are `self-modifying`, not judged); stage 2's whole-tree gate (100 of 100 routines with a generator pass, nothing unsupported or unresolved, no hint; `translator_trial.py --whole`).
 - [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
-- [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## The first case
 
 `cases/first-case.toml` compares the engine's `mt_counter` (`fd-core`) with the original's from power-on,
 state only, on every frame of the idle title. Run it from `engine/` with
 `cargo run -p fd-conform -- run cases/first-case.toml`; it also runs in `test.sh`.
+
+## History
+
+- Level 1 (2026-11-05 to 11-11) was translated by Muse, a model: literal ports, then engine code
+  (`reshape.py`), judged on the rig. The translator replaced it (translator plan, DESIGN §2.13); the
+  procedure is under History in [docs/11-translation.md](docs/11-translation.md).
+- [spikes/muse-spark/README.md](spikes/muse-spark/README.md): spike 2026-11-04, Muse Spark contributor matches Opus translating routines up to ~180 instructions (blitter and Paula included) at 1/15-1/30 the cost; fails at ~300+.
 
 ## Backlog
 

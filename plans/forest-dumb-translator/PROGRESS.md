@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** T28, unblocked by T43; T19 and T27 are ready beside it.
+**Next `pir-work` will:** T27, the last task blocking T28 now that T43 is reviewed.
 
 ## Tasks
 
@@ -33,9 +33,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T16 | whole-tree-judge | T13, T15 | ✅ | |
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
-| T19 | haiku-trial | T17, T18 | ⬜ | |
-| T20 | docs-and-packs | T18, T19 | ⬜ | |
-| T21 | default-check | T20 | ⬜ | |
+| T19 | haiku-trial | T17, T18 | ✅ | |
+| T20 | docs-and-packs | T18, T19 | ✅ | |
+| T21 | default-check | T20 | ✅ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
@@ -58,6 +58,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | Review clean, no fix commit. Reran export tests, insn_gate (291 kinds, 0 failing), trial 85/85, whole tree 100/100, os_run power-on (title reached, four files opened). Mutation restoring Ghidra's fall-through turned NoReturnExport and GameWholeExport red. Probed: 82 no-return calls all to `h0+$8ec4`, `cleared_data` 0, `undecoded` 0, new hunk 1 code is real colour copies. |
+| T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
 **Review queue:** *(empty)*
 

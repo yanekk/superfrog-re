@@ -1,7 +1,7 @@
 """reshape.py with the real judge (plans/forest-dumb-level-1 T62): canned answers for `rise_step`
 (h0_4274), built into the scratch copy of the engine and run on T08's rig test over 10 000 states,
 on the main program from the owner's disks. The model is test_model's fake `claude` (T17): a test
-file never calls the network. The literal ports are stubbed too, so this needs no listing and no build/translate."""
+file never calls the network. The translated routines are stubbed too, so this needs no listing and no build/translate."""
 import os
 import sys
 import tempfile

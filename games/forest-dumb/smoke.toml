@@ -373,6 +373,10 @@ workspace = "engine"
 "tools/test_call_tree.py" = "smoke"
 "tools/test_find_file_names.py" = "smoke"
 # T61: the model is test_model's fake `claude`, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
+# Translator T19: the trial's mark on made-up result lines, no model, no build: under a second.
+"tools/test_haiku_trial.py" = "smoke"
+# Translator T21: the stage 7 verdict on fake transcripts, and a scratch worktree with a fake runner: under a second.
+"tools/test_default_check.py" = "smoke"
 "tools/test_generate.py" = "smoke"
 "tools/test_generate_judge.py" = "smoke"
 # T17 (translator): a fake `claude` on PATH, no network; the slow-answer case waits 1 s: about 4 s.
@@ -387,6 +391,8 @@ workspace = "engine"
 "tools/test_task_pack.py" = "smoke"
 # A hand-made conversation log, no run: under 1 s.
 "tools/test_pack_check.py" = "smoke"
+# Translator T20: no doc outside "History" sections names Muse, git ls-files and the docs only: under 1 s.
+"tools/test_docs_translator_first.py" = "smoke"
 # T03 (translator trial): the translator on made-up exports, its fixtures current, under a second.
 "tools/test_pcode_rust.py" = "smoke"
 # Translator T01: the hunk walk, the missing-input exits and ghidra_headless's command, no Ghidra: under 1 s.
