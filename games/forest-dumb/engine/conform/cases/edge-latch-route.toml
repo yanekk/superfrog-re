@@ -9,6 +9,10 @@
 # Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
 # a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
 # With them the route is enemy-route's: the passes named above are the frozen run's (docs/09).
+# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
+# first difference pass 124 (oracle frame 6426), char_x $1ec on the engine, $1e4 in the original, input
+# L from step 124; the script turns the stick on the step before, and the original's JOY1DAT read falls
+# past the frame's end where the machine's does not (T46's measurement, not repeated here).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "edge-latch-route"
 frames = 1308

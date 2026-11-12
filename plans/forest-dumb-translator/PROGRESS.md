@@ -64,6 +64,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | |
 | T47 | machine-power-on | T32; blocks T33 | ⬜ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
+| T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 
 **Review queue:** *(empty)*
 

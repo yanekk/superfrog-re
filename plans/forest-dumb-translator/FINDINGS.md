@@ -6,7 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-12 | 📌 | **T46 review:** T49 blocks T36 only; T48 is not blocked though T31 saw its reads 5 to 10 lines early, likely contention. T48 was already running; left alone, T48 should check T49 first. |
+| 2026-11-12 | 📌 | **T48 reading** (supersedes T31's): T48's 18 cases on the translated engine, 4 pass. All 14 failures are timing: creature starts the pass should cut (7), JOY1DAT read across the frame's end (6), death-spikes' cut lives redraw. |
+| 2026-11-12 | 🔄 | **T50 added** (owner, T48): carries T48's 14 failing cases, after T49's DMA contention, blocks T36; finish line all 18 pass. T48 hands in measurements only, no fix: nothing non-timing found. |
 | 2026-11-12 | 🔄 | **T49 added** (owner, T46): T46's four cases fail on missing DMA contention: JOY1DAT read at line 300 or 308 on `pcode-machine`, past 313 on the original; pass 93 starts a creature before docs/10's cut. |
 | 2026-11-12 | 🔄 | **T32 closed unproven, T47 added** (owner, T32 review): power-on-title and power-on-level-1 fail from frame 3462. T47 (blocks T33) carries Kickstart's DMA at the disk 2 prompt (frames 3463 to 3967) and `clr`'s bus value (frame 5001). |
 | 2026-11-12 | 📌 | **T32 machine speed:** the translated processor draws faster (no display time-stealing or OS interrupt time): memory differs 3462, 3965 to 3972, 5998 to 6057, writes up to 3 frames early. T30's question to the owner. |
@@ -15,8 +16,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 📌 | **T30 reading** (supersedes T29's, T45's): 23 cases on the translated engine, 19 pass. T29's Paula and CLXDAT rows are now DESIGN §2.7 (pass end) and `pcode-machine/src/collide.rs` (T31's, kept at merge). Left: four cases, all DMA contention (T46 row). |
 | 2026-11-12 | 🔄 | **Owner, T30:** state and writes judged at each pass end (`PASS_END`, paired by `irq_count`), a pass one frame of slack, a non-Paula write one pass; DMA contention not modelled. T46 added for T30's four remaining cases. |
 | 2026-11-12 | 🐞 | **T31 review, S2S:** `collide.rs` checked sprite against sprite only inside the window; the oracle counts from `2*DDFSTRT+15` ($7F at $38) to the line's end. Fixed, `collide::sprites`, test with five oracle readings. |
-| 2026-11-12 | 🔄 | **T30/T31 split** (owner): every level case fails frame 1 on four machine defects. T31 owns sprite collisions (`clxdat_copy`); T30 owns the one-pixel `char_x`/`char_y`, Paula one frame early and `edge_latch_left`. Merging, keep one collision fix. |
-| 2026-11-12 | 📌 | **T31 reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 16, `char_y` 13, `char_x` 7, `edge_latch_left` 6, all T30's. Cases synced at 6400 not comparing `edge_latch_left` still differ on it at frame 1. |
 | 2026-11-12 | 🐞 | **T31 machine:** CLXDAT gathered per line (`collide.rs`), a start's unread bits from `Amiga::clxdat`; a start's held keys no longer re-sent (`keys_held`, death-esc frame 1). Later differences: reads 5 to 10 lines early, missing DMA contention. |
 | 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |
 | 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |

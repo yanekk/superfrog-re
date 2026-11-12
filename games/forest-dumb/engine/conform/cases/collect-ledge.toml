@@ -7,6 +7,12 @@
 # Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
 # a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
 # The jumps along the ledge stomp a creature (irq_count 99, +250): 560 from the block and 250.
+# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
+# first difference pass 58 (oracle frame 6360), creature_active+$1 $ff on the engine, 0 in the original;
+# the machine starts that creature in frame 6359 at line 226, the original's pass cuts its scan there
+# and it starts it in frame 6360 at line 163; the machine's edge-redraw scan starts a creature (h0_681c)
+# before the pass at line 233 that cuts the original's scan (docs/10, "A creature start the next pass
+# cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "collect-ledge"
 frames = 400
