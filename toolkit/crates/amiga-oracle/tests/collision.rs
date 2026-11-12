@@ -88,6 +88,11 @@ fn sprite() -> Vec<u8> {
 /// CLXDAT as the handler last copied it, after the display ran with the bitplane `set` (every
 /// pixel 1) or clear, under `clxcon`.
 fn clxdat(set: bool, clxcon: u16) -> u16 {
+    run(set, clxcon).0
+}
+
+/// The handler's last copy, and CLXDAT as `Amiga::clxdat` sees it after the last step.
+fn run(set: bool, clxcon: u16) -> (u16, u16) {
     let rom = kickstart_path().unwrap_or_else(|e| panic!("{e}"));
     let mut a = Amiga::power_on(&OracleConfig::new(rom, Vec::new(), HAND + FRAMES + 1)).unwrap();
     for _ in 0..HAND {
@@ -104,10 +109,13 @@ fn clxdat(set: bool, clxcon: u16) -> u16 {
     for _ in 0..FRAMES {
         a.step(FrameInput::NONE).unwrap();
     }
+    // Looking at CLXDAT between frames leaves it as it was.
+    let between = a.clxdat();
+    assert_eq!(a.clxdat(), between);
     let p = a.peek(COPY, 4);
     let ran = u16::from_be_bytes([p[2], p[3]]);
     assert!(u32::from(ran) >= FRAMES - 1, "the handler ran {ran} times in {FRAMES} frames");
-    u16::from_be_bytes([p[0], p[1]])
+    (u16::from_be_bytes([p[0], p[1]]), between)
 }
 
 #[test]
@@ -118,6 +126,17 @@ fn a_sprite_over_a_matching_playfield_pixel_sets_its_bit() {
     // No even plane is enabled, so even planes match everywhere: the even bit and the
     // playfield-to-playfield bit are set wherever the odd planes match.
     assert_eq!(got, ALWAYS | EVEN_SPR0 | ODD_SPR0 | PLF_PLF, "CLXDAT {got:#06x}");
+}
+
+#[test]
+fn clxdat_between_frames_is_what_the_frame_gathered_since_the_last_read() {
+    // The handler reads CLXDAT at the vertical blank; a step ends just past the frame's end,
+    // before the next one, so the latch holds the whole frame's collisions, unread.
+    let (copied, between) = run(true, ENBP1 | MVBP1);
+    assert_eq!(between, ALWAYS | EVEN_SPR0 | ODD_SPR0 | PLF_PLF);
+    assert_eq!(between, copied);
+    let (_, between) = run(false, ENBP1 | MVBP1);
+    assert_eq!(between, ALWAYS | EVEN_SPR0);
 }
 
 #[test]

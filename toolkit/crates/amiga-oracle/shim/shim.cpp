@@ -663,6 +663,11 @@ const uint32_t *amiga_texture(const amiga_machine *a, size_t *stride, size_t *ro
     return reinterpret_cast<const uint32_t *>(t.pixels.ptr);
 }
 
+uint16_t amiga_clxdat(const amiga_machine *a)
+{
+    return const_cast<amiga_machine *>(a)->amiga().denise.spypeekCLXDAT();
+}
+
 void amiga_diw(const amiga_machine *a, uint16_t *diwstrt, uint16_t *diwstop)
 {
     auto &info = const_cast<amiga_machine *>(a)->va.denise.getInfo();

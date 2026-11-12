@@ -50,7 +50,8 @@ pub struct CaseStart {
     pub mem: Vec<u8>,
     pub regs: Regs68k,
     /// Each custom register's last CPU write, by `reg / 2`; DMACONR, INTENAR and INTREQR the
-    /// set/clear state of the CPU's writes; VPOSR and VHPOSR line 0, where a step ends.
+    /// set/clear state of the CPU's writes; CLXDAT the collisions not yet read (`Amiga::clxdat`);
+    /// VPOSR and VHPOSR line 0, where a step ends.
     pub custom: [u16; 256],
     /// Disk 2, in df0 since frame [`sync::DISK_2_SWAP`].
     pub disk2: Vec<u8>,
@@ -58,6 +59,8 @@ pub struct CaseStart {
     pub pass: u32,
     /// The oracle frame the step ended at.
     pub frame: u32,
+    /// The step's input: the keys it holds the original's keyboard has sent by its end.
+    pub input: FrameInput,
 }
 
 /// [`CaseStart`] of `case`: the original from power-on along `reach_case`'s way (the level 1
@@ -95,6 +98,8 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
             }
         }
     };
+    // The sync frame step's input: the keys held at a title case's start.
+    let mut last = FrameInput::default();
     for frame in 0..case.sync_frame {
         let swap = if level {
             Some(sync::DISK_2_SWAP)
@@ -111,9 +116,10 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         };
         am.step(input).map_err(|e| e.to_string())?;
         collect(&am);
+        last = input;
     }
     if !level {
-        return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, 0));
+        return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, 0, last));
     }
     for (name, value) in &case.set {
         let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
@@ -123,12 +129,12 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
     am.watch_write(Some(PASS_END));
     let irq_count = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
     for step in 0..cap - case.sync_frame {
-        am.step(inputs.at(case.sync_frame + step))
-            .map_err(|e| e.to_string())?;
+        let input = inputs.at(case.sync_frame + step);
+        am.step(input).map_err(|e| e.to_string())?;
         collect(&am);
         if let Some(mem) = am.watched_memory() {
             let pass = OracleMem(&mem).value(irq_count);
-            return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, pass));
+            return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, pass, input));
         }
     }
     Err(format!(
@@ -147,10 +153,14 @@ fn snapshot(
     (dmacon, intena, intreq): (u16, u16, u16),
     disk2: Vec<u8>,
     pass: u32,
+    input: FrameInput,
 ) -> CaseStart {
     regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
     regs[irq::INTENAR as usize >> 1] = intena;
     regs[irq::INTREQR as usize >> 1] = intreq;
+    // The collisions Denise gathered since the program's last CLXDAT read: below the beam's line
+    // then, so the machine, starting at the frame's start, cannot draw them.
+    regs[pcode_machine::collide::CLXDAT as usize >> 1] = am.clxdat();
     // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
     regs[0x004 >> 1] = 0;
     regs[0x006 >> 1] = 0;
@@ -172,6 +182,7 @@ fn snapshot(
         disk2,
         pass,
         frame: am.frame(),
+        input,
     }
 }
 
@@ -284,14 +295,18 @@ impl TranslatedEngine {
             .stack_size(RUN_STACK)
             .spawn(move || {
                 let mut g = match &start {
-                    Begin::Snapshot(start) => TranslatedGame::new(Start::Snapshot {
-                        mem: &start.mem,
-                        regs: start.regs,
-                        custom: &start.custom,
-                        disks: Disks {
-                            df0: start.disk2.clone(),
-                        },
-                    }),
+                    Begin::Snapshot(start) => {
+                        let mut g = TranslatedGame::new(Start::Snapshot {
+                            mem: &start.mem,
+                            regs: start.regs,
+                            custom: &start.custom,
+                            disks: Disks {
+                                df0: start.disk2.clone(),
+                            },
+                        });
+                        g.held_at_start(&Input::from(start.input));
+                        g
+                    }
                     Begin::PowerOn {
                         program,
                         disk2,

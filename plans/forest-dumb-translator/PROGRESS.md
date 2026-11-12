@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** T47 (machine-power-on), before T33; T30, T31.
+**Next `pir-work` will:** T47 (machine-power-on), before T33; T30, then T48.
 
 ## Tasks
 
@@ -45,7 +45,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T28 | translated-engine | T26, T27 | ✅ | |
 | T29 | conform-translated | T28 | ✅ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
-| T31 | level1-cases-b | T29 | ⬜ | |
+| T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ✅ | Reviewed: fixed the power-on runner stopping one frame after a first difference under every_channel, and added a ByReturns test a mutation survived. Probed: stand-in, both cases every channel, three mutations. Unproven (owner, 2026-11-12): power-on-title and power-on-level-1 fail from 3462; T47 carries the prompt and clr value, the owner's T30 timing answer the faster processor. |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ✅ | |
@@ -61,6 +61,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T47 | machine-power-on | T32; blocks T33 | ⬜ | |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
 
 **Review queue:** empty
 

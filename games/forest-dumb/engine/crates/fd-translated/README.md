@@ -19,6 +19,7 @@ A checkout with no `games/forest-dumb/build/` at all does not notice a first tre
 use fd_translated::{Control, Start, TranslatedGame, RUN_STACK};
 let mut g = TranslatedGame::new(Start::PowerOn { program: &bytes, disks: Disks { df0: disk2 } });
 // or Start::Snapshot { mem: &chip_then_slow, regs: Regs68k { .. }, custom: &custom, disks }
+g.held_at_start(&snapshot_frames_input);   // a snapshot: the keys its keyboard already sent
 g.set_input(first_frame_input);
 // on a thread with RUN_STACK bytes of stack:
 let stop = g.run(&mut |frame| {
