@@ -87,6 +87,20 @@ class Verdict(unittest.TestCase):
         self.assertEqual(dc.rust_kind(*bash('python3 -I games/forest-dumb/tools/translate.py --task T08')), 'translate')
         self.assertIsNone(dc.rust_kind(*read('games/forest-dumb/tools/translate.py')))
 
+    def test_reading_translate_py_in_the_shell_is_not_running_it(self):
+        for cmd in ('sed -n 1,60p games/forest-dumb/tools/translate.py', 'head -40 tools/translate.py',
+                    'grep -n def games/forest-dumb/tools/translate.py', 'cat games/forest-dumb/tools/translate.py | head'):
+            with self.subTest(cmd=cmd):
+                self.assertIsNone(dc.rust_kind(*bash(cmd)))
+        r = dc.judge(transcript([bash('head -40 games/forest-dumb/tools/translate.py')],
+                                [('Write', {'file_path': 'src/sprite.rs', 'content': ''})]))
+        self.assertEqual(r['result'], 'fail')
+        for cmd in ('cd games/forest-dumb && python3 -I tools/translate.py char_sprite_position',
+                    'games/forest-dumb/tools/translate.py char_sprite_position', TRANSLATE):
+            with self.subTest(cmd=cmd):
+                self.assertEqual(dc.rust_kind(*bash(cmd)), 'translate')
+        self.assertIsNone(dc.rust_kind(*bash('sed -n 1,40p games/forest-dumb/tools/reshape.py')))
+
     def test_an_empty_transcript_fails(self):
         self.assertEqual(dc.judge([])['result'], 'fail')
 

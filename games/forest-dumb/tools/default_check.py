@@ -16,7 +16,7 @@ that sets out to write Rust by hand shows it in the transcript and changes nothi
 a doc fix must be committed before a rerun.
 
 A run passes when the first tool call that produces Rust from the original runs tools/translate.py.
-Producing Rust is: a Bash call naming translate.py (the pass), another tool that writes Rust
+Producing Rust is: a Bash call running translate.py (the pass), another tool that writes Rust
 (RUST_TOOLS) or a shell redirect into a `.rs` file, or a Write or Edit of a `.rs` file. Reading the
 docs or the listing first is fine. A session that never produces Rust in its turns fails. Prints one line:
 
@@ -38,10 +38,13 @@ PROMPT = ('Port {routine} of Forest Dumb Forever to Rust for a level plan. '
           "Start the way this repo's docs say.")
 TOOLS = ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit']
 ALLOWED = ['Read', 'Grep', 'Glob', 'Bash(python3 -I games/forest-dumb/tools/*)']
-TRANSLATE = re.compile(r'(^|[\s/])translate\.py\b')
+# Running a script, not reading it: a shell command segment that starts with the script, or with
+# python3 and its flags before it. `sed -n 1,60p .../translate.py` or `cat translate.py | head` is a read.
+RUN = r'(^|[;&|(]|\bthen|\bdo)\s*(\S*python3?(\.\d+)?(\s+-\S+)*\s+)?(\S*/)?'
+TRANSLATE = re.compile(RUN + r'translate\.py\b')
 # Tools that write Rust of a routine other than by translating it: Haiku's draft rewrites and generators,
 # and the translator's parts run by hand, which skip the judge.
-RUST_TOOLS = re.compile(r'(^|[\s/])(reshape|generate|pcode_rust|translator_trial)\.py\b')
+RUST_TOOLS = re.compile(RUN + r'(reshape|generate|pcode_rust|translator_trial)\.py\b')
 RS_REDIRECT = re.compile(r'(>>?|\btee(\s+-a)?)\s*[\'"]?[^\s\'";|&]+\.rs\b')
 WRITERS = {'Write', 'Edit', 'MultiEdit', 'NotebookEdit'}
 # A nested session inheriting these would take itself for a child of this one, or of pir.
