@@ -268,6 +268,35 @@ fn a_write_only_register_read_takes_the_buses_last_word() {
 }
 
 #[test]
+fn a_leftover_bus_write_is_marked_for_the_frame_bar() {
+    // The translated `clr.w AUD0VOL` (pcode_fix.arith): the read's write with the word the
+    // generated code supplies, through `ww_leftover`, then the 0. On the original the word is the
+    // last DMA slot's (T47: $47e0 at frame 5001), which no translated code can know.
+    let mut m = machine();
+    at_cycles(&mut m, 40);
+    m.ww_leftover(0xDF_F0A8, 0x4279);
+    m.ww(0xDF_F0A8, 0);
+    // A CPU read of a write-only register makes the same kind of write.
+    m.ww(0x10, 0x0F0F);
+    assert_eq!(m.rw(0xDF_F088), 0x0F0F);
+    m.ww(0xDF_F0B8, 7);
+    assert_eq!(m.cpu_leftover(), &[0, 2]);
+    let (paula, marked) = m.take_paula_writes_marked();
+    let regs: Vec<(u16, u16)> = paula.iter().map(|(_, w)| (w.reg, w.value)).collect();
+    assert_eq!(regs, vec![(0xA8, 0x4279), (0xA8, 0), (0xB8, 7)]);
+    assert_eq!(marked, vec![0], "COPJMP1 is not Paula's");
+    assert_eq!(m.take_paula_writes_marked().1, Vec::<usize>::new(), "taken");
+    let end = m.frame_end();
+    at_cycles(&mut m, end);
+    let f = m.end_frame();
+    let regs: Vec<(u16, u16)> = f.cpu_writes.iter().map(|&(_, r, v)| (r, v)).collect();
+    assert_eq!(regs, vec![(0xA8, 0x4279), (0xA8, 0), (0x88, 0x0F0F), (0xB8, 7)]);
+    assert_eq!(f.cpu_leftover, vec![0, 2]);
+    assert!(m.cpu_leftover().is_empty(), "a new frame");
+    assert_eq!(m.custom()[0xA8 / 2], 0);
+}
+
+#[test]
 fn a_read_only_register_write_changes_nothing_but_the_bus() {
     let mut m = machine();
     let paula = Log::default();

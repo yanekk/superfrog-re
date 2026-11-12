@@ -42,7 +42,10 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   reads its half of the word. A write to a read-only register (`$000..$01E`, `$07C`) changes nothing.
   A read of a write-only register writes the data bus's last word into it and returns it (vAmiga
   `peekCustomFaulty16`; the list is `pcode_rt::ops::custom_write_only`). The bus's last word is the
-  last word read or written through this bus. VPOSR and VHPOSR read the beam: LOF set for a
+  last word read or written through this bus. On the oracle it is often a DMA slot's word instead
+  (bitplane data under `clr.w AUDxVOL`, T47), which the machine cannot know: such a write, and one
+  made through `Bus::ww_leftover` (the translated `clr`), is marked, in `Frame::cpu_leftover` and
+  `take_paula_writes_marked`, for the frame bar to compare by register only. VPOSR and VHPOSR read the beam: LOF set for a
   313-line frame, chip id 0 (OCS). Other readable registers read their device, else their last
   written value (a snapshot's, at first). Every written value is kept in `custom()`.
 - **CIAs:** register `(a >> 8) & $F`; A on odd bytes with bit 12 low, B on even bytes with bit 13
@@ -150,8 +153,9 @@ stop as `untranslated`; the measured program makes neither.
   (DESIGN §2.6); the beam advances with the CPU's counted cycles alone.
 - **Timing inside a block:** accesses are timed at the block's start (`poll`), not the
   instruction's, which can be one block early. vAmiga's 5-slot read-ahead of VHPOSR is not added.
-- **Instruction fetches** do not go through the bus, so the last word is a data word, where the
-  68000's bus may hold a prefetched instruction word (the translated `clr` loads it itself).
+- **Instruction fetches and DMA** do not go through the bus, so the last word is a data word, where
+  the oracle's bus holds a prefetched instruction word or the last DMA slot's word (the translated
+  `clr` supplies the prefetch itself; the write is marked, above).
 - **VPOSW/VHPOSW** are kept as values; they do not move the beam.
 - **Odd word addresses**: a word access at an odd address is made at it, byte by byte; the 68000
   would take an address error.

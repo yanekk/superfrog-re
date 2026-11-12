@@ -334,17 +334,32 @@ impl TranslatedEngine {
                     let mut mem = out.chip.to_vec();
                     mem.extend_from_slice(out.slow);
                     // The machine's beam positions are its own; the comparison ignores them.
+                    // A write made with the bus's leftover word is marked for the frame bar,
+                    // which compares it by register only (T47).
+                    let mark = |marked: &[usize], i: usize, reg: u16| {
+                        if marked.contains(&i) {
+                            reg | crate::frames::LEFTOVER
+                        } else {
+                            reg
+                        }
+                    };
                     let paula = out
                         .paula
                         .iter()
-                        .map(|&(_, reg, value)| PaulaWrite {
-                            reg,
+                        .enumerate()
+                        .map(|(i, &(_, reg, value))| PaulaWrite {
+                            reg: mark(&out.paula_leftover, i, reg),
                             value,
                             hpos: 0,
                             vpos: 0,
                         })
                         .collect();
-                    let custom = out.cpu_writes.iter().map(|&(_, r, v)| (r, v)).collect();
+                    let custom = out
+                        .cpu_writes
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &(_, r, v))| (mark(&out.cpu_leftover, i, r), v))
+                        .collect();
                     let sent = frames.send(Frame {
                         picture: out.picture.clone(),
                         paula,

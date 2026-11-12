@@ -140,6 +140,9 @@ pub struct Frame {
     /// The CPU's of `writes` alone, in order: what the oracle keeps (`Amiga::cpu_writes`), so the
     /// frame bar compares like with like (translator T45).
     pub cpu_writes: Vec<(u64, u16, u16)>,
+    /// Indices into `cpu_writes` of the writes a read of a write-only register made, with the
+    /// bus's leftover word ([`pcode_rt::Bus::ww_leftover`], translator T47).
+    pub cpu_leftover: Vec<usize>,
     /// Chip RAM then slow RAM at each CPU write [`Machine::watch_write`] names, in order.
     pub watched: Vec<Vec<u8>>,
 }
@@ -196,6 +199,11 @@ pub struct Machine {
     /// The CPU's of them, tagged as each is made: a register filter could not tell a copper MOVE
     /// from the CPU's write to the same register.
     cpu_log: Vec<(u64, u16, u16)>,
+    /// Indices into `cpu_log` of the writes made with a leftover bus word.
+    cpu_leftover: Vec<usize>,
+    /// The write being made is a read's leftover-bus write (`Bus::ww_leftover`, or a read of a
+    /// write-only register).
+    leftover: bool,
     /// The CPU write whose memory is kept ([`Machine::watch_write`]), and the copies this frame.
     watch_write: Option<(u16, u16)>,
     watched: Vec<Vec<u8>>,
@@ -239,6 +247,8 @@ impl Machine {
             watch: Watch::default(),
             log: Vec::new(),
             cpu_log: Vec::new(),
+            cpu_leftover: Vec::new(),
+            leftover: false,
             watch_write: None,
             watched: Vec::new(),
             frame_custom: [0; 256],
@@ -530,12 +540,14 @@ impl Machine {
         self.clx_from = 0;
         let writes = std::mem::take(&mut self.log);
         let cpu_writes = std::mem::take(&mut self.cpu_log);
+        let cpu_leftover = std::mem::take(&mut self.cpu_leftover);
         let watched = std::mem::take(&mut self.watched);
         self.start_frame(end as i64, end as i64);
         Frame {
             picture,
             writes,
             cpu_writes,
+            cpu_leftover,
             watched,
         }
     }
@@ -727,8 +739,12 @@ impl Machine {
     fn custom_read(&mut self, reg: u16) -> u16 {
         if custom::write_only(reg) {
             // The 68000 bus's rule: the register takes the last word on the bus, which is read.
+            // On the reference a DMA slot before the read may have left that word; the machine
+            // has no DMA slots, so the write is marked (T47).
             let w = self.bus;
+            self.leftover = true;
             self.custom_write(reg, w);
+            self.leftover = false;
             return w;
         }
         let routed = self.route[reg as usize >> 1] != 0;
@@ -766,6 +782,9 @@ impl Machine {
     pub(crate) fn reg_write(&mut self, reg: u16, v: u16, cpu: bool) {
         self.log.push((self.now, reg, v));
         if cpu {
+            if self.leftover {
+                self.cpu_leftover.push(self.cpu_log.len());
+            }
             self.cpu_log.push((self.now, reg, v));
             if self.watch_write == Some((reg, v)) {
                 let mut m = self.chip.clone();
@@ -777,6 +796,9 @@ impl Machine {
             return;
         }
         self.paula.note(reg, v, self.now, self.beam(self.now));
+        if self.leftover && cpu && paula::is_paula(reg) {
+            self.paula.mark_last();
+        }
         self.custom[reg as usize >> 1] = v;
         match reg {
             custom::DMACON => {
@@ -895,6 +917,12 @@ impl Machine {
         &self.cpu_log
     }
 
+    /// Indices into [`Machine::cpu_writes`] of the writes made with a leftover bus word: what
+    /// `end_frame` will return in `Frame::cpu_leftover`.
+    pub fn cpu_leftover(&self) -> &[usize] {
+        &self.cpu_leftover
+    }
+
     /// Paula's writes this frame, in order: the cycle count each was made at, and the write with
     /// its beam position.
     pub fn paula_writes(&self) -> &[(u64, amiga_paula::PaulaWrite)] {
@@ -904,6 +932,11 @@ impl Machine {
     /// The frame's Paula writes, emptying the list for the next frame.
     pub fn take_paula_writes(&mut self) -> Vec<(u64, amiga_paula::PaulaWrite)> {
         self.paula.take()
+    }
+
+    /// [`Machine::take_paula_writes`], with the indices of those made with a leftover bus word.
+    pub fn take_paula_writes_marked(&mut self) -> (Vec<(u64, amiga_paula::PaulaWrite)>, Vec<usize>) {
+        self.paula.take_marked()
     }
 
     /// The INTREQ bits the CIAs have asked for since the last call: PORTS (`$0008`) when CIA-A's
@@ -1086,6 +1119,12 @@ impl Bus for Machine {
     fn wl(&mut self, a: u32, v: u32) {
         self.ww(a, (v >> 16) as u16);
         self.ww(a.wrapping_add(2), v as u16);
+    }
+
+    fn ww_leftover(&mut self, a: u32, v: u16) {
+        self.leftover = true;
+        self.ww(a, v);
+        self.leftover = false;
     }
 }
 

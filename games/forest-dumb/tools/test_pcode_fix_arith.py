@@ -218,6 +218,8 @@ class Clear(unittest.TestCase):
             nxt = f'img.h(0, 0x{off + ins["len"]:x})'
             self.assertIn(nxt, text)
             # The faulty read's write comes before the store of 0; a long's store is low word first.
+            # Through the bus's leftover write, which a machine marks (T47).
+            self.assertEqual(text.count('pcode_rt::store_leftover(bus, img, '), words)
             first = next(i for i, l in enumerate(lines) if isinstance(l, str) and 'custom_write_only' in l)
             if words == 2:
                 self.assertFalse(any(isinstance(l, dict) and l['op'] == 'COPY' and l['out'][0] == 'ram'

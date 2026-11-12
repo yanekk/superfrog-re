@@ -2,10 +2,11 @@
 # boot-to-level1's input: power-on-title's way, then fire on START at 5000, world 1's loads, the
 # SCENA 1 screen, fire at 6300, and the first 199 frames of play. The loads are instant on the
 # translated side, so the frames are lined up at each load's return. Translated engine only.
-# Fails today, measured 2026-11-12 (T32): power-on-title's frames to 5200, then the leftover-bus
-# value of mt_end's `clr.w AUDxVOL` and COPJMP1 at 5001 (T47); the processor faster while world 1's
-# level is built (T30's question): memory 5998 to 6025 (h0+$7a9c) and 6045 to 6057, writes 6054 and
-# 6057; and from 6301 play's known differences (clxdat_copy, char_y, Paula a frame early: T30, T31).
+# Fails today, measured 2026-11-12 (T47): power-on-title's frames to 5200; the processor faster
+# while world 1's level is built (T30's question): memory from 5998 (h0+$7a9d), writes 6054, the
+# picture 6056; and from 6301 play's known differences (Paula a frame early, 6333: T30, T31). Frame
+# 5001 is equal: mt_end's `clr.w AUDxVOL` and COPJMP1 write the bus's leftover word, the original's
+# a bitplane DMA word ($47e0, $0005, $5255, $5245; $5055), compared by register only (owner, T47).
 # The goal is reached at 6400 on both sides: play runs from power-on.
 sync = { script = "boot-to-level1", frame = 0 }
 start = "entry"
