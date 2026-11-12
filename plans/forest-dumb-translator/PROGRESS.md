@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Building phase 5; T48 awaiting review.
+**Status:** Building phase 5; T48 reviewed ✅.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T48; T50 (level1-cases-b-rest) once T49 lands.
+**Next `pir-work` will:** T49 (machine-dma-contention), then T50 (level1-cases-b-rest).
 
 ## Tasks
 
@@ -60,11 +60,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
-| T48 | level1-cases-b-pass | T30, T31; blocks T36 | 🔍 | Re-ran the 18 cases: 4 pass, 14 fail, all on sub-frame timing (creature start cut, JOY1DAT across the frame end, cut lives redraw), measured in each case's notes, unproven until T49. No fix: nothing non-timing found. Deviation: finish line carried to T50 (owner), no tests added. |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ✅ | Clean, no fix commit. 4 of 18 pass, 14 fail on timing, carried to T50. Review re-ran 10 cases: verdicts and first differences match the notes; six joystick differences fall on a script stick change. Causes (contention, docs/10 cut) `read-only`. Case edits are comments only; no code, so no mutation. |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
 
-**Review queue:** T48
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
