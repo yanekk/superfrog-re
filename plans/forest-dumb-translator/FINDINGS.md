@@ -6,10 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | **T48 added** (owner, T31 review): T31's 18 cases pass 0, every first difference T30's. T31 merges its fixes; T48 carries the finish line, after T30 and T31, blocks T36, under the owner's frame rule from T30. |
+| 2026-11-12 | 🐞 | **T31 review, S2S:** `collide.rs` checked sprite against sprite only inside the window; the oracle counts from `2*DDFSTRT+15` ($7F at $38) to the line's end. Fixed, `collide::sprites`, test with five oracle readings. |
 | 2026-11-12 | 🔄 | **T30/T31 split** (owner): every level case fails frame 1 on four machine defects. T31 owns sprite collisions (`clxdat_copy`); T30 owns the one-pixel `char_x`/`char_y`, Paula one frame early and `edge_latch_left`. Merging, keep one collision fix. |
 | 2026-11-12 | 📌 | **T31 reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 16, `char_y` 13, `char_x` 7, `edge_latch_left` 6, all T30's. Cases synced at 6400 not comparing `edge_latch_left` still differ on it at frame 1. |
-| 2026-11-12 | 📌 | **T31 collisions:** `pcode-machine` gathers CLXDAT per line (`collide.rs`); `clxdat_copy` is first in no case. Later differences are read timing: the engine reads 5 to 10 lines early (oracle line samples), the missing DMA contention. |
-| 2026-11-12 | 🐞 | **T31 keyboard:** a case's start re-sent the keys its snapshot step held, a second PORTS interrupt (death-esc frame 1). Fixed: `Machine::keys_held`, `TranslatedGame::held_at_start`. The oracle's unread CLXDAT at a start is `Amiga::clxdat`. |
+| 2026-11-12 | 🐞 | **T31 machine:** CLXDAT gathered per line (`collide.rs`), a start's unread bits from `Amiga::clxdat`; a start's held keys no longer re-sent (`keys_held`, death-esc frame 1). Later differences: reads 5 to 10 lines early, missing DMA contention. |
 | 2026-11-12 | 📌 | **T45 custom writes:** `build/translated-cases.md` regenerated, 42 level cases, 0 pass, first differences unchanged. The new channel is first in 0 cases, a later difference in 33; its first register `$040` (BLTCON0) in 31, `$080` (COP1LCH) 2. |
 | 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
 | 2026-11-12 | 🐞 | **T29 Paula writes:** translated `game_frame` ends at line 301, the original's at 310 (no DMA contention), so the music's 12 AUD writes land at line 307, not line 4 of the next frame: one frame early. |
