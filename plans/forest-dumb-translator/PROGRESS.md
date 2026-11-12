@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Status:** Building phase 5; T48 awaiting review.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T48; T50 (level1-cases-b-rest) once T49 lands.
 
 ## Tasks
 
@@ -60,10 +60,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
-| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | 🔍 | Re-ran the 18 cases: 4 pass, 14 fail, all on sub-frame timing (creature start cut, JOY1DAT across the frame end, cut lives redraw), measured in each case's notes, unproven until T49. No fix: nothing non-timing found. Deviation: finish line carried to T50 (owner), no tests added. |
+| T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T48
 
 ## Blocked on the user
 

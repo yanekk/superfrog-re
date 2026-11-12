@@ -6,12 +6,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T48 reading** (supersedes T31's): T48's 18 cases on the translated engine, 4 pass. All 14 failures are timing: creature starts the pass should cut (7), JOY1DAT read across the frame's end (6), death-spikes' cut lives redraw. |
+| 2026-11-12 | 🔄 | **T50 added** (owner, T48): carries T48's 14 failing cases, after T49's DMA contention, blocks T36; finish line all 18 pass. T48 hands in measurements only, no fix: nothing non-timing found. |
 | 2026-11-12 | 📌 | **T30 reading** (supersedes T29's, T45's): T30's 23 cases on the translated engine, 19 pass. T29's Paula and CLXDAT rows are now DESIGN §2.7 (pass end) and `pcode-machine/src/collide.rs` (T31's, kept at merge). Left: creature_slots+$20, joy_up, char_x (T46). |
 | 2026-11-12 | 🔄 | **Owner, T30:** state and writes judged at each pass end (`PASS_END`, paired by `irq_count`), a pass one frame of slack, a non-Paula write one pass; DMA contention not modelled. T46 added for T30's four remaining cases. |
 | 2026-11-12 | 🔄 | **T48 added** (owner, T31 review): T31's 18 cases pass 0, every first difference T30's. T31 merges its fixes; T48 carries the finish line, after T30 and T31, blocks T36, under the owner's frame rule from T30. |
 | 2026-11-12 | 🐞 | **T31 review, S2S:** `collide.rs` checked sprite against sprite only inside the window; the oracle counts from `2*DDFSTRT+15` ($7F at $38) to the line's end. Fixed, `collide::sprites`, test with five oracle readings. |
-| 2026-11-12 | 🔄 | **T30/T31 split** (owner): every level case fails frame 1 on four machine defects. T31 owns sprite collisions (`clxdat_copy`); T30 owns the one-pixel `char_x`/`char_y`, Paula one frame early and `edge_latch_left`. Merging, keep one collision fix. |
-| 2026-11-12 | 📌 | **T31 reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 16, `char_y` 13, `char_x` 7, `edge_latch_left` 6, all T30's. Cases synced at 6400 not comparing `edge_latch_left` still differ on it at frame 1. |
 | 2026-11-12 | 🐞 | **T31 machine:** CLXDAT gathered per line (`collide.rs`), a start's unread bits from `Amiga::clxdat`; a start's held keys no longer re-sent (`keys_held`, death-esc frame 1). Later differences: reads 5 to 10 lines early, missing DMA contention. |
 | 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
 | 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |

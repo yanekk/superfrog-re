@@ -8,6 +8,10 @@
 # A creature the original cuts after the beam has passed its lines is missing from that frame, whole
 # or from its top: the runner measures the cuts' beam positions and the engine draws those frames so
 # (T80, 36 frames here). Every variable is compared, the five creature slots among them.
+# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
+# first difference pass 131 (oracle frame 6433), creature_active+$2 $ff on the engine, 0 in the
+# original; the machine's edge-redraw scan starts a creature (h0_681c) before the pass at line 233 that
+# cuts the original's scan (docs/10, "A creature start the next pass cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "death-water"
 frames = 2380
