@@ -251,23 +251,16 @@ CALL_RE = re.compile(r'(?:super::p\d+::)?\bh(\d+)_([0-9a-f]+)\(r, bus, img\)')
 
 
 def tree_functions(tree):
-    """(hunk, off) -> the function's text, attribute line included, from every part of the tree."""
+    """(hunk, off) -> the function's text, from its `pub fn` to the next, from every part of the tree.
+    The lint attribute above each function is dropped: noise when reading."""
     fns = {}
     for p in sorted(glob.glob(os.path.join(tree, '*.rs'))):
         with open(p, encoding='utf-8') as f:
             text = f.read()
-        starts = [m.start() for m in FN_RE.finditer(text)]
-        for i, s in enumerate(starts):
-            end = starts[i + 1] if i + 1 < len(starts) else len(text)
-            # The `#[allow(...)]` line above a function belongs to it, not to the one before.
-            head = text.rfind('\n#[allow(', 0, s)
-            if head != -1 and text.count('\n', head, s) == 1:
-                s = head + 1
-            body = text[s:end]
-            nxt = body.rfind('\n#[allow(')
-            if i + 1 < len(starts) and nxt != -1 and body.count('\n', nxt) <= 1:
-                body = body[:nxt + 1]
-            m = FN_RE.search(body)
+        found = list(FN_RE.finditer(text))
+        for i, m in enumerate(found):
+            end = found[i + 1].start() if i + 1 < len(found) else len(text)
+            body = re.sub(r'(?:\n#\[allow\([^\n]*\)\]\s*)+\Z', '\n', text[m.start():end])
             fns[(int(m.group(1)), int(m.group(2), 16))] = body.rstrip() + '\n'
     return fns
 

@@ -181,6 +181,7 @@ class Translate(unittest.TestCase):
         self.assertEqual(order, sorted(order))
         self.assertEqual(text.count('pub fn '), 4)
         self.assertNotIn('super::p', text)
+        self.assertNotIn('#[allow', text)
         self.assertTrue(text.startswith('// h0+$0 `first_routine`'))
         # Built optimised with the folder tree; the routine's own generator, surveyed then judged.
         self.assertEqual(self.read(os.path.join(self.d, 'built')), self.paths.tree)

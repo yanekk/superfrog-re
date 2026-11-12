@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |
 | 2026-11-12 | 📌 | T16 review: the whole-tree gate stays 100 of 100 with `pcode_fix` `arith` and `shift_bit` both off (dead flags, write-only chip registers); only `insn_gate.rs` guards those corrections. A broken `INT_CARRY` drops it to 97. |
 | 2026-11-12 | 📌 | **T16 whole tree:** 6 684 instructions, 0 unsupported, 0 unresolved computed jumps, 0 hints; the 24 targetless `jsr -n(a5|a6)` are library calls for the machine (`h0+$943a`..`$94ae` absent from `re/os-calls.toml`). 100 of 100 judgeable routines pass, 2 000 states. |
 | 2026-11-12 | 📌 | `translator_trial.py --whole` builds fd-judge optimised: unoptimised, `view_tiles` took 340 s for 2 000 translated states (original 5 s), past `JUDGE_SECONDS` 120. pcode_rust's `computed_unresolved` 28 counts per function, the export's 24 per instruction. |
@@ -52,10 +53,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |
 | 2026-11-11 | 📌 | Not in docs/07 (T01): `entry` opens graphics.library, calls `OpenFont` topaz (result read, never used) and graphics `FreeSprite` (-414) where `CloseLibrary` was meant; `h0+$51a` writes `ciab_prb` to latch the motor off. T26 answers these. |
 | 2026-11-11 | 📌 | `world_index` cannot be poked before `load_world`: `title_code_world` writes it in the same step. T01 sets the immediate at `h0+$778e` (the no-code branch `h0+$778c`) instead; T33's `set` meets the same step. |
-| 2026-11-11 | 🐞 | `translate.py` turns a Muse call error on every try into `fail`, not a missing-model result: the class T17's review fixed in generate and reshape (`no-model`). Left alone; T18 deletes Muse's translate.py. |
 | 2026-11-11 | 📌 | `claude -p --tools ""` from a temp folder (claude 2.1.322): no tools, 631 input tokens, no user CLAUDE.md in context. `--max-turns` works though `claude --help` does not list it. |
 | 2026-11-11 | 📌 | First real `generate.py` on Haiku: `h0+$513c` covered, 4 of 4 branches, 2 000 returns, 2 tries (the first left its name out of `ALL`), 22 s, $0.011 list. `claude -p` keeps no conversation; retries go as one transcript prompt. |
-| 2026-11-11 | 📌 | `docs/11-translation.md` still says generate and reshape call Muse with translate.py's key and spend cap; T17 changed only `tools/README.md`. Left for T20 (docs-and-packs). |
+| 2026-11-11 | 📌 | `docs/11-translation.md` still describes Muse's translate.py; `reshape.py` and `task_pack.py` still read Muse's `build/translate/<hN-off>/port.rs`, where translate.py now writes `translated.rs` (T18). Left for T19, T20. |
 | 2026-11-11 | 📌 | **T00 seam: mount `game_frame` whole.** Transplant in, `game_frame_on`, write back what differs: 2 000/2 000 `game_frame` states, 34.5 bytes changed a pass, max 59 (review's count). T35 mounts by address; T36 mounts only `h0+$1fec`. |
 | 2026-11-11 | 📌 | Per routine also passes: `char_sprite_position` and `camera_update` mounted alone, and both inside translated `game_frame`, 2 000/2 000 each with no registers compared. All registers fail: ports leave scratch d0-d3, d7 (487/2 000 at `game_frame`'s exit). |
 | 2026-11-11 | 🐞 | A write-back compares with memory's bytes, not the typed state before: `camera_update`'s `crossed` flags are bools, so a poked `$6c` stayed and 288/2 000 failed. Camera needed four values outside `LAYOUT` (`h0+$4d76`, `$4d7a`, `$51f8`, `frame_flag`). |

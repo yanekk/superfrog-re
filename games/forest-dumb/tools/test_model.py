@@ -149,8 +149,9 @@ class Transcript(unittest.TestCase):
 
 class MuseIsGone(unittest.TestCase):
     # T18 deleted Muse's tools (translator DESIGN §2.13): no file here names its provider or its
-    # batch tool. The word is built so this file does not hold it: `grep -ri` over tools/ stays empty.
-    GONE = ('open' + 'router', 'translate' + '_batch')
+    # batch tool. The words are joined at run time so neither this file nor its bytecode holds them
+    # (Python folds `'a' + 'b'`): `grep -ri` over tools/ stays empty.
+    GONE = tuple(map(''.join, (('open', 'router'), ('translate', '_batch'))))
 
     def test_no_tool_names_muse_s_provider_or_batch(self):
         here = os.path.dirname(os.path.abspath(__file__))
