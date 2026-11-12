@@ -10,6 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import pcode_export as P  # noqa: E402
 from test_pcode_export import ENTRIES, two_hunk_program  # noqa: E402
+from test_unpack import extracted  # noqa: E402
 
 
 class GhidraExport(unittest.TestCase):
@@ -94,6 +95,9 @@ class GameExport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
+        # A fresh checkout has no build/: extract on first need, as the other real-disk tests do, so
+        # the result does not hang on which test ran first. Missing zips still fail naming the path.
+        extracted()
         P.check_inputs(P.EXE, P.SYMBOLS, P.TRANSLATE)   # names the program's path when it is missing
         with redirect_stdout(io.StringIO()):
             cls.doc = P.export(P.EXE, P.load_symbols(P.SYMBOLS), P.load_entries(P.TRANSLATE),
