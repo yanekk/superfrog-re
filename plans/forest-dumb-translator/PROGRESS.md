@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** review T32; T47 (machine-power-on) once T32 is ✅, before T33.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** T47 (machine-power-on), before T33; T30, T31.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | conform-translated | T28 | ✅ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
 | T31 | level1-cases-b | T29 | ⬜ | |
-| T32 | power-on-cases | T29 | 🔍 | Entry runner lines frames up at load returns (`amiga_conform::loads`; Superfrog's runner and bug retiming use it), `compare = ["memory"]`, title cases translated; 17 tests. first-case passes; both power-on cases fail on machine gaps (T47, T30's speed question): unverified. Deviations: fd-translated changed (watched returns, start line, T28's supervisor stack); OS frames' writes not compared. |
+| T32 | power-on-cases | T29 | ✅ | Reviewed: fixed the power-on runner stopping one frame after a first difference under every_channel, and added a ByReturns test a mutation survived. Probed: stand-in, both cases every channel, three mutations. Unproven (owner, 2026-11-12): power-on-title and power-on-level-1 fail from 3462; T47 carries the prompt and clr value, the owner's T30 timing answer the faster processor. |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
@@ -62,7 +62,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T47 | machine-power-on | T32; blocks T33 | ⬜ | |
 
-**Review queue:** T32
+**Review queue:** empty
 
 ## Blocked on the user
 

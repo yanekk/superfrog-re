@@ -6,11 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | **T32 closed unproven** (owner, T32 review): power-on-title and power-on-level-1 fail from frame 3462. T47 carries the disk 2 prompt and the `clr` bus value; the owner's T30 timing answer the faster processor. first-case passes translated. |
 | 2026-11-12 | 🔄 | **T47 added** (coordinator agent for the owner, T32): Kickstart's DMA at power-on (the disk 2 prompt blank, frames 3463 to 3967) and the leftover-bus value of `clr` on write-only registers (frame 5001). Blocks T33. |
 | 2026-11-12 | 📌 | **T32 machine speed:** the translated processor draws faster (no display time-stealing or OS interrupt time): memory differs 3462, 3965 to 3972, 5998 to 6057, writes up to 3 frames early. T30's question to the owner. |
 | 2026-11-12 | 📌 | **T32 line-up:** 18 loads to level 1, 1 794 original frames skipped; the title and world 1's loads equal every compared frame; first-case passes translated, 15 078 frames. The entry runs at frame 3461, line 179. |
 | 2026-11-12 | 📌 | **T45 custom writes:** `build/translated-cases.md` regenerated, 42 level cases, 0 pass, first differences unchanged. The new channel is first in 0 cases, a later difference in 33; its first register `$040` (BLTCON0) in 31, `$080` (COP1LCH) 2. |
-| 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
 | 2026-11-12 | 📌 | **T29 first reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 14, `char_y` 11, `clxdat_copy` 7, `char_x` 6, `edge_latch_left` 4. Six held state and picture all their frames (w1-idle 199). |
 | 2026-11-12 | 🐞 | **T29 Paula writes:** translated `game_frame` ends at line 301, the original's at 310 (no DMA contention), so the music's 12 AUD writes land at line 307, not line 4 of the next frame: one frame early. |
 | 2026-11-12 | 🐞 | **T29 CLXDAT:** `clxdat_copy` is 0 on the translated machine, `$8061` on the original, from frame 1 in seven cases: `pcode-machine` does not model sprite collisions. |
