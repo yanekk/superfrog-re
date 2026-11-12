@@ -40,7 +40,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
 | T25 | machine-sound-input | T22 | ✅ | |
-| T26 | os-answers | T01, T22 | ⬜ | |
+| T26 | os-answers | T01, T22 | ✅ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ⬜ | |
 | T28 | translated-engine | T26, T27 | ⬜ | |
 | T29 | conform-translated | T28 | ⬜ | |
@@ -57,6 +57,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
+| T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
 
 **Review queue:** *(empty)*
 

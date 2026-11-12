@@ -34,6 +34,19 @@
 //!
 //! `{"encoding":..,"at":..,"states":n,"pass":n,"fail":n,"skipped":n,"columns":{"regs":n,"ccr":n,"mem":n,"cycles":n|"not-counted","stop":n},"first":{"state","column","what","moira","translated"}|null,"first_skip":".."}`
 //!
+//! `--os-run power-on` (translator T26, `os_run`) runs the translated tree on `pcode-machine` from
+//! the program's entry, the OS answered and disk 2 in df0, until the title's first fire poll:
+//!
+//! `{"run":"power-on","stop":"..","at_title":bool,"blocks":n,"cycles":n,"opened":["name",..],"missing":["name",..]}`
+//!
+//! `--os-run load-napis` runs translated `load_file` alone on the machine with `_NAPIS` asked for,
+//! and the original to the frame its `load_name` moves on, and compares the 18 720 bytes at `h3+$0`
+//! (`differ` counts the bytes that differ, `first_differ` is the first one's offset or -1):
+//!
+//! `{"run":"load-napis","stop":"..","equal":bool,"differ":n,"first_differ":n,"nonzero":n,"frame":n,"opened":[..],"missing":[..]}`
+//!
+//! `nonzero` counts the original's bytes there that are not 0, so an empty match shows.
+//!
 //! `--generators` (translator T16) prints every registered generator's name, in registry order, as
 //! one line `{"generators":["name",..]}`: the whole-tree judge's work list, read from the build
 //! rather than from `re/translate.toml`, which predates the later generator modules. Needs no disks.
@@ -123,8 +136,77 @@ fn args() -> Result<Args, String> {
     })
 }
 
+/// The names that opened (or did not), as a JSON list's items.
+fn names(opened: &[(String, bool)], ok: bool) -> String {
+    let n: Vec<String> = opened
+        .iter()
+        .filter(|(_, o)| *o == ok)
+        .map(|(n, _)| format!("\"{}\"", esc(n)))
+        .collect();
+    n.join(",")
+}
+
+/// `--os-run <which>`: one line of JSON, or the reason it could not run.
+fn os_run_main(which: &str) -> Result<(), String> {
+    use fd_conform::os_run;
+    let disks = fd_conform::disks::load()?;
+    let program = os_run::program(&disks[0])?;
+    match which {
+        "power-on" => {
+            let e = os_run::power_on_to_title(&program, disks[1].clone())?;
+            let stop = match &e.result {
+                Ok(()) => "returned".to_string(),
+                Err(s) => s.to_string(),
+            };
+            println!(
+                "{{\"run\":\"power-on\",\"stop\":\"{}\",\"at_title\":{},\"blocks\":{},\"cycles\":{},\"opened\":[{}],\"missing\":[{}]}}",
+                esc(&stop),
+                stop.starts_with(&format!("unsupported: {}", os_run::AT_TITLE)),
+                e.blocks,
+                e.cycles,
+                names(&e.opened, true),
+                names(&e.opened, false)
+            );
+            Ok(())
+        }
+        "load-napis" => {
+            let l = os_run::load_napis(&program, disks)?;
+            let stop = match &l.result {
+                Ok(()) => "returned".to_string(),
+                Err(s) => s.to_string(),
+            };
+            let differ: Vec<usize> = (0..l.machine.len())
+                .filter(|&i| l.machine[i] != l.original[i])
+                .collect();
+            println!(
+                "{{\"run\":\"load-napis\",\"stop\":\"{}\",\"equal\":{},\"differ\":{},\"first_differ\":{},\"nonzero\":{},\"frame\":{},\"opened\":[{}],\"missing\":[{}]}}",
+                esc(&stop),
+                l.result.is_ok() && differ.is_empty() && l.machine.len() == os_run::NAPIS_LEN,
+                differ.len(),
+                differ.first().map_or(-1, |&i| i as i64),
+                l.original.iter().filter(|&&b| b != 0).count(),
+                l.frame,
+                names(&l.opened, true),
+                names(&l.opened, false)
+            );
+            Ok(())
+        }
+        other => Err(format!("--os-run {other}: not power-on or load-napis")),
+    }
+}
+
 fn main() -> ExitCode {
     let v: Vec<String> = std::env::args().skip(1).collect();
+    if let Some(i) = v.iter().position(|a| a == "--os-run") {
+        let which = v.get(i + 1).map(String::as_str).unwrap_or("");
+        return match os_run_main(which) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("fd-judge: {e}");
+                ExitCode::from(2)
+            }
+        };
+    }
     if v.len() == 1 && v[0] == "--generators" {
         let names: Vec<String> = generators::all()
             .map(|(n, _)| format!("\"{}\"", esc(n)))
