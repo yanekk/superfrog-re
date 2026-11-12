@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** review T27; then T28 once T43 is done (it blocks T28); T19 can run beside them.
+**Next `pir-work` will:** T28 once T43 is done (it blocks T28); T19 can run beside them.
 
 ## Tasks
 
@@ -41,7 +41,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T24 | machine-chips | T22 | ✅ | |
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ✅ | |
-| T27 | routine-oracle-hw | T16, T23, T24, T25 | 🔍 | `fd-judge --translated --machine`, `translator_trial.py --machine`; `judge_machine.rs` smoke, 5 tests; full `MACHINE_PINNED`. 88 of 100 pass: Done when met with named exceptions (owner, 2026-11-12), 8 oracle beam, 4 blit wrap, pinned with evidence. Deviations: addresses outside RAM and `$DFF000` are the oracle's flat memory, `$BFxxxx` its CIA answers; DMACON blitter only. |
+| T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | Reviewed: 88 of 100 on `pcode-machine`, 12 pinned as oracle beam and blit limits (owner, 2026-11-12, read-only). Fix: slow-RAM writes were uncompared by any smoke test, now locked. Reran `--whole --machine`; mutated case-read attach, slow-RAM compare and the `$4..$7` keep (`h0+$5820` fails), all red. |
 | T28 | translated-engine | T26, T27 | ⬜ | |
 | T29 | conform-translated | T28 | ⬜ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
@@ -59,7 +59,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
 
-**Review queue:** T27
+**Review queue:** empty
 
 ## Blocked on the user
 
