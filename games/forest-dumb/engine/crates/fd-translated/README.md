@@ -43,6 +43,16 @@ let stop = g.run(&mut |frame| {
 - `TranslatedGame::with_program(Program { .. }, bases, start)` runs a made-up translated program
   (tests).
 
+## The seam
+
+A hand-written routine runs in place of the translated one at its address (translator DESIGN §2.9,
+T35). Every generated function asks `Bus::mounted` on entry; `TranslatedGame::new` mounts each
+`fd_core::PORTED` entry marked `mounted`, with its adapter in `src/seam.rs` (`seam::ADAPTERS`; a
+mounted entry with no adapter stops the run at start, naming it). `g.mount((hunk, offset), f)` mounts
+by hand (tests). An adapter reads `LAYOUT` and the values beside it through `seam::BusMem`, runs the
+port, writes back what differs (`fd_core::WriteBack`) and leaves by `pcode_rt::rts`. It counts no
+cycles. Judge one before mounting it: `cargo run -p fd-conform --bin fd-judge -- 'h0+$4d7e' --seam`.
+
 ## Shells
 
 The game drives, so a shell that pulls a step runs `run` on its own thread and passes frames and

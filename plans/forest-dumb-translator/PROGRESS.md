@@ -5,7 +5,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-12
 **Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
@@ -49,7 +49,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ⬜ | |
-| T35 | seam | T00, T28 | ⬜ | |
+| T35 | seam | T00, T28 | 🔍 | `Bus::mounted` hook at every generated function's entry, fixtures regenerated; `fd-translated` `Seam` from `PORTED.mounted` (all false), adapters `camera_update`, `char_sprite_position`; `fd-core` `MemMut`, `WriteBack`; `fd-judge --seam`. 13 tests. Deviations: `mount` is a method, no global table in a pure crate; judge compares off the stack, registers only by `--regs`; replaced comes from `fd-translated`'s tree; the frame adapter is T36's. |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
 | T38 | app-sound | T37 | ⬜ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T35
 
 ## Blocked on the user
 
