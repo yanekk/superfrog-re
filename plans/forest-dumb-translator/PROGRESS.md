@@ -42,7 +42,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T25 | machine-sound-input | T22 | ✅ | |
 | T26 | os-answers | T01, T22 | ✅ | |
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
-| T28 | translated-engine | T26, T27 | ⬜ | |
+| T28 | translated-engine | T26, T27 | ✅ | |
 | T29 | conform-translated | T28 | ⬜ | |
 | T30 | level1-cases-a | T29 | ⬜ | |
 | T31 | level1-cases-b | T29 | ⬜ | |
