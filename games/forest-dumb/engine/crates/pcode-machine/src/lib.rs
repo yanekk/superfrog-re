@@ -20,7 +20,7 @@ use journal::{Journal, Watch};
 pub mod beam;
 pub mod blitter;
 pub mod cia;
-mod collision;
+pub mod collide;
 pub mod copper;
 pub mod custom;
 pub mod input;
@@ -199,13 +199,14 @@ pub struct Machine {
     /// The CPU write whose memory is kept ([`Machine::watch_write`]), and the copies this frame.
     watch_write: Option<(u16, u16)>,
     watched: Vec<Vec<u8>>,
-    /// CLXDAT's collisions not yet read from lines before the current frame's `clx_line`, and that
-    /// line: a read ORs in the lines the beam has passed since (`collision`, translator T30).
-    clx_acc: u16,
-    clx_line: u16,
     /// The registers and DMACON as the current frame found them.
     frame_custom: [u16; 256],
     frame_dmacon: u16,
+    /// CLXDAT's collision bits gathered since its last read (bit 15 not held).
+    clx: u16,
+    /// The current frame's first line not yet gathered into `clx`: Denise sets the bits as it
+    /// finishes each line, so a read part way down sees the lines above the beam.
+    clx_from: u16,
 }
 
 impl Machine {
@@ -240,10 +241,10 @@ impl Machine {
             cpu_log: Vec::new(),
             watch_write: None,
             watched: Vec::new(),
-            clx_acc: 0,
-            clx_line: 0,
             frame_custom: [0; 256],
             frame_dmacon: 0,
+            clx: 0,
+            clx_from: 0,
         }
     }
 
@@ -304,7 +305,8 @@ impl Machine {
     /// A case's sync point: `mem` is chip RAM then slow RAM, as the oracle's `AmigaMemory` holds
     /// them, `custom` the registers by `reg / 2`. VPOSR and VHPOSR (`custom[2]`, `custom[3]`) place
     /// the beam at cycle 0; INTENAR and INTREQR (`custom[0x0E]`, `custom[0x0F]`) are INTENA's and
-    /// INTREQ's state; the rest are the registers' values. Hunk sizes are unknown here. `$4` is set
+    /// INTREQ's state; CLXDAT (`custom[7]`) the collisions gathered and not yet read, as a read
+    /// would return them (the oracle's `Amiga::clxdat`); the rest are the registers' values. Hunk sizes are unknown here. `$4` is set
     /// to the machine's ExecBase (`os`): the oracle's would lead into a Kickstart not here.
     ///
     /// Panics on an impossible `cfg` or on `mem` not `cfg.chip + cfg.slow` bytes: both are the
@@ -327,8 +329,7 @@ impl Machine {
         m.dmacon = custom[custom::DMACONR as usize >> 1] & 0x07FF;
         m.intena = custom[irq::INTENAR as usize >> 1] & 0x7FFF;
         m.intreq = custom[irq::INTREQR as usize >> 1] & 0x7FFF;
-        // CLXDAT (`custom[7]`): the collisions the original owes its next read (`Amiga::clxdat`).
-        m.clx_acc = custom[collision::CLXDAT as usize >> 1] & 0x7FFF;
+        m.clx = custom[collide::CLXDAT as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
         m.set_exec_base();
@@ -516,10 +517,9 @@ impl Machine {
         let saved = self.now;
         self.advance(end.saturating_sub(1));
         self.now = saved;
-        let drawn = self.draw(self.cfg.frame_lines);
-        let picture = match drawn {
+        let picture = match self.draw(self.cfg.frame_lines) {
             Ok(d) => {
-                self.clx_acc |= d.clx[self.clx_line as usize..].iter().fold(0, |a, b| a | b);
+                self.clx |= d.clx;
                 d.picture
             }
             Err(op) => {
@@ -527,7 +527,7 @@ impl Machine {
                 Picture::blank(0, 0, 0, 0)
             }
         };
-        self.clx_line = 0;
+        self.clx_from = 0;
         let writes = std::mem::take(&mut self.log);
         let cpu_writes = std::mem::take(&mut self.cpu_log);
         let watched = std::mem::take(&mut self.watched);
@@ -540,9 +540,9 @@ impl Machine {
         }
     }
 
-    /// The current frame's first `until` lines, as far as its writes so far go.
-    fn draw(&mut self, until: u16) -> Result<video::Drawn, &'static str> {
-        self.ensure_frame();
+    /// The current frame drawn from its start up to line `upto` (exclusive), its collisions
+    /// gathered from `clx_from`.
+    fn draw(&self, upto: u16) -> Result<video::Drawn, &'static str> {
         let c = self.copper.as_ref().expect("started");
         let history = self.journal.history();
         video::draw(&video::FrameIn {
@@ -553,35 +553,38 @@ impl Machine {
             start: &self.frame_custom,
             dmacon: self.frame_dmacon,
             writes: &self.log,
-            until,
+            clx_lines: self.clx_from..upto,
         })
     }
 
-    /// A CPU read of CLXDAT: the collisions of every line the beam has passed since the last
-    /// read, bit 15 set, and the rest cleared. A line counts once the beam has left it (Denise
-    /// checks as it draws; the read's own line is the next read's).
-    fn clxdat(&mut self) -> u16 {
-        let (line, _) = self.beam(self.now);
-        let line = line.min(self.cfg.frame_lines);
-        if line > self.clx_line {
+    /// A CLXDAT read: the lines the beam has finished since the last read are drawn and their
+    /// collisions gathered; the bits are returned with bit 15 set and cleared (vAmiga
+    /// `peekCLXDAT`). The line the beam is on is gathered by the next read.
+    fn read_clxdat(&mut self) -> u16 {
+        let saved = self.now;
+        self.advance(saved);
+        self.now = saved;
+        let start = self.copper.as_ref().expect("started").frame_start;
+        let line = ((saved as i64 - start).max(0) / amiga_clock::LINE_CYCLES as i64)
+            .min(self.cfg.frame_lines as i64) as u16;
+        if line > self.clx_from {
             match self.draw(line) {
-                Ok(d) => {
-                    self.clx_acc |= d.clx[self.clx_line as usize..line as usize]
-                        .iter()
-                        .fold(0, |a, b| a | b)
-                }
+                Ok(d) => self.clx |= d.clx,
                 Err(op) => self.unsupported(op),
             }
-            self.clx_line = line;
+            self.clx_from = line;
         }
-        0x8000 | std::mem::take(&mut self.clx_acc)
+        collide::CLXDAT_NONE | std::mem::take(&mut self.clx)
     }
 
-    /// Start the frame the beam is in now, if none is: a machine's first access to time.
+    /// Start the frame the beam is in now, if none is: a machine's first access to time. Its
+    /// lines above the beam are not the machine's (a snapshot taken part way down a frame holds
+    /// no record of them), so their collisions are not gathered.
     fn ensure_frame(&mut self) {
         if self.copper.is_none() {
             let into = self.phase.wrapping_add(self.now) % beam::frame_cycles(self.cfg.frame_lines);
             self.start_frame(self.now as i64 - into as i64, self.now as i64);
+            self.clx_from = (into / amiga_clock::LINE_CYCLES as u64) as u16;
         }
     }
 
@@ -736,9 +739,9 @@ impl Machine {
                 let zero = if self.blitter.zero { 0x2000 } else { 0 };
                 self.dmacon | busy | zero
             }
+            collide::CLXDAT if !routed => self.read_clxdat(),
             irq::INTENAR => self.intena,
             irq::INTREQR => self.intreq(),
-            collision::CLXDAT if !routed => self.clxdat(),
             custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),
             custom::VHPOSR => {
                 let (line, h) = self.beam(self.now);
@@ -848,6 +851,13 @@ impl Machine {
     /// The next frame's input, at the current cycle count: JOY1DAT reads `i.joy1`, CIA-A's PRA
     /// the fire buttons, and the keyboard queues a byte for each key gone down or up, sending the
     /// first at once if the program acknowledged the last (`cia`).
+    /// The keys `i` holds were already down, and sent, when this machine's state was taken (a
+    /// snapshot between frames): the next [`Machine::set_input`] sends only what changed from them.
+    /// Its other inputs are not edges and are set by `set_input` alone.
+    pub fn keys_held(&mut self, i: &Input) {
+        self.cia_a.set_held(i.key_set());
+    }
+
     pub fn set_input(&mut self, i: &Input) {
         self.custom[custom::JOY1DAT as usize >> 1] = i.joy1;
         self.cia_a.fire = i.fire;

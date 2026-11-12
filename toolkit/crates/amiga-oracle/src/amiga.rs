@@ -602,9 +602,9 @@ impl Amiga {
         unsafe { ffi::amiga_frame_lines(self.raw) as u32 }
     }
 
-    /// CLXDAT as Denise holds it after the last step, without the clear a CPU read makes: the
-    /// collisions since the program last read it, bit 15 set as a read returns it. What a machine
-    /// started from this point owes the program's next read.
+    /// CLXDAT as a read would return it now, bit 15 set, without the read's clearing: the
+    /// collisions Denise gathered since the program last read it. A machine started from this
+    /// state (a snapshot taken between frames) needs it, as no RAM or register write holds it.
     pub fn clxdat(&self) -> u16 {
         unsafe { ffi::amiga_clxdat(self.raw) }
     }

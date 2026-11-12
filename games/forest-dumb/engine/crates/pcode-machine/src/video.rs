@@ -16,7 +16,7 @@ use amiga_chips::display::{Colours, Planes};
 use amiga_chips::sprite::{self, SpriteLine};
 use amiga_clock::LINE_CYCLES;
 
-use crate::collision::{self, CLXCON};
+use crate::collide;
 use crate::journal::History;
 
 /// The line every sprite fetches its control words afresh on (PAL: the end of the vertical blank).
@@ -43,14 +43,15 @@ pub(crate) struct FrameIn<'a> {
     pub dmacon: u16,
     /// Every custom write of the frame: (cycle, register, value), in order.
     pub writes: &'a [(u64, u16, u16)],
-    /// Lines drawn: the frame's first `until` (a CLXDAT read mid-frame draws up to the beam).
-    pub until: u16,
+    /// The lines whose collisions are gathered into [`Drawn::clx`]; lines past its end are not
+    /// drawn at all (a CLXDAT read part way down a frame draws the lines the beam has passed).
+    pub clx_lines: std::ops::Range<u16>,
 }
 
-/// What a frame drew: its picture and each line's collisions (`collision::line`), by line.
+/// A frame drawn: its picture, and the CLXDAT bits its `clx_lines` set (`collide`).
 pub(crate) struct Drawn {
     pub picture: Picture,
-    pub clx: Vec<u16>,
+    pub clx: u16,
 }
 
 impl FrameIn<'_> {
@@ -170,11 +171,10 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
             return Err("display dual playfield");
         }
     }
-    let mut clx = vec![0u16; f.frame_lines as usize];
     let Some((left, top, right, bottom)) = spanning_window(start, &writes, f.frame_lines) else {
         return Ok(Drawn {
             picture: Picture::blank(0, 0, 0, 0),
-            clx,
+            clx: 0,
         });
     };
     let mut pic = Picture::blank(left, top, (right - left) as u16, bottom - top);
@@ -212,7 +212,8 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
         }
     });
     let mut dmacon = f.dmacon;
-    let mut clxcon = f.start[CLXCON as usize >> 1];
+    let mut clxcon = f.start[collide::CLXCON as usize >> 1];
+    let mut clx = 0u16;
     let mut next = 0;
     // Apply the writes before beam position (`line`, `h`).
     let mut apply = |line: u16,
@@ -232,10 +233,10 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
             if colours.apply(wr, y, pic) {
                 continue;
             }
-            if wr.reg == DMACON {
-                *dmacon = crate::irq::set_clear(*dmacon, wr.value);
-            } else if wr.reg == CLXCON {
+            if wr.reg == collide::CLXCON {
                 *clxcon = wr.value;
+            } else if wr.reg == DMACON {
+                *dmacon = crate::irq::set_clear(*dmacon, wr.value);
             } else if (reg::SPR0PTH..reg::SPR0PTH + 32).contains(&wr.reg) {
                 let c = &mut channels[((wr.reg - reg::SPR0PTH) / 4) as usize];
                 c.pt = if wr.reg & 2 == 0 {
@@ -248,7 +249,7 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
             }
         }
     };
-    for line in 0..bottom.min(f.until) {
+    for line in 0..bottom.min(f.clx_lines.end) {
         let y = line.checked_sub(top).map(|y| y as usize);
         let first = planes.fetch.first_cycle();
         apply(
@@ -283,19 +284,39 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
                 });
             }
             let lines: [Option<SpriteLine>; 8] = std::array::from_fn(|n| channels[n].line());
-            let fw = &planes.fetch;
-            if line >= FIRST_SHOWN && fw.lines().contains(&line) {
-                let cmp = collision::Compare {
+            // Denise shows colour 0 outside the window in force on the line, sprites included,
+            // and compares no pixel there.
+            let fw = planes.fetch;
+            let shown = line >= FIRST_SHOWN && fw.lines().contains(&line);
+            let (hstart, hstop) = (
+                (fw.diwstrt & 0xFF) as i32,
+                (fw.diwstop & 0xFF | 0x100) as i32,
+            );
+            let inside = |x: usize| {
+                let p = left + x as i32;
+                shown && p >= hstart && p < hstop
+            };
+            if f.clx_lines.contains(&line) && shown {
+                let cmp = collide::Compare {
                     con: clxcon,
                     dual: fw.bplcon0 & DBLPF != 0,
                 };
-                let window = (
-                    (fw.diwstrt & 0xFF) as i32,
-                    (fw.diwstop & 0xFF | 0x100) as i32,
-                );
-                let priority = planes.priority() as usize;
-                clx[line as usize] =
-                    collision::line(&cmp, &lines, row, left, window, fetching, priority);
+                // The row holds the playfield's bits here, before the sprites are drawn over it.
+                clx |= collide::line(&cmp, &lines, planes.priority() as usize, left, row, inside);
+            }
+            if f.clx_lines.contains(&line) && fetching {
+                let cmp = collide::Compare {
+                    con: clxcon,
+                    dual: fw.bplcon0 & DBLPF != 0,
+                };
+                let from = 2 * first as i32 + 15;
+                let pf = |at: i32| {
+                    usize::try_from(at - left)
+                        .ok()
+                        .and_then(|x| row.get(x).copied())
+                        .unwrap_or(0)
+                };
+                clx |= collide::sprites(&cmp, &lines, planes.priority() as usize, from, pf);
             }
             if lines.iter().any(Option::is_some) {
                 let priority = planes.priority() as usize;
@@ -307,16 +328,8 @@ pub(crate) fn draw(f: &FrameIn) -> Result<Drawn, &'static str> {
                     }
                 }
             }
-            // Denise shows colour 0 outside the window in force on the line, sprites included.
-            let fw = &planes.fetch;
-            let shown = line >= FIRST_SHOWN && fw.lines().contains(&line);
-            let (hstart, hstop) = (
-                (fw.diwstrt & 0xFF) as i32,
-                (fw.diwstop & 0xFF | 0x100) as i32,
-            );
             for (x, px) in row.iter_mut().enumerate() {
-                let p = left + x as i32;
-                if !shown || p < hstart || p >= hstop {
+                if !inside(x) {
                     *px = 0;
                 }
             }

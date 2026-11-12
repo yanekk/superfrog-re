@@ -649,12 +649,6 @@ int amiga_frame_lines(const amiga_machine *a)
     return a->lines;
 }
 
-uint16_t amiga_clxdat(const amiga_machine *a)
-{
-    // Not peekCLXDAT, which clears it as a CPU read does.
-    return const_cast<amiga_machine *>(a)->amiga().denise.spypeekCLXDAT();
-}
-
 size_t amiga_audio_out(const amiga_machine *a, const float **out)
 {
     *out = a->mixed.data();
@@ -667,6 +661,11 @@ const uint32_t *amiga_texture(const amiga_machine *a, size_t *stride, size_t *ro
     *stride = 2 * HPIXELS;
     *rows = VPIXELS;
     return reinterpret_cast<const uint32_t *>(t.pixels.ptr);
+}
+
+uint16_t amiga_clxdat(const amiga_machine *a)
+{
+    return const_cast<amiga_machine *>(a)->amiga().denise.spypeekCLXDAT();
 }
 
 void amiga_diw(const amiga_machine *a, uint16_t *diwstrt, uint16_t *diwstop)

@@ -51,7 +51,8 @@ pub struct CaseStart {
     pub mem: Vec<u8>,
     pub regs: Regs68k,
     /// Each custom register's last CPU write, by `reg / 2`; DMACONR, INTENAR and INTREQR the
-    /// set/clear state of the CPU's writes; VPOSR and VHPOSR line 0, where a step ends.
+    /// set/clear state of the CPU's writes; CLXDAT the collisions not yet read (`Amiga::clxdat`);
+    /// VPOSR and VHPOSR line 0, where a step ends.
     pub custom: [u16; 256],
     /// Disk 2, in df0 since frame [`sync::DISK_2_SWAP`].
     pub disk2: Vec<u8>,
@@ -59,6 +60,8 @@ pub struct CaseStart {
     pub pass: u32,
     /// The oracle frame the step ended at.
     pub frame: u32,
+    /// The step's input: the keys it holds the original's keyboard has sent by its end.
+    pub input: FrameInput,
 }
 
 /// [`CaseStart`] of `case`: the original from power-on along `reach_case`'s way (the level 1
@@ -111,19 +114,20 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
     am.watch_write(Some(PASS_END));
     let irq_count = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
     for step in 0..cap - case.sync_frame {
-        am.step(inputs.at(case.sync_frame + step))
-            .map_err(|e| e.to_string())?;
+        let input = inputs.at(case.sync_frame + step);
+        am.step(input).map_err(|e| e.to_string())?;
         collect(&am);
         if let Some(mem) = am.watched_memory() {
             let pass = OracleMem(&mem).value(irq_count);
             regs[custom::DMACONR as usize >> 1] = dmacon & 0x07FF;
             regs[irq::INTENAR as usize >> 1] = intena;
             regs[irq::INTREQR as usize >> 1] = intreq;
+            // The collisions Denise gathered since the program's last CLXDAT read: below the
+            // beam's line then, so the machine, starting at the frame's start, cannot draw them.
+            regs[pcode_machine::collide::CLXDAT as usize >> 1] = am.clxdat();
             // VPOSR, VHPOSR: a step ends just past the frame's end, at line 0.
             regs[0x004 >> 1] = 0;
             regs[0x006 >> 1] = 0;
-            // CLXDAT: the collisions the original has not read yet, owed to the next read (T30).
-            regs[0x00E >> 1] = am.clxdat();
             let ram = am.memory();
             let mut mem = ram.chip.clone();
             mem.extend_from_slice(&ram.slow);
@@ -142,6 +146,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
                 disk2,
                 pass,
                 frame: am.frame(),
+                input,
             });
         }
     }
@@ -233,6 +238,7 @@ impl TranslatedEngine {
                     custom: &start.custom,
                     disks: Disks { df0: start.disk2 },
                 });
+                g.held_at_start(&Input::from(start.input));
                 g.set_input(first);
                 g.watch_write(Some(PASS_END));
                 g.run(&mut |out| {

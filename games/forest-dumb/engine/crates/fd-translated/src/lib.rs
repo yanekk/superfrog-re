@@ -268,6 +268,12 @@ impl TranslatedGame {
         self.m.watch_write(w);
     }
 
+    /// The input of the frame that ended where a [`Start::Snapshot`] was taken: its keys were
+    /// already sent by the original's keyboard, so the first frame sends only what changed.
+    pub fn held_at_start(&mut self, input: &Input) {
+        self.m.keys_held(input);
+    }
+
     /// The first frame's input: the frames after it take theirs from `run`'s `each`.
     pub fn set_input(&mut self, input: Input) {
         self.input = input;

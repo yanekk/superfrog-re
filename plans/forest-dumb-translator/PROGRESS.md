@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Building phase 5; T30 reviewed.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** T46 (level1-cases-a-rest).
+**Next `pir-work` will:** T46 (level1-cases-a-rest) and T48 (level1-cases-b-pass).
 
 ## Tasks
 
@@ -44,8 +44,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T27 | routine-oracle-hw | T16, T23, T24, T25 | ✅ | |
 | T28 | translated-engine | T26, T27 | ✅ | |
 | T29 | conform-translated | T28 | ✅ | |
-| T30 | level1-cases-a | T29 | ✅ | Review: clean, one doc fix (T46 opens with Split from). Ran all 24 cases translated: 20 pass, four failing exactly T46's. Five mutations (custom slack limit, slack removed, pass lag, single-playfield rule, CLXDAT line window) each caught. Probes: collision model off fails hits_taken at pass 153; CLXDAT snapshot seed changes no case. |
-| T31 | level1-cases-b | T29 | ⬜ | |
+| T30 | level1-cases-a | T29 | ✅ | Review: clean, one doc fix (T46 Split from). 24 cases translated: 20 pass, four failing exactly T46's; same after merging T31, whose collide.rs replaced T30's collision.rs (owner's keep-one rule). Five mutations caught. Probes: collision model off fails hits_taken; CLXDAT snapshot seed changes no case. |
+| T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ⬜ | |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ✅ | |
@@ -61,6 +61,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
 
 **Review queue:** *(empty)*
 

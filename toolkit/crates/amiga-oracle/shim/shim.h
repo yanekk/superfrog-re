@@ -135,10 +135,6 @@ size_t amiga_audio_out(const amiga_machine *a, const float **out);
  * alternates them while BPLCON0's LACE bit is set and keeps the last one when it is cleared. */
 int amiga_frame_lines(const amiga_machine *a);
 
-/* CLXDAT as Denise holds it now, without the clear a CPU read makes: the collisions since the
- * program last read it. A machine started from a snapshot needs what the snapshot owes. */
-uint16_t amiga_clxdat(const amiga_machine *a);
-
 /* The finished frame: `*stride` 32-bit entries per row (one per super-hires pixel, 0xAARRGGBB with
  * each channel the OCS 4-bit value times 17), `*rows` rows, row = vertical beam position, entry
  * 4 * h = lores horizontal position h as DIWSTRT counts it. Valid until the next step. */
@@ -146,6 +142,8 @@ const uint32_t *amiga_texture(const amiga_machine *a, size_t *stride, size_t *ro
 
 /* Denise's DIWSTRT and DIWSTOP as they stand after the last step. */
 void amiga_diw(const amiga_machine *a, uint16_t *diwstrt, uint16_t *diwstop);
+/* CLXDAT as a read would return it now (bit 15 set), without the read's clearing. */
+uint16_t amiga_clxdat(const amiga_machine *a);
 
 /* Chip and slow RAM: the address of the emulator's own buffers and their sizes in bytes. */
 const uint8_t *amiga_chip(const amiga_machine *a, size_t *len);
