@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T49 (DMA contention on `pcode-machine`), which T36 waits on with T48.
+**Next `pir-work` will:** T49 (DMA contention on `pcode-machine`), which T36 waits on with T48; T47 (power-on machine) for T33.
 
 ## Tasks
 
@@ -46,7 +46,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T29 | conform-translated | T28 | ✅ | |
 | T30 | level1-cases-a | T29 | ✅ | |
 | T31 | level1-cases-b | T29 | ✅ | |
-| T32 | power-on-cases | T29 | ⬜ | |
+| T32 | power-on-cases | T29 | ✅ | |
 | T33 | later-world-cases | T32 | ⬜ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
@@ -62,6 +62,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 | T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | Diagnosis only; "every case passes" carried to T49 (Split from T46). Review clean, no fix commit: four first differences reproduced; oracle probe confirmed the original reads JOY1DAT at lines 303-304, sliding past the frame end from step 6478. Machine-side read lines read-only. T49 shape valid. |
+| T47 | machine-power-on | T32; blocks T33 | ⬜ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
 
 **Review queue:** *(empty)*

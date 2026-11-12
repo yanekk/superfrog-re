@@ -15,9 +15,12 @@ fn every_case_passes_on_the_hand_engine_as_before() {
         .filter(|p| p.extension().is_some_and(|x| x == "toml"))
         .collect();
     paths.sort();
+    // A power-on case (`start = "entry"`, translator T32) is the translated program's alone: the
+    // hand engine starts at level 1 and refuses it.
     let cases: Vec<Case> = paths
         .iter()
         .map(|p| Case::load(p).unwrap_or_else(|e| panic!("{e}")))
+        .filter(|c| !c.is_entry())
         .collect();
     assert!(cases.len() >= 43, "{} cases in {}", cases.len(), dir.display());
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());

@@ -553,11 +553,14 @@ pub fn compare_with(
             vars: true,
             picture: true,
             writes: false,
+            memory: false,
         },
         vars: compared_vars(),
         goal: None,
         exclude: known_gaps(),
         set: Vec::new(),
+        start: Default::default(),
+        align: Default::default(),
     };
     let mut start_differs = Vec::new();
     let verdict = if retimed.frames == 0 {
