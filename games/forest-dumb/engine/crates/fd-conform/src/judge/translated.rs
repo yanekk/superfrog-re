@@ -203,7 +203,7 @@ pub fn check_on(
                 sizes: &sizes,
                 code,
             };
-            return machine::run(ram, s, run, &at, &img, &mut stops);
+            return machine::run(ram, &base, s, run, &at, &img, &mut stops);
         }
         let mut before = Mem::new(base.clone(), &s.pokes);
         before.beam.set(s.beam as u16);

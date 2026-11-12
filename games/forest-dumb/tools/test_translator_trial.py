@@ -348,6 +348,27 @@ class Trial(unittest.TestCase):
         self.assertTrue(seen[2][0].endswith(os.path.join('release', 'fd-judge')), seen[2])
         self.assertTrue(t.judge_bin(False).endswith(os.path.join('debug', 'fd-judge')))
 
+    def test_machine_judges_on_the_machine_into_its_own_files(self):
+        # The stub judge records its arguments: --machine on every translated run, never the survey.
+        seen = self.write('seen.txt', '')
+        judge = os.environ['FD_TRIAL_JUDGE'].split()[-1]
+        with open(judge) as f:
+            src = f.read()
+        with open(judge, 'w') as f:
+            f.write(f'import sys\nopen({seen!r}, "a").write(" ".join(sys.argv[1:]) + "\\n")\n' + src)
+        code, out, err = self.run_trial('--machine')
+        self.assertEqual(code, 0, err)
+        with open(seen) as f:
+            runs = f.read().splitlines()
+        translated = [x for x in runs if x.endswith('--translated')]
+        self.assertTrue(translated)
+        self.assertTrue(all('--machine --translated' in x for x in translated), runs)
+        self.assertFalse([x for x in runs if x.endswith('--survey') and '--machine' in x], runs)
+        with open(os.path.join(self.paths.out, 'trial-machine.json')) as f:
+            self.assertEqual(json.load(f)['hardware'], 'machine')
+        self.assertTrue(os.path.exists(os.path.join(self.paths.out, 'table-machine.md')))
+        self.assertFalse(os.path.exists(os.path.join(self.paths.out, 'trial.json')), 'the plain reading is left alone')
+
     def test_a_judge_past_its_limit_fails_as_timeout(self):
         slow = self.write('slow.py', 'import time; time.sleep(5)\n')
         os.environ['FD_TRIAL_JUDGE'] = f'{shlex.quote(sys.executable)} {shlex.quote(slow)}'

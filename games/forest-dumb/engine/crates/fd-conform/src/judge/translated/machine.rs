@@ -5,21 +5,29 @@
 //! How a [`Setup`] is laid on the machine:
 //!
 //! - **Memory:** `Machine::from_snapshot` of the rig's memory (program, generator base, the state's
-//!   pokes) as the A500 has it: chip RAM from 0, slow RAM from `$C00000`, 512 KB each. A poke the
-//!   A500 has no RAM for is left out; an access there stops `outside-memory`, as on the machine.
-//! - **The stack:** the rig calls the original on [`STACK`], in its flat 16 MB, where the A500 has
-//!   no RAM. [`STACK_AREA`] is kept beside the machine ([`OnMachine`]), so a7 and every byte
-//!   pushed are the original's; the rig does not compare that area.
+//!   pokes) as the A500 has it: chip RAM from 0, slow RAM from `$C00000`, 512 KB each.
+//! - **Everything else is the oracle's flat memory** ([`OnMachine`]): the machine gets chip RAM
+//!   (not its mirrors), slow RAM and the custom registers at `$DFF000`; the CIAs' `$BFxxxx` are the
+//!   oracle's (below); any other address is a byte of the rig's flat
+//!   16 MB ([`super::Mem`]), as the original saw it. The rig's [`STACK`] is there, so a7 and every
+//!   byte pushed are the original's. The reason: generators give random pointers, which the
+//!   original follows into flat memory and the A500 would follow into nothing, a chip RAM mirror
+//!   or a custom register mirror; those are the rig's memory, not a hardware model.
 //! - **Hardware reads the case gives** (`Setup::hw_reads`) are answered as the routine oracle answers
 //!   them: a custom register's word from its two bytes (a byte not given reads 0), by a device
-//!   attached to that register ([`CaseReads`]); a CIA's, by a device on that CIA. INTENAR and
+//!   attached to that register ([`CaseReads`]). INTENAR and
 //!   INTREQR, which no device may answer, are the snapshot's INTENA and INTREQ. VHPOSR given by a
 //!   case is ignored, as the oracle ignores it.
 //! - **The beam:** at line `Setup::beam`, slot 0, at cycle 0, so the first VHPOSR read gives the
 //!   byte the original's first read gave; later reads follow the counted cycles, where the oracle's
 //!   count one a read.
 //! - **DMA:** [`DMACON`], the blitter alone: the routine oracle runs no copper, display or sound.
-//!   Interrupts are all disabled, as the oracle takes none; CIA-A is at reset.
+//!   Interrupts are all disabled, as the oracle takes none.
+//! - **The CIAs are the oracle's:** a byte read in `$BF0000..$BFFFFF` gives what the case gives,
+//!   else 0, and a write there is dropped, as the routine oracle's hardware mode does. The machine's
+//!   CIA-A model is not used: the oracle has none to judge it against (T25 and T26 check it on whole
+//!   runs), a generated pointer into `$BFxxxx` would otherwise reach its timers, which stop the run,
+//!   and a byte no CIA answers reads the data bus on the machine, 0 on the oracle.
 //!
 //! Compared as on [`super::Mem`]: the registers, every RAM byte that differs from the snapshot
 //! (slow RAM at its `$C00000` address), and the custom-register writes in order, the CPU's and any
@@ -28,13 +36,14 @@
 use std::sync::Arc;
 
 use amiga_oracle::{RETURN_SENTINEL, Regs};
-use pcode_machine::custom::{self, Cia};
+use pcode_machine::custom;
 use pcode_machine::{Config, Device, Machine};
 use pcode_rt::{Bus, Image, Stop};
 
+use super::Mem;
 use super::{Entry, Stops, fail, on_run_stack};
 use crate::HUNK_BASES;
-use crate::routine::{Effects, STACK, STACK_AREA, Setup};
+use crate::routine::{Effects, STACK, Setup};
 
 /// The A500's chip RAM, and slow RAM at [`SLOW_BASE`] (`Config::a500`).
 const CHIP: usize = 0x8_0000;
@@ -109,17 +118,14 @@ impl CaseReads {
     }
 }
 
-/// The custom registers' snapshot and the devices `s.hw_reads` asks for.
-fn lay_hardware(s: &Setup) -> ([u16; 256], CaseReads, [CaseReads; 2]) {
+/// The custom registers' snapshot, the device `s.hw_reads` asks for, and the CIA bytes it gives.
+fn lay_hardware(s: &Setup) -> ([u16; 256], CaseReads, Vec<(u32, u8)>) {
     let mut regs = [0u16; 256];
     regs[custom::DMACONR as usize >> 1] = DMACON;
     // VPOSR (LOF, a long frame) and VHPOSR: line `beam`, slot 0, at cycle 0.
     regs[custom::VPOSR as usize >> 1] = 0x8000;
     regs[custom::VHPOSR as usize >> 1] = (s.beam as u16) << 8;
-    let (mut reads, mut cias) = (
-        CaseReads::default(),
-        [CaseReads::default(), CaseReads::default()],
-    );
+    let (mut reads, mut cias) = (CaseReads::default(), Vec::new());
     for &(a, v) in &s.hw_reads {
         let a = a & 0xFF_FFFF;
         if a & 0xFF_FE00 == 0xDF_F000 {
@@ -139,30 +145,34 @@ fn lay_hardware(s: &Setup) -> ([u16; 256], CaseReads, [CaseReads; 2]) {
                 }
                 _ => reads.set(reg, hi, v),
             }
-        } else if a & 0xFF_0000 == 0xBF_0000 {
-            // A byte no CIA answers reads the bus on the machine, 0 on the oracle: left to the bus.
-            if let Some(cia) = custom::cia_read8(a) {
-                cias[cia as usize].set(custom::cia_reg(a), false, v);
-            }
+        } else if is_cia(a) {
+            // A later byte for the same address wins, as in the oracle's map.
+            cias.retain(|&(at, _)| at != a);
+            cias.push((a, v));
         }
     }
     (regs, reads, cias)
 }
 
-/// The machine with the rig's stack beside it: [`STACK_AREA`] is the oracle's flat memory, not the
-/// A500's, so it is kept here and every other access goes to the machine.
+/// The machine, and the rig's flat memory for every address outside the hardware windows the
+/// oracle has and outside the A500's RAM.
 struct OnMachine {
     m: Machine,
-    stack: Vec<u8>,
+    flat: Mem,
+    /// The CIA bytes the case gives, by address.
+    cia: Vec<(u32, u8)>,
 }
 
-impl OnMachine {
-    fn stack_index(a: u32) -> Option<usize> {
-        let a = a & 0xFF_FFFF;
-        STACK_AREA
-            .contains(&a)
-            .then(|| (a - STACK_AREA.start) as usize)
-    }
+/// Whether the machine answers `a`: chip RAM below its mirrors, slow RAM and the custom registers'
+/// `$DFF000` window.
+fn on_machine(a: u32) -> bool {
+    let a = (a & 0xFF_FFFF) as usize;
+    a < CHIP || (SLOW_BASE..SLOW_BASE + SLOW).contains(&a) || a & 0xFF_FE00 == 0xDF_F000
+}
+
+/// The oracle's CIA window, `$BF0000..$BFFFFF`.
+fn is_cia(a: u32) -> bool {
+    a & 0xFF_0000 == 0xBF_0000
 }
 
 impl Bus for OnMachine {
@@ -173,33 +183,42 @@ impl Bus for OnMachine {
         self.m.call_outside(a, r, img)
     }
     fn rb(&mut self, a: u32) -> u8 {
-        match Self::stack_index(a) {
-            Some(i) => self.stack[i],
-            None => self.m.rb(a),
+        let a = a & 0xFF_FFFF;
+        if on_machine(a) {
+            self.m.rb(a)
+        } else if is_cia(a) {
+            self.cia
+                .iter()
+                .find(|&&(at, _)| at == a)
+                .map_or(0, |&(_, v)| v)
+        } else {
+            self.flat.ram(a)
         }
     }
     fn rw(&mut self, a: u32) -> u16 {
-        match Self::stack_index(a) {
-            Some(_) => (self.rb(a) as u16) << 8 | self.rb(a.wrapping_add(1)) as u16,
-            None => self.m.rw(a),
+        if on_machine(a) {
+            self.m.rw(a)
+        } else {
+            (self.rb(a) as u16) << 8 | self.rb(a.wrapping_add(1)) as u16
         }
     }
     fn rl(&mut self, a: u32) -> u32 {
         (self.rw(a) as u32) << 16 | self.rw(a.wrapping_add(2)) as u32
     }
     fn wb(&mut self, a: u32, v: u8) {
-        match Self::stack_index(a) {
-            Some(i) => self.stack[i] = v,
-            None => self.m.wb(a, v),
+        let a = a & 0xFF_FFFF;
+        if on_machine(a) {
+            self.m.wb(a, v)
+        } else if !is_cia(a) {
+            self.flat.wb(a, v)
         }
     }
     fn ww(&mut self, a: u32, v: u16) {
-        match Self::stack_index(a) {
-            Some(_) => {
-                self.wb(a, (v >> 8) as u8);
-                self.wb(a.wrapping_add(1), v as u8);
-            }
-            None => self.m.ww(a, v),
+        if on_machine(a) {
+            self.m.ww(a, v)
+        } else {
+            self.wb(a, (v >> 8) as u8);
+            self.wb(a.wrapping_add(1), v as u8);
         }
     }
     fn wl(&mut self, a: u32, v: u32) {
@@ -209,7 +228,7 @@ impl Bus for OnMachine {
 }
 
 /// The machine a state starts on: `ram` with `s`'s pokes, the hardware [`lay_hardware`] lays.
-pub fn machine_for(ram: &[u8], s: &Setup) -> Machine {
+fn machine_for(ram: &[u8], s: &Setup) -> (Machine, Vec<(u32, u8)>) {
     let mut mem = ram.to_vec();
     for (a, bytes) in &s.pokes {
         for (k, &b) in bytes.iter().enumerate() {
@@ -220,37 +239,39 @@ pub fn machine_for(ram: &[u8], s: &Setup) -> Machine {
     }
     let (regs, reads, cias) = lay_hardware(s);
     let mut m = Machine::from_snapshot(Config::a500(HUNK_BASES.to_vec()), &mem, &regs);
+    // The machine puts its ExecBase at $4 (`os`); the original's memory holds the rig's bytes there,
+    // and a routine indexing low memory must read what the original read.
+    m.chip_mut()[..8].copy_from_slice(&mem[..8]);
     let given: Vec<u16> = reads.words.iter().map(|&(r, _)| r).collect();
     for reg in given {
         m.attach(reg..reg + 2, Box::new(reads.clone()));
     }
-    for (cia, dev) in [Cia::A, Cia::B].into_iter().zip(cias) {
-        if !dev.words.is_empty() {
-            m.attach_cia(cia, Box::new(dev));
-        }
-    }
-    m
+    (m, cias)
 }
 
 /// Run `run` from state `s` on the machine, as [`super::check_on`] runs it on [`super::Mem`].
+#[allow(clippy::too_many_arguments)]
 pub(super) fn run(
     ram: &[u8],
+    flat: &Arc<Vec<u8>>,
     s: &Setup,
     run: Option<Entry>,
     at: &str,
     img: &Image,
     stops: &mut Stops,
 ) -> Effects {
-    let m = machine_for(ram, s);
-    // The machine writes ExecBase at $4 when built: memory before the routine is the machine's.
+    let (m, cia) = machine_for(ram, s);
     let before = (m.chip().to_vec(), m.slow().to_vec());
+    // The oracle's return address below its stack, a7 on it (`Cpu68k::call`), as on `Mem`: written
+    // before the snapshot, so it is no write of the routine's.
+    let sp = STACK - 4;
+    let mut flat_before = Mem::new(flat.clone(), &s.pokes);
+    flat_before.wl(sp, RETURN_SENTINEL);
     let mut bus = OnMachine {
         m,
-        stack: vec![0; (STACK_AREA.end - STACK_AREA.start) as usize],
+        flat: flat_before.clone(),
+        cia,
     };
-    // The oracle's return address below its stack, a7 on it (`Cpu68k::call`), as on `Mem`.
-    let sp = STACK - 4;
-    bus.wl(sp, RETURN_SENTINEL);
     let mut r = pcode_rt::Regs::new();
     for n in 0..8 {
         r.set_d(n, s.d[n]);
@@ -265,7 +286,8 @@ pub(super) fn run(
         fail(stops, stop);
     }
     let m = &bus.m;
-    let mut writes = Vec::new();
+    // The flat bytes are outside the machine's windows by `on_machine`, so no address is listed twice.
+    let mut writes = bus.flat.changed_since(&flat_before);
     changed(m.chip(), &before.0, 0, &mut writes);
     changed(m.slow(), &before.1, CHIP, &mut writes);
     Effects {
@@ -314,6 +336,22 @@ mod tests {
     }
 
     #[test]
+    fn the_machine_answers_the_a500s_ram_and_the_oracles_hardware_windows_only() {
+        for a in [0, 0x7_FFFF, 0xC0_0000, 0xC7_FFFF, 0xDF_F000, 0xDF_F1FF] {
+            assert!(on_machine(a), "${a:06x}");
+        }
+        // A chip RAM mirror, the rig's stack, a custom register mirror, the CIAs' $A00000 mirror,
+        // and the oracle's CIA window, which the judge answers itself.
+        for a in [
+            0x8_0000, 0x7E_FFFC, 0xC8_0000, 0xDE_F000, 0xDF_F200, 0xA0_E001, 0xFF_FFFF, 0xBF_E001,
+        ] {
+            assert!(!on_machine(a), "${a:06x}");
+        }
+        assert!(is_cia(0xBF_1697) && is_cia(0xBF_E001) && !is_cia(0xA0_E001));
+        assert!(on_machine(0xFF00_0004), "24 bits");
+    }
+
+    #[test]
     fn case_reads_become_words_on_their_registers_and_cias() {
         let s = Setup {
             hw_reads: vec![
@@ -328,15 +366,13 @@ mod tests {
             beam: 0x2C,
             ..Setup::default()
         };
-        let (regs, mut reads, mut cias) = lay_hardware(&s);
+        let (regs, mut reads, cias) = lay_hardware(&s);
         assert_eq!(regs[1], DMACON);
         assert_eq!((regs[2], regs[3]), (0x8000, 0x2C00));
         assert_eq!(regs[0x0F], 0x0040, "INTREQR is the snapshot's INTREQ");
         assert_eq!(reads.read(0x002, 0), 0x1234);
         assert_eq!(reads.read(0x00E, 0), 0x0056, "a byte not given reads 0");
         assert_eq!(reads.words.len(), 2, "VHPOSR is the beam's");
-        assert_eq!(cias[Cia::A as usize].read(0, 0), 0x7F);
-        assert_eq!(cias[Cia::B as usize].read(1, 0), 0x01);
-        assert_eq!(cias[Cia::B as usize].read(0, 0), 0);
+        assert_eq!(cias, [(0xBF_E001, 0x7F), (0xBF_D100, 0x01)]);
     }
 }

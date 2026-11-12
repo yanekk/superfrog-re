@@ -149,9 +149,9 @@ fn lay_reads(m: &mut [u8]) {
     lay(m, &READS);
 }
 
-/// Random registers; JOY1DAT's and CLXDAT's bytes given or not (a byte not given reads 0),
-/// DMACONR's high or low byte or both, PRA always. Where a case gives none of a register's bytes
-/// the machine's own model answers: DMACONR reads the judge's DMACON, CIA-A's PRA its port lines,
+/// Random registers; JOY1DAT's, CLXDAT's and PRA's bytes given or not (a byte not given reads 0,
+/// a CIA's as on the oracle), DMACONR's high or low byte or both: where a case gives none of a
+/// custom register's bytes the machine's own model answers, and DMACONR reads the judge's DMACON
 /// where the oracle reads 0.
 fn reads_case(g: &mut Gen) -> Setup {
     let mut s = Setup::random(g);
@@ -170,7 +170,9 @@ fn reads_case(g: &mut Gen) -> Setup {
             }
         }
     }
-    s.hw_reads.push((0xbf_e001, g.next() as u8));
+    if !g.one_in(3) {
+        s.hw_reads.push((0xbf_e001, g.next() as u8));
+    }
     s
 }
 
