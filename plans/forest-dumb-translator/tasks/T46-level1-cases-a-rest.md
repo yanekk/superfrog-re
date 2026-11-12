@@ -1,5 +1,7 @@
 # T46 — level1-cases-a-rest
 
+**Split from:** T30 (owner, 2026-11-12); carries T30's "Every case above passes" for its four cases below.
+
 **Phase:** 5 · **Depends on:** T30; blocks T36 · **Weight:** medium
 
 ## Goal
