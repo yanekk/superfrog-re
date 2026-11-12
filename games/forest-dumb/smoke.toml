@@ -19,6 +19,12 @@ workspace = "engine"
 # Translator T28: 50 frames and w1-idle from the sync point on the generated tree; about 10 and 15 s
 # warm, but the tree's build (about 40 s) and the disks put them in full.
 "crates/fd-conform/tests/translated_engine.rs" = "full"
+# Translator T29: the frame runner against a stand-in copy of the original from the cached sync point,
+# Paula's writes swapped, dropped and kept, and a moving case (T29 review): six runs of 10 to 60
+# frames, about 2 s warm.
+"crates/fd-conform/tests/frames.rs" = "smoke"
+# Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
+"crates/fd-conform/tests/engine_hand.rs" = "full"
 # Translator T35: the seam's judge on a made-up routine, about 3 s, no disks. The two adapters on
 # 2 000 states of the generated tree need the disks and the tree's build, so are full.
 "crates/fd-conform/tests/seam.rs" = [
@@ -692,6 +698,10 @@ covers = ["crates/fd-e2e/tests/finish_short.rs::the_routes_first_stretch_plays_i
 [[area]]
 name = "the translated program run frame by frame from a snapshot"
 covers = ["crates/fd-translated/tests/engine.rs"]
+
+[[area]]
+name = "judging the translated program on the frame bar: state, picture and Paula's writes each frame"
+covers = ["crates/fd-conform/tests/frames.rs"]
 
 [[area]]
 name = "a hand-written routine held to the translated routine it replaces (the seam)"

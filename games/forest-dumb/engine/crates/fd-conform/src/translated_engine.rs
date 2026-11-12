@@ -17,22 +17,27 @@
 //! `fd-translated` resumes.
 //!
 //! **One pass, one frame.** A pass runs the translated program from one frame boundary to the next,
-//! the frame whose level 3 interrupt runs `game_frame`. The probe reads RAM at that boundary, where
-//! the original's runner reads it at the pass end (`PASS_END`): what the foreground writes between
-//! the two is a difference this adapter does not hide (T29 settles the comparison).
+//! the frame whose level 3 interrupt runs `game_frame`. The probe reads RAM at that boundary. Under
+//! the pass runner (`run_with`) the original is read at its pass end (`PASS_END`) instead; the
+//! frame bar (DESIGN §2.7) is judged by [`crate::frames`] ([`FrameEngine`], [`run_translated`]),
+//! which reads both sides at the frame's end (T29).
 
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 
 use amiga_conform::script;
 
-use amiga_oracle::{Amiga, FrameInput, OracleConfig, kickstart_path};
+use amiga_oracle::{Amiga, FrameInput, OracleConfig, PaulaWrite, kickstart_path};
 use fd_core::{Mem, Transplant, Var, layout_var};
 use fd_translated::{Control, RUN_STACK, Regs68k, Start, TranslatedGame};
 use pcode_machine::{Disks, Input, Picture, custom, irq};
 use pcode_rt::Stop;
 
-use crate::{Case, Engine, HUNK_BASES, Inputs, OracleMem, PASS_END, address, disks, sync};
+use crate::frames::{FrameEngine, run_frames};
+use crate::{
+    Case, Compare, Engine, HUNK_BASES, Inputs, OracleMem, Options, PASS_END, Verdict, address,
+    disks, sync,
+};
 
 /// Chip RAM's size on the oracle's A500, where slow RAM starts in a snapshot's bytes.
 const CHIP: usize = 512 << 10;
@@ -148,6 +153,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
 /// One frame as the game thread hands it over.
 struct Frame {
     picture: Picture,
+    paula: Vec<PaulaWrite>,
     stop: Option<Stop>,
     /// Chip RAM then slow RAM at the frame's end.
     mem: Vec<u8>,
@@ -168,6 +174,7 @@ pub struct TranslatedEngine {
     /// RAM as the last pass left it (the start's until the first).
     mem: Vec<u8>,
     picture: Option<Picture>,
+    paula: Vec<PaulaWrite>,
     stop: Option<(u32, Stop)>,
     passes: u32,
 }
@@ -180,6 +187,7 @@ impl TranslatedEngine {
             start: Some(start),
             link: None,
             picture: None,
+            paula: Vec::new(),
             stop: None,
             passes: 0,
         }
@@ -217,8 +225,20 @@ impl TranslatedEngine {
                 g.run(&mut |out| {
                     let mut mem = out.chip.to_vec();
                     mem.extend_from_slice(out.slow);
+                    // The machine's beam positions are its own; the comparison ignores them.
+                    let paula = out
+                        .paula
+                        .iter()
+                        .map(|&(_, reg, value)| PaulaWrite {
+                            reg,
+                            value,
+                            hpos: 0,
+                            vpos: 0,
+                        })
+                        .collect();
                     let sent = frames.send(Frame {
                         picture: out.picture.clone(),
+                        paula,
                         stop: out.stop.clone(),
                         mem,
                     });
@@ -298,9 +318,9 @@ impl Transplant for TranslatedEngine {
     }
 }
 
-impl Engine for TranslatedEngine {
+impl TranslatedEngine {
     /// One frame of the translated program on `input`. After a stop, nothing runs.
-    fn pass(&mut self, input: FrameInput) {
+    fn advance(&mut self, input: FrameInput) {
         if self.stop.is_some() {
             return;
         }
@@ -317,13 +337,73 @@ impl Engine for TranslatedEngine {
         self.passes += 1;
         self.mem = f.mem;
         self.picture = Some(f.picture);
+        self.paula = f.paula;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
+    }
+}
+
+impl Engine for TranslatedEngine {
+    fn pass(&mut self, input: FrameInput) {
+        self.advance(input);
     }
 
     /// The machine's whole picture of the last frame, not cut to the play window (T29's).
     fn picture(&self) -> Option<Picture> {
         self.picture.clone()
     }
+}
+
+impl FrameEngine for TranslatedEngine {
+    fn frame(&mut self, input: FrameInput) {
+        self.advance(input);
+    }
+
+    fn picture(&self) -> Option<Picture> {
+        self.picture.clone()
+    }
+
+    fn paula(&self) -> &[PaulaWrite] {
+        &self.paula
+    }
+
+    fn stopped(&self) -> Option<String> {
+        self.stop.as_ref().map(|(_, s)| s.to_string())
+    }
+}
+
+/// `case` as the frame bar judges the translated program (DESIGN §2.7): the case's state (every
+/// play variable in `LAYOUT` where the case lists none), the picture and Paula's writes, every
+/// frame. The case's exclusions are left out: each names a hand engine task, and an acceptance for
+/// the translated program is written with its own measurement (§2.7).
+pub fn frame_bar(case: &Case) -> Case {
+    let vars = if case.vars.is_empty() {
+        crate::bug::compared_vars()
+    } else {
+        case.vars.clone()
+    };
+    Case {
+        compare: Compare {
+            vars: true,
+            picture: true,
+            writes: true,
+        },
+        vars,
+        exclude: Vec::new(),
+        ..case.clone()
+    }
+}
+
+/// Level case `case` on the translated program, judged on the frame bar ([`frame_bar`]).
+pub fn run_translated(case: &Case, opts: &Options) -> Result<Verdict, String> {
+    if !case.is_level() {
+        return Err(format!(
+            "{}: the translated engine runs level cases; a power-on case is T32's",
+            case.name
+        ));
+    }
+    let bar = frame_bar(case);
+    let mut e = TranslatedEngine::new(case_start(&bar)?);
+    run_frames(&bar, &mut e, opts)
 }

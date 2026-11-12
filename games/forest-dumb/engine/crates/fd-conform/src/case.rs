@@ -25,6 +25,9 @@ pub struct Compare {
     pub vars: bool,
     /// The play area and the status bar, each frame a pass ended in, within the owner's tolerance.
     pub picture: bool,
+    /// Paula's writes of each frame, in order (translator T29): the frame runner's alone
+    /// ([`crate::frames`]); the hand engine plays no sound.
+    pub writes: bool,
 }
 
 /// What a level case must reach, besides both sides agreeing: two sides failing alike agree
@@ -521,9 +524,11 @@ fn compare_list(v: &Value) -> Result<Compare, String> {
         let slot = match what.as_str() {
             "vars" => &mut c.vars,
             "picture" => &mut c.picture,
+            "writes" => &mut c.writes,
             other => {
                 return Err(format!(
-                    "compare = \"{other}\": this runner compares \"vars\" and \"picture\""
+                    "compare = \"{other}\": this runner compares \"vars\", \"picture\" and \
+                     \"writes\""
                 ));
             }
         };
@@ -684,7 +689,8 @@ mod tests {
                 input: None,
                 compare: Compare {
                     vars: true,
-                    picture: false
+                    picture: false,
+                    writes: false
                 },
                 vars: vec!["mt_counter".into()],
                 goal: None,
@@ -703,7 +709,8 @@ mod tests {
             c.compare,
             Compare {
                 vars: true,
-                picture: true
+                picture: true,
+                writes: false
             }
         );
         assert_eq!(

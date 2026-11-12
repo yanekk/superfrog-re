@@ -6,6 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 🔄 | **T45 added** (owner, T29 review): T29 compares Paula's writes only, not §2.7's other custom-chip writes. T45 adds them per frame as a (register, value) multiset, Paula's in order, and blocks T30, T31, T32. |
+| 2026-11-12 | 📌 | **T29 first reading** (`build/translated-cases.md`): 42 level cases, 0 pass. First differences: Paula writes 14, `char_y` 11, `clxdat_copy` 7, `char_x` 6, `edge_latch_left` 4. Six held state and picture all their frames (w1-idle 199). |
+| 2026-11-12 | 🐞 | **T29 Paula writes:** translated `game_frame` ends at line 301, the original's at 310 (no DMA contention), so the music's 12 AUD writes land at line 307, not line 4 of the next frame: one frame early. |
+| 2026-11-12 | 🐞 | **T29 CLXDAT:** `clxdat_copy` is 0 on the translated machine, `$8061` on the original, from frame 1 in seven cases: `pcode-machine` does not model sprite collisions. |
 | 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |
 | 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |
 | 2026-11-12 | 📌 | **T35 seam:** `fd-judge --seam` passes `camera_update` and `char_sprite_position` 2 000/2 000 against the generated tree. A mounted routine counts no cycles or `Regs::depth`; T36 should measure whether `game_frame`'s missing cycles show at a frame boundary. |
@@ -34,8 +38,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 📌 | T11/T12 timings follow Moira (`cyclesMul`, `cyclesDiv`, `cyclesBit`; `andi.l #imm,Dn` 16 where MC68000UM table 8-9 gives 14); real hardware unmeasured. Divide by zero (38), `trap` (34), `chk` trapping (40) are the manual's, unjudged. |
 | 2026-11-11 | 📌 | A `mulu`/`muls`/`divu`/`divs` with a memory source stops the run (`Stop::Unsupported`, `cycles: mulu.w with a (An) source`) rather than read its operand twice; the game has only `Dn` and `#imm` sources (T12). |
 | 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
-| 2026-11-11 | 📌 | **T11 build time**, load about 15: cycle ticks cost fd-judge `--parts 16` release 11.2 s against 9.8 s, dev 5.0 against 3.5 s. |
-| 2026-11-11 | 📌 | A `pcode_fix.emit` instruction (T09's register shifts) gets its `cycles(ins)` tick first, as any other (T11); T12's register-count shift cost needs the count `cnt` the emit computes. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 sinc: `packflags` ORs T, S and the mask into a one-byte temporary; CCR ops and `rtr` write all of SR; `rte` is `return [0]`; `movem.w -(An)` steps 4. Corrected by pattern in `pcode_fix/move_control.py` (T10). |
 | 2026-11-11 | 📌 | T10 rig: `judge/insn.rs` starts pcode-rt's `USP` at a7, as Moira's step does, and compares the stack pointer not in a7. States always start supervisor, so `sr_set` entering supervisor mode is unit-tested only. |
 | 2026-11-11 | 📌 | `DEPTH_CAP` 32 rests on static call depth. A return outside its caller (`ret_check`, then `enter`) nests a Rust frame the original lacks, so running depth can exceed 8 (T14 review, read-only). T16/T28 should record the deepest `Regs::depth`. |
@@ -49,9 +51,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | Ghidra 12.0 steps A7 by 1 in `cmpm.b (a7)+,(a7)+` (its `(A7)+` addressing mode elsewhere steps 2). Corrected by pattern in `pcode_fix/compare.py` (T07). |
 | 2026-11-11 | 🐞 | `cargo fmt` rewrites the pcode-rt fixtures (`tests/fixtures/*.rs`, `#[path]` mods in `translated.rs` lack `#[rustfmt::skip]`), which would fail `test_pcode_rust.py`'s currency check (T06 review sweep). Left alone. |
 | 2026-11-11 | 🐞 | `--out` naming a file or an unwritable path gives a traceback, not exit 2 (unguarded `os.makedirs`, temp-rename write) in `pcode_export.py`, `re_listing.py`, `translate_batch.py`, `translator_trial.py` (T04 review sweep). Left alone. |
-| 2026-11-11 | 📌 | **T04 census:** 290 kinds over 6 684 instructions. Commonest: rts 379, lea abs.l,An 375, bsr.w label 293, move.w #imm,abs.l 220, bne.w 219, beq.w 203, adda.l Dn,An 199, clr.l Dn 160, andi.l #imm,Dn 143, move.w abs.l,Dn 134. |
 | 2026-11-11 | 📌 | **T04 build times**, fd-judge rebuild with the whole tree (199 functions, 8 658 instructions emitted): release one module 28.0 s, parts 4/8/16/32 14.8/12.8/10.8/11.2 s; dev 4 to 7 s throughout; no tree 3.1 s. Default `--parts 16`. |
-| 2026-11-11 | 📌 | Call graph: 197 of 199 functions form one component, so components alone give one part. Single-caller folding capped at a part's share; 358 of 558 call sites cross parts. Runtime cost unmeasured; T06's judge runs show it. |
 | 2026-11-11 | 📌 | Ghidra's operand text loses modes: movem `-(An)`/`(An)+` print as bare `SP`, `jsr -n(a6)` as two operands, absolute `jsr` as a number. `pcode_census.py` reads those from the opcode word. |
 | 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` (`symbols.toml`) and `load_entries` (`--routines`, `translate.toml`) crash with a bare `KeyError` traceback on a row missing a key, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 📌 | **T03 whole export:** 6 684 instructions (h0 5 774, h4 910), 143 entries (program-entry 1, symbol 142), vectors `h0+$1eda`, `$1f7a` (both symbols); 24 `unresolved_computed`, every one an OS call `jsr -n(a5|a6)`. Trial on it: 84 of 85. |

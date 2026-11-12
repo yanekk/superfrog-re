@@ -15,6 +15,8 @@ Anywhere under `games/forest-dumb/engine/`:
 ```sh
 cargo run -p fd-conform -- run cases/first-case.toml   # one case, prints the verdict; about 35 s
 cargo run -p fd-conform -- run cases/w1-idle.toml      # a level case, on fd-core's Game
+cargo run -p fd-conform -- run cases/w1-idle.toml --engine translated   # on the translated program
+cargo run -p fd-conform -- run-all --engine translated --report ../build/translated-cases.md
 ```
 
 Exit 0 when the case passes, 1 for a failure or a missing input, 2 for a wrong command line. The
@@ -29,6 +31,20 @@ through `fd_conform::run_with` with a stand-in engine, a second copy of the orig
 (`fd-conform/tests/common/mod.rs`, used by `tests/runner.rs` and `tests/input_timing.rs`), so it can be
 made to differ in exactly one way. `stub-level.toml` fails on `Game` until the character moves (T08);
 `w1-idle.toml` is the level engine's own case (T07).
+
+`--engine translated` (translator T29) runs a level case on the translated program
+(`fd_conform::translated_engine::run_translated`, the tree from `tools/translate.py --build`), judged
+on the frame bar (translator DESIGN §2.7) by the frame runner, `fd_conform::frames`: the engine starts at
+the same pass end and then runs one frame per oracle step on that step's input, and at every frame's
+end both sides' state (the case's `vars`, or every play variable in `LAYOUT` where it lists none), the
+picture in the play window and Paula's writes of the frame, in order (`amiga_conform::compare::paula`,
+beam positions ignored) must be equal. The case's `exclude` rows are left out on this engine: each
+names a hand engine task. A stop (`untranslated: hN+$off` and the rest) fails the case naming the frame.
+`run-all` and `run --engine translated` go on past a channel's first difference with the others
+(`Options::every_channel`) and print each channel's first; `run-all --report` writes a Markdown reading
+grouped by the task that works from it (T30, T31) and sorted by first difference. A title case is not
+run on `translated` (power-on cases are T32's). `--engine hand` is the default and the pass runner,
+unchanged.
 
 ## A case
 
@@ -53,6 +69,8 @@ swap = { frame = 3600, disk = 2 }                   # title cases only: this dis
   script makes a title case, booted from power-on, stepping forest-dumb-start's title scene a frame
   at a time; title cases compare `vars` only and take no `goal` or `exclude`.
 - **`input`.** Without it the sync script goes on after the sync point.
+- **`compare`.** `"vars"`, `"picture"`, and `"writes"`: Paula's writes of every frame, in order, which
+  only the frame runner compares (the hand engine plays no sound, and `run_with` refuses such a case).
 - **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
   alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
   compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
