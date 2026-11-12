@@ -59,7 +59,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
-| T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ⬜ | |
+| T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
 
 **Review queue:** *(empty)*
 
