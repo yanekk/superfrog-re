@@ -210,3 +210,56 @@ fn a_start_inside_a_handler_returns_to_the_interrupted_foreground() {
     assert_eq!(counts, [2, 3, 4]);
     assert_eq!(g.regs().a(7), STACK, "the frame was popped");
 }
+
+/// A level 3 handler that runs past a frame's end: 1.5 frames of blocks, then the made-up
+/// program's own handler (count plus one, `rte`).
+fn slow_handler(
+    r: &mut pcode_rt::Regs,
+    bus: &mut dyn pcode_rt::Bus,
+    img: &pcode_rt::Image,
+) -> Result<(), Stop> {
+    for _ in 0..213 {
+        r.tick(1000);
+        pcode_rt::block_start(bus, r, img)?;
+    }
+    prog::h0_40(r, bus, img)
+}
+
+/// The frame boundary is seen inside a handler, not when it returns: the host runs handlers on its
+/// own bus (`enter_interrupt`, the handler, `leave_interrupt`), so a handler's blocks reach its
+/// `poll`. Handlers run on the machine's bus would hand the first frame over after the handler's
+/// count, a frame late.
+#[test]
+fn a_frame_that_ends_inside_a_handler_is_handed_over_there() {
+    let (mem, custom) = memory();
+    let slow = Program {
+        entry: |a| match a {
+            "h0+$40" => Some(slow_handler),
+            _ => prog::entry(a),
+        },
+        ..PROG
+    };
+    let mut g = TranslatedGame::with_program(
+        slow,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    let mut counts = Vec::new();
+    let stop = g.run(&mut |out| {
+        counts.push(word(out, COUNT));
+        if counts.len() == 3 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    assert_eq!(stop, None);
+    // Frame 1 ends mid-handler, before its count; the handler returns in frame 2, whose VERTB,
+    // held pending meanwhile, starts it again at once, and frame 3 ends inside that one.
+    assert_eq!(counts, [0, 1, 1], "frame 1 handed over inside the handler");
+}
