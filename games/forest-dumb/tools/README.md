@@ -38,13 +38,14 @@ passes, 1 otherwise (a failed step named on stderr), 2 on usage. Holds `build/tr
 
 ## Model services
 
-generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
+Not the default: until the owner decides on Haiku's trial (translator T44), sessions write generators
+and chosen rewrites by hand; these tools work and may be tried. generate and reshape ask Haiku through the owner's Claude subscription (`model.py`: `claude -p --model
 haiku`, no tools; login check `claude auth status`; no `claude` on PATH, or no call answered: result
 `no-model`). A run makes at most `--max-calls` calls (default 40; `stopped: "max-calls"` when the cap ends it). Both need the listing
 `build/re/forest_dumb_forever.lst` (re_listing.py) and cargo for the judge. Each prints one JSON line
 per routine/unit on stdout; exit 0 on success, 1 on any other result, 2 on a usage error (reason on
 stderr). Model calls log to `<out>/calls.jsonl`, a line a call; generate and reshape log each judged
-answer to `<out>/tries.jsonl`. Procedure, results table and when to translate by hand:
+answer to `<out>/tries.jsonl`. Procedure and the trial's table:
 [docs/11-translation.md](../docs/11-translation.md). Quote the routine: `$5` is a shell parameter.
 
 ### model.py, judge_run.py (stdlib, libraries)
@@ -63,14 +64,14 @@ no-model; `uncovered` lists branches never taken. The builder reads the generato
 `fd-conform/src/gen/` itself.
 
 ### reshape.py (stdlib)
-Haiku turns a literal port into engine code on typed state, judged by the task's rig test, then tidied.
+Haiku drafts a chosen rewrite: engine code on typed state from the translated routine, judged by the task's rig test, then tidied.
 ```
 python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 [--tries 3] [--tidy 2] [--max-calls 40] [--out DIR]
 python3 -I games/forest-dumb/tools/reshape.py --task T08 --all [--only fn_a,fn_b]
 python3 -I games/forest-dumb/tools/reshape.py --opus-cost [--conversations DIR]
 ```
 `--task` choices are the tables of `re/reshape.toml`; the routine is `h0+$off` or its rig name. Needs
-the unit's literal port in `build/translate`. Default out `build/reshape/`; it works in a scratch copy
+the unit's translated routines (`translate.py`'s `build/translate/h0-<off>/translated.rs`, here or in the main checkout). Default out `build/reshape/`; it works in a scratch copy
 there and never changes committed `fd-core`. `quality` lists what the builder still has to tidy.
 `--all`'s units share one `--max-calls`. `--opus-cost` makes no model call.
 
@@ -224,7 +225,9 @@ venv/bin/python games/forest-dumb/tools/render_levels.py --spot W1-1:10,20   # w
 
 ### task_pack.py (stdlib)
 One file holding what a task's session would otherwise read in its first steps (task doc, PROGRESS,
-FINDINGS, DESIGN sections, dependencies' commits, file skeletons, routines and listings).
+FINDINGS, DESIGN sections, dependencies' commits, file skeletons, routines with their listings and
+translations, and the translate-first procedure from `docs/11-translation.md`). Its plan is
+`forest-dumb-level-1` (`PLAN` in the script).
 ```
 python3 -I games/forest-dumb/tools/task_pack.py T22 [--review] [--no-prep] [--max-kb 150]
 ```

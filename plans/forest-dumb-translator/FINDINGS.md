@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | `task_pack.py` hard-codes `PLAN = 'forest-dumb-level-1'`, so a level 2 plan's tasks get no pack until it takes the plan. Stale Muse wording left: `re/reshape.toml` header, smoke.toml `[[area]]` "having Muse write a generator" (T20). |
 | 2026-11-12 | 📌 | T44 added (coordinator's instruction): the owner's Haiku decision, set aside so T20 is not held. Until answered, sessions write generators and rewrites by hand (DESIGN §2.13). |
 | 2026-11-12 | 🐞 | **T19 Haiku trial below the mark:** generators 5 of 5 at Muse's branch ways; rewrites 19 of 21, `left_pressed` no answer in 300 s thrice, `run_right_step` three failed tries. 29 calls, $0.36 list. Recommended: accept. |
 | 2026-11-12 | 📌 | **T18 translate.py:** warm, `char_sprite_position` 1 s, `--task T08` 15 of 15 pass in 6 s; cold export, translation and optimised build plus a warm run, 86 s. `game_frame`'s `translated.rs` holds 73 functions. |

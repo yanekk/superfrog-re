@@ -53,6 +53,7 @@ Lesson: run the oracle spike first, as a gate: does the emulator boot the disks 
 - learned on: Superfrog. Produced `games/superfrog/engine/crates/sf-core/`, its memory map `games/superfrog/engine/crates/sf-core/src/layout.rs`, and routine tests such as `games/superfrog/engine/crates/sf-conform/tests/collision_routines.rs`.
 - Generic part: `toolkit/crates/amiga-oracle/src/routine.rs`, which runs one routine of the original alone on the CPU.
 - learned on: Superfrog. One level with only the frog came before items, enemies and bosses; scripted runs from sync points came before a whole game from power-on (`plans/rust-engine/PLAN.md`).
+- learned on: Forest Dumb Forever. After its first level was ported by hand and by a model, a static translator of the whole program (`games/forest-dumb/tools/translate.py`, every instruction judged on Moira) became the first pass: translate first, port by choice, each chosen rewrite checked against the translated routine it replaces.
 
 Lesson: compare one routine, then one scene, then the whole game, and keep the core pure so a full run of behaviour is checkable in milliseconds. The rules each porting task names are in `docs/porting-routines.md`. Porting effort scales with the game's size; the machinery carries, the content does not (`toolkit/docs/reuse-for-another-game.md`).
 

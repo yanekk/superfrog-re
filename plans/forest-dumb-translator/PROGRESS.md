@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-12
+**Next `pir-work` will:** review T20 (docs-and-packs), then T21 (default-check) can start.
 
 ## Tasks
 
@@ -34,7 +34,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T17 | haiku-backend | — | ✅ | |
 | T18 | translate-command | T16, T17 | ✅ | |
 | T19 | haiku-trial | T17, T18 | ✅ | |
-| T20 | docs-and-packs | T18, T19 | ⬜ | |
+| T20 | docs-and-packs | T18, T19 | 🔍 | Translate-first procedure in docs/11, game CLAUDE.md, tools README, ROADMAP, PLAYBOOK; packs carry it. Generators and rewrites by hand until T44. 3 new pack tests, doc test (6). Deviations: Muse, level 1 port records and Haiku's trial under History; conform README one word; doc test exempts two briefs and docs/13; packs drop reshape.toml tables. |
 | T21 | default-check | T20 | ⬜ | |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
 | T44 | haiku-decision | T19; blocks T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T20
 
 ## Blocked on the user
 

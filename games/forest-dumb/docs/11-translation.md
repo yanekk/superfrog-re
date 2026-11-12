@@ -1,108 +1,56 @@
 # 11 — Translation
 
-Literal translation of the original's routines by Muse, judged on the routine oracle (plan
-`forest-dumb-level-1`, DESIGN §4.3). This note holds the service (T33), the generator service (T61)
-and the inventory (T34); the generators (T35 to T39, T53, T54, T56) and the batch's table (T40, at
-the end) add their sections.
+How a session turns the original's code into Rust: **translate with the translator first**
+(`tools/translate.py`, plan `forest-dumb-translator`, DESIGN §2.12). The translator turns the whole main
+program into Rust instruction for instruction, with no model and no hand edit, and judges each routine
+against the original on the routine oracle. Hand-written Rust replaces a translated routine only where
+the owner chose it, starting from the translated routine and checked against it. Level 1's way of
+working (a model writing literal ports, then engine code) is under [History](#history) at the end.
 
-## The service: `tools/translate.py`
+## The procedure
 
-How a builder gets a literal Rust port of one routine of the main program without reading its
-listing (plans/forest-dumb-level-1 T33, DESIGN §4.3). Measured background: `spikes/muse-spark/README.md`.
+1. **Pack.** `python3 -I games/forest-dumb/tools/task_pack.py T{nn}` and read the pack whole: the
+   task, the plan's notes, each routine's listing and translation, these steps.
+2. **Translate.** From the repo root:
 
-### Calling it
+   ```
+   python3 -I games/forest-dumb/tools/translate.py --task T{nn}        # every routine of the task
+   python3 -I games/forest-dumb/tools/translate.py 'h0+$5462'          # or one routine, by address or symbol
+   ```
 
-From the repo root, the routine quoted (`$5` is a shell parameter):
+   One line a routine; read it, and `rust` (the routine's generated function and its callees) only to
+   check one. Calling, results and timings: [tools/README.md](../tools/README.md), "Translate a routine
+   first". The first run exports and translates the whole program (Ghidra, about 90 s cold); later runs
+   reuse it.
+3. **Judge, and act on the result.**
+   - `pass`: the translated routine matched the original on every generated state. It is the engine
+     for that routine; there is nothing to write.
+   - `fail` or `stop`: a translator or machine defect, since the translation is literal. Fix it by
+     mnemonic or P-code pattern (`tools/pcode_fix/`, `tools/pcode_rust.py`), never by a hint, a case
+     for one address or an edit to generated Rust (DESIGN §2.2, the hand-edit rule), then rerun what
+     the fix affects (`insn_check.py` for an instruction family, `translator_trial.py --whole` for the
+     tree).
+   - `no-gen`: the routine has no test-state generator. Write one by hand into
+     `engine/crates/fd-conform/src/gen/` (the generator sections below show the shape), then rerun.
+     `tools/generate.py` (Haiku) exists but is not the default until the owner decides on Haiku's
+     trial (translator T44, DESIGN §2.13).
+   - `no-oracle`: the original never returns on the generator's states, or blits lines or fills.
+     Fix the generator, or check the routine through a case instead (`engine/conform/README.md`).
+4. **Rewrite only where the owner chose.** A level plan says which routines get hand-written Rust.
+   Each starts from the translated routine (`build/translate/<hN-off>/translated.rs`), is written by
+   hand on the engine's typed state (`toolkit/docs/porting-routines.md`), and is checked against the
+   translated routine it replaces on the same states through the seam (DESIGN §2.9, `fd-judge --seam`,
+   translator T35), with the level's cases green while it is mounted. `tools/reshape.py` (Haiku drafts
+   the rewrite from the translated routine) waits on the same decision as `generate.py`.
+5. **Record** in the plan's PROGRESS and FINDINGS: which routines passed as translated, which defects
+   were fixed by pattern, which routines were rewritten and why.
 
-```
-python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen char_sprite_position --max-usd 0.10
-```
+What a pass proves and what it cannot is the judge's, below. Every translated or derived file
+(`build/translator/`, `build/translate/`) comes from the game's code: never commit it.
 
-- The routine is `hN+$off` or its name in `re/symbols.toml`.
-- `--gen` names a generator registered in `engine/crates/fd-conform/src/gen/` (T32, T35 to T39). No
-  generator, no translation: write or ask for one first.
-- `--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/translate`).
-- Needs `OPENROUTER_API_KEY` in the environment or as an `export` line in `~/.zshrc`, the extracted
-  program (`cargo run -p fd-tools -- extract` in `engine/`) and its listing (`tools/re_listing.py`).
+## What a pass proves: `fd-judge --translated`
 
-It prints one line and nothing else on stdout; read that and the port, not the files beside them:
-
-```
-{"routine":"h0+$5462","result":"pass","tries":1,"tokens_in":1629,"tokens_out":7897,"usd":0.001742,"paths":4,"port":"games/forest-dumb/build/translate/h0-5462/port.rs"}
-```
-
-| `result` | Meaning | Exit | What the builder does |
-|---|---|---|---|
-| `pass` | `port` matched the original on all 2 000 states | 0 | turns it into engine code on typed state, proves that on the rig |
-| `fail` | `--tries` answers were wrong, or `"stopped":"max-usd"` came first | 1 | translates it by hand |
-| `too-big` | over 180 instructions with its callees, less its `split_at` callees; no call made | 1 | asks for `split_at` in `re/translate.toml` (T34), or translates by hand |
-| `no-oracle` | the original returned on none of the generator's states, or started a line or fill blit on one; no call made | 1 | fixes the generator, or translates by hand |
-| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
-
-Exit 2 is a usage error with the reason on stderr: an unknown routine or generator, a missing
-listing or disks, or a split callee with no passing port yet.
-
-`paths` is how many distinct instruction counts the original ran over the states: a proxy for the
-branches the generator reaches. A `pass` with few paths proves little.
-
-### What it does
-
-1. The listing by control flow from the routine (every branch both ways, calls followed), then the
-   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`. Only
-   `Bcc`, `DBcc`, `bra`, `bsr`, `jsr` and `jmp` are followed; `btst`/`bset`/`bclr`/`bchg` on a label
-   reach data, not code (T58).
-2. `fd-judge --survey`: the original alone over the generator's states. It is `no-oracle` when it
-   returns on none (a wait on DMA or an interrupt never ends in the routine oracle's hardware mode)
-   or when any state starts a blit in line or fill mode (`RigReport::unmodelled_blits`): the
-   oracle's blitter runs area mode only, so a port would agree with a blit that never happened.
-3. Muse (`meta/muse-spark-1.3-contributor`, `max_tokens` 96 000) answers; the last ```` ```rust ````
-   block is built into `fd-judge` (`FD_PORT`, `fd-conform/build.rs`) and judged against the original
-   over 2 000 states: registers d0-d7 and a0-a6, every byte written off the stack, and every
-   custom-chip write in order. A wrong answer gets the first failing case back; one that does not
-   compile gets the compiler's errors; one with no code (cut off while reasoning) gets asked again.
-   Each counts as a try. A 429, 502 or 503 is waited out and is not a try.
-4. Before each call, its worst case (the conversation at three characters a token, plus 96 000
-   answer tokens, at OpenRouter's listed price) must fit under `--max-usd` with what is spent.
-
-The port is written against `Cpu { d, a, mem: Mem }` (`fd-conform/src/judge/mem.rs`), the spike's
-model of memory and the custom chips. One judge build and run at a time, across processes
-(`<out>/judge.lock`), since the port is compiled into the one binary.
-
-#### A split routine
-
-A routine T34 splits names its callees in `split_at`. Those are translated first; each must have a
-passing port in its own folder. The prompt leaves their listing out and tells Muse to call
-`port_hN_off(cpu)` where the original calls them, and the judge builds their ports in as modules.
-The caller's `port.rs` is its own code only; its callees' are in their folders.
-
-### What it cannot prove
-
-- Only the generated states. A pass is equality on the generator's 2 000 states, nothing else: a
-  branch no state reaches is untested. The reviewer of each generator checks branches against the
-  listing (T35 to T39).
-- Only what the routine oracle models. Line and fill blits are refused (`no-oracle`); a read of a
-  write-only register, DMA and interrupt timing are not modelled on either side, so a port agreeing
-  there proves nothing.
-- Not the engine port. A literal port over raw memory is the input to a porting task, which proves
-  its engine code on the rig (`fd-conform/src/routine.rs`).
-- Condition codes and the stack bytes are not compared.
-
-### Files
-
-Under `--out`, never committed (they derive from the game's code): `calls.jsonl`, a line a call
-(time, tries, tokens, reasoning, cost, outcome, the feedback's start); per routine `hN-off/` with
-`prompt.md`, `answerN.md`, `tryN.rs` (the code), `judgedN.rs` (what was built, callees included),
-`port.rs` (the passing answer only) and `result.json` (the result line, its generator and `split_at`).
-A new run of a routine clears its folder first.
-
-### Record
-
-- 2026-11-05, T33: `h0+$5462` with `char_sprite_position`: pass on try 1, 1 629 tokens in, 7 897 out
-  (7 131 reasoning), $0.0017, 67 s, 4 paths.
-- 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
-  6 paths.
-
-### A translated tree: `fd-judge --translated` (translator-trial T04)
+The bar every translated routine is judged on (plans/forest-dumb-translator-trial, DESIGN §2.2, §2.5): registers d0-d7 and a0-a6, every byte written off the stack, and every custom-chip write in order, against the original on the generator's states. `translate.py` drives it; by hand:
 
 The same judge for code the static translator wrote (plans/forest-dumb-translator-trial, DESIGN
 §2.2, §2.5). `FD_TRANSLATED=<build/translator/tree.rs>` builds the whole tree into `fd-judge` once;
@@ -122,97 +70,13 @@ FD_TRANSLATED=build/translator/tree.rs cargo run -q -p fd-conform --bin fd-judge
 - The library form, `judge::translated::check`, takes the entry and the code ranges as arguments
   (`tests/judge_translated.rs`).
 
-## The generator service: `tools/generate.py` (T61)
+It cannot prove:
 
-Muse writes a routine's generator and the machine judges it on the original, so a builder reviews a
-generator instead of writing one (plans/forest-dumb-level-1 T61, DESIGN §4.3). The builder sees the
-result line and the generator, never the listing or the retries.
-
-### Calling it
-
-From the repo root, the routine quoted; `--name` is what the generator is registered as (the
-routine's name in `re/translate.toml`):
-
-```
-python3 -I games/forest-dumb/tools/generate.py 'h0+$4e9a' --name h0_4e9a --max-usd 0.10
-```
-
-`--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/generate`). It
-needs what `translate.py` needs: the key, the extracted program and its listing. One line on stdout:
-
-```
-{"routine":"h0+$4e9a","result":"covered","tries":1,"usd":0.0021,"branches":5,"uncovered":[],"returns":2000,"base":false,"gen":"games/forest-dumb/build/generate/h0_4e9a.rs"}
-```
-
-| `result` | Meaning | Exit | What the builder does |
-|---|---|---|---|
-| `covered` | a valid generator took every branch both ways | 0 | reads `gen`, commits it into `fd-conform/src/gen/` |
-| `partial` | the best valid try left the ways in `uncovered` untaken | 1 | as `covered`; the reviewer judges each uncovered way and its `reason` |
-| `fail` | no try was valid (compiles, returns, pokes only what is read), or `"stopped":"max-usd"` came first | 1 | writes the generator by hand |
-| `no-oracle` | on every answer that ran, the original returned on no state or started a line or fill blit | 1 | the routine is out of the routine oracle's reach; by hand |
-| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
-
-`uncovered` lists `{"at":"hN+$off","never":"taken|not-taken|either"}`, with `"reason"` where Muse
-said that way cannot be reached. `either` is a branch no state reached (one in the listing the rig
-never counted included). `base` is true when the generator lays a base, which the reviewer reads: a
-base is shown, not judged. Exit 2 is a usage error, as `translate.py`'s.
-
-### What it does
-
-1. The prompt: the listing by control flow with callees (`translate.flow_text`, no `split_at`: the
-   original runs its callees), and up to three committed modules from `fd-conform/src/gen/` as
-   examples. They are the modules registering the most routines of its `subsystem` in
-   `re/translate.toml`, then the smallest. A module that registers this routine's name is never
-   shown, since it holds the answer.
-2. Each answer, a module shaped as the committed ones, is built into `fd-judge` (`FD_GEN`,
-   `fd-conform/build.rs`; `generators::candidate`, ahead of every committed module) and judged by
-   `fd-judge --cover` over its 2 000 states. A try is valid when it compiles and lists `--name`, the
-   original returns on at least 95% of the states with no hang and no line or fill blit, and every
-   byte a state pokes, or makes a hardware read return, is one the original read on some state
-   (`Coverage::reads`) or on the rig's stack. An invalid try gets the reasons back.
-3. A valid try is measured by `Rig::coverage`. A way of a `Bcc`/`DBcc` no state took goes back with
-   the branch's listing line and the three before it, up to `--tries`. Muse may answer
-   `UNREACHABLE hN+$off <way>: <reason>`; such a way is passed through and not asked again.
-4. The result is the valid try with the fewest uncovered ways, the later on a tie, copied to
-   `<out>/<name>.rs`. Spend, waits and `calls.jsonl` (`"service":"generate"`) are `translate.py`'s.
-
-The candidate's judge build takes the same lock as `translate.py`'s default (`build/translate/judge.lock`),
-since both build into the one `fd-judge`.
-
-### What it cannot prove
-
-- That the states are ones the game can be in. The judge checks returns and pokes; whether a
-  state is plausible (and whether a `base` is right) is the reviewer's reading.
-- That a claimed unreachable way is unreachable: the reason is Muse's, for the reviewer.
-- Equality of anything: a generator only makes states. A port is proven on them by `translate.py`
-  or the rig.
-- Branch coverage is per branch, not per path: two branches each taken both ways may never be
-  taken together.
-
-### Files
-
-Under `--out`, never committed: `calls.jsonl`, `<name>.rs` (the result), and per generator `<name>/`
-with `prompt.md`, `answerN.md`, `tryN.rs` and `result.json`. A new run of a name clears its folder.
-
-### Record
-
-2026-11-05, T61, one live run per subsystem on a routine with a hand-written generator (`--max-usd
-0.10`, a §5.3 `worker` action). Coverage is `fd-judge --cover` on both: branch ways untaken, and
-poked bytes the original reads on no state ("outside").
-
-| Routine | Subsystem | Muse: result, tries | Muse $ | Branches | Hand-written (module) |
-|---|---|---|---|---|---|
-| `h0_4e9a` | camera | covered, 2 (try 1 did not compile) | 0.0041 | 5 | covered, outside 0 (`camera.rs`) |
-| `play_keys` | rest | covered, 1 | 0.0018 | 8 | covered, outside 0 (`rest.rs`) |
-| `char_sprite_position` | drawing | covered, 1 | 0.0032 | 3 | covered, outside 0 (`drawing.rs`) |
-| `h0_3566` | objects | covered, 1 | 0.0025 | 1 | covered, outside 5 102 (`objects_move.rs`) |
-| `h0_4b0e` | character | covered, 1 | 0.0022 | 14 | `h0+$4cb8`, `$4d00` never taken (`character.rs`) |
-
-Every Muse generator returned on all 2 000 states with no byte outside. Total $0.0139, 10 to 98 s an
-answer, 9 000 to 12 600 tokens in. `h0_3566`'s hand-written `probe` lays all four collision bytes a
-probe could read, so it fails this service's rule; `h0_4b0e`'s misses two branches in its callees,
-which T35's table (its own flow, 3 branches) did not list. Whether Muse's states are plausible was not
-judged here: that is the reviewer's reading.
+- More than the generated states: a branch no state reaches is untested, so a generator's branch
+  coverage is the reviewer's reading.
+- What the routine oracle does not model: line and fill blits (`no-oracle`), DMA and interrupt timing.
+- Condition codes and cycles at the routine's exit. Those are judged instruction by instruction on
+  Moira (`insn_check.py`, `fd-conform/tests/insn_gate.rs`, docs/14-translator.md).
 
 ## Generators: `character` (T35)
 
@@ -254,6 +118,8 @@ over the `h0+$40cb` just chosen, so the right slide always reads the left table:
 original, kept by a literal port.
 
 ## Inventory: `game_frame`'s call tree and the edge redraws
+
+The rows of `re/translate.toml` give each routine its `port_task` and `gen_task`, which `translate.py --task` reads. `unit`, `split_at` and `by_hand` were sized for level 1's model service (History) and the translator ignores them: it translates every routine whole.
 
 Measured 2026-11-05 (T34) by `tools/call_tree.py` from the program `fd-tools extract` writes; the result,
 one entry a routine, is [`re/translate.toml`](../re/translate.toml). Rerun with
@@ -601,7 +467,200 @@ checks a non-trapping detour runs as the plain program. No branch is unreachable
 `h0_4d32`'s and `h0_4d54`'s one path covers their branch both ways: each way runs one `move.l` and
 an `rts`.
 
-## The batch: `tools/translate_batch.py` (T40)
+## History
+
+Level 1's procedure, kept as the record of how its engine was written. None of it is how a session works now: translate first (above). `translate_batch.py` and the model version of `translate.py` were deleted by translator T18 (DESIGN §2.13); their outputs under `build/translate/` are stale.
+
+### The model service: `tools/translate.py` before translator T18
+
+How a builder gets a literal Rust port of one routine of the main program without reading its
+listing (plans/forest-dumb-level-1 T33, DESIGN §4.3). Measured background: `spikes/muse-spark/README.md`.
+
+#### Calling it
+
+From the repo root, the routine quoted (`$5` is a shell parameter):
+
+```
+python3 -I games/forest-dumb/tools/translate.py 'h0+$5462' --gen char_sprite_position --max-usd 0.10
+```
+
+- The routine is `hN+$off` or its name in `re/symbols.toml`.
+- `--gen` names a generator registered in `engine/crates/fd-conform/src/gen/` (T32, T35 to T39). No
+  generator, no translation: write or ask for one first.
+- `--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/translate`).
+- Needs `OPENROUTER_API_KEY` in the environment or as an `export` line in `~/.zshrc`, the extracted
+  program (`cargo run -p fd-tools -- extract` in `engine/`) and its listing (`tools/re_listing.py`).
+
+It prints one line and nothing else on stdout; read that and the port, not the files beside them:
+
+```
+{"routine":"h0+$5462","result":"pass","tries":1,"tokens_in":1629,"tokens_out":7897,"usd":0.001742,"paths":4,"port":"games/forest-dumb/build/translate/h0-5462/port.rs"}
+```
+
+| `result` | Meaning | Exit | What the builder does |
+|---|---|---|---|
+| `pass` | `port` matched the original on all 2 000 states | 0 | turns it into engine code on typed state, proves that on the rig |
+| `fail` | `--tries` answers were wrong, or `"stopped":"max-usd"` came first | 1 | translates it by hand |
+| `too-big` | over 180 instructions with its callees, less its `split_at` callees; no call made | 1 | asks for `split_at` in `re/translate.toml` (T34), or translates by hand |
+| `no-oracle` | the original returned on none of the generator's states, or started a line or fill blit on one; no call made | 1 | fixes the generator, or translates by hand |
+| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
+
+Exit 2 is a usage error with the reason on stderr: an unknown routine or generator, a missing
+listing or disks, or a split callee with no passing port yet.
+
+`paths` is how many distinct instruction counts the original ran over the states: a proxy for the
+branches the generator reaches. A `pass` with few paths proves little.
+
+#### What it does
+
+1. The listing by control flow from the routine (every branch both ways, calls followed), then the
+   named labels it uses: the spike's `run.py --hw` extraction. Its size decides `too-big`. Only
+   `Bcc`, `DBcc`, `bra`, `bsr`, `jsr` and `jmp` are followed; `btst`/`bset`/`bclr`/`bchg` on a label
+   reach data, not code (T58).
+2. `fd-judge --survey`: the original alone over the generator's states. It is `no-oracle` when it
+   returns on none (a wait on DMA or an interrupt never ends in the routine oracle's hardware mode)
+   or when any state starts a blit in line or fill mode (`RigReport::unmodelled_blits`): the
+   oracle's blitter runs area mode only, so a port would agree with a blit that never happened.
+3. Muse (`meta/muse-spark-1.3-contributor`, `max_tokens` 96 000) answers; the last ```` ```rust ````
+   block is built into `fd-judge` (`FD_PORT`, `fd-conform/build.rs`) and judged against the original
+   over 2 000 states: registers d0-d7 and a0-a6, every byte written off the stack, and every
+   custom-chip write in order. A wrong answer gets the first failing case back; one that does not
+   compile gets the compiler's errors; one with no code (cut off while reasoning) gets asked again.
+   Each counts as a try. A 429, 502 or 503 is waited out and is not a try.
+4. Before each call, its worst case (the conversation at three characters a token, plus 96 000
+   answer tokens, at OpenRouter's listed price) must fit under `--max-usd` with what is spent.
+
+The port is written against `Cpu { d, a, mem: Mem }` (`fd-conform/src/judge/mem.rs`), the spike's
+model of memory and the custom chips. One judge build and run at a time, across processes
+(`<out>/judge.lock`), since the port is compiled into the one binary.
+
+##### A split routine
+
+A routine T34 splits names its callees in `split_at`. Those are translated first; each must have a
+passing port in its own folder. The prompt leaves their listing out and tells Muse to call
+`port_hN_off(cpu)` where the original calls them, and the judge builds their ports in as modules.
+The caller's `port.rs` is its own code only; its callees' are in their folders.
+
+#### What it cannot prove
+
+- Only the generated states. A pass is equality on the generator's 2 000 states, nothing else: a
+  branch no state reaches is untested. The reviewer of each generator checks branches against the
+  listing (T35 to T39).
+- Only what the routine oracle models. Line and fill blits are refused (`no-oracle`); a read of a
+  write-only register, DMA and interrupt timing are not modelled on either side, so a port agreeing
+  there proves nothing.
+- Not the engine port. A literal port over raw memory is the input to a porting task, which proves
+  its engine code on the rig (`fd-conform/src/routine.rs`).
+- Condition codes and the stack bytes are not compared.
+
+#### Files
+
+Under `--out`, never committed (they derive from the game's code): `calls.jsonl`, a line a call
+(time, tries, tokens, reasoning, cost, outcome, the feedback's start); per routine `hN-off/` with
+`prompt.md`, `answerN.md`, `tryN.rs` (the code), `judgedN.rs` (what was built, callees included),
+`port.rs` (the passing answer only) and `result.json` (the result line, its generator and `split_at`).
+A new run of a routine clears its folder first.
+
+#### Record
+
+- 2026-11-05, T33: `h0+$5462` with `char_sprite_position`: pass on try 1, 1 629 tokens in, 7 897 out
+  (7 131 reasoning), $0.0017, 67 s, 4 paths.
+- 2026-11-05, T35: `h0+$4274` with `h0_4274`: pass on try 1, 1 482 tokens in, 4 299 out, $0.0010,
+  6 paths.
+
+### The generator service on Muse: `tools/generate.py` (T61)
+
+Muse writes a routine's generator and the machine judges it on the original, so a builder reviews a
+generator instead of writing one (plans/forest-dumb-level-1 T61, DESIGN §4.3). The builder sees the
+result line and the generator, never the listing or the retries.
+
+#### Calling it
+
+From the repo root, the routine quoted; `--name` is what the generator is registered as (the
+routine's name in `re/translate.toml`):
+
+```
+python3 -I games/forest-dumb/tools/generate.py 'h0+$4e9a' --name h0_4e9a --max-usd 0.10
+```
+
+`--tries` (3), `--max-usd` (0.10, DESIGN §5.2) and `--out` (`games/forest-dumb/build/generate`). It
+needs what `translate.py` needs: the key, the extracted program and its listing. One line on stdout:
+
+```
+{"routine":"h0+$4e9a","result":"covered","tries":1,"usd":0.0021,"branches":5,"uncovered":[],"returns":2000,"base":false,"gen":"games/forest-dumb/build/generate/h0_4e9a.rs"}
+```
+
+| `result` | Meaning | Exit | What the builder does |
+|---|---|---|---|
+| `covered` | a valid generator took every branch both ways | 0 | reads `gen`, commits it into `fd-conform/src/gen/` |
+| `partial` | the best valid try left the ways in `uncovered` untaken | 1 | as `covered`; the reviewer judges each uncovered way and its `reason` |
+| `fail` | no try was valid (compiles, returns, pokes only what is read), or `"stopped":"max-usd"` came first | 1 | writes the generator by hand |
+| `no-oracle` | on every answer that ran, the original returned on no state or started a line or fill blit | 1 | the routine is out of the routine oracle's reach; by hand |
+| `no-key` | no key; stderr says where it looked | 1 | asks the owner for the key |
+
+`uncovered` lists `{"at":"hN+$off","never":"taken|not-taken|either"}`, with `"reason"` where Muse
+said that way cannot be reached. `either` is a branch no state reached (one in the listing the rig
+never counted included). `base` is true when the generator lays a base, which the reviewer reads: a
+base is shown, not judged. Exit 2 is a usage error, as `translate.py`'s.
+
+#### What it does
+
+1. The prompt: the listing by control flow with callees (`translate.flow_text`, no `split_at`: the
+   original runs its callees), and up to three committed modules from `fd-conform/src/gen/` as
+   examples. They are the modules registering the most routines of its `subsystem` in
+   `re/translate.toml`, then the smallest. A module that registers this routine's name is never
+   shown, since it holds the answer.
+2. Each answer, a module shaped as the committed ones, is built into `fd-judge` (`FD_GEN`,
+   `fd-conform/build.rs`; `generators::candidate`, ahead of every committed module) and judged by
+   `fd-judge --cover` over its 2 000 states. A try is valid when it compiles and lists `--name`, the
+   original returns on at least 95% of the states with no hang and no line or fill blit, and every
+   byte a state pokes, or makes a hardware read return, is one the original read on some state
+   (`Coverage::reads`) or on the rig's stack. An invalid try gets the reasons back.
+3. A valid try is measured by `Rig::coverage`. A way of a `Bcc`/`DBcc` no state took goes back with
+   the branch's listing line and the three before it, up to `--tries`. Muse may answer
+   `UNREACHABLE hN+$off <way>: <reason>`; such a way is passed through and not asked again.
+4. The result is the valid try with the fewest uncovered ways, the later on a tie, copied to
+   `<out>/<name>.rs`. Spend, waits and `calls.jsonl` (`"service":"generate"`) are `translate.py`'s.
+
+The candidate's judge build takes the same lock as `translate.py`'s default (`build/translate/judge.lock`),
+since both build into the one `fd-judge`.
+
+#### What it cannot prove
+
+- That the states are ones the game can be in. The judge checks returns and pokes; whether a
+  state is plausible (and whether a `base` is right) is the reviewer's reading.
+- That a claimed unreachable way is unreachable: the reason is Muse's, for the reviewer.
+- Equality of anything: a generator only makes states. A port is proven on them by `translate.py`
+  or the rig.
+- Branch coverage is per branch, not per path: two branches each taken both ways may never be
+  taken together.
+
+#### Files
+
+Under `--out`, never committed: `calls.jsonl`, `<name>.rs` (the result), and per generator `<name>/`
+with `prompt.md`, `answerN.md`, `tryN.rs` and `result.json`. A new run of a name clears its folder.
+
+#### Record
+
+2026-11-05, T61, one live run per subsystem on a routine with a hand-written generator (`--max-usd
+0.10`, a §5.3 `worker` action). Coverage is `fd-judge --cover` on both: branch ways untaken, and
+poked bytes the original reads on no state ("outside").
+
+| Routine | Subsystem | Muse: result, tries | Muse $ | Branches | Hand-written (module) |
+|---|---|---|---|---|---|
+| `h0_4e9a` | camera | covered, 2 (try 1 did not compile) | 0.0041 | 5 | covered, outside 0 (`camera.rs`) |
+| `play_keys` | rest | covered, 1 | 0.0018 | 8 | covered, outside 0 (`rest.rs`) |
+| `char_sprite_position` | drawing | covered, 1 | 0.0032 | 3 | covered, outside 0 (`drawing.rs`) |
+| `h0_3566` | objects | covered, 1 | 0.0025 | 1 | covered, outside 5 102 (`objects_move.rs`) |
+| `h0_4b0e` | character | covered, 1 | 0.0022 | 14 | `h0+$4cb8`, `$4d00` never taken (`character.rs`) |
+
+Every Muse generator returned on all 2 000 states with no byte outside. Total $0.0139, 10 to 98 s an
+answer, 9 000 to 12 600 tokens in. `h0_3566`'s hand-written `probe` lays all four collision bytes a
+probe could read, so it fails this service's rule; `h0_4b0e`'s misses two branches in its callees,
+which T35's table (its own flow, 3 branches) did not list. Whether Muse's states are plausible was not
+judged here: that is the reviewer's reading.
+
+### The batch: `tools/translate_batch.py` (T40)
 
 Every routine of `re/translate.toml` through the service in one unattended run, before the porting
 tasks start (DESIGN §4.3; `worker` bin, $5 cap, DESIGN §5.3):
@@ -625,7 +684,7 @@ python3 -I games/forest-dumb/tools/translate_batch.py --max-usd 5 [--parallel 8]
 `games/forest-dumb/build/translate/`** (git-ignored, 2026-11-05). A porting task copies its routines'
 folders (`hN-off/`) from there, or re-runs `translate.py` on one routine when its checkout has none.
 
-### The run, 2026-11-05
+#### The run, 2026-11-05
 
 87 routines: 77 pass, 1 fail, 4 too-big, 2 no-gen, 3 blocked. This run spent $0.1596 of its $5 cap in 1102 s; the table's routines cost $0.1596 in all.
 
@@ -737,7 +796,7 @@ Translated by hand, under the porting task that owns each:
 - Two first answers did not compile (`char_hit_check`, `h0_94ba`) and passed on try 2. 86 calls in
   all: 211 547 tokens in, 702 210 out.
 
-## Engine ports: `camera` (T09)
+### Engine ports: `camera` (T09)
 
 `fd-core/src/level/camera.rs`, proven by `fd-conform/tests/camera_routines.rs` on 10 000 states of each
 T36 generator. Behaviour and interruptible points: [09](09-play-measured.md), "The camera".
@@ -752,7 +811,7 @@ T36 generator. Behaviour and interruptible points: [09](09-play-measured.md), "T
   for `camera_update` and `h0_513c` (`level3_handler` saves and restores every register around
   `game_frame`; `camera_update` reloads `d0`, `d1` after each flag step). `check` still compares all.
 
-## Engine ports: edge redraws (T55)
+### Engine ports: edge redraws (T55)
 
 `fd-core/src/level/redraw.rs` (and `level/collision.rs`), proven by `fd-conform/tests/edge_redraw_routines.rs`
 on 10 000 states of each T56 generator; paths 3, 1, 2 680, 2, 2 633, 2, 2 110, 2, 2 119, 3, 2, 6, 1, 127 in
@@ -778,7 +837,7 @@ on 10 000 states of each T56 generator; paths 3, 1, 2 680, 2, 2 633, 2, 2 110, 2
 - Registers compared: `d0` after `h0_681c` and after the row bobs `h0_a06`, `h0_ce4`, whose high word the
   scan carries to the next bob; none for the rest (`main_loop` reloads what it reads).
 
-## Engine ports: taking and the write-back (T22)
+### Engine ports: taking and the write-back (T22)
 
 `fd-core/src/objects/collectible.rs` (`MapObjects`), proven by `fd-conform/tests/collect_routines.rs` on
 10 000 states of each T38 and T37 generator; paths 115, 23, 1, 1, 142, 10, 2, 2 for `char_object_cells`,
@@ -793,7 +852,7 @@ Behaviour and interruptible points: [10](10-object-system.md), "Taking and writi
   (`collectible::BONUS_SCORES`): a 17-entry table in the code fails `purity.rs`.
 - Registers compared: `d0` after `h0_29ca` (`h0_26ec` compares the bonus value in it); none for the rest.
 
-## Object routines (T49)
+### Object routines (T49)
 
 T49 was to translate the object routines T21 found reached only through dispatch tables, which T34's
 call-tree scan cannot see. T21 found none (docs/10, "No dispatch tables") and appended no entry to
@@ -804,7 +863,7 @@ Checked 2026-11-05: the 36 routines `re/objects-W1-1.toml`'s `routines` and docs
 pass; `h0_2c7e` (blocked), `h0_5e44` (too-big) go by hand under T52, and `h0_62b6` (too-big) under
 T25, as listed above.
 
-## Ported (porting tasks)
+### Ported (porting tasks)
 
 What each porting task did with its share of the table above, and which routines it translated by hand.
 
@@ -884,13 +943,13 @@ What each porting task did with its share of the table above, and which routines
   porting tasks' blit and sound register writes in order, `h0_9754`'s copper pointers and the raster copy.
   Its calls are checked against `re/translate.toml` both ways; `w1-idle`'s coverage shows its hits.
 
-## The engine-shape trial: `tools/reshape.py` (T62)
+### The engine-shape trial: `tools/reshape.py` (T62)
 
 Whether Muse can also write the engine-shaped port, judged by the porting task's own rig test, for
 less than Opus spends (DESIGN §4.3, owner 2026-11-05). Measured on T08's and T09's routines, whose
 engine code and rig tests exist. A measurement only: nothing in `fd-core` was replaced.
 
-### Calling it
+#### Calling it
 
 ```
 python3 -I games/forest-dumb/tools/reshape.py 'h0+$4274' --task T08 --max-usd 0.10
@@ -901,7 +960,7 @@ One result line as `translate.py`'s, plus `routines` and `fn`; the answer is
 `build/reshape/<slug>/port.rs`, an `impl` block. `--tries`, `--max-usd`, the key, the model call and
 the spend guard are `translate.py`'s.
 
-### What it does
+#### What it does
 
 - A **unit** is one engine function and the routines its rig test checks with it (`re/reshape.toml`
   since 2026-11-06; `TASKS` in the tool before). T09's `follow` serves four flag steps and `scroll` four scrolls, so each is one unit judged on
@@ -920,7 +979,7 @@ the spend guard are `translate.py`'s.
   missing from the rig table is a usage error, not a pass of nothing. The copy must stay inside the checkout, because fd-tools finds the zips through git.
   Warm, a build and run takes about 6 s.
 
-### The run, 2026-11-05
+#### The run, 2026-11-05
 
 Worker action, DESIGN §5.3 row "Muse writes an engine-shaped port", `--max-usd 0.10` a unit:
 
@@ -945,7 +1004,7 @@ Worker action, DESIGN §5.3 row "Muse writes an engine-shaped port", `--max-usd 
 15 of 15 units (21 routines) pass, $0.0324 and 800 s in all. Every first answer passed: `idle`'s first
 try was a call error, not a wrong answer.
 
-### Against Opus
+#### Against Opus
 
 `--opus-cost` sums `costUSD` over every session of a task in the run's conversation logs (implement and
 review, restarts included) and divides by the routines it ported to engine code:
@@ -967,7 +1026,7 @@ through `table()`. But less factored than Opus's: 717 lines against 441 (Opus's 
 inlines `slide_sound`; table offsets are bare numbers where the file has named constants; no doc
 comments. Passing the rig, they are not yet the code `fd-core` keeps.
 
-### The owner's decision
+#### The owner's decision
 
 Whether T22, T24, T25 and later porting tasks use `reshape.py` is the owner's. Asked 2026-11-05 with
 the recommendation "Muse drafts, the builder tidies" (the builder writes the rig test and the tool's
@@ -978,7 +1037,7 @@ Answered 2026-11-06 (owner): yes, and Muse tidies first. Steer the prompt toward
 and treat Muse as a service with an automatic quality check that sends a passing answer back with what
 to fix, so the builder gets polished code and tidies only what is left. How: the next section.
 
-## Reshaping by Muse (porting tasks, owner 2026-11-06)
+### Reshaping by Muse (porting tasks, owner 2026-11-06)
 
 Every porting task from T22 on (T22, T23, T24, T25, T26, T52) has Muse write its engine functions and
 the builder fit, finish and prove them (DESIGN §4.4). By hand only after Muse fails a unit.
@@ -1025,7 +1084,7 @@ Opus's; `scroll` is one function over a direction, where T62's answer had four n
 The judge's copy needs `build/toolkit` linked to the checkout's toolkit since T14's build tag hashes
 `<workspace>/../../../toolkit`; `scratch()` makes the link (the first run failed every unit on it).
 
-## Haiku's trial (translator T19, 2026-11-12)
+### Haiku's trial (translator T19, 2026-11-12)
 
 Whether Haiku keeps the generator and rewrite jobs Muse held (translator DESIGN §2.13). Pass mark
 (owner, 2026-11-11): each of T61's 5 generators reaches at least as many of its routine's branch ways as
@@ -1043,7 +1102,7 @@ did. Outputs `build/haiku-trial/table.md` and `summary.json`; `tools/test_haiku_
 mark on made-up results. A unit whose every call runs past `model.py`'s 300 s bound is `timeout`, a
 failure; a logged-out `claude` gives `no-model` and no verdict.
 
-### The run, 2026-11-12
+#### The run, 2026-11-12
 
 Worker action, DESIGN §5.3 row "Haiku trial batch". 29 calls, $0.36 at list price (Muse's two runs:
 $0.046), about 50 minutes. **Mark missed: generators 5 of 5, rewrites 19 of 21.**
