@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-12 | 📌 | T21 review: `default_check.py`'s scratch worktree sits inside the checkout, so nested sessions load the enclosing checkouts' root `CLAUDE.md` and the main repo's auto-memory (init `memory_paths`). Neither names the translator today; left as the task doc specifies. |
 | 2026-11-12 | 📌 | **T21 stage 7:** `default_check.py` 3 of 3 pass, `translate.py char_sprite_position` first at turns 6, 7, 6, no hand Rust; about $0.37 a run. Scratch worktrees lack `build/`, so translate stopped `no program` and sessions asked to extract. |
 | 2026-11-12 | 📌 | T20 review sweep: `tools/reshape.py`'s docstring (line 5) still sends readers to docs/11 "Reshaping by Muse", now under History; `call_tree.py` `LIMIT` cites Muse's measurement (descriptive). Outside T20's files, left alone. |
 | 2026-11-12 | 📌 | `task_pack.py` hard-codes `PLAN = 'forest-dumb-level-1'`, so a level 2 plan's tasks get no pack until it takes the plan. Stale Muse wording left: `re/reshape.toml` header, smoke.toml `[[area]]` "having Muse write a generator" (T20). |

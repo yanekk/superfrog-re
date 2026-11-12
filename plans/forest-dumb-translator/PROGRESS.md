@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T21; T27, T43 and T44 are open to build.
+**Next `pir-work` will:** T27, T43 and T44 are open to build.
 
 ## Tasks
 
@@ -35,7 +35,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T18 | translate-command | T16, T17 | ✅ | |
 | T19 | haiku-trial | T17, T18 | ✅ | |
 | T20 | docs-and-packs | T18, T19 | ✅ | |
-| T21 | default-check | T20 | 🔍 | `default_check.py` plus 12 tests (smoke): 3 of 3 runs translate first. Deviations: Write and Edit offered but denied, so a hand-Rust attempt shows; nested-session env vars dropped; README entry added. Translate stopped `no program` in scratch worktrees (no `build/`). |
+| T21 | default-check | T20 | ✅ | Review: one fix, the judge counted reading `translate.py` (`head`, `sed`) as running it; now only a run counts, test locks it. Probed: real transcripts rejudged 3 of 3, three mutations caught. Write denial under `-p` `read-only`, no session tried one. |
 | T22 | machine-core | T11, T14 | ✅ | |
 | T23 | interrupts | T22 | ✅ | |
 | T24 | machine-chips | T22 | ✅ | |
@@ -60,7 +60,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ⬜ | |
 | T44 | haiku-decision | T19; blocks T42 | ⬜ | |
 
-**Review queue:** T21
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
