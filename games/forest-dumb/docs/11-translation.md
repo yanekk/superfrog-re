@@ -1080,3 +1080,7 @@ out, 213 s). `run_right_step` (`h0_497c`): try 1 did not compile (a `self` param
 try 2 differed on 6 153 of 10 000 states, try 3 on all 10 000. Its mirror `run_left_step` passed on try
 3. Muse's inputs were its own literal ports, up to about 320 lines; Haiku's are the translated routines, 220 to
 2 700 lines after ticks are cut, so the two runs differ in input as well as model.
+
+Below the mark, the choice between accepting Haiku and no model is the owner's (DESIGN §2.13), set
+aside as translator T44 on 2026-11-12. Until it is answered, sessions write generators and rewrites by
+hand; `generate.py` and `reshape.py` work but are not the default.
