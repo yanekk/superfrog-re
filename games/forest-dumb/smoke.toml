@@ -375,6 +375,8 @@ workspace = "engine"
 # T61: the model is test_model's fake `claude`, no network. The judge one builds three canned generators into fd-judge: about 4 s warm.
 # Translator T19: the trial's mark on made-up result lines, no model, no build: under a second.
 "tools/test_haiku_trial.py" = "smoke"
+# Translator T21: the stage 7 verdict on fake transcripts, and a scratch worktree with a fake runner: under a second.
+"tools/test_default_check.py" = "smoke"
 "tools/test_generate.py" = "smoke"
 "tools/test_generate_judge.py" = "smoke"
 # T17 (translator): a fake `claude` on PATH, no network; the slow-answer case waits 1 s: about 4 s.
