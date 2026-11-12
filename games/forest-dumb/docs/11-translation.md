@@ -50,11 +50,9 @@ What a pass proves and what it cannot is the judge's, below. Every translated or
 
 ## What a pass proves: `fd-judge --translated`
 
-The bar every translated routine is judged on (plans/forest-dumb-translator-trial, DESIGN §2.2, §2.5): registers d0-d7 and a0-a6, every byte written off the stack, and every custom-chip write in order, against the original on the generator's states. `translate.py` drives it; by hand:
-
-The same judge for code the static translator wrote (plans/forest-dumb-translator-trial, DESIGN
-§2.2, §2.5). `FD_TRANSLATED=<build/translator/tree.rs>` builds the whole tree into `fd-judge` once;
-`--translated` then judges any routine of it, entered at `hN+$off`, on the same bar as a port:
+The bar every translated routine is judged on (plans/forest-dumb-translator-trial, DESIGN §2.2, §2.5): registers d0-d7 and a0-a6, every byte written off the stack, and every custom-chip write in order, against the original on the generator's states. `translate.py` drives it. By hand,
+`FD_TRANSLATED=<build/translator/tree.rs>` builds the whole tree into `fd-judge` once; `--translated`
+then judges any routine of it, entered at `hN+$off`:
 
 ```
 FD_TRANSLATED=build/translator/tree.rs cargo run -q -p fd-conform --bin fd-judge -- 'h0+$5462' --gen char_sprite_position --translated [--cases N]

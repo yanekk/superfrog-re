@@ -1,6 +1,6 @@
 """task_pack.py (plans/forest-dumb-level-1, owner amendment 2026-11-06). Builds real packs from the
-committed plan with --no-prep, so nothing is extracted or run; listings show only where the main
-checkout's build/translate has them."""
+committed plan with --no-prep, so nothing is extracted or run; listings show only where this checkout or
+the main checkout has the program listing (build/re), and the pack must hold its required sections either way."""
 import os
 import re
 import sys

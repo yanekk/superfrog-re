@@ -356,8 +356,10 @@ def build(task, review=False, max_kb=MAX_KB, do_prep=True):
             f'The listing of the whole program is `{rel(listing_path())}`; `re/symbols.toml` names its labels.\n\n'
             + '\n\n'.join(blocks), True)
         add('procedure', '## Translate first: the procedure (docs/11-translation.md)\n\n' + procedure(), True)
+        # Required: the procedure's rewrite step points at these rules. The listings are whole flows since
+        # T20 (callees followed), and T22's pack crowded the rules out of 150 KB when they were optional.
         add('rules', '## toolkit/docs/porting-routines.md\n\n'
-            + read(os.path.join(REPO, 'toolkit', 'docs', 'porting-routines.md')))
+            + read(os.path.join(REPO, 'toolkit', 'docs', 'porting-routines.md')), True)
     if 'frame-matching' in kinds:
         cases = sorted(os.path.relpath(p, GAME) for p in glob.glob(os.path.join(ENGINE, 'conform', 'cases', '*')))
         add('conform', '## engine/conform/README.md\n\n' + read(os.path.join(ENGINE, 'conform', 'README.md'))

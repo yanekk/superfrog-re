@@ -29,7 +29,7 @@ It exports the whole program (Ghidra, `pcode_export.py`) and translates it (`pco
 generator's states against the original. `rust` is the routine's generated function and every function
 it calls, routine first, for reading. Results: `pass`; `fail` (`first` is the first difference); `stop`
 (the translation stopped on some state: untranslated, a write into code, unsupported; `first` names it);
-`no-gen` (no generator registered: write one, `generate.py`); `no-oracle` (the original never returns, or
+`no-gen` (no generator registered: write one by hand; `generate.py` is not the default until translator T44); `no-oracle` (the original never returns, or
 blits lines). The generator is `--gen`, else the one registered under the routine's name or address.
 `--task` takes the rows of `re/translate.toml` whose `port_task` or `gen_task` is the task, else the
 `hN+$off` and backticked symbols of its task doc's `## Routines` section (or `--task path/to/doc.md`).
