@@ -8,6 +8,11 @@
 # reached on the original (220 frames, engine/conform/README.md); nine frames are past a few pixels,
 # never three in a row, each a taken item the original erased behind the beam (frames 10 358,
 # 11 699, 11 704, 13 438, 13 439, 15 761, 15 809, 15 813, 20 693).
+# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
+# first difference pass 101 (oracle frame 6403), custom writes: BLTCON0 = $0fca (h0_5820's creature cut)
+# 5 times on the engine, 4 in the original, a creature started a pass early; the machine's edge-redraw
+# scan starts a creature (h0_681c) before the pass at line 233 that cuts the original's scan (docs/10,
+# "A creature start the next pass cuts"), so it runs a pass ahead. Then char_x at pass 145.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "route-W1-1"
 frames = 22536

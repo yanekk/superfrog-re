@@ -4,6 +4,10 @@
 # compares, on every pass, and the whole picture on every frame, nothing set aside. Goal: the
 # level's end found in the same step on both sides. tests/full_route.rs holds that no life is lost
 # on the way and that the two files hold the same inputs.
+# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
+# first difference pass 142 (oracle frame 6444), char_x $205 on the engine, $1fd in the original, input
+# L from step 142; the script turns the stick on the step before, and the original's JOY1DAT read falls
+# past the frame's end where the machine's does not (T46's measurement, not repeated here).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "route-both-W1-1"
 frames = 22472

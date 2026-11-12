@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-12
-**Next `pir-work` will:** T33 (later-world-cases); T46 and T48 can run beside it.
+**Next `pir-work` will:** T33 (later-world-cases); T49, then T50, can run beside it.
 
 ## Tasks
 
@@ -60,9 +60,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
-| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
-| T46 | level1-cases-a-rest | T30; blocks T36 | ⬜ | |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ✅ | |
+| T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | |
 | T47 | machine-power-on | T32; blocks T33 | ✅ | Review clean, no fix commit. Probed: write channels kept live past 3973, frame 5001 equal; marking mutated, 5001 differs and unit test red; oracle's saved h0+$1e3a reads $602c $03f0 $1100, engine's equal; machine judge 88 of 100 unchanged. judge_machine CLXDAT fails on base too. Both cases still fail on processor speed (T30). |
+| T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
+| T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 
 **Review queue:** *(empty)*
 
