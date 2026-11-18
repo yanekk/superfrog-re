@@ -1,0 +1,22 @@
+# World 6's load and its first 300 frames of play on the translated program (translator T33, DESIGN
+# §2.1, §2.7): from the idle title at frame 4990, a few frames before Start, both sides run
+# boot-to-level1's Start, world 6's load, its SCENA screen and play. title_code_world writes
+# world_index in the step load_world reads it, so no poke between frames reaches it: the `set` is
+# made on both sides as load_world is entered (the oracle's poke_at, fd-translated's write_at). The
+# loads are instant on the translated side, so the frames are lined up at each load's return.
+# Translated engine only. Reading: docs/14-translator.md, "Worlds 2 to 6".
+# Fails today, measured 2026-11-18, as power-on-level-1 does in world 1: all 13 loads line up and
+# world_index is 5 on both sides, then the processor is faster while the SCENA screen is built:
+# memory from 5837 (h0+$7a9d 53 in the engine, 48 in the original), the copper list's start 5892 and the
+# picture 5894, two to three frames early; and in play, from fire at 6000, Paula from 6033, as in world
+# 1 (fire at 6300, Paula 6333). No stop: the translated program plays 300 passes (world_starts.rs).
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "world-6-start"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 1330
+compare = ["memory", "picture", "writes"]
+set = [{ var = "world_index", value = 5, when = "load_world" }]
+# Play has run 300 passes of game_frame in world 6 on both sides (irq_count counts from 0: the title
+# takes no interrupt).
+goal = { all = [{ var = "world_index", value = 5 }, { var = "irq_count", value = 300 }], by_frame = 6320 }

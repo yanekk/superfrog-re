@@ -368,6 +368,40 @@ fn watched_returns_are_reported_in_their_frame() {
     assert!(returns.is_empty(), "nothing watched, nothing reported");
 }
 
+/// A case's `set` with `when` (translator T33): the write is made as the handler `h0+$40` is
+/// entered, before it adds one to `$100`, once; a write waiting for a routine the run never enters
+/// through its entry (the foreground, resumed from the snapshot's PC) is never made.
+#[test]
+fn a_write_at_a_routine_is_made_on_its_entry_once() {
+    let (mem, custom) = memory();
+    let mut g = TranslatedGame::with_program(
+        PROG,
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: regs(BASE, 0xFFFF, STACK),
+            custom: &custom,
+            disks: Disks::default(),
+        },
+    );
+    g.write_at((0, 0x40), COUNT as u32, &[0x00, 0x50]);
+    g.write_at((0, 0x0), COUNT as u32 + 2, &[0xAB]);
+    let mut seen = Vec::new();
+    g.run(&mut |out| {
+        seen.push((word(out, COUNT), out.chip[COUNT + 2], out.writes_at_pending));
+        if seen.len() == 3 {
+            Control::Stop
+        } else {
+            Control::Next(Input::default())
+        }
+    });
+    assert_eq!(
+        seen,
+        [(0x51, 0, 1), (0x52, 0, 1), (0x53, 0, 1)],
+        "the handler's write once, before its add; the foreground's never"
+    );
+}
+
 /// `jsr a; jsr b` in one block reaches `b`'s entry with no block of the caller between: `a`'s
 /// return is reported there, before `b`'s, and `b`'s when the program returns and stops.
 #[test]

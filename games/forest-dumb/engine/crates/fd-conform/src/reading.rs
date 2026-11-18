@@ -47,10 +47,12 @@ pub fn run_on(case: &Case, engine: EngineKind) -> Result<Verdict, String> {
 }
 
 /// The task that works from a level 1 case's translated result, and the case's group, by its name
-/// (translator PLAN: T30 character, camera, stretch, picture, idle; T31 the rest of play).
+/// (translator PLAN: T30 character, camera, stretch, picture, idle; T31 the rest of play; T33 the
+/// starts of worlds 2 to 6).
 pub fn group(case: &str) -> (&'static str, &'static str) {
-    const BY_PREFIX: [(&str, &str, &str); 16] = [
+    const BY_PREFIX: [(&str, &str, &str); 17] = [
         ("power-on-", "T32", "power-on"),
+        ("world-", "T33", "world start"),
         ("first-case", "T32", "title"),
         ("character-", "T30", "character"),
         ("stub-level", "T30", "character"),
@@ -237,6 +239,7 @@ impl Reading {
             let title = match task {
                 "T30" => "T30: character, camera, stretch, picture, idle",
                 "T31" => "T31: collect, contact, death, enemy, mechanic, level end, routes",
+                "T33" => "T33: worlds 2 to 6, their load and first play",
                 _ => "Other cases",
             };
             out += &format!(

@@ -31,11 +31,10 @@
 use std::path::Path;
 
 use amiga_oracle::{Amiga, AmigaMemory, Cpu68k, SLOW_BASE, kickstart_path};
-use fd_core::{Width, layout_var};
 
 use crate::case::Case;
 use crate::routine::{PROGRAM, load_program};
-use crate::{address, sync};
+use crate::sync;
 
 /// What a run cannot see, printed on the total line.
 pub const MISSES: &str = "a write restored within one frame; code run outside the program's hunks; code run before the program's entry on the power-on run; paths the runs do not take";
@@ -295,15 +294,8 @@ pub fn run_case_seen_in(
     for k in 0..steps {
         let frame = sync::LEVEL_1_SYNC + k;
         if frame == case.sync_frame {
-            for (name, value) in &case.set {
-                let v = layout_var(name)
-                    .ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
-                let bytes = match v.width {
-                    Width::Byte => vec![*value as u8],
-                    Width::Word => (*value as u16).to_be_bytes().to_vec(),
-                    Width::Long => value.to_be_bytes().to_vec(),
-                };
-                am.poke(address(name)?, &bytes);
+            for s in &case.set {
+                am.poke(s.address()?, &s.bytes());
             }
         }
         between(&mut am, frame);
