@@ -147,6 +147,8 @@ unsafe extern "C" {
     pub fn amiga_pc_hits(a: *const RawAmiga, pcs: *mut *const u32, counts: *mut *const u32) -> usize;
     pub fn amiga_line_samples(a: *const RawAmiga, out: *mut *const RawLineSample) -> usize;
     pub fn amiga_poke(a: *mut RawAmiga, addr: u32, bytes: *const u8, len: usize);
+    pub fn amiga_poke_at(a: *mut RawAmiga, pc: u32, addr: u32, bytes: *const u8, len: usize);
+    pub fn amiga_pokes_at_pending(a: *const RawAmiga) -> usize;
     pub fn amiga_snapshot(
         a: *mut RawAmiga,
         len: *mut usize,

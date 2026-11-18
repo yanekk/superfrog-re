@@ -12,6 +12,9 @@ pub use amiga_chips::is_paula;
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PaulaLog {
     writes: Vec<(u64, PaulaWrite)>,
+    /// Indices into `writes` of those made with a leftover bus word (a read of a write-only
+    /// register, `Bus::ww_leftover`): their value is the DMA's, which the machine cannot know.
+    leftover: Vec<usize>,
 }
 
 impl PaulaLog {
@@ -31,12 +34,33 @@ impl PaulaLog {
         }
     }
 
+    /// Mark the last write kept as made with a leftover bus word.
+    pub fn mark_last(&mut self) {
+        if let Some(i) = self.writes.len().checked_sub(1) {
+            self.leftover.push(i);
+        }
+    }
+
     pub fn writes(&self) -> &[(u64, PaulaWrite)] {
         &self.writes
     }
 
+    /// Indices into [`PaulaLog::writes`] of the writes made with a leftover bus word.
+    pub fn leftover(&self) -> &[usize] {
+        &self.leftover
+    }
+
     /// The frame's writes, leaving the log empty for the next.
     pub fn take(&mut self) -> Vec<(u64, PaulaWrite)> {
-        std::mem::take(&mut self.writes)
+        self.take_marked().0
+    }
+
+    /// The frame's writes and which of them were made with a leftover bus word, leaving the log
+    /// empty for the next.
+    pub fn take_marked(&mut self) -> (Vec<(u64, PaulaWrite)>, Vec<usize>) {
+        (
+            std::mem::take(&mut self.writes),
+            std::mem::take(&mut self.leftover),
+        )
     }
 }

@@ -102,6 +102,31 @@ pub trait Bus {
     fn wb(&mut self, a: u32, v: u8);
     fn ww(&mut self, a: u32, v: u16);
     fn wl(&mut self, a: u32, v: u32);
+    /// The write a read of a write-only custom register makes (a 68000 `clr` reads before it
+    /// writes): the register takes the word left on the data bus. Which word that is depends on
+    /// the DMA slot before the read, which the translated code cannot know (translator T47), so a
+    /// machine may mark the write as made with a leftover word; plain memory writes it as `ww`.
+    #[inline]
+    fn ww_leftover(&mut self, a: u32, v: u16) {
+        self.ww(a, v);
+    }
+}
+
+/// [`store`] of a word through [`Bus::ww_leftover`]: the generated `clr`'s read of a write-only
+/// custom register (`pcode_fix.arith`).
+#[inline]
+pub fn store_leftover<B: Bus + ?Sized>(
+    bus: &mut B,
+    img: &Image,
+    a: u32,
+    v: u64,
+) -> Result<(), Stop> {
+    if img.is_code(a, 2) {
+        let at = img.first_code_byte(a, 2).unwrap_or(a);
+        return Err(Stop::WriteIntoCode(img.describe(at)));
+    }
+    bus.ww_leftover(a, v as u16);
+    Ok(())
 }
 
 /// Ghidra's 68000 register space, byte for byte, big-endian, the run's two counters and its cycles.
@@ -624,6 +649,22 @@ mod tests {
         assert_eq!(ram.writes, vec![(before, 1)], "two stops, one write");
         assert_eq!(ram.bytes[first as usize], 0);
         assert_eq!(ram.bytes[before as usize], 0x55);
+    }
+
+    #[test]
+    fn a_leftover_store_is_a_word_store_on_plain_memory() {
+        // `Bus::ww_leftover`'s default is `ww`: only a machine marks the write (T47).
+        let i = img();
+        let mut ram = Ram::new();
+        let a = i.h(0, 0x20);
+        assert_eq!(store_leftover(&mut ram, &i, a, 0x1_4279), Ok(()));
+        assert_eq!(ram.writes, vec![(a, 2)]);
+        assert_eq!(ram.rw(a), 0x4279);
+        assert_eq!(
+            store_leftover(&mut ram, &i, i.h(0, 0x0f), 1),
+            Err(Stop::WriteIntoCode("h0+$10".into()))
+        );
+        assert_eq!(ram.writes.len(), 1);
     }
 
     #[test]

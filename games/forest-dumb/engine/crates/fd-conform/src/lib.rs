@@ -44,7 +44,7 @@ use fd_core::level::{AddCut, EdgesCut};
 use fd_core::render::objects::CUT_ROWS;
 use fd_core::render::playfield::{SCREEN, Scroll};
 use fd_core::{
-    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, Width,
+    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var,
     layout_var,
 };
 
@@ -1096,10 +1096,10 @@ impl fmt::Display for Verdict {
 /// Run `case` on the real disks and Kickstart. Every missing input is an error naming its path, and
 /// the cheap checks come first so a wrong setup fails before any emulation.
 pub fn run(case: &Case) -> Result<Verdict, String> {
-    if case.is_entry() {
+    if case.by_loads() {
         return Err(format!(
-            "{}: a power-on case (`start = \"entry\"`) runs on `--engine translated`; the hand \
-             engine starts at level 1",
+            "{}: a case lined up by loads (`align = \"loads\"`) runs on `--engine translated`; \
+             the hand engine starts at level 1",
             case.name
         ));
     }
@@ -1245,14 +1245,9 @@ fn reach_case_with(
         am.step(input).map_err(|e| e.to_string())?;
         each(&mut am, Some(input))?;
     }
-    for (name, value) in &case.set {
-        let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
-        let bytes = match v.width {
-            Width::Byte => vec![*value as u8],
-            Width::Word => (*value as u16).to_be_bytes().to_vec(),
-            Width::Long => value.to_be_bytes().to_vec(),
-        };
-        am.poke(address(name)?, &bytes);
+    // A level case's rows have no `when` (Case::parse): all at the sync point.
+    for s in &case.set {
+        am.poke(s.address()?, &s.bytes());
     }
     Ok(am)
 }

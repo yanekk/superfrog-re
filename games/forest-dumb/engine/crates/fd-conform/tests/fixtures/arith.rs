@@ -255,7 +255,7 @@ pub fn i_h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
         let a = u_100 as u32;
         if pcode_rt::ops::custom_write_only(a) {
             let w = load(bus, img.h(0, 0x16), 2);
-            store(bus, img, a, 2, w)?;
+            pcode_rt::store_leftover(bus, img, a, w)?;
         }
         let v = 0x0u64;
         store(bus, img, 0xdff0a8, 2, v)?;
@@ -284,11 +284,11 @@ pub fn i_h0_18(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
         let a = u_100 as u32;
         if pcode_rt::ops::custom_write_only(a) {
             let w = load(bus, img.h(0, 0x1e), 2);
-            store(bus, img, a, 2, w)?;
+            pcode_rt::store_leftover(bus, img, a, w)?;
         }
         if pcode_rt::ops::custom_write_only(a.wrapping_add(2)) {
             let w = load(bus, img.h(0, 0x1e), 2);
-            store(bus, img, a.wrapping_add(2), 2, w)?;
+            pcode_rt::store_leftover(bus, img, a.wrapping_add(2), w)?;
         }
         store(bus, img, a.wrapping_add(2), 2, 0)?;
         store(bus, img, a, 2, 0)?;
@@ -320,7 +320,7 @@ pub fn i_h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
         let a = u_5000 as u32;
         if pcode_rt::ops::custom_write_only(a) {
             let w = load(bus, img.h(0, 0x22), 2);
-            store(bus, img, a, 2, w)?;
+            pcode_rt::store_leftover(bus, img, a, w)?;
         }
         let v = u_4f00;
         store(bus, img, r.get(0x20, 4) as u32, 2, v)?;

@@ -24,7 +24,8 @@ g.set_input(first_frame_input);
 // on a thread with RUN_STACK bytes of stack:
 let stop = g.run(&mut |frame| {
     // frame.picture, frame.writes (cycle, reg, word; CPU and copper), frame.cpu_writes (the CPU's
-    // alone), frame.paula, frame.chip, frame.slow
+    // alone), frame.paula, frame.chip, frame.slow; frame.cpu_leftover and frame.paula_leftover
+    // index the writes a read of a write-only register made (T47: compared by register only)
     Control::Next(next_input)          // or Control::Stop
 });
 ```
@@ -45,6 +46,10 @@ let stop = g.run(&mut |frame| {
   `returns` lists the watched routines that returned in it, `inside` those still running at its end.
   Read off `Regs::depth` at each block's `poll`: entered through the routine's entry only (a mount
   hides it); a function entered at its depth also means it returned, as a call is not a block's end.
+- **Writes at a routine** (T33): `g.write_at((hunk, offset), addr, &bytes)` before the run writes
+  the bytes into RAM as the routine at that entry is entered, before its first instruction, once;
+  each frame's `writes_at_pending` counts those not made yet. The oracle's `Amiga::poke_at` at the
+  routine's first instruction is the same write: a case's `set` with `when` makes both.
 - **Snapshot**: the original's RAM, registers and custom registers (as `Machine::from_snapshot`
   reads them); CIA-A's mask is set to the keyboard's (`$08`), which the oracle does not expose. The PC
   and every return address on the stack may be any instruction: the run enters through the tree's

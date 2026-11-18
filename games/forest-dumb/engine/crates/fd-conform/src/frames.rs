@@ -80,10 +80,12 @@ pub trait FrameEngine: Transplant {
     fn frame(&mut self, input: FrameInput);
     /// The whole picture of the last frame (it is cut to [`PLAY_WINDOW`] here); `None` if none.
     fn picture(&self) -> Option<Picture>;
-    /// Paula's writes in the last frame, in order; their beam positions are not compared.
+    /// Paula's writes in the last frame, in order; their beam positions are not compared. A
+    /// write made with the bus's leftover word has [`LEFTOVER`] set in its register.
     fn paula(&self) -> &[PaulaWrite];
     /// Every custom-register write the CPU made in the last frame, `(register offset from
     /// $DFF000, value)`, Paula's included; never the copper's, which the oracle does not keep.
+    /// A write made with the bus's leftover word has [`LEFTOVER`] set in its register.
     fn custom_writes(&self) -> &[(u16, u16)];
     /// `vars`' values at each pass end of the last frame (each CPU write of [`PASS_END`]), in
     /// order; empty if no pass ended in it.
@@ -103,6 +105,16 @@ pub trait FrameEngine: Transplant {
     /// Before a power-on case's first frame: the raster line the original's entry ran on, where
     /// the engine starts its program ([`crate::sync::reach_entry`]).
     fn start_line(&mut self, _line: u16) {}
+    /// Before the first frame: write `bytes` at `addr` as the program enters the routine at `at`
+    /// (hunk, offset), once; a case's `set` with `when` (T33), which the runner makes on the
+    /// original at the same routine (`Amiga::poke_at`). An engine that cannot refuses.
+    fn write_at(&mut self, _at: (u8, u32), _addr: u32, _bytes: &[u8]) -> Result<(), String> {
+        Err("this engine makes no write as a routine is entered".into())
+    }
+    /// How many [`FrameEngine::write_at`] writes the engine has not made by the last frame's end.
+    fn writes_at_pending(&self) -> usize {
+        0
+    }
 }
 
 /// The channels a frame is judged on, and how many: state, Paula's writes, the picture, the other
@@ -214,7 +226,9 @@ impl<'a> Judge<'a> {
             }
         }
         if self.live[1] && writes {
-            match paula(engine.paula(), &capture.paula) {
+            let theirs: Vec<(u16, u16)> = capture.paula.iter().map(|w| (w.reg, w.value)).collect();
+            let ours: Vec<(u16, u16)> = engine.paula().iter().map(|w| (w.reg, w.value)).collect();
+            match paula(&as_paula(&leftover_in_order(&ours, &theirs)), &capture.paula) {
                 Some(why) => differs.push((1, Outcome::WritesDiffer { pass, frame, why })),
                 None => {
                     verdict.writes += capture.paula.len() as u32;
@@ -267,7 +281,7 @@ impl<'a> Judge<'a> {
                 .iter()
                 .map(|w| (w.reg & 0x1FE, w.value))
                 .collect();
-            match custom_difference(engine.custom_writes(), &theirs) {
+            match custom_difference(&leftover_counted(engine.custom_writes(), &theirs), &theirs) {
                 Some(d) => differs.push((
                     3,
                     Outcome::CustomWritesDiffer {
@@ -476,7 +490,7 @@ pub fn run_frames_inputs(
                     differs.push((1, o));
                     break;
                 }
-                match paula(&as_paula(&ours), &as_paula(&theirs)) {
+                match paula(&as_paula(&leftover_in_order(&ours, &theirs)), &as_paula(&theirs)) {
                     Some(why) => {
                         differs.push((
                             1,
@@ -513,7 +527,7 @@ pub fn run_frames_inputs(
                     differs.push((3, o));
                     break;
                 }
-                match custom_carried(&mut carried, &ours, &theirs) {
+                match custom_carried(&mut carried, &leftover_counted(&ours, &theirs), &theirs) {
                     Some(d) => {
                         differs.push((
                             3,
@@ -706,17 +720,21 @@ pub fn run_title_frames(
     Ok(conclude(case, verdict, nothing))
 }
 
-/// Power-on case `case` (`start = "entry"`) on `engine`, which starts at the program's entry:
-/// paired with the oracle step that first runs it, then lined up by loads.
+/// Case `case`, lined up by loads (`align = "loads"`), on `engine`. A power-on case's
+/// (`start = "entry"`) engine starts at the program's entry, paired with the oracle step that
+/// first runs it; any other's starts from a snapshot at the end of its sync frame's step, paired
+/// with the next (T33), its `set` made on both sides as the program enters each row's routine
+/// (`Amiga::poke_at`, [`FrameEngine::write_at`]). A write either side never made fails the case.
 pub fn run_entry_frames(
     case: &Case,
     inputs: &Inputs,
     engine: &mut dyn FrameEngine,
     opts: &Options,
 ) -> Result<Verdict, String> {
-    if !case.is_entry() {
-        return Err(format!("{}: not a `start = \"entry\"` case", case.name));
+    if !case.by_loads() {
+        return Err(format!("{}: not lined up by loads", case.name));
     }
+    let end = case.sync_frame + case.frames;
     let goal = goal_vars(case)?;
     let mut judge = Judge::new(case, opts, SCREEN_WINDOW)?;
     let h = |(hunk, off): (u8, u32)| HUNK_BASES[hunk as usize] + off;
@@ -725,8 +743,22 @@ pub fn run_entry_frames(
     let mut pcs: Vec<u32> = opts.register.iter().map(crate::coverage::address).collect();
     pcs.extend(&entries);
     pcs.extend(&returns);
-    let (mut am, line) = sync::reach_entry(case, inputs, &pcs)?;
-    engine.start_line(line);
+    let (mut am, line) = if case.is_entry() {
+        sync::reach_entry(case, inputs, &pcs)?
+    } else {
+        let mut am = reach_title(case, inputs)?;
+        am.watch_pcs(&pcs);
+        (am, 0)
+    };
+    if case.is_entry() {
+        engine.start_line(line);
+    }
+    for s in &case.set {
+        let w = s.when.as_ref().ok_or("a `set` lined up by loads has a `when`")?;
+        let (bytes, addr) = (s.bytes(), s.address()?);
+        am.poke_at(h(w.at), addr, &bytes);
+        engine.write_at(w.at, addr, &bytes)?;
+    }
     let handler = h(sync::LEVEL3_HANDLER);
     let program_owns = |am: &Amiga| {
         let v = am.peek(sync::LEVEL3_VECTOR, 4);
@@ -748,7 +780,9 @@ pub fn run_entry_frames(
         (r, entered > returned)
     };
     let mut verdict = Verdict::new(opts.register);
-    verdict.entry = Some((am.frame(), line));
+    if case.is_entry() {
+        verdict.entry = Some((am.frame(), line));
+    }
     let mut align = ByReturns::new(LOAD_CAP);
     // The step just run: its input, its capture, whether the program had the machine before it.
     let mut input = inputs.at(am.frame() - 1);
@@ -764,7 +798,14 @@ pub fn run_entry_frames(
         let c = am.step(input).map_err(|e| e.to_string())?;
         Ok((input, c))
     };
-    // The entry's step's own hits: nothing loads before the entry.
+    if !case.is_entry() {
+        // The engine starts where the snapshot was taken, the sync frame's step's end: its first
+        // frame is the next step's.
+        owned_before = program_owns(&am);
+        (input, capture) = step(&mut am)?;
+        verdict.coverage.add(opts.register, am.pc_hits());
+    }
+    // The first step's own hits: nothing loads before the entry.
     let (r, l) = count(&am);
     align.original(r, l);
     loop {
@@ -791,7 +832,7 @@ pub fn run_entry_frames(
                 });
                 break;
             }
-            if am.frame() >= case.frames {
+            if am.frame() >= end {
                 break;
             }
             owned_before = program_owns(&am);
@@ -818,7 +859,7 @@ pub fn run_entry_frames(
             }
             goal_check(case, &goal, &*engine, &am, frame, &mut verdict);
         }
-        if am.frame() >= case.frames {
+        if am.frame() >= end {
             break;
         }
         owned_before = program_owns(&am);
@@ -829,6 +870,23 @@ pub fn run_entry_frames(
     }
     verdict.loads = align.returned().1;
     verdict.load_frames = align.skipped();
+    // A `set` is what the case says it compares under: both sides must have made it.
+    let pending = [am.pokes_at_pending(), engine.writes_at_pending()];
+    if verdict.firsts.is_empty() && pending != [0, 0] {
+        let sets: Vec<String> = case
+            .set
+            .iter()
+            .map(|s| format!("{} at {}", s.var, s.when.as_ref().map_or("?", |w| &w.routine)))
+            .collect();
+        verdict.firsts.push(Outcome::ComparedNothing {
+            what: format!(
+                "the set {}: {} writes never made on the original, {} on the engine",
+                sets.join(", "),
+                pending[0],
+                pending[1]
+            ),
+        });
+    }
     if verdict.firsts.is_empty() && align.returned().0 != align.returned().1 {
         let (e, o) = align.returned();
         verdict.firsts.push(Outcome::LoadApart {
@@ -850,7 +908,7 @@ fn reach_title(case: &Case, inputs: &Inputs) -> Result<Amiga, String> {
     let cfg = OracleConfig::new(
         kickstart,
         crate::disks::load()?,
-        case.sync_frame + case.frames,
+        case.sync_frame + case.frames + 1,
     );
     let mut am = Amiga::power_on(&cfg).map_err(|e| e.to_string())?;
     for frame in 0..case.sync_frame {
@@ -1153,6 +1211,61 @@ impl Passes {
             })
         })
     }
+}
+
+/// Set on the register of an engine's write a read of a write-only register made
+/// ([`FrameEngine::paula`], [`FrameEngine::custom_writes`]): its word is whatever the bus held,
+/// which on the original is the last DMA slot's (measured, translator T47: bitplane data under
+/// `mt_end`'s `clr.w AUDxVOL` at frame 5001). Such a write is compared by register only (owner,
+/// 2026-11-12): no engine without slot-exact DMA could know the word, and it is never seen or
+/// heard (a volume held for 4 cycles before the 0, a strobe).
+pub const LEFTOVER: u16 = 0x8000;
+
+/// `ours` with each [`LEFTOVER`] write unmarked and given the value of the original's write at
+/// the same place when that is to the same register: Paula's writes, compared in order.
+pub fn leftover_in_order(ours: &[(u16, u16)], theirs: &[(u16, u16)]) -> Vec<(u16, u16)> {
+    ours.iter()
+        .enumerate()
+        .map(|(i, &(reg, value))| {
+            if reg & LEFTOVER == 0 {
+                return (reg, value);
+            }
+            let reg = reg & !LEFTOVER;
+            match theirs.get(i) {
+                Some(&(r, v)) if r == reg => (reg, v),
+                _ => (reg, value),
+            }
+        })
+        .collect()
+}
+
+/// `ours` with each [`LEFTOVER`] write unmarked and given the value of an original write to the
+/// same register that `ours` is short of, if there is one: the other custom writes, compared as
+/// (register, value) counts.
+pub fn leftover_counted(ours: &[(u16, u16)], theirs: &[(u16, u16)]) -> Vec<(u16, u16)> {
+    let mut short: BTreeMap<(u16, u16), i64> = BTreeMap::new();
+    for &w in theirs {
+        *short.entry(w).or_default() += 1;
+    }
+    for &w in ours.iter().filter(|(r, _)| r & LEFTOVER == 0) {
+        *short.entry(w).or_default() -= 1;
+    }
+    ours.iter()
+        .map(|&(reg, value)| {
+            if reg & LEFTOVER == 0 {
+                return (reg, value);
+            }
+            let reg = reg & !LEFTOVER;
+            let found = short
+                .iter_mut()
+                .find(|((r, _), n)| *r == reg && **n > 0)
+                .map(|((_, v), n)| {
+                    *n -= 1;
+                    *v
+                });
+            (reg, found.unwrap_or(value))
+        })
+        .collect()
 }
 
 fn as_paula(w: &[(u16, u16)]) -> Vec<PaulaWrite> {

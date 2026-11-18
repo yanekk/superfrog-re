@@ -29,6 +29,7 @@ workspace = "."
 # Setting machines up while a thread watches the core's shared slot table, 60 set-ups, about 4 s.
 "crates/amiga-oracle/tests/machines_apart.rs" = "smoke"
 "crates/amiga-oracle/tests/picture_in.rs" = "smoke"
+"crates/amiga-oracle/tests/poke_at.rs" = "smoke"
 "crates/amiga-oracle/tests/routine.rs" = "smoke"
 "crates/amiga-oracle/tests/routine_branches.rs" = "smoke"
 "crates/amiga-oracle/tests/routine_step.rs" = "smoke"

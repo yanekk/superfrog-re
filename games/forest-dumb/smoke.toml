@@ -27,6 +27,12 @@ workspace = "engine"
 # frames short (two runs from power-on, about 45 s), and first-case, power-on-title and
 # power-on-level-1 on the generated tree: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/power_on.rs" = "full"
+# Translator T33: world starts. Stand-ins for the `set` made at load_world (three runs from power-on
+# to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
+# cases on it: the disks, Kickstart and the tree's build put them in full.
+"crates/fd-conform/tests/world_starts.rs" = "full"
+# Translator T47: a write a read of a write-only register made, compared by register only (pure).
+"crates/fd-conform/tests/leftover.rs" = "smoke"
 # Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
 "crates/fd-conform/tests/engine_hand.rs" = "full"
 # Translator T35: the seam's judge on a made-up routine, about 3 s, no disks. The two adapters on

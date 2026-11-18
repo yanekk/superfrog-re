@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | level1-cases-a | T29 | ✅ | |
 | T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ✅ | |
-| T33 | later-world-cases | T32 | ⬜ | |
+| T33 | later-world-cases | T32 | ✅ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
@@ -60,10 +60,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
-| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ⬜ | |
+| T48 | level1-cases-b-pass | T30, T31; blocks T36 | ✅ | |
 | T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | |
-| T47 | machine-power-on | T32; blocks T33 | ⬜ | |
+| T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | Reviewed: 23 of 24 cases rerun pass, `camera-bottom-right` carried by T52; gate 89/100 rerun. Three surviving mutations (sprite slots, `sync`, leading idle) got tests, sprite readings measured on the oracle. Probed `PASS_LAG` 0 (9 fail, not 10), contention off fails slide-buttons at pass 79. Shift loop 7 slots slow, open. |
+| T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
+| T51 | world-starts-pass | T33, T49; blocks T42 | ⬜ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ⬜ | |
 
 **Review queue:** *(empty)*

@@ -434,6 +434,21 @@ impl Amiga {
         unsafe { ffi::amiga_poke(self.raw, addr, bytes.as_ptr(), bytes.len()) }
     }
 
+    /// Write `bytes` at `addr` as [`Amiga::poke`] does, but mid-frame: the moment the CPU is about
+    /// to execute the instruction at `pc` (core patch 0006), before that instruction reads
+    /// anything, in whichever later step first reaches it; once, then dropped. For a state a
+    /// program writes and reads within one frame, which no poke between frames can change.
+    /// Pending writes belong to the machine: [`Amiga::restore`] keeps them
+    /// (`tests/poke_at.rs`).
+    pub fn poke_at(&mut self, pc: u32, addr: u32, bytes: &[u8]) {
+        unsafe { ffi::amiga_poke_at(self.raw, pc, addr, bytes.as_ptr(), bytes.len()) }
+    }
+
+    /// How many [`Amiga::poke_at`] writes the CPU has not reached yet.
+    pub fn pokes_at_pending(&self) -> usize {
+        unsafe { ffi::amiga_pokes_at_pending(self.raw) }
+    }
+
     /// The CPU's registers as they are now: at the end of the last frame, just before the next
     /// vertical blank's interrupt is taken.
     pub fn cpu(&self) -> CpuRegs {
