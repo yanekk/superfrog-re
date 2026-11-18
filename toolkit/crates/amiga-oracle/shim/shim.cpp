@@ -251,14 +251,14 @@ struct amiga_machine {
     std::vector<uint32_t> watchPcs;
     std::vector<uint32_t> pcCounts;
     int framesRun = 0;
-    // amiga_watch_write: the write watched for (none while reg is 0xFFFF), and RAM at its first
-    // hit in the last step.
     // amiga_poke_at: writes still waiting for the CPU to reach their address, in the order given.
     struct PokeAt {
         uint32_t pc, addr;
         std::vector<uint8_t> bytes;
     };
     std::vector<PokeAt> pokesAt;
+    // amiga_watch_write: the write watched for (none while reg is 0xFFFF), and RAM at its first
+    // hit in the last step.
     uint32_t watchReg = 0xFFFF;
     uint16_t watchValue = 0;
     bool watched = false;
