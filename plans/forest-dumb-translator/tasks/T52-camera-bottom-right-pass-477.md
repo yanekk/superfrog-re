@@ -2,7 +2,7 @@
 
 **Split from:** T49 (owner, 2026-11-18); carries T49's "Every case above passes" for `camera-bottom-right`.
 
-**Phase:** 5 · **Depends on:** T49; blocks T36 · **Weight:** heavy
+**Phase:** 5 · **Depends on:** T49; blocks T36, T50 · **Weight:** heavy
 
 ## Goal
 
@@ -14,7 +14,9 @@ What T49 measured (temporary probes, not committed; the commit message of T49's 
 - The machine runs ahead over the frame: its pass end (`INTREQ=$4010`) is a median 42 slots early over the case, up to 450. In frame 6777 the gap grows from 207 to 630 slots over lines 168 to 200, about 6%, in the main loop after `level3_handler`'s 7-line wait (`redraw_edge_a`'s loop calling `h0_7cc`, then the scan at `h0+$98a`).
 - Over that stretch both sides give the CPU the same bus share per line (84 to 91 accesses a line, the oracle's `set_dma_profile` owners against the machine's), so the original makes about 220 more accesses (2 763 against 2 539) in it. `h0_7cc` runs 18 times on the machine, 19 hits on the oracle's step; only levels 2 and 3 interrupt (docs/15). The cause is not found.
 
-Find what the original's CPU does in those lines that the machine does not count, and model it generally. Then re-measure what T30's pass slack still has to admit: with `frames::PASS_LAG` 0, T49 saw 10 of the 24 cases fail on a pass ending a frame apart, both ways; `custom_carried` was not re-measured.
+T50's `enemy-kind4` and `mechanic-spring` fail at the same pass, frame and first pixel on T49's machine (T49 review, 2026-11-18), likely the same fault, so T52 blocks T50 (owner, 2026-11-18).
+
+Find what the original's CPU does in those lines that the machine does not count, and model it generally. Then re-measure what T30's pass slack still has to admit: with `frames::PASS_LAG` 0, T49's review saw 9 of the 24 cases fail on a pass ending a frame apart, both ways; `custom_carried` was not re-measured.
 
 ## Design sections this implements
 

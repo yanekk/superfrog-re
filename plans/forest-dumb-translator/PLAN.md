@@ -106,7 +106,7 @@ At the end translated routines are judged on the machine with real hardware effe
 | [T47](tasks/T47-machine-power-on.md) | machine-power-on | T32; blocks T33 |
 | [T48](tasks/T48-level1-cases-b-pass.md) | level1-cases-b-pass | T30, T31; blocks T36 |
 | [T49](tasks/T49-machine-dma-contention.md) | machine-dma-contention | T46; blocks T36 |
-| [T52](tasks/T52-camera-bottom-right-pass-477.md) | camera-bottom-right-pass-477 | T49; blocks T36 |
+| [T52](tasks/T52-camera-bottom-right-pass-477.md) | camera-bottom-right-pass-477 | T49; blocks T36, T50 |
 
 T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worker that finds more failure kinds than fit asks to add a task (CLAUDE.md, adding a task mid-run).
 
