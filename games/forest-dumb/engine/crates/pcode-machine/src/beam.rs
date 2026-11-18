@@ -1,13 +1,17 @@
-//! The beam from counted cycles: `amiga-clock`'s [`Clock`] says where `t` CPU cycles into a frame
-//! put it; this module only wraps at the frame and encodes VPOSR and VHPOSR.
+//! The beam from counted cycles: where `t` CPU cycles into a frame put it (`amiga-clock`'s `Clock`,
+//! in closed form); this module only wraps at the frame and encodes VPOSR and VHPOSR.
 
-use amiga_clock::{Clock, DisplayTiming, FRAME_LINES, LINE_CYCLES, Timing};
+use amiga_clock::{FRAME_LINES, LINE_CYCLES};
+#[cfg(test)]
+use amiga_clock::{Clock, DisplayTiming, Timing};
 
-/// A display that takes no cycles from the CPU: the machine does not model DMA contention
-/// (DESIGN §2.6), so every line gives the CPU all its cycles.
+/// A display that takes no cycles from the CPU: the beam runs on regardless of what the bus gives
+/// the CPU (contention is `dma`'s, as waits added to the count), so every line is `LINE_CYCLES`.
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 struct NoFetch;
 
+#[cfg(test)]
 impl Timing for NoFetch {
     const TIMING: DisplayTiming = DisplayTiming {
         frame_lines: FRAME_LINES,
@@ -26,6 +30,18 @@ pub fn frame_cycles(frame_lines: u16) -> u64 {
 /// The line and horizontal position (DMA slots, 227 a line) `t` CPU cycles after line 0's start,
 /// frames of `frame_lines` lines repeating.
 pub fn position(t: u64, frame_lines: u16) -> (u16, u16) {
+    // [`clock_position`] in closed form: with nothing taken from the CPU every line is
+    // `LINE_CYCLES` long. The bus (`dma`) asks this for every slot it runs, and the clock walks the
+    // frame a line at a time (T49).
+    let into = t % frame_cycles(frame_lines);
+    let line = (into / LINE_CYCLES as u64) as u16;
+    let h = ((into % LINE_CYCLES as u64) / 2).min(amiga_clock::LINE_SLOTS as u64 - 1) as u16;
+    (line, h)
+}
+
+/// [`position`] as `amiga-clock`'s [`Clock`] counts it.
+#[cfg(test)]
+fn clock_position(t: u64, frame_lines: u16) -> (u16, u16) {
     let mut c = Clock::<NoFetch>::START;
     c.cpu((t % frame_cycles(frame_lines)) as u32);
     (c.line, c.pos().slot())
@@ -59,6 +75,15 @@ pub fn decode(vposr: u16, vhposr: u16) -> (u16, u16) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_closed_form_is_the_clocks() {
+        for lines in [312u16, 313] {
+            for t in (0..3 * frame_cycles(lines)).step_by(7).chain([0, 1, 453, 454, 455, 908]) {
+                assert_eq!(position(t, lines), clock_position(t, lines), "t {t}, {lines} lines");
+            }
+        }
+    }
 
     #[test]
     fn a_line_is_454_cycles_and_227_slots() {

@@ -644,7 +644,7 @@ impl Machine {
                 let (done, done_c, done_o, part) = self.synced;
                 let begin = self.dma_at.max(c0 + done_c);
                 let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
-                let n = match Self::trail_since(r, c0, o0, done, &mut work) {
+                let n = match Self::trail_since(r, c0 + done_c, o0 + done_o, done, &mut work) {
                     Some(n) => n,
                     // Something ticked past the trail: the rest of the block is one lump.
                     None => {
@@ -670,8 +670,9 @@ impl Machine {
     }
 
     /// The block's trail from instruction `from` on, as (cycles, off the bus, of those first), into
-    /// `work`; its length, if the trail holds the whole block since the mark `(c0, o0)` one
-    /// instruction at a time (it does unless something ticked past it).
+    /// `work`; its length, if the trail holds the whole block since the mark one instruction at a
+    /// time (it does unless something ticked past it). `(c0, o0)` is the mark moved past the
+    /// instructions before `from`, so only the rest is summed: `sync` runs before every access.
     fn trail_since(
         r: &Regs,
         c0: u64,
@@ -680,18 +681,17 @@ impl Machine {
         work: &mut [(u32, u32, u32); pcode_rt::TRAIL],
     ) -> Option<usize> {
         let trail = r.trail();
-        let (sc, so) = trail
-            .iter()
-            .fold((0u64, 0u64), |(a, b), &(x, y)| (a + x as u64, b + y as u64));
-        let whole = trail.len() < pcode_rt::TRAIL
-            && (sc, so) == (r.cycles() - c0, r.off_bus_cycles() - o0);
-        if !whole || from > trail.len() {
+        if trail.len() >= pcode_rt::TRAIL || from > trail.len() {
             return None;
         }
-        for (k, (&(c, o), &l)) in trail.iter().zip(r.trail_lead()).enumerate().skip(from) {
-            work[k - from] = (c, o, l);
+        let (mut sc, mut so) = (0u64, 0u64);
+        for (k, (&(c, o), &l)) in trail[from..].iter().zip(&r.trail_lead()[from..]).enumerate() {
+            work[k] = (c, o, l);
+            sc += c as u64;
+            so += o as u64;
         }
-        Some(trail.len() - from)
+        ((sc, so) == (r.cycles().wrapping_sub(c0), r.off_bus_cycles().wrapping_sub(o0)))
+            .then_some(trail.len() - from)
     }
 
     /// An instruction that reads or writes memory is about to: the block's instructions before it
@@ -706,7 +706,7 @@ impl Machine {
         }
         let (done, done_c, done_o, part) = self.synced;
         let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
-        let Some(len) = Self::trail_since(r, c0, o0, done, &mut work) else {
+        let Some(len) = Self::trail_since(r, c0 + done_c, o0 + done_o, done, &mut work) else {
             return;
         };
         // The last is the instruction about to access memory: its own time is still to come.

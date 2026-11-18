@@ -303,10 +303,32 @@ impl Slots<'_> {
 
     /// Run the slots from `from` up to `to` (cycle counts) with no CPU access: the chips alone.
     pub fn idle(&mut self, from: u64, to: u64, beam: &dyn Fn(u64) -> (u16, u16)) {
+        self.free(from, to, beam);
+    }
+
+    /// The slots `from`, `from + 2`, .. before `to`, none of which the CPU asks for. Only a running
+    /// blit takes a free slot, so without one nothing but the sprites' line state moves: each line
+    /// the slots reach is entered and the slots are not run one by one (the same result, and the
+    /// machine's hot path, T49).
+    fn free(&mut self, from: u64, to: u64, beam: &dyn Fn(u64) -> (u16, u16)) {
+        let blitting = self.dmacon & (DMAEN | BLTEN) == (DMAEN | BLTEN)
+            && self.blit.as_ref().is_some_and(|b| b.done_at.is_none());
         let mut t = from;
+        if blitting {
+            while t < to {
+                self.step(t, beam(t), false);
+                t += 2;
+            }
+            return;
+        }
         while t < to {
-            self.step(t, beam(t), false);
-            t += 2;
+            let (line, h) = beam(t);
+            let line = line % self.frame_lines;
+            if self.sprites.line != Some(line) {
+                self.sprites.enter(line, self.chip, self.custom);
+            }
+            // The next line's first slot, on the same parity as `from`.
+            t += 2 * (amiga_clock::LINE_SLOTS as u64).saturating_sub(h as u64).max(1);
         }
     }
 
@@ -340,11 +362,9 @@ impl Slots<'_> {
     }
 
     /// The CPU off the bus from cycle count `t` to `end`: the chips run those slots.
-    pub fn cpu_idle(&mut self, mut t: u64, end: u64, beam: &dyn Fn(u64) -> (u16, u16)) -> u64 {
-        while t + 2 <= end {
-            self.step(t, beam(t), false);
-            t += 2;
-        }
+    pub fn cpu_idle(&mut self, t: u64, end: u64, beam: &dyn Fn(u64) -> (u16, u16)) -> u64 {
+        // The slots starting before `end - 1`: a slot the CPU's time ends inside is the CPU's.
+        self.free(t, end.saturating_sub(1), beam);
         end.max(t)
     }
 
@@ -359,9 +379,8 @@ impl Slots<'_> {
                 waited += 1;
                 t += 2;
             }
-            t += 2;
-            self.step(t, beam(t), false);
-            t += 2;
+            self.free(t + 2, t + 4, beam);
+            t += 4;
         }
         t
     }
