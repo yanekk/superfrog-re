@@ -24,7 +24,9 @@ and a kind the table lacks fails the build instead of counting zero.
 - Off the bus (T49): each tick is followed, on its line, by `r.off_bus(..)`, the instruction's
   internal cycles (`pcode_rt::cycles::off_of`, `bcc_off`, `dbcc_off`, `one_word_off` for the
   data-dependent kinds of one bus word), so a machine modelling DMA contention gives the chips those
-  slots. `movem` is all bus and has none.
+  slots. `movem` is all bus and has none. A kind that idles before its accesses (a branch, jump or
+  call, a `-(An)` or index operand first) also gets `r.idle_first(..)` (`lead_of`, and for branches
+  all of `bcc_off`, `dbcc_off`), since which slots the CPU asks for hangs on it.
 
 Nothing for an instruction without `operands` and `bytes` (a hand-written fixture from before
 translator T04).
@@ -123,16 +125,28 @@ def kind(ins):
     return op, size, EA[src], EA[dst]
 
 
-def tick(expr, off=None):
-    """A constant tick, and its cycles off the bus (`off`, a const expression) on the same line."""
+def tick(expr, off=None, lead=None):
+    """A constant tick, and its cycles off the bus (`off`, a const expression) and of those the ones
+    before its accesses (`lead`) on the same line."""
     t = f'r.tick(const {{ {expr} }});'
-    return t if off is None else f'{t} r.off_bus(const {{ {off} }});'
+    t = t if off is None else f'{t} r.off_bus(const {{ {off} }});'
+    return t if lead is None else f'{t} r.idle_first(const {{ {lead} }});'
 
 
-def tick_rt(expr, off=None):
-    """A tick whose time is computed at run time, before the instruction; `off` likewise."""
+def tick_rt(expr, off=None, lead=None):
+    """A tick whose time is computed at run time, before the instruction; `off`, `lead` likewise."""
     t = f'r.tick({expr});'
-    return t if off is None else f'{t} r.off_bus({off});'
+    t = t if off is None else f'{t} r.off_bus({off});'
+    return t if lead is None else f'{t} r.idle_first({lead});'
+
+
+# Kinds whose `lead_of` can be nonzero: the rest idle, if at all, after their accesses.
+LEADS = {'Bra', 'Bsr', 'Jmp', 'Jsr'}
+LEAD_EAS = {'PreDec', 'D8AnXn', 'D8PcXn'}
+
+
+def leads(op, src, dst):
+    return op in LEADS or src in LEAD_EAS or dst in LEAD_EAS
 
 
 MULDIV = {'mulu': 'mulu_cycles', 'muls': 'muls_cycles', 'divu': 'divu_cycles', 'divs': 'divs_cycles'}
@@ -217,7 +231,8 @@ def dynamic(ins):
         return [tick_rt(f'cy::of({args})', off=f'cy::off_of({args})')]
     if m.startswith('db') and w & 0xf0f8 == 0x50c8:
         holds = f'cy::cc_holds({(w >> 8) & 15}, r)'
-        return [tick_rt(f'cy::dbcc({holds}, r.d({w & 7}) as u16)', off=f'cy::dbcc_off({holds})')]
+        return [tick_rt(f'cy::dbcc({holds}, r.d({w & 7}) as u16)', off=f'cy::dbcc_off({holds})',
+                        lead=f'cy::dbcc_off({holds})')]
     return None
 
 
@@ -232,12 +247,14 @@ def cycles(ins):
         return []
     op, size, src, dst = k
     args = f'cy::Op::{op}, cy::Size::{size}, cy::Ea::{src}, cy::Ea::{dst}'
-    return [tick(f'cy::of({args})', off=f'cy::off_of({args})')]
+    lead = f'cy::lead_of({args})' if leads(op, src, dst) else None
+    return [tick(f'cy::of({args})', off=f'cy::off_of({args})', lead=lead)]
 
 
 def branch_cycles(ins):
     if base_mnemonic(ins) not in BCC:
         return None
     size = size_of(ins)
-    return (tick(f'cy::bcc(true, cy::Size::{size})', off='cy::bcc_off(true)'),
-            tick(f'cy::bcc(false, cy::Size::{size})', off='cy::bcc_off(false)'))
+    return (tick(f'cy::bcc(true, cy::Size::{size})', off='cy::bcc_off(true)', lead='cy::bcc_off(true)'),
+            tick(f'cy::bcc(false, cy::Size::{size})', off='cy::bcc_off(false)',
+                 lead='cy::bcc_off(false)'))

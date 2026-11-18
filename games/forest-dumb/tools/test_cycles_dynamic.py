@@ -155,7 +155,8 @@ class Ticks(unittest.TestCase):
         self.assertEqual(cy.cycles(by_text('divs.w d1,d0')), [f'r.tick({div}); r.off_bus(cy::one_word_off({div}));'])
         self.assertEqual(cy.cycles(by_text('dbgt d1,next')),
                          ['r.tick(cy::dbcc(cy::cc_holds(14, r), r.d(1) as u16)); '
-                          'r.off_bus(cy::dbcc_off(cy::cc_holds(14, r)));'])
+                          'r.off_bus(cy::dbcc_off(cy::cc_holds(14, r))); '
+                          'r.idle_first(cy::dbcc_off(cy::cc_holds(14, r)));'])
 
     def test_an_immediate_multiply_and_a_movem_are_constants(self):
         self.assertEqual(cy.cycles(by_text('muls.w #$aaaa,d0')),

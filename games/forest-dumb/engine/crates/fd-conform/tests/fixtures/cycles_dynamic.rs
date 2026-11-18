@@ -398,7 +398,7 @@ pub fn i_h0_28(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_2c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2c dbf
     {
-        r.tick(cy::dbcc(cy::cc_holds(1, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(1, r)));
+        r.tick(cy::dbcc(cy::cc_holds(1, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(1, r))); r.idle_first(cy::dbcc_off(cy::cc_holds(1, r)));
         let mut u_21a80: u64 = 0;
         let mut u_21b00: u64 = 0;
         if 0x0u64 != 0 { r.set(PC, 4, img.h(0, 0x30) as u64); return Ok(()); }
@@ -418,7 +418,7 @@ pub fn i_h0_2c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$30 dbt
     {
-        r.tick(cy::dbcc(cy::cc_holds(0, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(0, r)));
+        r.tick(cy::dbcc(cy::cc_holds(0, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(0, r))); r.idle_first(cy::dbcc_off(cy::cc_holds(0, r)));
         let mut u_21a80: u64 = 0;
         let mut u_21b00: u64 = 0;
         if 0x1u64 != 0 { r.set(PC, 4, img.h(0, 0x34) as u64); return Ok(()); }
@@ -438,7 +438,7 @@ pub fn i_h0_30(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_34(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$34 dbeq
     {
-        r.tick(cy::dbcc(cy::cc_holds(7, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(7, r)));
+        r.tick(cy::dbcc(cy::cc_holds(7, r), r.d(0) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(7, r))); r.idle_first(cy::dbcc_off(cy::cc_holds(7, r)));
         let mut u_21a80: u64 = 0;
         let mut u_21b00: u64 = 0;
         if r.get(0x45, 1) != 0 { r.set(PC, 4, img.h(0, 0x38) as u64); return Ok(()); }
@@ -458,7 +458,7 @@ pub fn i_h0_34(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_38(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$38 dbgt
     {
-        r.tick(cy::dbcc(cy::cc_holds(14, r), r.d(1) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(14, r)));
+        r.tick(cy::dbcc(cy::cc_holds(14, r), r.d(1) as u16)); r.off_bus(cy::dbcc_off(cy::cc_holds(14, r))); r.idle_first(cy::dbcc_off(cy::cc_holds(14, r)));
         let mut u_a600: u64 = 0;
         let mut u_a680: u64 = 0;
         let mut u_a780: u64 = 0;

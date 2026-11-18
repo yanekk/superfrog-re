@@ -613,14 +613,38 @@ pub const fn off_of(op: Op, size: Size, src: Ea, dst: Ea) -> u32 {
 }
 
 /// A conditional branch's cycles off the bus: 2 taken (10, two words read); 4 not taken (8 with
-/// one word, 12 with two).
+/// one word, 12 with two). All before its reads ([`lead`]).
 pub const fn bcc_off(taken: bool) -> u32 {
     if taken { 2 } else { 4 }
 }
 
-/// `dbcc`'s cycles off the bus: 4 when the condition holds (12, two words), else 2.
+/// `dbcc`'s cycles off the bus: 4 when the condition holds (12, two words), else 2. All before its
+/// reads ([`lead`]).
 pub const fn dbcc_off(holds: bool) -> u32 {
     if holds { 4 } else { 2 }
+}
+
+/// Of an instruction's cycles off the bus, those spent before its first bus access (Moira's
+/// `SYNC` ahead of the reads, translator T49): a branch, jump or call idles first, and so does the
+/// address calculation of `-(An)` and the index modes when it is the instruction's first operand.
+/// The rest of [`off_bus`] follows the accesses. Where the bus is free decides which slots the CPU
+/// asks for, which matters beside the bitplanes' even slots.
+pub const fn lead(k: Kind) -> u32 {
+    let Kind { op, src, dst, .. } = k;
+    match op {
+        Op::Bra | Op::Bsr | Op::Jmp | Op::Jsr => off_bus(k),
+        Op::Move | Op::Movea | Op::AluToDn | Op::Cmp | Op::Adda | Op::Cmpa | Op::Tst | Op::Clr
+        | Op::Nbcd | Op::Scc | Op::Tas | Op::Lea | Op::Pea => ea_off_bus(src),
+        Op::Shift(_) if matches!(dst, Ea::None) => ea_off_bus(src),
+        Op::AluToMem | Op::Quick => ea_off_bus(dst),
+        Op::Btst | Op::Bset(_) | Op::Bclr(_) if !matches!(src, Ea::Imm) => ea_off_bus(dst),
+        _ => 0,
+    }
+}
+
+/// [`lead`] of the kind these four make, as [`off_of`] is [`off_bus`]'.
+pub const fn lead_of(op: Op, size: Size, src: Ea, dst: Ea) -> u32 {
+    lead(Kind { op, size, src, dst })
 }
 
 /// A data-dependent instruction of one bus word plus its operand (`mulu`, `muls`, `divu`, `divs`,
@@ -637,6 +661,28 @@ mod tests {
     use Size::*;
 
     // The examples are the MC68000 User's Manual's (section 8) tables, read row by row.
+
+    /// Moira's order (MoiraExec_cpp.h, MoiraDataflow_cpp.h): a branch, jump or call SYNCs before
+    /// its prefetches or push; `-(An)` and the index modes before their read (T49).
+    #[test]
+    fn what_idles_before_its_accesses() {
+        let l = |op, size, src, dst| lead_of(op, size, src, dst);
+        assert_eq!(l(Op::Bra, W, None, None), 2);
+        assert_eq!(l(Op::Bsr, W, None, None), 2);
+        assert_eq!(l(Op::Jsr, L, D16An, None), 2);
+        assert_eq!(l(Op::Jsr, L, D8AnXn, None), 6);
+        assert_eq!(l(Op::Jmp, L, Ind, None), 0);
+        assert_eq!(l(Op::Move, W, PreDec, Dn), 2);
+        assert_eq!(l(Op::Move, W, Dn, PreDec), 0);
+        assert_eq!(l(Op::AluToMem, W, Dn, PreDec), 2);
+        // `lea (d8,An,Xn)` idles 2 before its prefetch and 2 after (off the bus 4).
+        assert_eq!((l(Op::Lea, L, D8AnXn, An), off_of(Op::Lea, L, D8AnXn, An)), (2, 4));
+        // After their accesses: a register add, an immediate to a register, a shift.
+        assert_eq!(l(Op::Adda, L, Dn, An), 0);
+        assert_eq!(l(Op::Imm, L, Imm, Dn), 0);
+        assert_eq!(l(Op::Shift(8), L, Imm, Dn), 0);
+        assert_eq!((bcc_off(true), bcc_off(false), dbcc_off(true), dbcc_off(false)), (2, 4, 4, 2));
+    }
 
     #[test]
     fn move_is_four_plus_both_operands() {

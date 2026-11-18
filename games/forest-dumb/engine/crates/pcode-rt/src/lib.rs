@@ -125,6 +125,8 @@ pub struct Regs {
     /// contention, not only how much (translator T49). Past [`TRAIL`] entries the last one takes
     /// the rest.
     trail: [(u32, u32); TRAIL],
+    /// Of each trail entry's cycles off the bus, those before its bus accesses ([`Regs::idle_first`]).
+    lead: [u32; TRAIL],
     trail_len: u8,
 }
 
@@ -140,6 +142,7 @@ impl Default for Regs {
             cycles: 0,
             off_bus: 0,
             trail: [(0, 0); TRAIL],
+            lead: [0; TRAIL],
             trail_len: 0,
         }
     }
@@ -172,6 +175,7 @@ impl Regs {
         let len = self.trail_len as usize;
         if len < TRAIL {
             self.trail[len] = (n, 0);
+            self.lead[len] = 0;
             self.trail_len += 1;
         } else {
             self.trail[TRAIL - 1].0 = self.trail[TRAIL - 1].0.saturating_add(n);
@@ -192,10 +196,28 @@ impl Regs {
         match self.trail_len as usize {
             0 => {
                 self.trail[0] = (0, n);
+                self.lead[0] = 0;
                 self.trail_len = 1;
             }
             len => self.trail[len - 1].1 = self.trail[len - 1].1.saturating_add(n),
         }
+    }
+
+    /// `n` of the cycles just marked off the bus come before the instruction's bus accesses
+    /// ([`cycles::lead`]): generated code calls it after `off_bus` for a kind that idles first.
+    /// Lost past [`TRAIL`] entries, where the last entry is a lump.
+    #[inline]
+    pub fn idle_first(&mut self, n: u32) {
+        match self.trail_len as usize {
+            len if len > 0 && len < TRAIL => self.lead[len - 1] = self.lead[len - 1].saturating_add(n),
+            _ => {}
+        }
+    }
+
+    /// Of each [`Regs::trail`] entry's cycles off the bus, those before its accesses.
+    #[inline]
+    pub fn trail_lead(&self) -> &[u32] {
+        &self.lead[..self.trail_len as usize]
     }
 
     /// The instructions ticked since [`Regs::clear_trail`]: (cycles, of them off the bus) each.
@@ -439,6 +461,22 @@ pub fn store<B: Bus + ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn idle_first_marks_the_instruction_just_ticked() {
+        let mut r = Regs::new();
+        r.tick(12);
+        r.tick(10);
+        r.off_bus(2);
+        r.idle_first(2);
+        r.tick(8);
+        r.off_bus(4);
+        assert_eq!(r.trail(), &[(12, 0), (10, 2), (8, 4)]);
+        assert_eq!(r.trail_lead(), &[0, 2, 0]);
+        r.clear_trail();
+        r.tick(4);
+        assert_eq!(r.trail_lead(), &[0]);
+    }
 
     /// A flat 64 KB memory at address 0 that logs every write as (address, size).
     struct Ram {

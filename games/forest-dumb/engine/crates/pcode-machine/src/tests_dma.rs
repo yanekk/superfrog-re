@@ -19,13 +19,13 @@ fn img() -> Image<'static> {
 }
 
 /// A loop body as the generated code ticks it, an instruction at a time: (cycles, of them off
-/// the bus), before the `dbf`.
-type Body = &'static [(u32, u32)];
+/// the bus, of those before its accesses), before the `dbf`.
+type Body = &'static [(u32, u32, u32)];
 
 /// Eight `move.w (a1),(a2)`: 12 each, three bus cycles.
-const MOVES: Body = &[(12, 0); 8];
+const MOVES: Body = &[(12, 0, 0); 8];
 /// Four `lsl.l #8,d4` (24, one bus cycle) and a `move.w (a1),(a2)`.
-const SHIFTS: Body = &[(24, 20), (24, 20), (24, 20), (24, 20), (12, 0)];
+const SHIFTS: Body = &[(24, 20, 0), (24, 20, 0), (24, 20, 0), (24, 20, 0), (12, 0, 0)];
 
 struct Case {
     planes: u16,
@@ -54,11 +54,13 @@ fn machine(planes: u16, dma: u16, at: (u16, u16)) -> Machine {
     Machine::from_snapshot(cfg, &ram, &custom)
 }
 
-/// One block of instructions, each (cycles, of them off the bus), then the next block's start.
-fn block(m: &mut Machine, r: &mut Regs, insns: &[(u32, u32)]) {
-    for &(cycles, off) in insns {
+/// One block of instructions, each (cycles, of them off the bus, of those before its accesses),
+/// then the next block's start.
+fn block(m: &mut Machine, r: &mut Regs, insns: &[(u32, u32, u32)]) {
+    for &(cycles, off, lead) in insns {
         r.tick(cycles);
         r.off_bus(off);
+        r.idle_first(lead);
     }
     m.poll(r, &img()).unwrap();
 }
@@ -84,21 +86,21 @@ fn run(c: &Case) -> ((u16, u16), u64) {
         m.ww(0xDF_F058, size);
         // The write's own bus cycle, the next instruction's opcode and extension words and its
         // read: with BLTPRI the read is what waits for the blit's end.
-        block(&mut m, &mut r, &[(16, 0)]);
+        block(&mut m, &mut r, &[(16, 0, 0)]);
     }
     // The read is the last bus cycle so far (a cycle in the plain case, which starts there).
     let t0 = r.cycles() - if c.blit.is_some() { 4 } else { 0 };
     let first = m.beam(t0);
     // The read's prefetch, `move.w #n,d0`, two `lea abs.l`.
-    block(&mut m, &mut r, &[(4, 0), (8, 0), (12, 0), (12, 0)]);
+    block(&mut m, &mut r, &[(4, 0, 0), (8, 0, 0), (12, 0, 0), (12, 0, 0)]);
     for k in 0..200 {
-        // `dbf`: 10 taken, the last falling through 14; 2 off the bus either way.
-        let dbf = if k == 199 { (14, 2) } else { (10, 2) };
-        let insns: Vec<(u32, u32)> = c.body.iter().copied().chain([dbf]).collect();
+        // `dbf`: 10 taken, the last falling through 14; 2 off the bus either way, before its reads.
+        let dbf = if k == 199 { (14, 2, 2) } else { (10, 2, 2) };
+        let insns: Vec<(u32, u32, u32)> = c.body.iter().copied().chain([dbf]).collect();
         block(&mut m, &mut r, &insns);
     }
     // `move.w 4(a0),d2`, then `move.w 6(a0),d3` to its read.
-    block(&mut m, &mut r, &[(12, 0), (8, 0)]);
+    block(&mut m, &mut r, &[(12, 0, 0), (8, 0, 0)]);
     (first, (r.cycles() - t0) / 2)
 }
 
@@ -136,9 +138,8 @@ fn readings() -> Vec<(&'static str, Case)> {
 }
 
 /// Every reading within 6 slots of the oracle's (of 10 000 to 21 000): the block's accesses are
-/// timed per instruction but not inside one (an instruction idling before its accesses, as `dbf`
-/// does, is counted as idling after), and the blit's start is placed at the write from the
-/// plain case's read.
+/// timed per instruction, an instruction idling before its accesses (`dbf`) as it does, and the
+/// blit's start is placed at the write from the plain case's read.
 #[test]
 fn a_cpu_loop_takes_on_the_machine_what_it_took_on_the_oracle() {
     for (name, c) in readings() {
@@ -187,13 +188,13 @@ fn a_busy_copper_takes_its_slots() {
     let mut r = Regs::new();
     m.poll(&mut r, &img()).unwrap();
     let t0 = r.cycles();
-    block(&mut m, &mut r, &[(4, 0), (8, 0), (12, 0), (12, 0)]);
+    block(&mut m, &mut r, &[(4, 0, 0), (8, 0, 0), (12, 0, 0), (12, 0, 0)]);
     for k in 0..200 {
-        let dbf = if k == 199 { (14, 2) } else { (10, 2) };
-        let insns: Vec<(u32, u32)> = MOVES.iter().copied().chain([dbf]).collect();
+        let dbf = if k == 199 { (14, 2, 2) } else { (10, 2, 2) };
+        let insns: Vec<(u32, u32, u32)> = MOVES.iter().copied().chain([dbf]).collect();
         block(&mut m, &mut r, &insns);
     }
-    block(&mut m, &mut r, &[(12, 0), (8, 0)]);
+    block(&mut m, &mut r, &[(12, 0, 0), (8, 0, 0)]);
     let slots = (r.cycles() - t0) / 2;
     assert!(slots.abs_diff(10714) <= 6, "{slots}");
 }

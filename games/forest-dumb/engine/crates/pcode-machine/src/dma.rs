@@ -310,33 +310,42 @@ impl Slots<'_> {
         }
     }
 
-    /// The CPU's work from cycle count `start`: instructions of (cycles, of them off the bus), in
-    /// order, the first with `skip` of its bus accesses made already. Returns the count at which
-    /// the work ends with the chips' slots taken out. An instruction's bus accesses are
-    /// `(cycles - off) / 4`, made first, its other cycles after them (Moira's register shifts
-    /// prefetch then shift; some instructions idle first, which this does not tell apart).
+    /// The CPU's work from cycle count `start`: instructions of (cycles, of them off the bus, of
+    /// those before its bus accesses), in order, the first with `skip.0` of its bus accesses made
+    /// already and, if `skip.1`, its leading idle cycles spent. Returns the count at which the work
+    /// ends with the chips' slots taken out. An instruction's bus accesses are `(cycles - off) / 4`:
+    /// its leading idle cycles come first (a branch's, `-(An)`'s; `pcode_rt::cycles::lead`), then
+    /// the accesses, then its other cycles (Moira's register shifts prefetch then shift).
     pub fn cpu(
         &mut self,
         start: u64,
-        work: &[(u32, u32)],
-        skip: u64,
+        work: &[(u32, u32, u32)],
+        skip: (u64, bool),
         beam: &dyn Fn(u64) -> (u16, u16),
     ) -> u64 {
         let mut t = start;
-        for (k, &(cycles, off)) in work.iter().enumerate() {
+        for (k, &(cycles, off, lead)) in work.iter().enumerate() {
             let (cycles, off) = (cycles as u64, (off as u64).min(cycles as u64));
+            let lead = (lead as u64).min(off);
             let accesses = (cycles - off) / 4;
-            let done = if k == 0 { skip.min(accesses) } else { 0 };
-            t = self.accesses(t, accesses - done, beam);
-            let spare = cycles - 4 * accesses;
-            let end = t + spare;
-            while t + 2 <= end {
-                self.step(t, beam(t), false);
-                t += 2;
+            let (done, led) = if k == 0 { (skip.0.min(accesses), skip.1) } else { (0, false) };
+            if !led {
+                t = self.cpu_idle(t, t + lead, beam);
             }
-            t = end;
+            t = self.accesses(t, accesses - done, beam);
+            let end = t + (cycles - 4 * accesses - lead);
+            t = self.cpu_idle(t, end, beam);
         }
         t
+    }
+
+    /// The CPU off the bus from cycle count `t` to `end`: the chips run those slots.
+    pub fn cpu_idle(&mut self, mut t: u64, end: u64, beam: &dyn Fn(u64) -> (u16, u16)) -> u64 {
+        while t + 2 <= end {
+            self.step(t, beam(t), false);
+            t += 2;
+        }
+        end.max(t)
     }
 
     /// `n` CPU bus accesses from cycle count `t`; returns where they end.

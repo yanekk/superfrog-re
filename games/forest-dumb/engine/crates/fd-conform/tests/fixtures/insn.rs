@@ -116,8 +116,8 @@ pub fn i_h0_a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
         let mut u_100: u64 = 0;
         let v = bool_negate(r.get(0x45, 1));
         u_100 = v & 0xff;
-        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(()); }
-        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
+        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); r.set(PC, 4, img.h(0, 0x0) as u64); return Ok(()); }
+        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
     }
     r.set(PC, 4, img.h(0, 0xc) as u64);
     Ok(())

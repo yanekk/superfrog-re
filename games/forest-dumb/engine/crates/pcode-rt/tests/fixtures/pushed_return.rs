@@ -80,8 +80,8 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
             (0, 0x0) => {
                 // h0+$0 beq h0+$8
                 {
-                    if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::L) }); r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x8); continue 'b; }
-                    r.tick(const { cy::bcc(false, cy::Size::L) }); r.off_bus(const { cy::bcc_off(false) });
+                    if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::L) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x8); continue 'b; }
+                    r.tick(const { cy::bcc(false, cy::Size::L) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                 }
                 pc = (0, 0x2);
             }

@@ -86,18 +86,36 @@ class Emitted(unittest.TestCase):
         self.assertEqual(lines[2].strip(), rt(sh, f'cy::one_word_off({sh})'))
         self.assertTrue(lines[3].strip().startswith('let cnt'))
 
+    def test_only_a_kind_that_can_idle_first_marks_it(self):
+        # T49: a branch, jump or call, or a `-(An)` or index operand, gets `r.idle_first` (Moira
+        # SYNCs before its reads); every other kind idles, if at all, after its accesses.
+        args = 'cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None'
+        self.assertEqual(cy.tick(f'cy::of({args})', off=f'cy::off_of({args})', lead=f'cy::lead_of({args})'),
+                         tick('Bra', 'W', 'None', 'None') + f' r.idle_first(const {{ cy::lead_of({args}) }});')
+        self.assertTrue(cy.leads('Bsr', 'None', 'None'))
+        self.assertTrue(cy.leads('Move', 'PreDec', 'Dn'))
+        self.assertTrue(cy.leads('AluToMem', 'Dn', 'D8AnXn'))
+        self.assertFalse(cy.leads('Move', 'D16An', 'D16An'))
+        self.assertFalse(cy.leads('Shift(8)', 'Imm', 'Dn'))
+        self.assertTrue(cy.cycles(shift_bit('lsl.l #8,d0'))[0].endswith('});'))
+        self.assertNotIn('idle_first', cy.cycles(shift_bit('lsl.l #8,d0'))[0])
+
     def test_a_conditional_branch_counts_each_path_on_its_own(self):
         doc = pr.load_export(os.path.join(FIXTURES, 'flags_call.json'))
         text, _ = pr.render(doc, 'flags_call.json')
         body = text[text.index('beq.b'):]
+        # A branch idles before its reads (T49): all its cycles off the bus come first.
         taken = ("if r.get(0x45, 1) != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); "
-                 "r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x8); continue 'b; }")
+                 "r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); "
+                 "pc = (0, 0x8); continue 'b; }")
         self.assertEqual(body.split('\n')[2].strip(), taken)
         self.assertEqual(body.split('\n')[3].strip(),
-                         'r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });')
+                         'r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); '
+                         'r.idle_first(const { cy::bcc_off(false) });')
         self.assertEqual(cy.branch_cycles({'mnem': 'bra.w', 'ops': []}), None)
         self.assertEqual(cy.branch_cycles({'mnem': 'bne.w', 'ops': []})[1],
-                         'r.tick(const { cy::bcc(false, cy::Size::W) }); r.off_bus(const { cy::bcc_off(false) });')
+                         'r.tick(const { cy::bcc(false, cy::Size::W) }); r.off_bus(const { cy::bcc_off(false) }); '
+                         'r.idle_first(const { cy::bcc_off(false) });')
 
 
 if __name__ == '__main__':

@@ -95,7 +95,7 @@ pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2 abcd (corrected: pcode_fix.bcd)
     {
-        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
+        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.idle_first(const { cy::lead_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
         bus.sync(r);
         let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);
         r.set(0x24, 4, ay as u64);
@@ -115,7 +115,7 @@ pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4 abcd (corrected: pcode_fix.bcd)
     {
-        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
+        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.idle_first(const { cy::lead_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
         bus.sync(r);
         let ay = (r.get(0x3c, 4) as u32).wrapping_sub(2);
         r.set(0x3c, 4, ay as u64);
@@ -148,7 +148,7 @@ pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_8(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$8 sbcd (corrected: pcode_fix.bcd)
     {
-        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
+        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.idle_first(const { cy::lead_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
         bus.sync(r);
         let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);
         r.set(0x24, 4, ay as u64);
@@ -168,7 +168,7 @@ pub fn i_h0_8(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$a sbcd (corrected: pcode_fix.bcd)
     {
-        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
+        r.tick(const { cy::of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.off_bus(const { cy::off_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) }); r.idle_first(const { cy::lead_of(cy::Op::Bcd, cy::Size::L, cy::Ea::PreDec, cy::Ea::PreDec) });
         bus.sync(r);
         let ay = (r.get(0x3c, 4) as u32).wrapping_sub(2);
         r.set(0x3c, 4, ay as u64);
@@ -253,7 +253,7 @@ pub fn i_h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_12(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$12 nbcd
     {
-        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.idle_first(const { cy::lead_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) });
         bus.sync(r);
         let mut u_5d00: u64 = 0;
         let mut u_2f100: u64 = 0;
@@ -304,7 +304,7 @@ pub fn i_h0_14(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_16(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$16 nbcd
     {
-        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) }); r.idle_first(const { cy::lead_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::PreDec, cy::Ea::None) });
         bus.sync(r);
         let mut u_5c00: u64 = 0;
         let mut u_2f100: u64 = 0;
@@ -353,7 +353,7 @@ pub fn i_h0_18(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_1c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$1c nbcd
     {
-        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::D8AnXn, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::D8AnXn, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Nbcd, cy::Size::B, cy::Ea::D8AnXn, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::D8AnXn, cy::Ea::None) }); r.idle_first(const { cy::lead_of(cy::Op::Nbcd, cy::Size::B, cy::Ea::D8AnXn, cy::Ea::None) });
         bus.sync(r);
         let mut u_380: u64 = 0;
         let mut u_480: u64 = 0;
@@ -749,7 +749,7 @@ pub fn i_h0_48(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
 pub fn i_h0_4a(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4a bra.w
     {
-        r.tick(const { cy::of(cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None) }); r.idle_first(const { cy::lead_of(cy::Op::Bra, cy::Size::W, cy::Ea::None, cy::Ea::None) });
         r.set(PC, 4, img.h(0, 0x52) as u64); return Ok(());
     }
     r.set(PC, 4, img.h(0, 0x4e) as u64);

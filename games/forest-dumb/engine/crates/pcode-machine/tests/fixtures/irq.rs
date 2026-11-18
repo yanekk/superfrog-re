@@ -131,8 +131,8 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x8);
@@ -200,8 +200,8 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x8);
@@ -251,8 +251,8 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); pc = (0, 0x10); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x10); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x1e);

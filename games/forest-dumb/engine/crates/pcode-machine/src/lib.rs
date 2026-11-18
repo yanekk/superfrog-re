@@ -178,9 +178,10 @@ pub struct Machine {
     /// `Regs`' cycles and cycles off the bus at the last `poll_time`, with the CPU's waits for the
     /// bus added: the next block's work is what the counts have grown by since.
     cpu_mark: Option<(u64, u64)>,
-    /// Of the block's trail, the instructions `sync` has fitted onto the bus already, and their
-    /// cycles and cycles off the bus.
-    synced: (usize, u64, u64, u64),
+    /// Of the block's trail, the instructions `sync` has fitted onto the bus already, their cycles
+    /// and cycles off the bus, and of the next one its accesses made and whether its leading idle
+    /// cycles are spent.
+    synced: (usize, u64, u64, (u64, bool)),
     /// The sprite channels' DMA as the bus has run it (`dma::Sprites`).
     sprites: dma::Sprites,
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
@@ -239,7 +240,7 @@ impl Machine {
             phase: 0,
             dma_at: 0,
             cpu_mark: None,
-            synced: (0, 0, 0, 0),
+            synced: (0, 0, 0, (0, false)),
             sprites: dma::Sprites::default(),
             bus: 0,
             fault: None,
@@ -393,7 +394,7 @@ impl Machine {
     pub fn set_cycles(&mut self, cycles: u64) {
         self.dma_idle(cycles);
         self.cpu_mark = None;
-        self.synced = (0, 0, 0, 0);
+        self.synced = (0, 0, 0, (0, false));
         self.advance(cycles);
         self.now = cycles;
     }
@@ -642,18 +643,17 @@ impl Machine {
                 self.dma_idle(c0);
                 let (done, done_c, done_o, part) = self.synced;
                 let begin = self.dma_at.max(c0 + done_c);
-                let mut work = [(0u32, 0u32); pcode_rt::TRAIL];
-                let (n, skip) = match Self::trail_since(r, c0, o0, done) {
-                    Some(rest) => {
-                        work[..rest.len()].copy_from_slice(rest);
-                        (rest.len(), part)
-                    }
+                let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
+                let n = match Self::trail_since(r, c0, o0, done, &mut work) {
+                    Some(n) => n,
                     // Something ticked past the trail: the rest of the block is one lump.
                     None => {
-                        work[0] = ((c - c0 - done_c) as u32, (o - o0).saturating_sub(done_o) as u32);
-                        (1, part)
+                        let lump = ((c - c0 - done_c) as u32, (o - o0).saturating_sub(done_o) as u32);
+                        work[0] = (lump.0, lump.1, 0);
+                        1
                     }
                 };
+                let skip = part;
                 let end = self.with_slots(|s, beam| s.cpu(begin, &work[..n], skip, beam));
                 self.dma_at = end;
                 let late = end.saturating_sub(c);
@@ -664,21 +664,34 @@ impl Machine {
             _ => self.dma_idle(c),
         }
         r.clear_trail();
-        self.synced = (0, 0, 0, 0);
+        self.synced = (0, 0, 0, (0, false));
         self.cpu_mark = Some((r.cycles(), r.off_bus_cycles()));
         self.blit_settle();
     }
 
-    /// The block's trail from instruction `from` on, if the trail holds the whole block since the
-    /// mark `(c0, o0)` one instruction at a time (it does unless something ticked past it).
-    fn trail_since(r: &Regs, c0: u64, o0: u64, from: usize) -> Option<&[(u32, u32)]> {
+    /// The block's trail from instruction `from` on, as (cycles, off the bus, of those first), into
+    /// `work`; its length, if the trail holds the whole block since the mark `(c0, o0)` one
+    /// instruction at a time (it does unless something ticked past it).
+    fn trail_since(
+        r: &Regs,
+        c0: u64,
+        o0: u64,
+        from: usize,
+        work: &mut [(u32, u32, u32); pcode_rt::TRAIL],
+    ) -> Option<usize> {
         let trail = r.trail();
         let (sc, so) = trail
             .iter()
             .fold((0u64, 0u64), |(a, b), &(x, y)| (a + x as u64, b + y as u64));
         let whole = trail.len() < pcode_rt::TRAIL
             && (sc, so) == (r.cycles() - c0, r.off_bus_cycles() - o0);
-        (whole && from <= trail.len()).then(|| &trail[from..])
+        if !whole || from > trail.len() {
+            return None;
+        }
+        for (k, (&(c, o), &l)) in trail.iter().zip(r.trail_lead()).enumerate().skip(from) {
+            work[k - from] = (c, o, l);
+        }
+        Some(trail.len() - from)
     }
 
     /// An instruction that reads or writes memory is about to: the block's instructions before it
@@ -692,34 +705,35 @@ impl Machine {
             return;
         }
         let (done, done_c, done_o, part) = self.synced;
-        let Some(rest) = Self::trail_since(r, c0, o0, done) else {
+        let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
+        let Some(len) = Self::trail_since(r, c0, o0, done, &mut work) else {
             return;
         };
         // The last is the instruction about to access memory: its own time is still to come.
-        let Some((&(cur, cur_off), before)) = rest.split_last() else {
+        let Some(n) = len.checked_sub(1) else {
             return;
         };
-        let mut work = [(0u32, 0u32); pcode_rt::TRAIL];
-        work[..before.len()].copy_from_slice(before);
-        let n = before.len();
-        let (bc, bo) = before
+        let (cur, cur_off, cur_lead) = work[n];
+        let (bc, bo) = work[..n]
             .iter()
-            .fold((0u64, 0u64), |(a, b), &(x, y)| (a + x as u64, b + y as u64));
+            .fold((0u64, 0u64), |(a, b), &(x, y, _)| (a + x as u64, b + y as u64));
         let begin = self.dma_at.max(c0 + done_c);
         // Moira makes an instruction's data accesses before its last bus cycle, the next
-        // instruction's prefetch: its accesses up to there are fitted too, and the access is timed
-        // at the start of the last of them.
+        // instruction's prefetch: its leading idle cycles and its accesses up to there are fitted
+        // too, and the access is timed at the start of the last of them.
         let own = (cur.saturating_sub(cur_off) / 4) as u64;
         let ahead = own.saturating_sub(1);
+        // What of the current instruction a sync before this one fitted already.
+        let (skip, led) = if n > 0 { (0, false) } else { part };
+        let lead = cur_lead.min(cur_off) as u64;
         let (end, at) = self.with_slots(|s, beam| {
-            let t = s.cpu(begin, &work[..n], if n > 0 { part } else { 0 }, beam);
-            let skip = if n > 0 { 0 } else { part };
+            let t = s.cpu(begin, &work[..n], if n > 0 { part } else { (0, false) }, beam);
+            let t = if led { t } else { s.cpu_idle(t, t + lead, beam) };
             let end = s.accesses(t, ahead.saturating_sub(skip), beam);
             (end, if ahead > skip { end - 4 } else { t })
         });
         self.dma_at = end;
-        let skip = if n > 0 { 0 } else { part };
-        self.synced = (done + n, done_c + bc, done_o + bo, skip.max(ahead));
+        self.synced = (done + n, done_c + bc, done_o + bo, (skip.max(ahead), true));
         self.blit_settle();
         if at > self.now {
             self.advance(at);
