@@ -188,11 +188,17 @@ void blitHook(int event, isize vpos, isize hpos)
 thread_local const std::vector<uint32_t> *watchedPcs = nullptr;
 thread_local uint32_t *pcCounts = nullptr;
 
+// The machine whose pending writes at an address (amiga_poke_at) are checked on this thread: set
+// for the step being run, null while it has none.
+thread_local amiga_machine *pokingAt = nullptr;
+void pokeAtHit(amiga_machine *a, uint32_t pc);
+
 // Called before every instruction the CPU executes, so it stays small: a binary search of the
-// watched set. Installed only once some machine watches, so a process that never does pays nothing
-// but the core's null check.
+// watched set. Installed only once some machine watches or writes at an address, so a process that
+// never does pays nothing but the core's null check.
 void execHook(uint32_t pc)
 {
+    if (pokingAt) pokeAtHit(pokingAt, pc);
     if (!watchedPcs) return;
     auto &w = *watchedPcs;
     auto it = std::lower_bound(w.begin(), w.end(), pc);
@@ -247,6 +253,12 @@ struct amiga_machine {
     int framesRun = 0;
     // amiga_watch_write: the write watched for (none while reg is 0xFFFF), and RAM at its first
     // hit in the last step.
+    // amiga_poke_at: writes still waiting for the CPU to reach their address, in the order given.
+    struct PokeAt {
+        uint32_t pc, addr;
+        std::vector<uint8_t> bytes;
+    };
+    std::vector<PokeAt> pokesAt;
     uint32_t watchReg = 0xFFFF;
     uint16_t watchValue = 0;
     bool watched = false;
@@ -512,6 +524,7 @@ int amiga_step(amiga_machine *a, uint32_t joy, const uint8_t keys[16], char *err
     std::fill(a->pcCounts.begin(), a->pcCounts.end(), 0);
     watchedPcs = a->watchPcs.empty() ? nullptr : &a->watchPcs;
     pcCounts = a->pcCounts.data();
+    pokingAt = a->pokesAt.empty() ? nullptr : a;
     stepFrame = a->amiga().agnus.pos.frame;
     // A step runs from just after one frame's start to just after the next one's (the CPU finishes
     // its instruction), so the frame it runs is the one starting now.
@@ -544,6 +557,7 @@ int amiga_step(amiga_machine *a, uint32_t joy, const uint8_t keys[16], char *err
     interrupted = nullptr;
     watchedPcs = nullptr;
     pcCounts = nullptr;
+    pokingAt = nullptr;
     return rc;
 }
 
@@ -565,12 +579,18 @@ int amiga_watched_memory(const amiga_machine *a, const uint8_t **chip, size_t *c
     return 1;
 }
 
+// The exec hook is set once, for every machine, the first time any machine watches or writes at
+// an address: a pointer the core reads per instruction is not changed while another thread may be
+// stepping.
+static void installExecHook()
+{
+    static std::once_flag installed;
+    std::call_once(installed, [] { vamiga_exec_hook = execHook; });
+}
+
 void amiga_watch_pcs(amiga_machine *a, const uint32_t *pcs, size_t n)
 {
-    // The hook is set once, for every machine, the first time any machine watches: a pointer the
-    // core reads per instruction is not changed while another thread may be stepping.
-    static std::once_flag installed;
-    if (n) std::call_once(installed, [] { vamiga_exec_hook = execHook; });
+    if (n) installExecHook();
     a->watchPcs.assign(pcs, pcs + n);
     std::sort(a->watchPcs.begin(), a->watchPcs.end());
     a->watchPcs.erase(std::unique(a->watchPcs.begin(), a->watchPcs.end()), a->watchPcs.end());
@@ -687,6 +707,37 @@ const uint8_t *amiga_slow(const amiga_machine *a, size_t *len)
     auto &mem = const_cast<amiga_machine *>(a)->amiga().mem;
     *len = size_t(mem.getConfig().slowSize);
     return mem.slow;
+}
+
+void amiga_poke_at(amiga_machine *a, uint32_t pc, uint32_t addr, const uint8_t *bytes, size_t len)
+{
+    installExecHook();
+    a->pokesAt.push_back({ pc, addr, std::vector<uint8_t>(bytes, bytes + len) });
+}
+
+size_t amiga_pokes_at_pending(const amiga_machine *a)
+{
+    return a->pokesAt.size();
+}
+
+namespace {
+
+// The CPU is about to execute the instruction at `pc`: every pending write waiting for it is made
+// now, before the instruction reads anything, and dropped. Once each.
+void pokeAtHit(amiga_machine *a, uint32_t pc)
+{
+    auto &p = a->pokesAt;
+    for (size_t k = 0; k < p.size();) {
+        if (p[k].pc == pc) {
+            amiga_poke(a, p[k].addr, p[k].bytes.data(), p[k].bytes.size());
+            p.erase(p.begin() + k);
+        } else {
+            k++;
+        }
+    }
+    if (p.empty()) pokingAt = nullptr;
+}
+
 }
 
 void amiga_poke(amiga_machine *a, uint32_t addr, const uint8_t *bytes, size_t len)
