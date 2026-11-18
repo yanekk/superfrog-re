@@ -17,6 +17,7 @@
 
 use std::cell::Cell;
 
+use pcode_machine::mem::SLOW_BASE;
 use pcode_machine::{Config, Disks, Input, Machine, Picture};
 use pcode_rt::{Bus, Image, Mounted, PC, Regs, SR, Stop, ops};
 
@@ -160,6 +161,17 @@ pub struct FrameOut<'a> {
     pub returns: Vec<(u32, u32)>,
     /// The watched routines still running at the frame's end, outermost first.
     pub inside: Vec<(u32, u32)>,
+    /// How many [`TranslatedGame::write_at`] writes the program has not reached by the frame's end.
+    pub writes_at_pending: usize,
+}
+
+/// A write waiting for the program to enter a routine ([`TranslatedGame::write_at`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct WriteAt {
+    /// The routine's entry, (hunk, offset).
+    at: (u32, u32),
+    addr: u32,
+    bytes: Vec<u8>,
 }
 
 /// The translated program on its machine.
@@ -179,6 +191,8 @@ pub struct TranslatedGame {
     seam: Seam,
     /// The routines whose returns each frame reports ([`FrameOut::returns`]).
     watched: Vec<(u32, u32)>,
+    /// Writes waiting for their routine's entry ([`TranslatedGame::write_at`]).
+    writes_at: Vec<WriteAt>,
 }
 
 impl TranslatedGame {
@@ -272,6 +286,7 @@ impl TranslatedGame {
             picture: Picture::blank(0, 0, 0, 0),
             seam: Seam::new(),
             watched: Vec::new(),
+            writes_at: Vec::new(),
         }
     }
 
@@ -286,6 +301,20 @@ impl TranslatedGame {
     /// through the seam is not seen.
     pub fn watch_returns(&mut self, addrs: &[(u8, u32)]) {
         self.watched = addrs.iter().map(|&(h, o)| (h as u32, o)).collect();
+    }
+
+    /// Write `bytes` into RAM at `addr` the moment the program enters the routine at `at` (hunk,
+    /// offset), before its first instruction reads anything; once, then dropped. The oracle's
+    /// `Amiga::poke_at` at that routine's first instruction, for a state the program writes and
+    /// reads within one frame (a case's `set` with `when`, translator T33). Only an entry through
+    /// the routine's own function counts, as with [`TranslatedGame::watch_returns`], mounted or
+    /// not; bytes outside chip and slow RAM are dropped, as the oracle's poke drops them.
+    pub fn write_at(&mut self, at: (u8, u32), addr: u32, bytes: &[u8]) {
+        self.writes_at.push(WriteAt {
+            at: (at.0 as u32, at.1),
+            addr,
+            bytes: bytes.to_vec(),
+        });
     }
 
     /// Start the run with the beam at `line`, so the first frame is only the rest of it: a power-on
@@ -346,6 +375,8 @@ impl TranslatedGame {
             picture: &mut self.picture,
             host_stop: false,
             watched: &self.watched,
+            writes_at: &mut self.writes_at,
+            write_due: Cell::new(None),
             entered: Cell::new(None),
             inside: Vec::new(),
             returns: Vec::new(),
@@ -394,6 +425,7 @@ impl TranslatedGame {
             slow: host.m.slow(),
             returns: std::mem::take(&mut host.returns),
             inside: host.inside.iter().map(|&(k, _)| k).collect(),
+            writes_at_pending: host.writes_at.len(),
         };
         (host.each)(&out);
         self.stopped = Some(stop.clone());
@@ -412,6 +444,11 @@ struct Host<'a, 'b> {
     host_stop: bool,
     /// Routines whose returns are reported, (hunk, offset).
     watched: &'a [(u32, u32)],
+    /// Writes waiting for their routine's entry.
+    writes_at: &'a mut Vec<WriteAt>,
+    /// A routine with a waiting write was just entered: its writes are made at the first block's
+    /// `poll`, before any instruction (`mounted` has `&self` only).
+    write_due: Cell<Option<(u32, u32)>>,
     /// A function's entry asked `mounted` and its first block has not polled yet, with the
     /// routine if it is watched. `mounted` is the one hook every entry reaches, and it has no
     /// `Regs`; the first block's `poll` comes next, after `fn_entry` counted the function in.
@@ -425,6 +462,29 @@ struct Host<'a, 'b> {
 }
 
 impl Host<'_, '_> {
+    /// Every waiting write for the routine entered at `k`, in the order given, then dropped.
+    fn make_writes_at(&mut self, k: (u32, u32)) {
+        let (chip, slow) = (self.m.chip().len() as u32, self.m.slow().len() as u32);
+        let mut k_writes = Vec::new();
+        self.writes_at.retain(|w| {
+            let hit = w.at == k;
+            if hit {
+                k_writes.push(w.clone());
+            }
+            !hit
+        });
+        for w in k_writes {
+            for (n, &b) in w.bytes.iter().enumerate() {
+                let a = w.addr.wrapping_add(n as u32) & 0xFF_FFFF;
+                if a < chip {
+                    self.m.chip_mut()[a as usize] = b;
+                } else if (SLOW_BASE..SLOW_BASE + slow).contains(&a) {
+                    self.m.slow_mut()[(a - SLOW_BASE) as usize] = b;
+                }
+            }
+        }
+    }
+
     fn paula(&mut self) -> (Vec<(u64, u16, u16)>, Vec<usize>) {
         let (writes, leftover) = self.m.take_paula_writes_marked();
         let writes = writes
@@ -453,6 +513,7 @@ impl Host<'_, '_> {
             slow: self.m.slow(),
             returns: std::mem::take(&mut self.returns),
             inside: self.inside.iter().map(|&(k, _)| k).collect(),
+            writes_at_pending: self.writes_at.len(),
         };
         let next = (self.each)(&out);
         *self.picture = out.picture;
@@ -474,6 +535,9 @@ impl Host<'_, '_> {
 
 impl Bus for Host<'_, '_> {
     fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        if let Some(k) = self.write_due.take() {
+            self.make_writes_at(k);
+        }
         let entered = self.entered.take();
         // Running at depth `d`, everything deeper has returned; a function just entered at `d`
         // follows the return of whatever ran at `d` too.
@@ -508,6 +572,9 @@ impl Bus for Host<'_, '_> {
         self.m.call_outside(a, r, img)
     }
     fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
+        if self.writes_at.iter().any(|w| w.at == k) {
+            self.write_due.set(Some(k));
+        }
         if !self.watched.is_empty() {
             self.entered
                 .set(Some(self.watched.contains(&k).then_some(k)));
