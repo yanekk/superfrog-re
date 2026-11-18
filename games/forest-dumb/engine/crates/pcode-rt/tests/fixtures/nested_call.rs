@@ -86,6 +86,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x0 {
                     // h0+$0 bsr h0+$10
                     {
+                        bus.sync(r);
                         let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
                         r.set(0x3c, 4, v);
                         let v = (img.h(0, 0x4) as u64);
@@ -111,6 +112,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x6 {
                     // h0+$6 rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
@@ -153,6 +155,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x10 {
                     // h0+$10 bsr h0+$20
                     {
+                        bus.sync(r);
                         let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
                         r.set(0x3c, 4, v);
                         let v = (img.h(0, 0x12) as u64);
@@ -178,6 +181,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x14 {
                     // h0+$14 rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
@@ -227,6 +231,7 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x22 {
                     // h0+$22 rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);

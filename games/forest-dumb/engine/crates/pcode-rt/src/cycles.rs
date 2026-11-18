@@ -488,6 +488,172 @@ pub fn cc_holds(cc: u32, r: &crate::Regs) -> bool {
     }
 }
 
+// The cycles off the bus (translator T49). An instruction's time is its bus cycles, four each (the
+// manual's `n(r/w)`: reads and writes, the prefetch's included), and internal cycles the bus is free
+// in; a machine that models DMA contention needs to know which. Every row below is the manual's
+// total less four times its reads and writes (MC68000UM section 8); unjudged against the oracle
+// instruction by instruction, held as a whole by `pcode-machine`'s contention readings.
+
+/// The cycles `mode`'s address calculation spends off the bus: `-(An)` and the index modes' 2.
+pub const fn ea_off_bus(mode: Ea) -> u32 {
+    match mode {
+        Ea::PreDec | Ea::D8AnXn | Ea::D8PcXn => 2,
+        _ => 0,
+    }
+}
+
+/// The instruction's own cycles off the bus, without its operands' ([`off_bus`] adds them).
+pub const fn base_off_bus(k: Kind) -> u32 {
+    let Kind { op, size, src, dst } = k;
+    let reg_or_imm = is_reg(src) || matches!(src, Ea::Imm);
+    match op {
+        Op::Move | Op::Movea | Op::Moveq | Op::Tst | Op::AluToMem | Op::Cmpm => 0,
+        // `add.l <ea>,Dn` 6(1/0)+, from a register or an immediate 8(1/0).
+        Op::AluToDn => bw_l(size, 0, if reg_or_imm { 4 } else { 2 }),
+        Op::Cmp => bw_l(size, 0, 2),
+        // `adda.w` 8(1/0)+, `adda.l` 6(1/0)+ or 8(1/0).
+        Op::Adda => base_cycles(k) - 4,
+        Op::Cmpa => 2,
+        Op::Imm => match dst {
+            Ea::Dn => bw_l(size, 0, 4),
+            _ => 0,
+        },
+        Op::Cmpi => match dst {
+            Ea::Dn => bw_l(size, 0, 2),
+            _ => 0,
+        },
+        Op::Quick => match dst {
+            Ea::Dn => bw_l(size, 0, 4),
+            Ea::An => 4,
+            _ => 0,
+        },
+        Op::Clr => match src {
+            Ea::Dn => bw_l(size, 0, 2),
+            _ => 0,
+        },
+        Op::Addx => match src {
+            Ea::Dn => bw_l(size, 0, 4),
+            _ => 2,
+        },
+        Op::Bcd => 2,
+        Op::Nbcd => match src {
+            Ea::Dn => 2,
+            _ => 0,
+        },
+        Op::Ext | Op::Swap | Op::Nop => 0,
+        Op::Exg => 2,
+        Op::Lea | Op::Pea => match src {
+            Ea::D8AnXn | Ea::D8PcXn => 4,
+            _ => 0,
+        },
+        Op::Jsr => match src {
+            Ea::D16An | Ea::AbsW | Ea::D16Pc => 2,
+            Ea::D8AnXn | Ea::D8PcXn => 6,
+            _ => 0,
+        },
+        Op::Jmp => match src {
+            Ea::D16An | Ea::AbsW | Ea::D16Pc | Ea::D8AnXn | Ea::D8PcXn => 2,
+            _ => 0,
+        },
+        Op::Bra | Op::Bsr => 2,
+        Op::Rts | Op::Rte | Op::Rtr | Op::Link | Op::Unlk => 0,
+        // A register shift reads one word: the rest is the shifter's.
+        Op::Shift(_) => match dst {
+            Ea::Dn => base_cycles(k) - 4,
+            _ => 0,
+        },
+        Op::Btst => match dst {
+            Ea::Dn => 2,
+            _ => 0,
+        },
+        // On a register: two words read with an immediate bit number, one with a register's.
+        Op::Bset(_) | Op::Bclr(_) => match (src, dst) {
+            (Ea::Imm, Ea::Dn) => base_cycles(k) - 8,
+            (_, Ea::Dn) => base_cycles(k) - 4,
+            _ => 0,
+        },
+        Op::Scc => 0,
+        Op::Tas => match src {
+            Ea::Dn => 0,
+            _ => 2,
+        },
+    }
+}
+
+/// The operands' address calculations off the bus, as [`operand_cycles`] counts their times.
+const fn operand_off_bus(k: Kind) -> u32 {
+    let Kind { op, src, dst, .. } = k;
+    match op {
+        // A move's `-(An)` destination is written as `(An)` is.
+        Op::Move => {
+            ea_off_bus(src)
+                + if matches!(dst, Ea::PreDec) {
+                    0
+                } else {
+                    ea_off_bus(dst)
+                }
+        }
+        Op::Movea | Op::AluToDn | Op::Cmp | Op::Adda | Op::Cmpa | Op::Tst => ea_off_bus(src),
+        Op::AluToMem | Op::Imm | Op::Cmpi | Op::Quick => ea_off_bus(dst),
+        Op::Clr | Op::Nbcd | Op::Scc | Op::Tas => ea_off_bus(src),
+        Op::Shift(_) if matches!(dst, Ea::None) => ea_off_bus(src),
+        Op::Btst | Op::Bset(_) | Op::Bclr(_) => ea_off_bus(dst),
+        _ => 0,
+    }
+}
+
+/// Of a fixed-time instruction's [`cycles`], those off the bus.
+pub const fn off_bus(k: Kind) -> u32 {
+    base_off_bus(k) + operand_off_bus(k)
+}
+
+/// [`off_bus`] of the kind these four make, as [`of`] is [`cycles`]'.
+pub const fn off_of(op: Op, size: Size, src: Ea, dst: Ea) -> u32 {
+    off_bus(Kind { op, size, src, dst })
+}
+
+/// A conditional branch's cycles off the bus: 2 taken (10, two words read); 4 not taken (8 with
+/// one word, 12 with two). All before its reads ([`lead`]).
+pub const fn bcc_off(taken: bool) -> u32 {
+    if taken { 2 } else { 4 }
+}
+
+/// `dbcc`'s cycles off the bus: 4 when the condition holds (12, two words), else 2. All before its
+/// reads ([`lead`]).
+pub const fn dbcc_off(holds: bool) -> u32 {
+    if holds { 4 } else { 2 }
+}
+
+/// Of an instruction's cycles off the bus, those spent before its first bus access (Moira's
+/// `SYNC` ahead of the reads, translator T49): a branch, jump or call idles first, and so does the
+/// address calculation of `-(An)` and the index modes when it is the instruction's first operand.
+/// The rest of [`off_bus`] follows the accesses. Where the bus is free decides which slots the CPU
+/// asks for, which matters beside the bitplanes' even slots.
+pub const fn lead(k: Kind) -> u32 {
+    let Kind { op, src, dst, .. } = k;
+    match op {
+        Op::Bra | Op::Bsr | Op::Jmp | Op::Jsr => off_bus(k),
+        Op::Move | Op::Movea | Op::AluToDn | Op::Cmp | Op::Adda | Op::Cmpa | Op::Tst | Op::Clr
+        | Op::Nbcd | Op::Scc | Op::Tas | Op::Lea | Op::Pea => ea_off_bus(src),
+        Op::Shift(_) if matches!(dst, Ea::None) => ea_off_bus(src),
+        Op::AluToMem | Op::Quick => ea_off_bus(dst),
+        Op::Btst | Op::Bset(_) | Op::Bclr(_) if !matches!(src, Ea::Imm) => ea_off_bus(dst),
+        _ => 0,
+    }
+}
+
+/// [`lead`] of the kind these four make, as [`off_of`] is [`off_bus`]'.
+pub const fn lead_of(op: Op, size: Size, src: Ea, dst: Ea) -> u32 {
+    lead(Kind { op, size, src, dst })
+}
+
+/// A data-dependent instruction of one bus word plus its operand (`mulu`, `muls`, `divu`, `divs`,
+/// a shift or bit op by a register, `scc` on a register): its time `cycles` (without the operand's
+/// address time) less the one word read.
+pub const fn one_word_off(cycles: u32) -> u32 {
+    cycles.saturating_sub(4)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -495,6 +661,28 @@ mod tests {
     use Size::*;
 
     // The examples are the MC68000 User's Manual's (section 8) tables, read row by row.
+
+    /// Moira's order (MoiraExec_cpp.h, MoiraDataflow_cpp.h): a branch, jump or call SYNCs before
+    /// its prefetches or push; `-(An)` and the index modes before their read (T49).
+    #[test]
+    fn what_idles_before_its_accesses() {
+        let l = |op, size, src, dst| lead_of(op, size, src, dst);
+        assert_eq!(l(Op::Bra, W, None, None), 2);
+        assert_eq!(l(Op::Bsr, W, None, None), 2);
+        assert_eq!(l(Op::Jsr, L, D16An, None), 2);
+        assert_eq!(l(Op::Jsr, L, D8AnXn, None), 6);
+        assert_eq!(l(Op::Jmp, L, Ind, None), 0);
+        assert_eq!(l(Op::Move, W, PreDec, Dn), 2);
+        assert_eq!(l(Op::Move, W, Dn, PreDec), 0);
+        assert_eq!(l(Op::AluToMem, W, Dn, PreDec), 2);
+        // `lea (d8,An,Xn)` idles 2 before its prefetch and 2 after (off the bus 4).
+        assert_eq!((l(Op::Lea, L, D8AnXn, An), off_of(Op::Lea, L, D8AnXn, An)), (2, 4));
+        // After their accesses: a register add, an immediate to a register, a shift.
+        assert_eq!(l(Op::Adda, L, Dn, An), 0);
+        assert_eq!(l(Op::Imm, L, Imm, Dn), 0);
+        assert_eq!(l(Op::Shift(8), L, Imm, Dn), 0);
+        assert_eq!((bcc_off(true), bcc_off(false), dbcc_off(true), dbcc_off(false)), (2, 4, 4, 2));
+    }
 
     #[test]
     fn move_is_four_plus_both_operands() {
@@ -750,5 +938,38 @@ mod tests {
         const N: u32 = of(Op::Move, L, Dn, AbsL);
         assert_eq!(N, 20);
         assert_eq!(const { bcc(false, W) }, 12);
+    }
+    #[test]
+    fn off_bus_is_the_manuals_total_less_four_a_read_or_write() {
+        // (kind, total, reads + writes), MC68000UM tables 8-2 to 8-10.
+        let rows = [
+            (of(Op::Move, W, Ind, Ind), Kind { op: Op::Move, size: W, src: Ind, dst: Ind }, 3),
+            (0, Kind { op: Op::AluToDn, size: L, src: Dn, dst: Dn }, 1),
+            (0, Kind { op: Op::AluToDn, size: L, src: Ind, dst: Dn }, 3),
+            (0, Kind { op: Op::Adda, size: W, src: Dn, dst: An }, 1),
+            (0, Kind { op: Op::Quick, size: L, src: Imm, dst: Dn }, 1),
+            (0, Kind { op: Op::Quick, size: W, src: Imm, dst: An }, 1),
+            (0, Kind { op: Op::Imm, size: L, src: Imm, dst: Dn }, 3),
+            (0, Kind { op: Op::Lea, size: L, src: D8AnXn, dst: An }, 2),
+            (0, Kind { op: Op::Jsr, size: L, src: D8AnXn, dst: None }, 4),
+            (0, Kind { op: Op::Shift(8), size: L, src: Imm, dst: Dn }, 1),
+            (0, Kind { op: Op::Shift(4), size: W, src: Imm, dst: Dn }, 1),
+            (0, Kind { op: Op::Bclr(3), size: L, src: Imm, dst: Dn }, 2),
+            (0, Kind { op: Op::Move, size: W, src: D8AnXn, dst: PreDec }, 4),
+            (0, Kind { op: Op::Clr, size: L, src: Dn, dst: None }, 1),
+            (0, Kind { op: Op::Rts, size: L, src: None, dst: None }, 4),
+            (0, Kind { op: Op::Bsr, size: W, src: None, dst: None }, 4),
+        ];
+        for (_, k, bus) in rows {
+            assert_eq!(off_bus(k), cycles(k) - 4 * bus, "{k:?}");
+        }
+        assert_eq!(cycles(rows[0].1), rows[0].0);
+        assert_eq!(bcc(true, B) - bcc_off(true), 8);
+        assert_eq!(bcc(false, B) - bcc_off(false), 4);
+        assert_eq!(bcc(false, W) - bcc_off(false), 8);
+        assert_eq!(dbcc(true, 3) - dbcc_off(true), 8);
+        assert_eq!(dbcc(false, 0) - dbcc_off(false), 12);
+        assert_eq!(dbcc(false, 3) - dbcc_off(false), 8);
+        assert_eq!(one_word_off(mulu_cycles(0xFFFF)), 70 - 4);
     }
 }

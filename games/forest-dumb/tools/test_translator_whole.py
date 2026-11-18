@@ -54,12 +54,9 @@ MACHINE_PINNED = {
     'h0+$1fec': ('beam', 'case 2, line $03: the original stores VHPOSR as the word $0304 (two reads, '
                  'one step); the machine, reaching the read 59 lines on, $3e86',
                  'byte h0+$8dfa: original wrote $03, port wrote $3e'),
-    'h0+$2698': ('beam', 'case 7, line $18: two waits; the original reads $18..$27, d1 $26; the machine '
-                 '$1b x12, $1c x17, $1d x18, $1e x17, $1f, then $22..$26, d1 $25',
-                 'd1: original $00008126, port $00008125'),
-    'h0+$26ec': ('beam', 'case 2, line $03: the original reads $03..$0a, d1 $09; the machine $05 x7, '
-                 '$06 x17, $07 x18, $08 x17, $09, d1 $08',
-                 'd1: original $00008f09, port $00008f08'),
+    'h0+$2698': ('beam', 'case 1: two waits; with the CPU\'s waits for the bus (T49) the machine ends a '
+                 'line on, d1 $2b09 for the original\'s $2b08',
+                 'd1: original $00002b08, port $00002b09'),
     'h0+$3adc': ('beam', 'case 0, line $01: the original reads $01..$08, d1 $07; the machine $01 x17, '
                  '$02 x18, $03 x17, $04 x18, $05, d1 $04',
                  'd1: original $0a9a9f07, port $0a9a9f04'),

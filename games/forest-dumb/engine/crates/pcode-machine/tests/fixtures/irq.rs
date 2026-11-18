@@ -113,6 +113,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x0 {
                     // h0+$0 move.w ($100).w,d0
                     {
+                        bus.sync(r);
                         let v = load(bus, 0x100u64 as u32, 2);
                         r.set(0x2, 2, v);
                     }
@@ -130,8 +131,8 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x0); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x8);
@@ -139,6 +140,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
             (0, 0x8) => {
                 // h0+$8 rts
                 {
+                    bus.sync(r);
                     let v = load(bus, r.get(0x3c, 4) as u32, 4);
                     r.set(0x50, 4, v);
                     let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
@@ -180,6 +182,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x0 {
                     // h0+$0 move.w ($100).w,d0
                     {
+                        bus.sync(r);
                         let v = load(bus, 0x100u64 as u32, 2);
                         r.set(0x2, 2, v);
                     }
@@ -197,8 +200,8 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x0); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x0); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x8);
@@ -206,6 +209,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
             (0, 0x8) => {
                 // h0+$8 rts
                 {
+                    bus.sync(r);
                     let v = load(bus, r.get(0x3c, 4) as u32, 4);
                     r.set(0x50, 4, v);
                     let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
@@ -222,6 +226,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x10 {
                     // h0+$10 move.w #$8020,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x8020u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -246,8 +251,8 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                         let mut u_100: u64 = 0;
                         let v = bool_negate(r.get(0x45, 1));
                         u_100 = v & 0xff;
-                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); pc = (0, 0x10); continue 'b; }
-                        r.tick(const { cy::bcc(false, cy::Size::B) });
+                        if u_100 != 0 { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); pc = (0, 0x10); continue 'b; }
+                        r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) });
                     }
                 }
                 pc = (0, 0x1e);
@@ -289,6 +294,7 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x40 {
                     // h0+$40 addq.w #1,($100).w
                     {
+                        bus.sync(r);
                         let mut u_200: u64 = 0;
                         let mut u_210: u64 = 0;
                         let v = load(bus, 0x100u64 as u32, 2);
@@ -302,6 +308,7 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x44 {
                     // h0+$44 move.w #$20,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x20u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -309,7 +316,8 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x4c {
                     // h0+$4c rte
                     {
-                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        bus.sync(r);
                         let mut u_fff000: u64 = 0;
                         let v = load(bus, r.get(0x3c, 4) as u32, 2);
                         u_fff000 = v & 0xffff;
@@ -358,6 +366,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x60 {
                     // h0+$60 move.w #$8020,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x8020u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -375,6 +384,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x6a {
                     // h0+$6a move.w ($100).w,d3
                     {
+                        bus.sync(r);
                         let v = load(bus, 0x100u64 as u32, 2);
                         r.set(0xe, 2, v);
                     }
@@ -382,6 +392,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x6e {
                     // h0+$6e move.w #$8,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x8u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -389,7 +400,8 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x76 {
                     // h0+$76 rte
                     {
-                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        bus.sync(r);
                         let mut u_fff000: u64 = 0;
                         let v = load(bus, r.get(0x3c, 4) as u32, 2);
                         u_fff000 = v & 0xffff;
@@ -438,6 +450,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x80 {
                     // h0+$80 move.w #$8008,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x8008u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -455,6 +468,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x8a {
                     // h0+$8a move.w ($102).w,d4
                     {
+                        bus.sync(r);
                         let v = load(bus, 0x102u64 as u32, 2);
                         r.set(0x12, 2, v);
                     }
@@ -462,6 +476,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x8e {
                     // h0+$8e addq.w #1,($100).w
                     {
+                        bus.sync(r);
                         let mut u_300: u64 = 0;
                         let mut u_310: u64 = 0;
                         let v = load(bus, 0x100u64 as u32, 2);
@@ -475,6 +490,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x92 {
                     // h0+$92 move.w #$20,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x20u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -482,7 +498,8 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x9a {
                     // h0+$9a rte
                     {
-                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        bus.sync(r);
                         let mut u_fff000: u64 = 0;
                         let v = load(bus, r.get(0x3c, 4) as u32, 2);
                         u_fff000 = v & 0xffff;
@@ -531,6 +548,7 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0xa0 {
                     // h0+$a0 addq.w #1,($102).w
                     {
+                        bus.sync(r);
                         let mut u_400: u64 = 0;
                         let mut u_410: u64 = 0;
                         let v = load(bus, 0x102u64 as u32, 2);
@@ -544,6 +562,7 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0xa4 {
                     // h0+$a4 move.w #$8,($dff09c).l
                     {
+                        bus.sync(r);
                         let v = 0x8u64;
                         store(bus, img, 0xdff09cu64 as u32, 2, v)?;
                     }
@@ -551,7 +570,8 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0xac {
                     // h0+$ac rte
                     {
-                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        bus.sync(r);
                         let mut u_fff000: u64 = 0;
                         let v = load(bus, r.get(0x3c, 4) as u32, 2);
                         u_fff000 = v & 0xffff;

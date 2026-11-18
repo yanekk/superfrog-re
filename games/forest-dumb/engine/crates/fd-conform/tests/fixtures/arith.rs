@@ -38,7 +38,7 @@ pub const SITES: &[(&str, &str, u32, u32, u32, &[(u32, u32)], Routine)] = &[
 pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$0 addx.l
     {
-        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let mut u_af80: u64 = 0;
         let mut u_b000: u64 = 0;
         let mut u_b080: u64 = 0;
@@ -93,7 +93,7 @@ pub fn i_h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$2 subx.l
     {
-        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
+        r.tick(const { cy::of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) }); r.off_bus(const { cy::off_of(cy::Op::Addx, cy::Size::L, cy::Ea::Dn, cy::Ea::Dn) });
         let mut u_c000: u64 = 0;
         let mut u_c080: u64 = 0;
         let mut u_c100: u64 = 0;
@@ -139,7 +139,7 @@ pub fn i_h0_2(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 pub fn i_h0_4(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     // h0+$4 negx.l
     {
-        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::Dn, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::Dn, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Clr, cy::Size::L, cy::Ea::Dn, cy::Ea::None) });
         let mut u_d000: u64 = 0;
         let mut u_d080: u64 = 0;
         let mut u_e600: u64 = 0;
@@ -177,7 +177,7 @@ pub fn i_h0_6(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
-        r.tick(cy::divu_cycles(r.d(0), r.d(1) as u16));
+        r.tick(cy::divu_cycles(r.d(0), r.d(1) as u16)); r.off_bus(cy::one_word_off(cy::divu_cycles(r.d(0), r.d(1) as u16)));
         let v = int_zext(r.get(0x6, 2), 2);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
@@ -201,7 +201,7 @@ pub fn i_h0_8(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
-        r.tick(cy::divs_cycles(r.d(0) as i32, 0x0003u16 as i16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });
+        r.tick(cy::divs_cycles(r.d(0) as i32, 0x0003u16 as i16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) }); r.off_bus(cy::one_word_off(cy::divs_cycles(r.d(0) as i32, 0x0003u16 as i16)));
         let v = int_sext(0x3u64, 2, 4);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
@@ -225,7 +225,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     {
         let mut u_22100: u64 = 0;
         let mut u_22180: u64 = 0;
-        r.tick(cy::divu_cycles(r.d(0), 0x0000u16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) });
+        r.tick(cy::divu_cycles(r.d(0), 0x0000u16) + const { cy::ea_cycles(cy::Ea::Imm, cy::Size::W) }); r.off_bus(cy::one_word_off(cy::divu_cycles(r.d(0), 0x0000u16)));
         let v = int_zext(0x0u64, 2);
         u_22100 = v & 0xffffffff;
         let v = r.get(0x0, 4);
@@ -248,7 +248,8 @@ pub fn i_h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
     // h0+$10 clr.w (corrected: pcode_fix.arith)
     {
         let mut u_100: u64 = 0;
-        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::AbsL, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::AbsL, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Clr, cy::Size::W, cy::Ea::AbsL, cy::Ea::None) });
+        bus.sync(r);
         let v = 0xdff0a8u64;
         u_100 = v & 0xffffffff;
         let a = u_100 as u32;
@@ -276,7 +277,8 @@ pub fn i_h0_18(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
     // h0+$18 clr.l (corrected: pcode_fix.arith)
     {
         let mut u_100: u64 = 0;
-        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::AbsL, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::L, cy::Ea::AbsL, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Clr, cy::Size::L, cy::Ea::AbsL, cy::Ea::None) });
+        bus.sync(r);
         let v = 0xdff0a8u64;
         u_100 = v & 0xffffffff;
         let a = u_100 as u32;
@@ -309,7 +311,8 @@ pub fn i_h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop>
     {
         let mut u_4f00: u64 = 0;
         let mut u_5000: u64 = 0;
-        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::Ind, cy::Ea::None) });
+        r.tick(const { cy::of(cy::Op::Clr, cy::Size::W, cy::Ea::Ind, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Clr, cy::Size::W, cy::Ea::Ind, cy::Ea::None) });
+        bus.sync(r);
         let v = 0x0u64;
         u_4f00 = v & 0xffff;
         let v = r.get(0x20, 4);

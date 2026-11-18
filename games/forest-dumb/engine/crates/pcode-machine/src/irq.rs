@@ -18,6 +18,9 @@ const SETCLR: u16 = 0x8000;
 /// (MC68000UM table 8-14, "interrupt": 44). Counted when `poll` takes one, so the beam moves on.
 pub const IRQ_CYCLES: u32 = 44;
 
+/// Of [`IRQ_CYCLES`], those off the bus: 44(5/3), five reads and three writes (T49).
+pub const IRQ_OFF_BUS: u32 = 44 - 4 * 8;
+
 /// The PC pushed in the exception frame: odd, so no instruction's address, and a handler that
 /// changes it is caught. `poll` is not told which block it starts, so it cannot push the real
 /// return address; and with block-boundary delivery the original's own stacked PC names another

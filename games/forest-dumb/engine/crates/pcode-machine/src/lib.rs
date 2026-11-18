@@ -23,6 +23,7 @@ pub mod cia;
 pub mod collide;
 pub mod copper;
 pub mod custom;
+mod dma;
 pub mod input;
 pub mod irq;
 pub mod journal;
@@ -174,6 +175,18 @@ pub struct Machine {
     now: u64,
     /// The beam's offset into a frame at cycle count 0.
     phase: u64,
+    /// The cycle count up to which the bus's slots have been run (`dma`): every slot before it has
+    /// its owner, and a blit has got as far as those slots let it.
+    dma_at: u64,
+    /// `Regs`' cycles and cycles off the bus at the last `poll_time`, with the CPU's waits for the
+    /// bus added: the next block's work is what the counts have grown by since.
+    cpu_mark: Option<(u64, u64)>,
+    /// Of the block's trail, the instructions `sync` has fitted onto the bus already, their cycles
+    /// and cycles off the bus, and of the next one its accesses made and whether its leading idle
+    /// cycles are spent.
+    synced: (usize, u64, u64, (u64, bool)),
+    /// The sprite channels' DMA as the bus has run it (`dma::Sprites`).
+    sprites: dma::Sprites,
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
@@ -233,6 +246,10 @@ impl Machine {
             hunk_sizes: Vec::new(),
             now: 0,
             phase: 0,
+            dma_at: 0,
+            cpu_mark: None,
+            synced: (0, 0, 0, (0, false)),
+            sprites: dma::Sprites::default(),
             bus: 0,
             fault: None,
             os: os::Os::new(),
@@ -385,6 +402,9 @@ impl Machine {
         self.now
     }
     pub fn set_cycles(&mut self, cycles: u64) {
+        self.dma_idle(cycles);
+        self.cpu_mark = None;
+        self.synced = (0, 0, 0, (0, false));
         self.advance(cycles);
         self.now = cycles;
     }
@@ -453,6 +473,7 @@ impl Machine {
         let pc = r.get(PC, 4);
         ops::sr_set(r, irq::handler_sr(old, level) as u64);
         r.tick(irq::IRQ_CYCLES);
+        r.off_bus(irq::IRQ_OFF_BUS);
         self.now = r.cycles();
         let sp = r.a(7).wrapping_sub(6);
         pcode_rt::store(self, img, sp.wrapping_add(2), 4, irq::IRQ_RETURN as u64)?;
@@ -485,10 +506,12 @@ impl Machine {
         Ok(())
     }
 
-    /// What [`Bus::poll`] does before taking an interrupt: time the block's accesses at `r`'s
-    /// count, run the chips up to it, tick the keyboard, and end the run on an access outside
-    /// memory made since.
-    pub fn poll_time(&mut self, r: &Regs) -> Result<(), Stop> {
+    /// What [`Bus::poll`] does before taking an interrupt: fit the CPU's work since the last call
+    /// into the bus slots the chips leave it, ticking `r` by the CPU's waits (`dma`), time the
+    /// block's accesses at `r`'s count, run the chips up to it, tick the keyboard, and end the run
+    /// on an access outside memory made since.
+    pub fn poll_time(&mut self, r: &mut Regs) -> Result<(), Stop> {
+        self.contend(r);
         self.advance(r.cycles());
         self.now = r.cycles();
         // The keyboard's next byte, if its time has come since the last block.
@@ -613,18 +636,156 @@ impl Machine {
                 .as_ref()
                 .and_then(|c| c.next_at())
                 .filter(|&c| c <= t as i64);
-            let blit = self.blitter.busy_until.filter(|&b| b <= t);
-            // The earlier first; a blit ending on a copper write's cycle ends before it.
-            match (cop, blit) {
-                (Some(c), Some(b)) if c < b as i64 => self.copper_deliver(),
-                (_, Some(b)) => {
-                    self.now = b;
-                    self.blitter.busy_until = None;
-                    self.raise(blitter::INT_BLIT.trailing_zeros() as u16, b);
-                }
-                (Some(_), None) => self.copper_deliver(),
-                (None, None) => break,
+            // A blit's end is the bus's (`contend`), which raises its interrupt for its cycle.
+            match cop {
+                Some(_) => self.copper_deliver(),
+                None => break,
             }
+        }
+    }
+
+    /// The CPU's work since the last call, fitted into the bus slots the chips leave it (`dma`):
+    /// `r` is ticked by what the CPU waited. A first call, or a count gone back (a new `Regs`),
+    /// only marks where the work starts.
+    fn contend(&mut self, r: &mut Regs) {
+        let (c, o) = (r.cycles(), r.off_bus_cycles());
+        match self.cpu_mark {
+            Some((c0, o0)) if c >= c0 && o >= o0 => {
+                // Slots a host's jump of the count left unrun are the chips' alone.
+                self.dma_idle(c0);
+                let (done, done_c, done_o, part) = self.synced;
+                let begin = self.dma_at.max(c0 + done_c);
+                let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
+                let n = match Self::trail_since(r, c0 + done_c, o0 + done_o, done, &mut work) {
+                    Some(n) => n,
+                    // Something ticked past the trail: the rest of the block is one lump.
+                    None => {
+                        let lump = ((c - c0 - done_c) as u32, (o - o0).saturating_sub(done_o) as u32);
+                        work[0] = (lump.0, lump.1, 0);
+                        1
+                    }
+                };
+                let skip = part;
+                let end = self.with_slots(|s, beam| s.cpu(begin, &work[..n], skip, beam));
+                self.dma_at = end;
+                let late = end.saturating_sub(c);
+                if late > 0 {
+                    r.tick(late as u32);
+                }
+            }
+            _ => self.dma_idle(c),
+        }
+        r.clear_trail();
+        self.synced = (0, 0, 0, (0, false));
+        self.cpu_mark = Some((r.cycles(), r.off_bus_cycles()));
+        self.blit_settle();
+    }
+
+    /// The block's trail from instruction `from` on, as (cycles, off the bus, of those first), into
+    /// `work`; its length, if the trail holds the whole block since the mark one instruction at a
+    /// time (it does unless something ticked past it). `(c0, o0)` is the mark moved past the
+    /// instructions before `from`, so only the rest is summed: `sync` runs before every access.
+    fn trail_since(
+        r: &Regs,
+        c0: u64,
+        o0: u64,
+        from: usize,
+        work: &mut [(u32, u32, u32); pcode_rt::TRAIL],
+    ) -> Option<usize> {
+        let trail = r.trail();
+        if trail.len() >= pcode_rt::TRAIL || from > trail.len() {
+            return None;
+        }
+        let (mut sc, mut so) = (0u64, 0u64);
+        for (k, (&(c, o), &l)) in trail[from..].iter().zip(&r.trail_lead()[from..]).enumerate() {
+            work[k] = (c, o, l);
+            sc += c as u64;
+            so += o as u64;
+        }
+        ((sc, so) == (r.cycles().wrapping_sub(c0), r.off_bus_cycles().wrapping_sub(o0)))
+            .then_some(trail.len() - from)
+    }
+
+    /// An instruction that reads or writes memory is about to: the block's instructions before it
+    /// are fitted onto the bus, and its accesses are timed at its start, the CPU's waits so far
+    /// included (`Bus::sync`, translator T49). The waits reach `Regs` at the next `poll`.
+    pub fn sync(&mut self, r: &Regs) {
+        let Some((c0, o0)) = self.cpu_mark else {
+            return;
+        };
+        if r.cycles() < c0 || r.off_bus_cycles() < o0 {
+            return;
+        }
+        let (done, done_c, done_o, part) = self.synced;
+        let mut work = [(0u32, 0u32, 0u32); pcode_rt::TRAIL];
+        let Some(len) = Self::trail_since(r, c0 + done_c, o0 + done_o, done, &mut work) else {
+            return;
+        };
+        // The last is the instruction about to access memory: its own time is still to come.
+        let Some(n) = len.checked_sub(1) else {
+            return;
+        };
+        let (cur, cur_off, cur_lead) = work[n];
+        let (bc, bo) = work[..n]
+            .iter()
+            .fold((0u64, 0u64), |(a, b), &(x, y, _)| (a + x as u64, b + y as u64));
+        let begin = self.dma_at.max(c0 + done_c);
+        // Moira makes an instruction's data accesses before its last bus cycle, the next
+        // instruction's prefetch: its leading idle cycles and its accesses up to there are fitted
+        // too, and the access is timed at the start of the last of them.
+        let own = (cur.saturating_sub(cur_off) / 4) as u64;
+        let ahead = own.saturating_sub(1);
+        // What of the current instruction a sync before this one fitted already.
+        let (skip, led) = if n > 0 { (0, false) } else { part };
+        let lead = cur_lead.min(cur_off) as u64;
+        let (end, at) = self.with_slots(|s, beam| {
+            let t = s.cpu(begin, &work[..n], if n > 0 { part } else { (0, false) }, beam);
+            let t = if led { t } else { s.cpu_idle(t, t + lead, beam) };
+            let end = s.accesses(t, ahead.saturating_sub(skip), beam);
+            (end, if ahead > skip { end - 4 } else { t })
+        });
+        self.dma_at = end;
+        self.synced = (done + n, done_c + bc, done_o + bo, (skip.max(ahead), true));
+        self.blit_settle();
+        if at > self.now {
+            self.advance(at);
+            self.now = at;
+        }
+    }
+
+    /// Run the bus's slots up to cycle count `t` with no CPU access.
+    fn dma_idle(&mut self, t: u64) {
+        if t > self.dma_at {
+            let from = self.dma_at;
+            self.with_slots(|s, beam| s.idle(from, t, beam));
+            self.dma_at = t;
+            self.blit_settle();
+        }
+    }
+
+    /// The bus as the registers hold it now, handed to `f` with the beam at a cycle count.
+    fn with_slots<R>(&mut self, f: impl FnOnce(&mut dma::Slots, &dyn Fn(u64) -> (u16, u16)) -> R) -> R {
+        let (phase, lines) = (self.phase, self.cfg.frame_lines);
+        let beam = move |t: u64| beam::position(phase.wrapping_add(t), lines);
+        let fetch = self.fetch();
+        let mut slots = dma::Slots {
+            fetch,
+            dmacon: self.dmacon,
+            blit: self.blitter.run.as_mut(),
+            frame_lines: lines,
+            copper: self.copper.as_ref().map(|c| (c, c.frame_start)),
+            sprites: &mut self.sprites,
+            chip: &self.chip,
+            custom: &self.custom,
+        };
+        f(&mut slots, &beam)
+    }
+
+    /// A blit whose BLTDONE the bus has run: its interrupt a slot later, and the blitter free.
+    fn blit_settle(&mut self) {
+        if let Some(done) = self.blitter.run.as_ref().and_then(|b| b.done_at) {
+            self.blitter.run = None;
+            self.raise(blitter::INT_BLIT.trailing_zeros() as u16, done + 2);
         }
     }
 
@@ -987,6 +1148,10 @@ impl Bus for Machine {
         Ok(())
     }
 
+    fn sync(&mut self, r: &Regs) {
+        Machine::sync(self, r)
+    }
+
     /// A library vector: the OS's answer (`os`).
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.os_call(a, r, img)
@@ -1132,3 +1297,5 @@ impl Bus for Machine {
 mod tests;
 #[cfg(test)]
 mod tests_chips;
+#[cfg(test)]
+mod tests_dma;

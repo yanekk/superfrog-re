@@ -64,7 +64,8 @@ the translated tree running on `pcode-machine` (`fd-judge --translated --machine
 `judge::translated::machine`) instead of the judge's copy of the oracle's hardware mode: blits,
 DMACONR's busy bit, the beam and every custom register read come from the machine's models.
 **88 of 100 pass**; nothing stops untranslated, unsupported or writing into code. The owner closed T27
-on it with the 12 others named (2026-11-12). About 1 minute warm.
+on it with the 12 others named (2026-11-12). About 1 minute warm. With DMA contention on the machine
+(T49, 2026-11-18) **89 of 100**: `h0_26ec` passes, `char_object_cells` differs by one read.
 
 How a state is laid on the machine: chip RAM, slow RAM and the custom registers are the machine's;
 every other address (the rig's stack, chip RAM's mirrors, memory an A500 lacks) is the oracle's flat
@@ -72,10 +73,10 @@ every other address (the rig's stack, chip RAM's mirrors, memory an A500 lacks) 
 the case's bytes or 0, as on the oracle; the case's custom register reads are answered by a device on
 exactly those registers; the beam starts on the case's line; DMACON is DMAEN and BLTEN only.
 
-**The 12 that differ** are the oracle's hardware mode, not the machine, each pinned with its evidence
+**The 11 that differ** (12 before T49) are the oracle's hardware mode, not the machine, each pinned with its evidence
 in `tools/test_translator_whole.py` (`MACHINE_PINNED`, full):
 
-- **Beam, 8:** `game_frame`, `char_object_cells`, `h0_26ec`, `h0_3adc`, `char_hit_check`,
+- **Beam, 7** (`h0_26ec` passes since T49)**:** `game_frame`, `char_object_cells`, `h0_3adc`, `char_hit_check`,
   `char_update`, `char_step`, `h0_3ea8`. The oracle steps VHPOSR's byte by one a read; the machine
   reads it from counted cycles. Each but `game_frame` waits for four line changes
   (`move.b $dff006,d1; cmp.b $dff006,d1; beq`): from line b the oracle reads b to b+7 and leaves

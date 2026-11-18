@@ -103,6 +103,21 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   unread bits from `custom[7]` (the oracle's `Amiga::clxdat`); a frame's lines above where the
   machine started are not gathered.
 
+## DMA contention (translator T49)
+
+The bus is run slot by slot as vAmiga does (`dma.rs`): refresh, the bitplanes BPLCON0 enables inside
+DDFSTRT..DDFSTOP on the lines DIWSTRT/DIWSTOP open, the copper's fetch slots (`amiga_chips::copper::
+run_bus`), sprite DMA (control words on line 25 and at each stop line, data inside), and the blitter's
+SlowBlitter micro-programs with BLTPRI and BLS after the CPU's third waited slot. The CPU's accesses wait
+a slot at a time while a chip has it; the waits are ticked into `Regs` at the next `poll`.
+
+Translated code ticks each instruction's cycles and those off the bus (`Regs::off_bus`), and marks the
+ones before its accesses (`Regs::idle_first`: a branch, jump or call, a `-(An)` or index operand);
+`Bus::sync`, emitted before an instruction that loads or stores, fits the block's instructions so far
+onto the bus, so a read or write is timed at its own instruction, not the block's start. Twelve loops
+timed on the oracle (`tests_dma.rs`, `amiga-oracle/tests/contention.rs`) agree within 6 slots of 10 000
+to 21 000; the shift loop with refresh alone on the bus takes 7 more than the oracle's (T49 review).
+
 ## The OS (translator T26)
 
 No Kickstart code runs (DESIGN §2.8). ExecBase, the libraries and their jump tables are made-up
@@ -149,10 +164,9 @@ stop as `untranslated`; the measured program makes neither.
 
 ## What is not
 
-- **DMA contention:** no cycle is lost to bitplane, copper, blitter, sprite or audio DMA
-  (DESIGN §2.6); the beam advances with the CPU's counted cycles alone.
-- **Timing inside a block:** accesses are timed at the block's start (`poll`), not the
-  instruction's, which can be one block early. vAmiga's 5-slot read-ahead of VHPOSR is not added.
+- **Disk and audio DMA** take no slot (odd slots, about 180 a frame on the oracle); see DMA
+  contention below. The original still runs slightly slower than the machine in places (translator
+  T52 measures where). vAmiga's 5-slot read-ahead of VHPOSR is not added.
 - **Instruction fetches and DMA** do not go through the bus, so the last word is a data word, where
   the oracle's bus holds a prefetched instruction word or the last DMA slot's word (the translated
   `clr` supplies the prefetch itself; the write is marked, above).

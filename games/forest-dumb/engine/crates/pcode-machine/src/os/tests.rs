@@ -510,7 +510,7 @@ fn power_on_hands_over_the_registers_kickstart_leaves() {
     let mut r = Regs::new();
     let end = m.frame_end();
     r.tick((end - 1) as u32);
-    m.poll_time(&r).unwrap();
+    m.poll_time(&mut r).unwrap();
     assert_eq!(m.due(&r), None);
     assert_eq!(m.fault(), None);
 }

@@ -177,7 +177,19 @@ pub fn run_from(
     fetch: Fetch,
     frame_lines: u16,
 ) -> Vec<Write> {
-    run_loop(word, start, from, fetch, frame_lines, &mut Vec::new())
+    run_from_bus(word, start, from, fetch, frame_lines, &mut Vec::new())
+}
+
+/// [`run_from`], also giving every bus cycle the copper takes, as [`run_bus`] does.
+pub fn run_from_bus(
+    word: &dyn Fn(u32, u16, u16) -> u16,
+    start: u32,
+    from: Beam,
+    fetch: Fetch,
+    frame_lines: u16,
+    bus: &mut Vec<Beam>,
+) -> Vec<Write> {
+    run_loop(word, start, from, fetch, frame_lines, bus)
 }
 
 fn run_loop(

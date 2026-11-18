@@ -78,6 +78,14 @@ pub trait Bus {
         let _ = r;
         Err(Stop::Untranslated(img.describe(a)))
     }
+    /// Called after the tick of an instruction that reads or writes memory, before its accesses:
+    /// `r`'s trail ends with that instruction. A machine timing its accesses at the instruction
+    /// rather than the block's start fits the trail's earlier instructions onto the bus here
+    /// (translator T49). Plain memory has no time.
+    #[inline]
+    fn sync(&mut self, r: &Regs) {
+        let _ = r;
+    }
     /// The hand-written routine mounted in place of the translated function entered at `k` (hunk,
     /// offset), if any: the seam (translator DESIGN §2.9). Every generated function asks on entry,
     /// before it counts itself in, and runs the mounted one instead, which must leave as the
@@ -134,7 +142,21 @@ pub struct Regs {
     /// The 68000 cycles the translated instructions have taken (`cycles`, DESIGN §2.6): the
     /// machine's beam position comes from it. Outside `space`, which is Ghidra's alone.
     cycles: u64,
+    /// Of `cycles`, those the instructions spent off the bus (their internal cycles,
+    /// [`cycles::off_bus`]): a machine that models DMA contention gives the chips those slots.
+    off_bus: u64,
+    /// Each instruction's (cycles, of them off the bus) since the machine last cleared it
+    /// ([`Regs::clear_trail`]), oldest first: where in a block the bus is free matters to DMA
+    /// contention, not only how much (translator T49). Past [`TRAIL`] entries the last one takes
+    /// the rest.
+    trail: [(u32, u32); TRAIL],
+    /// Of each trail entry's cycles off the bus, those before its bus accesses ([`Regs::idle_first`]).
+    lead: [u32; TRAIL],
+    trail_len: u8,
 }
+
+/// Instructions a block's trail holds one by one ([`Regs::trail`]).
+pub const TRAIL: usize = 48;
 
 impl Default for Regs {
     fn default() -> Self {
@@ -143,6 +165,10 @@ impl Default for Regs {
             steps: 0,
             depth: 0,
             cycles: 0,
+            off_bus: 0,
+            trail: [(0, 0); TRAIL],
+            lead: [0; TRAIL],
+            trail_len: 0,
         }
     }
 }
@@ -171,6 +197,64 @@ impl Regs {
     #[inline]
     pub fn tick(&mut self, n: u32) {
         self.cycles = self.cycles.wrapping_add(n as u64);
+        let len = self.trail_len as usize;
+        if len < TRAIL {
+            self.trail[len] = (n, 0);
+            self.lead[len] = 0;
+            self.trail_len += 1;
+        } else {
+            self.trail[TRAIL - 1].0 = self.trail[TRAIL - 1].0.saturating_add(n);
+        }
+    }
+
+    /// Of the cycles counted so far, those spent off the bus.
+    #[inline]
+    pub fn off_bus_cycles(&self) -> u64 {
+        self.off_bus
+    }
+
+    /// `n` of the cycles just ticked were off the bus: generated code calls it after an
+    /// instruction's tick when the instruction has internal cycles ([`cycles::off_bus`]).
+    #[inline]
+    pub fn off_bus(&mut self, n: u32) {
+        self.off_bus = self.off_bus.wrapping_add(n as u64);
+        match self.trail_len as usize {
+            0 => {
+                self.trail[0] = (0, n);
+                self.lead[0] = 0;
+                self.trail_len = 1;
+            }
+            len => self.trail[len - 1].1 = self.trail[len - 1].1.saturating_add(n),
+        }
+    }
+
+    /// `n` of the cycles just marked off the bus come before the instruction's bus accesses
+    /// ([`cycles::lead`]): generated code calls it after `off_bus` for a kind that idles first.
+    /// Lost past [`TRAIL`] entries, where the last entry is a lump.
+    #[inline]
+    pub fn idle_first(&mut self, n: u32) {
+        match self.trail_len as usize {
+            len if len > 0 && len < TRAIL => self.lead[len - 1] = self.lead[len - 1].saturating_add(n),
+            _ => {}
+        }
+    }
+
+    /// Of each [`Regs::trail`] entry's cycles off the bus, those before its accesses.
+    #[inline]
+    pub fn trail_lead(&self) -> &[u32] {
+        &self.lead[..self.trail_len as usize]
+    }
+
+    /// The instructions ticked since [`Regs::clear_trail`]: (cycles, of them off the bus) each.
+    #[inline]
+    pub fn trail(&self) -> &[(u32, u32)] {
+        &self.trail[..self.trail_len as usize]
+    }
+
+    /// Forget the trail: the machine has fitted those instructions onto the bus.
+    #[inline]
+    pub fn clear_trail(&mut self) {
+        self.trail_len = 0;
     }
 
     /// The `size` bytes at `off`, big-endian.
@@ -403,6 +487,22 @@ pub fn store<B: Bus + ?Sized>(
 mod tests {
     use super::*;
 
+    #[test]
+    fn idle_first_marks_the_instruction_just_ticked() {
+        let mut r = Regs::new();
+        r.tick(12);
+        r.tick(10);
+        r.off_bus(2);
+        r.idle_first(2);
+        r.tick(8);
+        r.off_bus(4);
+        assert_eq!(r.trail(), &[(12, 0), (10, 2), (8, 4)]);
+        assert_eq!(r.trail_lead(), &[0, 2, 0]);
+        r.clear_trail();
+        r.tick(4);
+        assert_eq!(r.trail_lead(), &[0]);
+    }
+
     /// A flat 64 KB memory at address 0 that logs every write as (address, size).
     struct Ram {
         bytes: Vec<u8>,
@@ -490,6 +590,26 @@ mod tests {
         r.set(CF, 1, 1);
         assert_eq!(r.get(CF, 1), 1);
         assert_eq!(r.get(NF, 4), 0x0000_0001, "NZVC are 0x44..0x48");
+    }
+
+    #[test]
+    fn the_trail_keeps_each_instructions_cycles_off_the_bus_until_cleared() {
+        let mut r = Regs::new();
+        r.tick(24);
+        r.off_bus(20);
+        r.tick(12);
+        assert_eq!(r.trail(), &[(24, 20), (12, 0)]);
+        assert_eq!((r.cycles(), r.off_bus_cycles()), (36, 20));
+        r.clear_trail();
+        assert!(r.trail().is_empty());
+        assert_eq!((r.cycles(), r.off_bus_cycles()), (36, 20));
+        // Past TRAIL instructions the last entry takes the rest.
+        for _ in 0..TRAIL + 3 {
+            r.tick(4);
+            r.off_bus(2);
+        }
+        assert_eq!(r.trail().len(), TRAIL);
+        assert_eq!(r.trail()[TRAIL - 1], (16, 8));
     }
 
     #[test]

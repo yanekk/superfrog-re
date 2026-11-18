@@ -1,13 +1,14 @@
 //! The blitter on the machine (translator T24): a BLTSIZE write runs `amiga_chips::Blit` over chip
-//! RAM at once, from the registers as last written, and the blitter stays busy until the time
-//! `amiga_clock::word_times` gives its last word (DMACONR's BBUSY); then INTREQ's BLIT bit is set.
+//! RAM at once, from the registers as last written; its time is the bus's (`dma`, T49): the
+//! blitter's micro-program runs slot by slot against the display's fetches and the CPU, DMACONR's
+//! BBUSY clears at the last word's end and INTREQ's BLIT bit is set a slot after the last D write.
 //! The memory effect is whole at the write: a program reading the destination before the busy bit
 //! clears would see it early. It waits on BBUSY first, as the hardware asks.
 
-use amiga_chips::{Blit, BlitMem, bltsize_words, word_times};
+use amiga_chips::{Blit, BlitMem, bltsize_words};
 
 use crate::Machine;
-use crate::beam;
+use crate::dma::BlitRun;
 use crate::journal::{Journal, Watch};
 
 pub const BLTCON0: u16 = 0x040;
@@ -34,10 +35,11 @@ pub const INT_BLIT: u16 = 0x0040;
 const BLIT_DMA: u16 = 0x0240;
 
 /// What the blitter is doing.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Blitter {
-    /// The cycle its busy flag clears and its interrupt is raised, while a blit runs.
-    pub busy_until: Option<u64>,
+    /// The blit running: where its micro-program has got to on the bus, and when its busy flag
+    /// cleared (`dma`).
+    pub(crate) run: Option<BlitRun>,
     /// DMACONR's BZERO: every D result of the last blit was zero.
     pub zero: bool,
 }
@@ -114,25 +116,20 @@ impl Machine {
             self.custom[(reg as usize >> 1) + 1] = p as u16;
         }
         let (rows, words) = bltsize_words(blit.size);
-        let fetch = self.fetch();
-        let (line, h) = self.beam(at);
-        let frames = self.cfg.frame_lines;
-        let times = word_times(rows * words, line, h, frames, |l, c| fetch.takes(l, c));
-        let (ll, lh) = *times.last().expect("a blit has a word");
-        // `word_times` counts on past the frame's last line; offsets from the frame's start are
-        // linear in the line, so the end lands in the next frame where it should.
-        // Signed: in a snapshot's first frame the frame began before cycle 0.
-        let into = (self.phase.wrapping_add(at)) % beam::frame_cycles(frames);
-        let start = at as i64 - into as i64;
-        let done = start + beam::offset(ll, lh) as i64 + 2;
-        self.blitter = super::blitter::Blitter {
-            busy_until: Some((done.max(0) as u64).max(at + 1)),
+        // The bus decides when it ends (`dma`). vAmiga applies a BLTSIZE write a slot later
+        // (`recordRegisterChange(DMA_CYCLES(1))`) and the blitter's first start-up step a slot
+        // after that (`BLT_STRT1`): it takes no slot before the second after the write.
+        self.blitter = Blitter {
+            run: Some(BlitRun::new(con0, rows as u16, words as u16, at + 4)),
             zero: end.zero,
         };
     }
 
     /// DMACONR's BBUSY at the access time.
     pub(crate) fn blit_busy(&self) -> bool {
-        self.blitter.busy_until.is_some_and(|e| e > self.now)
+        self.blitter
+            .run
+            .as_ref()
+            .is_some_and(|b| b.free_at.is_none_or(|f| f > self.now))
     }
 }

@@ -79,6 +79,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x0 {
                     // h0+$0 jsr h0+$10
                     {
+                        bus.sync(r);
                         let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
                         r.set(0x3c, 4, v);
                         let v = (img.h(0, 0x6) as u64);
@@ -97,6 +98,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x6 {
                     // h0+$6 rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
@@ -139,6 +141,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x10 {
                     // h0+$10 jsr h0+$0
                     {
+                        bus.sync(r);
                         let v = int_sub(r.get(0x3c, 4), 0x4u64, 4);
                         r.set(0x3c, 4, v);
                         let v = (img.h(0, 0x16) as u64);
@@ -157,6 +160,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                 if entered <= 0x16 {
                     // h0+$16 rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
