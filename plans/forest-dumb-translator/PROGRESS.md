@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | level1-cases-a | T29 | ✅ | |
 | T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ✅ | |
-| T33 | later-world-cases | T32 | ⬜ | |
+| T33 | later-world-cases | T32 | ✅ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
