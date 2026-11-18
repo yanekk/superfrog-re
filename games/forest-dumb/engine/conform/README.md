@@ -41,7 +41,8 @@ play variable in `LAYOUT` where it lists none), Paula's writes of the pass in or
 (`amiga_conform::compare::paula`, beam positions ignored) and the CPU's other custom-chip writes of the
 pass as a (register, value) multiset (T45: the same writes, each as many times, order not checked)
 must be equal, and at every frame's end the picture in the play window. The original's pass straddles
-the frame's end on almost every moving frame and the machine has no DMA contention, so a pass may end
+the frame's end on almost every moving frame and the machine's DMA contention (translator T49) still
+runs a little fast, so a pass may end
 a frame apart on the two sides, and a non-Paula write may fall a pass early or late, its counts
 agreeing again by the next pass end (owner, 2026-11-12). The multiset
 leaves Paula's registers (`$96`, `$9A`, `$9C`, `$9E`, `$A0..=$DE`) out, as they are compared in order
