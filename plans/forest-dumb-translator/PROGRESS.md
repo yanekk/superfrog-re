@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-18
+**Next `pir-work` will:** review T33; T49 (machine-dma-contention) is the head of T36's path.
 
 ## Tasks
 
@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | level1-cases-a | T29 | ✅ | |
 | T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ✅ | |
-| T33 | later-world-cases | T32 | ⬜ | |
+| T33 | later-world-cases | T32 | 🔍 | Built toolkit `Amiga::poke_at`, `TranslatedGame::write_at`, `set` rows with `when`, the loads runner from a snapshot, five world cases; 9 full tests, 3 smoke, 2 unit. Deviations: Done when unmet, 0 of 5 pass, each on world 1's speed difference (docs/14); no-stop over 300 passes shown by a separate test; toolkit change, owner's choice. |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
@@ -66,7 +66,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T33
 
 ## Blocked on the user
 
