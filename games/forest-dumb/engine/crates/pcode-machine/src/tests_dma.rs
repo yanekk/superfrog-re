@@ -82,12 +82,13 @@ fn run(c: &Case) -> ((u16, u16), u64) {
         }
         m.ww(0xDF_F040, con0);
         m.ww(0xDF_F058, size);
-        // The write's own bus cycle and the next instruction's opcode and extension words: the
-        // read is the block's end.
-        block(&mut m, &mut r, &[(12, 0)]);
+        // The write's own bus cycle, the next instruction's opcode and extension words and its
+        // read: with BLTPRI the read is what waits for the blit's end.
+        block(&mut m, &mut r, &[(16, 0)]);
     }
-    let first = m.beam(r.cycles());
-    let t0 = r.cycles();
+    // The read is the last bus cycle so far (a cycle in the plain case, which starts there).
+    let t0 = r.cycles() - if c.blit.is_some() { 4 } else { 0 };
+    let first = m.beam(t0);
     // The read's prefetch, `move.w #n,d0`, two `lea abs.l`.
     block(&mut m, &mut r, &[(4, 0), (8, 0), (12, 0), (12, 0)]);
     for k in 0..200 {
@@ -161,12 +162,39 @@ fn with_bltpri_the_cpu_waits_for_the_blits_end() {
     assert!(first.1.abs_diff(148) <= 6, "{first:?}");
 }
 
-/// The copper's fetches are not modelled: the oracle's loop beside a copper list writing four
-/// colours a line took 10 714 slots, 42 (0.4%) more than without it; the machine takes the same
-/// as without.
+/// The copper's fetches take their slots: the oracle's loop beside a list writing four colours on
+/// each line from `$50` to `$9F` took 10 714 slots, 42 more than without it.
 #[test]
-fn a_busy_copper_is_not_counted() {
-    let plain = run(&case(0, MOVES, (0x50, 32), 10714)).1;
-    assert!(plain.abs_diff(10672) <= 6);
-    assert!((10714 - plain as i64).abs() < 50);
+fn a_busy_copper_takes_its_slots() {
+    const LIST: u32 = 0x7_D000;
+    let mut words = vec![0x0100, 0x0200, 0x0092, 0x0038, 0x0094, 0x00D0];
+    for line in 0x50..0xA0u16 {
+        words.extend([line << 8 | 0x07, 0xFFFE]);
+        for k in 0..4u16 {
+            words.extend([0x0180 + 2 * k, line + k]);
+        }
+    }
+    words.extend([0xFFFF, 0xFFFE]);
+    let mut m = machine(0, DMAEN | BLTEN | 0x0080, (0x50, 32));
+    for (k, w) in words.iter().enumerate() {
+        m.ww(LIST + 2 * k as u32, *w);
+    }
+    m.ww(0xDF_F080, (LIST >> 16) as u16);
+    m.ww(0xDF_F082, LIST as u16);
+    // The frame's copper started at the vertical blank, from the list as it is now.
+    m.set_cycles(0);
+    m.copper_run(LIST, None);
+    let mut r = Regs::new();
+    m.poll(&mut r, &img()).unwrap();
+    let t0 = r.cycles();
+    block(&mut m, &mut r, &[(4, 0), (8, 0), (12, 0), (12, 0)]);
+    for k in 0..200 {
+        let dbf = if k == 199 { (14, 2) } else { (10, 2) };
+        let insns: Vec<(u32, u32)> = MOVES.iter().copied().chain([dbf]).collect();
+        block(&mut m, &mut r, &insns);
+    }
+    block(&mut m, &mut r, &[(12, 0), (8, 0)]);
+    let slots = (r.cycles() - t0) / 2;
+    assert!(slots.abs_diff(10714) <= 6, "{slots}");
 }
+

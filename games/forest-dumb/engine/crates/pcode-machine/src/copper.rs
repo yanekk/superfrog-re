@@ -37,6 +37,8 @@ pub(crate) struct Run {
     fetch: Fetch,
     /// Its writes: (cycle, register, value), in beam order.
     writes: Vec<(i64, u16, u16)>,
+    /// The DMA slots it takes, as slots from the frame's start, in order (`dma`, T49).
+    pub(crate) bus: Vec<u32>,
     next: usize,
 }
 
@@ -51,6 +53,13 @@ pub(crate) struct Copper {
 }
 
 impl Copper {
+    /// Whether the copper takes DMA slot `slot` (from the frame's start) in this frame.
+    pub fn takes(&self, slot: u32) -> bool {
+        self.run
+            .as_ref()
+            .is_some_and(|r| r.bus.binary_search(&slot).is_ok())
+    }
+
     /// The cycle of the next write not yet delivered.
     pub fn next_at(&self) -> Option<i64> {
         let r = self.run.as_ref()?;
@@ -88,6 +97,7 @@ impl Machine {
             from,
             fetch: self.fetch(),
             writes: Vec::new(),
+            bus: Vec::new(),
             next: 0,
         };
         if let Some(c) = self.copper.as_mut() {
@@ -143,10 +153,15 @@ impl Machine {
             history.word(chip, off, at)
         };
         let lines = self.cfg.frame_lines;
+        let mut bus = Vec::new();
         let out = match from {
-            None => copper::run_bus(&word, pc, fetch, lines, &mut Vec::new()),
-            Some((line, h)) => copper::run_from(&word, pc, Beam::from_slot(line, h), fetch, lines),
+            None => copper::run_bus(&word, pc, fetch, lines, &mut bus),
+            Some((line, h)) => {
+                copper::run_from_bus(&word, pc, Beam::from_slot(line, h), fetch, lines, &mut bus)
+            }
         };
+        let mut bus: Vec<u32> = bus.iter().map(|b| b.dma()).collect();
+        bus.sort_unstable();
         let writes: Vec<(i64, u16, u16)> = out
             .iter()
             .map(|w| (fs + beam::offset(w.line, w.h) as i64, w.reg, w.value))
@@ -160,6 +175,7 @@ impl Machine {
             .and_then(|c| c.run.as_mut())
             .expect("checked above");
         run.writes = writes;
+        run.bus = bus;
         run.next = next;
     }
 

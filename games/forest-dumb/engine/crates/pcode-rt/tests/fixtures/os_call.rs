@@ -88,6 +88,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x0 {
                     // h0+$0 movea.l ($4).w,a6
                     {
+                        bus.sync(r);
                         let v = load(bus, 0x4u64 as u32, 4);
                         r.set(0x38, 4, v);
                     }
@@ -102,6 +103,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0xa {
                     // h0+$a jsr (-408,a6)
                     {
+                        bus.sync(r);
                         let mut u_100: u64 = 0;
                         let v = int_add(r.get(0x38, 4), 0xfffffe68u64, 4);
                         u_100 = v & 0xffffffff;
@@ -151,6 +153,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x1c {
                     // h0+$1c jsr (-30,a5)
                     {
+                        bus.sync(r);
                         let mut u_100: u64 = 0;
                         let v = int_add(r.get(0x34, 4), 0xffffffe2u64, 4);
                         u_100 = v & 0xffffffff;
@@ -207,6 +210,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x30 {
                     // h0+$30 jsr (-42,a5)
                     {
+                        bus.sync(r);
                         let mut u_100: u64 = 0;
                         let v = int_add(r.get(0x34, 4), 0xffffffd6u64, 4);
                         u_100 = v & 0xffffffff;
@@ -249,6 +253,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x38 {
                     // h0+$38 jsr (-36,a5)
                     {
+                        bus.sync(r);
                         let mut u_100: u64 = 0;
                         let v = int_add(r.get(0x34, 4), 0xffffffdcu64, 4);
                         u_100 = v & 0xffffffff;
@@ -277,6 +282,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0x3c {
                     // h0+$3c rts
                     {
+                        bus.sync(r);
                         let v = load(bus, r.get(0x3c, 4) as u32, 4);
                         r.set(0x50, 4, v);
                         let v = int_add(r.get(0x3c, 4), 0x4u64, 4);

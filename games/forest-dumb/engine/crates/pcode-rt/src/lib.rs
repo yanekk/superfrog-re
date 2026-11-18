@@ -78,6 +78,14 @@ pub trait Bus {
         let _ = r;
         Err(Stop::Untranslated(img.describe(a)))
     }
+    /// Called after the tick of an instruction that reads or writes memory, before its accesses:
+    /// `r`'s trail ends with that instruction. A machine timing its accesses at the instruction
+    /// rather than the block's start fits the trail's earlier instructions onto the bus here
+    /// (translator T49). Plain memory has no time.
+    #[inline]
+    fn sync(&mut self, r: &Regs) {
+        let _ = r;
+    }
     /// The hand-written routine mounted in place of the translated function entered at `k` (hunk,
     /// offset), if any: the seam (translator DESIGN §2.9). Every generated function asks on entry,
     /// before it counts itself in, and runs the mounted one instead, which must leave as the

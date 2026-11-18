@@ -107,6 +107,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
             (0, 0x8) => {
                 // h0+$8 rts
                 {
+                    bus.sync(r);
                     let v = load(bus, r.get(0x3c, 4) as u32, 4);
                     r.set(0x50, 4, v);
                     let v = int_add(r.get(0x3c, 4), 0x4u64, 4);

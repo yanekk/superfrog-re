@@ -98,6 +98,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                 if entered <= 0xa {
                     // h0+$a movea.l (0,a0,d0w.w),a1
                     {
+                        bus.sync(r);
                         let mut u_1100: u64 = 0;
                         let mut u_1180: u64 = 0;
                         let v = int_sext(r.get(0x2, 2), 2, 4);

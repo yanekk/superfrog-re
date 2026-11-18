@@ -496,6 +496,9 @@ impl Bus for Host<'_, '_> {
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.m.call_outside(a, r, img)
     }
+    fn sync(&mut self, r: &Regs) {
+        self.m.sync(r)
+    }
     fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
         if !self.watched.is_empty() {
             self.entered

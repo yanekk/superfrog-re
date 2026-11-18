@@ -14,10 +14,13 @@
 //! - A slot the CPU spends off the bus (an instruction's internal cycles, `Regs::off_bus`) is free
 //!   for the chips.
 //!
-//! Not taken: the copper's instruction fetches, sprite, disk and audio slots. The copper takes
-//! even slots only between WAITs; sprites, disk and audio take odd slots, which the CPU, running
-//! on even slots after its first wait, rarely wants (the oracle's busy-copper reading is 0.4% over
-//! the plain one, `contention.rs`).
+//! - The copper takes the slots its run fetches in (`amiga_chips::copper::run_bus`).
+//! - Sprite `n` takes slots `$15 + 4n` and `$17 + 4n` on the lines its DMA fetches (`Sprites`, as
+//!   the picture's sprite channels run: the control words on line 25 and at the stop line, data
+//!   inside the window). Odd slots, but the CPU runs on odd slots after an instruction's two
+//!   internal cycles, so they cost it time (a line or more a pass in a scrolling stretch, T49).
+//!
+//! Not taken: disk and audio slots (odd, and few: the oracle's audio took about 180 a frame).
 
 use amiga_chips::copper::Fetch;
 use amiga_clock::is_refresh;
@@ -27,6 +30,61 @@ pub const DMAEN: u16 = 0x0200;
 pub const BPLEN: u16 = 0x0100;
 pub const BLTEN: u16 = 0x0040;
 pub const BLTPRI: u16 = 0x0400;
+pub const SPREN: u16 = 0x0020;
+
+/// The line sprite DMA reads every channel's control words on (`video.rs`'s reset line).
+const SPRITE_RESET_LINE: u16 = 25;
+
+/// The eight sprite channels' DMA as the bus sees it: each channel's pointer and control words, and
+/// which channels fetch on the line the bus is on.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct Sprites {
+    channels: [(u32, u16, u16); 8],
+    /// The line whose fetches `fetching` holds; `None` before the bus has run a line, and until a
+    /// reset line for a machine started part way down a frame (its pointers are unknown).
+    line: Option<u16>,
+    known: bool,
+    fetching: u8,
+}
+
+impl Sprites {
+    /// Enter `line`: which channels fetch on it, reading control words from `chip` and the
+    /// pointers from `custom` (SPRxPT, as last written) on the reset line.
+    fn enter(&mut self, line: u16, chip: &[u8], custom: &[u16; 256]) {
+        self.line = Some(line);
+        self.fetching = 0;
+        if line == SPRITE_RESET_LINE {
+            for (n, c) in self.channels.iter_mut().enumerate() {
+                let r = 0x120 / 2 + 2 * n;
+                c.0 = (custom[r] as u32 & 0x1F) << 16 | custom[r + 1] as u32 & 0xFFFE;
+            }
+            self.known = true;
+        }
+        if !self.known || line < SPRITE_RESET_LINE {
+            return;
+        }
+        let word = |a: u32| {
+            let i = (a as usize) & (chip.len() - 1) & !1;
+            u16::from_be_bytes([chip[i], chip[i + 1]])
+        };
+        for (n, c) in self.channels.iter_mut().enumerate() {
+            let (start, stop) = amiga_chips::sprite::lines(c.1, c.2);
+            if line == SPRITE_RESET_LINE || line == stop {
+                c.1 = word(c.0);
+                c.2 = word(c.0 + 2);
+            } else if !(line >= start && line < stop) {
+                continue;
+            }
+            c.0 += 4;
+            self.fetching |= 1 << n;
+        }
+    }
+
+    /// Whether a sprite fetch takes slot `h` of the line entered last.
+    fn takes(&self, h: u16) -> bool {
+        (0x15..=0x34).contains(&h) && h % 2 == 1 && self.fetching >> ((h - 0x15) / 4) & 1 != 0
+    }
+}
 
 /// One micro-instruction of a copy blit (vAmiga SlowBlitter, accuracy level 2, no fill).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,6 +164,8 @@ pub(crate) struct BlitRun {
     y: u16,
     lock_d: bool,
     pub(crate) stage: Stage,
+    /// The cycle count of the BLTSIZE write: the blit takes no slot before it.
+    from: u64,
     /// Set when BBUSY clears (the last word's REPEAT).
     pub(crate) free_at: Option<u64>,
     /// Set when BLTDONE runs: the interrupt follows a slot later.
@@ -114,7 +174,7 @@ pub(crate) struct BlitRun {
 
 impl BlitRun {
     /// A blit of `rows` rows of `words` words under BLTCON0 `con0`.
-    pub(crate) fn new(con0: u16, rows: u16, words: u16) -> BlitRun {
+    pub(crate) fn new(con0: u16, rows: u16, words: u16, from: u64) -> BlitRun {
         BlitRun {
             program: PROGRAMS[(con0 >> 8 & 15) as usize],
             pc: 0,
@@ -123,6 +183,7 @@ impl BlitRun {
             y: rows,
             lock_d: true,
             stage: Stage::Start1,
+            from,
             free_at: None,
             done_at: None,
         }
@@ -132,7 +193,7 @@ impl BlitRun {
     /// or not, with the CPU asking for it (`bls`) and BLTPRI `pri`. Returns whether the blitter
     /// took the bus.
     fn slot(&mut self, at: u64, taken: bool, bls: bool, pri: bool) -> bool {
-        if self.done_at.is_some() {
+        if self.done_at.is_some() || at < self.from {
             return false;
         }
         let free = !taken && !(bls && !pri);
@@ -194,20 +255,42 @@ pub(crate) struct Slots<'a> {
     pub dmacon: u16,
     pub blit: Option<&'a mut BlitRun>,
     pub frame_lines: u16,
+    /// The current frame's copper and the cycle count its frame began at: a slot it fetches in is
+    /// taken. Slots past the frame's end are not looked up (that frame's copper has not run).
+    pub copper: Option<(&'a crate::copper::Copper, i64)>,
+    pub sprites: &'a mut Sprites,
+    pub chip: &'a [u8],
+    pub custom: &'a [u16; 256],
 }
 
 impl Slots<'_> {
-    /// Whether refresh or a bitplane takes slot `h` of `line`.
-    fn fixed(&self, line: u16, h: u16) -> bool {
-        is_refresh(h as u32)
+    /// Whether refresh, a bitplane or the copper takes the slot starting at cycle count `at`,
+    /// slot `h` of `line`.
+    fn fixed(&self, at: u64, line: u16, h: u16) -> bool {
+        if is_refresh(h as u32)
             || (self.dmacon & (DMAEN | BPLEN) == (DMAEN | BPLEN) && self.fetch.takes(line, h))
+        {
+            return true;
+        }
+        match self.copper {
+            Some((c, start)) => {
+                let slot = (at as i64 - start).div_euclid(2);
+                let frame = self.frame_lines as i64 * amiga_clock::LINE_SLOTS as i64;
+                (0..frame).contains(&slot) && c.takes(slot as u32)
+            }
+            None => false,
+        }
     }
 
     /// Agnus runs the slot starting at cycle count `at`, at beam `(line, h)`, the CPU asking for
     /// the bus with BLS `bls`. Returns whether a chip has it.
     fn step(&mut self, at: u64, (line, h): (u16, u16), bls: bool) -> bool {
         let line = line % self.frame_lines;
-        let fixed = self.fixed(line, h);
+        if self.sprites.line != Some(line) {
+            self.sprites.enter(line, self.chip, self.custom);
+        }
+        let fixed = self.fixed(at, line, h)
+            || (self.dmacon & (DMAEN | SPREN) == (DMAEN | SPREN) && self.sprites.takes(h));
         let pri = self.dmacon & BLTPRI != 0;
         let blit = match &mut self.blit {
             Some(b) if self.dmacon & (DMAEN | BLTEN) == (DMAEN | BLTEN) => {
@@ -228,29 +311,23 @@ impl Slots<'_> {
     }
 
     /// The CPU's work from cycle count `start`: instructions of (cycles, of them off the bus), in
-    /// order. Returns the count at which the work ends with the chips' slots taken out. An
-    /// instruction's bus accesses are `(cycles - off) / 4`, made first, its other cycles after
-    /// them (Moira's register shifts prefetch then shift; some instructions idle first, which this
-    /// does not tell apart).
-    pub fn cpu(&mut self, start: u64, work: &[(u32, u32)], beam: &dyn Fn(u64) -> (u16, u16)) -> u64 {
+    /// order, the first with `skip` of its bus accesses made already. Returns the count at which
+    /// the work ends with the chips' slots taken out. An instruction's bus accesses are
+    /// `(cycles - off) / 4`, made first, its other cycles after them (Moira's register shifts
+    /// prefetch then shift; some instructions idle first, which this does not tell apart).
+    pub fn cpu(
+        &mut self,
+        start: u64,
+        work: &[(u32, u32)],
+        skip: u64,
+        beam: &dyn Fn(u64) -> (u16, u16),
+    ) -> u64 {
         let mut t = start;
-        for &(cycles, off) in work {
+        for (k, &(cycles, off)) in work.iter().enumerate() {
             let (cycles, off) = (cycles as u64, (off as u64).min(cycles as u64));
             let accesses = (cycles - off) / 4;
-            for _ in 0..accesses {
-                // Moira's `sync(2)` runs Agnus a slot, the access checks that slot (waiting a
-                // slot at a time while a chip has it; vAmiga raises BLS once the CPU has waited
-                // two slots, so the third is the first the blitter yields), then `sync(2)` runs
-                // one more.
-                let mut waited = 0;
-                while self.step(t, beam(t), waited >= 3) {
-                    waited += 1;
-                    t += 2;
-                }
-                t += 2;
-                self.step(t, beam(t), false);
-                t += 2;
-            }
+            let done = if k == 0 { skip.min(accesses) } else { 0 };
+            t = self.accesses(t, accesses - done, beam);
             let spare = cycles - 4 * accesses;
             let end = t + spare;
             while t + 2 <= end {
@@ -258,6 +335,24 @@ impl Slots<'_> {
                 t += 2;
             }
             t = end;
+        }
+        t
+    }
+
+    /// `n` CPU bus accesses from cycle count `t`; returns where they end.
+    pub fn accesses(&mut self, mut t: u64, n: u64, beam: &dyn Fn(u64) -> (u16, u16)) -> u64 {
+        for _ in 0..n {
+            // Moira's `sync(2)` runs Agnus a slot, the access checks that slot (waiting a slot at
+            // a time while a chip has it; vAmiga raises BLS once the CPU has waited two slots, so
+            // the third is the first the blitter yields), then `sync(2)` runs one more.
+            let mut waited = 0;
+            while self.step(t, beam(t), waited >= 3) {
+                waited += 1;
+                t += 2;
+            }
+            t += 2;
+            self.step(t, beam(t), false);
+            t += 2;
         }
         t
     }

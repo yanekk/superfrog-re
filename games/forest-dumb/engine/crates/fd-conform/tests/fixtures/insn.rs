@@ -128,6 +128,7 @@ pub fn i_h0_c(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     // h0+$c move.w
     {
         r.tick(const { cy::of(cy::Op::Move, cy::Size::W, cy::Ea::Dn, cy::Ea::PostInc) }); r.off_bus(const { cy::off_of(cy::Op::Move, cy::Size::W, cy::Ea::Dn, cy::Ea::PostInc) });
+        bus.sync(r);
         let mut u_200: u64 = 0;
         let v = r.get(0x20, 4);
         u_200 = v & 0xffffffff;
@@ -153,6 +154,7 @@ pub fn i_h0_e(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     // h0+$e move.l
     {
         r.tick(const { cy::of(cy::Op::Move, cy::Size::L, cy::Ea::Dn, cy::Ea::AbsL) }); r.off_bus(const { cy::off_of(cy::Op::Move, cy::Size::L, cy::Ea::Dn, cy::Ea::AbsL) });
+        bus.sync(r);
         let v = r.get(0x0, 4);
         store(bus, img, (img.h(1, 0x4) as u64) as u32, 4, v)?;
         let v = int_sless(r.get(0x0, 4), 0x0u64, 4);

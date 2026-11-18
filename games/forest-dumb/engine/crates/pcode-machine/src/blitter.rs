@@ -116,9 +116,11 @@ impl Machine {
             self.custom[(reg as usize >> 1) + 1] = p as u16;
         }
         let (rows, words) = bltsize_words(blit.size);
-        // The bus decides when it ends (`dma`): from the slot at the write on.
+        // The bus decides when it ends (`dma`). vAmiga applies a BLTSIZE write a slot later
+        // (`recordRegisterChange(DMA_CYCLES(1))`) and the blitter's first start-up step a slot
+        // after that (`BLT_STRT1`): it takes no slot before the second after the write.
         self.blitter = Blitter {
-            run: Some(BlitRun::new(con0, rows as u16, words as u16)),
+            run: Some(BlitRun::new(con0, rows as u16, words as u16, at + 4)),
             zero: end.zero,
         };
     }

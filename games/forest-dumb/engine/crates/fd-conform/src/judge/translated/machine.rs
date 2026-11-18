@@ -182,6 +182,9 @@ impl Bus for OnMachine {
     fn call_outside(&mut self, a: u32, r: &mut pcode_rt::Regs, img: &Image) -> Result<(), Stop> {
         self.m.call_outside(a, r, img)
     }
+    fn sync(&mut self, r: &pcode_rt::Regs) {
+        self.m.sync(r)
+    }
     fn rb(&mut self, a: u32) -> u8 {
         let a = a & 0xFF_FFFF;
         if on_machine(a) {

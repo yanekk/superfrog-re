@@ -140,12 +140,13 @@ fn an_area_blit_through_the_registers_is_blit_run_directly() {
         };
         assert_eq!([BLTAPT, BLTBPT, BLTCPT, BLTDPT].map(ptr), end.pt);
 
-        // The bus's time (`dma`, vAmiga's SlowBlitter): from the write at cycle 1000, two start-up
-        // slots, then a micro-instruction a slot, 4 a word for A B C D, 3 for A C D (no bitplanes,
-        // no refresh slot on the way). BBUSY clears at the last word's end; the last D write and
-        // its interrupt follow two and three slots later. A slot is run once time has passed it.
+        // The bus's time (`dma`, vAmiga's SlowBlitter): from the write at cycle 1000, the write's
+        // own slot of delay, two start-up slots, then a micro-instruction a slot, 4 a word for A
+        // B C D, 3 for A C D (no bitplanes, no refresh slot on the way). BBUSY clears at the last
+        // word's end; the last D write and its interrupt follow two and three slots later. A slot
+        // is run once time has passed it.
         let per = if con0 == 0x4FCA { 4 } else { 3 };
-        let free = 1004 + 2 * per * 23 + 2 * (per - 1);
+        let free = 1008 + 2 * per * 23 + 2 * (per - 1);
         let done = free + 4;
         assert_ne!(
             get(&mut m, custom::DMACONR) & 0x4000,

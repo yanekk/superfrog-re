@@ -348,6 +348,12 @@ def translate(export):
 # ---------------------------------------------------------------------------------------------
 # Rust
 
+
+def sync(body):
+    """`bus.sync(r);` when the instruction's lines read or write memory: after its tick, so a machine
+    times its accesses at the instruction, not the block's start (translator T49)."""
+    return ['bus.sync(r);'] if any('load(bus' in l or 'store(bus' in l for l in body) else []
+
 class Emit:
     def __init__(self, funcs, insns, part_of=None):
         self.funcs = funcs
@@ -540,6 +546,7 @@ class Emit:
                 return [head, stop], True
             uniques = sorted({v[1] for l in whole if isinstance(l, dict)
                               for v in (l.get('in', []) + [l.get('out')]) if v and v[0] == 'unique'})
+            ticks = ticks + sync(body)
             return ([head + f' (corrected: pcode_fix.{family})', '{']
                     + [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
                     + ['    ' + l for l in ticks + body + tail] + ['}'], False)
@@ -552,7 +559,7 @@ class Emit:
             return [head, stop], True
         uniques = sorted({v[1] for op in ins['ops'] for v in (op.get('in', []) + [op.get('out')])
                           if v and v[0] == 'unique'})
-        lines = [head, '{'] + ['    ' + l for l in ticks]
+        lines = [head, '{'] + ['    ' + l for l in ticks + sync([l for b in bodies for l in b])]
         lines += [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
         if any(is_relative(op) for op in ins['ops']):
             # P-code branches within the instruction: its ops become arms of a loop of their own.
