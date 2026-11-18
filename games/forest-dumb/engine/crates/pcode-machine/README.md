@@ -111,9 +111,9 @@ a slot at a time while a chip has it; the waits are ticked into `Regs` at the ne
 Translated code ticks each instruction's cycles and those off the bus (`Regs::off_bus`), and marks the
 ones before its accesses (`Regs::idle_first`: a branch, jump or call, a `-(An)` or index operand);
 `Bus::sync`, emitted before an instruction that loads or stores, fits the block's instructions so far
-onto the bus, so a read or write is timed at its own instruction, not the block's start. Ten loops
+onto the bus, so a read or write is timed at its own instruction, not the block's start. Twelve loops
 timed on the oracle (`tests_dma.rs`, `amiga-oracle/tests/contention.rs`) agree within 6 slots of 10 000
-to 21 000.
+to 21 000; the shift loop with refresh alone on the bus takes 7 more than the oracle's (T49 review).
 
 ## The OS (translator T26)
 

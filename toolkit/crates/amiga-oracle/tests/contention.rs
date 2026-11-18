@@ -17,6 +17,10 @@ const FRAMES: u32 = 4;
 const HANDLER: u32 = 0x7_f000;
 const COPPER: u32 = 0x7_d000;
 const BITPLANE: u32 = 0x6_0000;
+/// Every sprite channel's list: one sprite from line `SPRITE_START` to `SPRITE_STOP`, then the end.
+const SPRITE: u32 = 0x7_8000;
+pub const SPRITE_START: u16 = 0x40;
+pub const SPRITE_STOP: u16 = 0xf0;
 /// The loop's word source and destination, and the blit's.
 const DATA: u32 = 0x5_0000;
 /// The handler's three words (VHPOSR before, VPOSR and VHPOSR after), then its frame count.
@@ -29,6 +33,7 @@ const DMAEN: u16 = 0x0200;
 const BPLEN: u16 = 0x0100;
 const COPEN: u16 = 0x0080;
 const BLTEN: u16 = 0x0040;
+const SPREN: u16 = 0x0020;
 
 /// One measurement's set-up.
 #[derive(Clone, Copy)]
@@ -39,6 +44,8 @@ pub struct Case {
     pub busy_copper: bool,
     /// A blit started just before the loop: BLTCON0 and BLTSIZE; `BLTPRI` set or not.
     pub blit: Option<(u16, u16, bool)>,
+    /// All eight sprite channels fetching on every line the loop runs (`sprite`).
+    pub sprites: bool,
     /// The loop's body (before its `dbf`), and its count.
     pub body: &'static [u16],
     pub count: u16,
@@ -65,7 +72,7 @@ fn lo(a: u32) -> u16 {
 /// The handler: set the display and DMA up, wait for line `$50`, maybe start the blit, read VHPOSR,
 /// run the loop, read VPOSR and VHPOSR, keep them, count the frame, return.
 fn handler(c: &Case) -> Vec<u8> {
-    let dma = SET | DMAEN | COPEN | if c.planes > 0 { BPLEN } else { 0 } | BLTEN;
+    let dma = SET | DMAEN | COPEN | if c.planes > 0 { BPLEN } else { 0 } | BLTEN | if c.sprites { SPREN } else { 0 };
     let mut h = vec![
         0x48e7, 0xfffe, //                       movem.l d0-d7/a0-a6,-(sp)
         0x41f9, 0x00df, 0xf000, //               lea $dff000,a0
@@ -148,6 +155,12 @@ fn copper(c: &Case) -> Vec<u8> {
     for p in 0..6u16 {
         l.extend([0x00e0 + 4 * p, hi(BITPLANE), 0x00e2 + 4 * p, lo(BITPLANE)]);
     }
+    // Only with sprites: the pointer moves would shift the busy copper's list against the beam.
+    if c.sprites {
+        for n in 0..8u16 {
+            l.extend([0x0120 + 4 * n, hi(SPRITE), 0x0122 + 4 * n, lo(SPRITE)]);
+        }
+    }
     if c.busy_copper {
         for line in 0x50..0xa0u16 {
             l.extend([line << 8 | 0x07, 0xfffe]);
@@ -170,6 +183,7 @@ pub fn measure(c: &Case) -> ((u16, u16), u32) {
     }
     a.poke(BITPLANE, &vec![0; 40 * 256]);
     a.poke(COPPER, &copper(c));
+    a.poke(SPRITE, &sprite());
     a.poke(RESULT, &[0; 8]);
     a.poke(HANDLER, &handler(c));
     a.poke(0x6c, &HANDLER.to_be_bytes());
@@ -196,11 +210,21 @@ pub fn measure(c: &Case) -> ((u16, u16), u32) {
     (start, slots)
 }
 
+/// One sprite, its data words zero (DMA fetches them all the same), then the list's end.
+pub fn sprite() -> Vec<u8> {
+    let lines = (SPRITE_STOP - SPRITE_START) as usize;
+    let mut w = vec![SPRITE_START << 8 | 0x40, SPRITE_STOP << 8];
+    w.extend(std::iter::repeat_n(0u16, 2 * lines));
+    w.extend([0, 0]);
+    words(&w)
+}
+
 fn case(planes: u16) -> Case {
     Case {
         planes,
         busy_copper: false,
         blit: None,
+        sprites: false,
         body: MOVES,
         count: 200,
     }
@@ -236,6 +260,27 @@ fn a_cpu_loop_on_the_beam() {
             },
             (0x50, 32),
             10714,
+        ),
+        // Sprite DMA's odd slots (T49 review): 17 slots on the moves, 7 on the shifts.
+        ("shifts, 0 planes", Case { body: SHIFTS, ..case(0) }, (0x50, 31), 11866),
+        (
+            "moves, 8 sprites",
+            Case {
+                sprites: true,
+                ..case(0)
+            },
+            (0x50, 17),
+            10689,
+        ),
+        (
+            "shifts, 8 sprites",
+            Case {
+                sprites: true,
+                body: SHIFTS,
+                ..case(0)
+            },
+            (0x50, 17),
+            11873,
         ),
         ("blit ABCD 64x20", blit(0, 0x0fca, false), (0x50, 157), 14549),
         // BLTPRI holds the CPU off the bus until the blit ends, its first read included.
