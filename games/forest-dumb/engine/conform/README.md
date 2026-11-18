@@ -71,6 +71,7 @@ vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
+# set = [{ var = "world_index", value = 1, when = "load_world" }]   # lined up by loads: as the routine is entered
 swap = { frame = 3600, disk = 2 }                   # title and power-on cases: this disk into df0 then
 start = "entry"              # power-on cases: the engine starts at the program's entry
 align = "loads"              # power-on cases: frames lined up at each load's return
@@ -120,7 +121,13 @@ align = "loads"              # power-on cases: frames lined up at each load's re
   the writes, and its `vars` if it lists any.
 - **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
   its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
-  sets, so HELP ends the level (T26).
+  sets, so HELP ends the level (T26). A row with `when = "ROUTINE"` (a `func` of `re/symbols.toml`)
+  is written instead the moment the program enters that routine, on both sides: the original's
+  `Amiga::poke_at` at its first instruction, the engine's `FrameEngine::write_at` (the translated
+  program's `TranslatedGame::write_at`) at its entry. Once; a write either side never made fails
+  the case. For a state the program writes and reads within one frame, which no poke between frames
+  reaches: `title_code_world` writes `world_index` in the step `load_world` reads it (T33).
+  `when` is for a case lined up by loads only, and such a case's every row has one.
 
 The oracle's frame cap is the case's last frame. A disk change is in the case and not in the script,
 because a script holds only what the player holds (`amiga-conform`'s `script` module has the format).
@@ -253,6 +260,19 @@ because a script holds only what the player holds (`amiga-conform`'s `script` mo
 - **A stand-in** shows the rule (`tests/power_on.rs`): a copy of the original whose loads are 50
   frames short lines up and passes, and a byte changed in the frame after the load's return fails
   there.
+
+## World starts: lined up by loads from a snapshot
+
+`world-2-start` to `world-6-start` (translator T33): `align = "loads"` with no `start` and a sync
+frame on the idle title (4990, boot-to-level1's), run by the same runner as the power-on cases
+(`frames::run_entry_frames`). The engine starts from a snapshot of the original at the end of the
+sync frame's step, as a title case's does, and its first frame is paired with the next step; from
+there frames are lined up at each load's return, and the hunks, the picture in `SCREEN_WINDOW` and
+the writes are compared as a power-on case's. Each case's `set` writes `world_index` as `load_world`
+is entered, and its input (`scripts/world-N-start.txt`) presses Start at 5000 and fire on the
+world's SCENA screen about 110 frames after the original starts waiting there. The stand-ins in
+`tests/world_starts.rs` show the `set`: made on both sides at `load_world`, every channel equal
+through world 2's 13 loads into play; made between frames, it is lost to `title_code_world`.
 
 ## The coverage report
 

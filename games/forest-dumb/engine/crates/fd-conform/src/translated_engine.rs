@@ -324,6 +324,9 @@ impl TranslatedEngine {
                             },
                         });
                         g.held_at_start(&Input::from(start.input));
+                        // A case lined up by loads from a snapshot counts them as power-on's does
+                        // (T33); elsewhere only observed.
+                        g.watch_returns(&sync::LOAD_ROUTINES);
                         g
                     }
                     Begin::PowerOn {

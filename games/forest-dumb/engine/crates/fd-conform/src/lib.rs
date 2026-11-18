@@ -1096,10 +1096,10 @@ impl fmt::Display for Verdict {
 /// Run `case` on the real disks and Kickstart. Every missing input is an error naming its path, and
 /// the cheap checks come first so a wrong setup fails before any emulation.
 pub fn run(case: &Case) -> Result<Verdict, String> {
-    if case.is_entry() {
+    if case.by_loads() {
         return Err(format!(
-            "{}: a power-on case (`start = \"entry\"`) runs on `--engine translated`; the hand \
-             engine starts at level 1",
+            "{}: a case lined up by loads (`align = \"loads\"`) runs on `--engine translated`; \
+             the hand engine starts at level 1",
             case.name
         ));
     }

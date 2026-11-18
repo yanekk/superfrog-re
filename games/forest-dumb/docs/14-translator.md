@@ -88,6 +88,46 @@ in `tools/test_translator_whole.py` (`MACHINE_PINNED`, full):
   (`h0_a06` case 71: the same 23 bytes at `$080004..$0805c4` and `$000004..$0005c4`). The game's own
   blits never cross the top.
 
+## Worlds 2 to 6: their load and first play (T33, 2026-11-18)
+
+**The cases:** `cases/world-2-start.toml` … `world-6-start.toml`, run by `fd-conform run
+cases/world-N-start.toml --engine translated` (about 35 s each, warm) or `run-all --cases 'world-*'`.
+Each starts from a snapshot of the original on the idle title at frame 4990, both sides then run
+boot-to-level1's Start at 5000, the world's load, its SCENA screen and play, lined up at each load's
+return as a power-on case is. `world_index` cannot be poked between frames: `title_code_world` writes
+it in the step `load_world` reads it. The case's `set` row has `when = "load_world"`, and the runner
+makes it on both sides as that routine is entered: the oracle's `Amiga::poke_at` (a toolkit addition,
+the shim's exec hook) at its first instruction, the translated program's `TranslatedGame::write_at` at
+its entry. No other row is needed: `session_loop` already does what `next_world` does before
+`level_init` (`title_start_flag`, `h0+$500`, the camera, the score), so the world starts with a new
+game's score and lives where a world reached by play would carry them.
+
+**The reading:** 0 of 5 pass, every one on the same speed difference as `power-on-level-1` in world 1
+(T32, T47). In each, the 13 loads line up and `world_index` is the world's on both sides; the first
+difference is `h0+$7a9d` while the SCENA screen is built, then the copper list's start and the
+picture two to three frames early; in play, Paula's writes from fire plus 33, as world 1 from power-on
+(fire 6300, Paula 6333). The translated program alone, on each case's inputs, loads the world and
+plays 300 passes with no stop (`tests/world_starts.rs`).
+
+| World | Memory (`h0+$7a9d`) | Copper start, picture | Fire on SCENA | Paula | Frames inside loads |
+|---|---|---|---|---|---|
+| 2 | 5977 | 6034, 6036 | 6150 | 6183 | 713 |
+| 3 | 5998 | 6054, 6056 | 6170 | 6203 | 734 |
+| 4 | 5951 | 6008, 6010 | 6120 | 6153 | 701 |
+| 5 | 5843 | 5899, 5901 | 6010 | 6043 | 623 |
+| 6 | 5837 | 5892, 5894 | 6000 | 6033 | 600 |
+
+The SCENA screen's fire loop (`h0+$7c7e`) first runs on the original at frame 6036, 6057, 6010, 5902
+and 5894 for worlds 2 to 6, and 6056 for world 1. Its `btst` returns on fire with no wait for a
+release, so fire held during the load would pass the screen at once.
+
+**The `set`, on stand-ins** (`tests/world_starts.rs`, full): a second copy of the original making the
+write as `load_world` is entered passes world 2's case cut to 40 frames of play, every channel equal
+through its 13 loads, `world_index` 1 on both; making it between frames at its start, it differs at
+once (`h0+$6e01`, frame 4991) and then loads world 1, `title_code_world` having written 0; a `set`
+waiting for a routine neither side enters (`next_world`) fails `the set world_index at next_world: 1
+writes never made on the original, 1 on the engine`.
+
 ## Stage 7: sessions translate first, unprompted (T21, 2026-11-12)
 
 `tools/default_check.py` gave three fresh `claude -p` sessions (default model, 15 turns, Read, Grep,
