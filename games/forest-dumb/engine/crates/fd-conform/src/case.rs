@@ -99,6 +99,41 @@ pub struct Exclusion {
     pub task: String,
 }
 
+/// A `LAYOUT` variable a case writes into the original (and, on a snapshot start, so into the
+/// engine): `set = [{ var = "NAME", value = N }, ...]`, each row optionally with `when`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Set {
+    pub var: String,
+    pub value: u32,
+    /// `None`: at the sync point, before the engine takes its memory (a level case, T26).
+    /// `Some`: the moment the program enters this routine, on both sides (a case lined up by loads,
+    /// T33): for a state the program writes and reads within one frame, which no poke between
+    /// frames reaches (`world_index`, which `title_code_world` writes in the step `load_world`
+    /// reads it, docs/15).
+    pub when: Option<When>,
+}
+
+/// The routine a [`Set`] waits for: its name in `re/symbols.toml` and its entry.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct When {
+    pub routine: String,
+    /// (hunk, offset) of its first instruction.
+    pub at: (u8, u32),
+}
+
+impl Set {
+    /// Where the variable is in the original's memory.
+    pub fn address(&self) -> Result<u32, String> {
+        crate::address(&self.var)
+    }
+
+    /// The value as the variable's bytes, big-endian, its width.
+    pub fn bytes(&self) -> Vec<u8> {
+        let v = layout_var(&self.var).expect("checked when the case was read");
+        self.value.to_be_bytes()[4 - v.width.bytes()..].to_vec()
+    }
+}
+
 /// One case file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Case {
@@ -116,10 +151,11 @@ pub struct Case {
     pub vars: Vec<String>,
     pub goal: Option<Goal>,
     pub exclude: Vec<Exclusion>,
-    /// `LAYOUT` variables written into the original at the sync point, before the engine takes its
-    /// memory: what no input can reach in play, as `cheat_flag`, which only the title's code sets
-    /// (T26). `set = [{ var = "cheat_flag", value = 1 }]`.
-    pub set: Vec<(String, u32)>,
+    /// `LAYOUT` variables written into the original: what no input reaches. At the sync point, before
+    /// the engine takes its memory, as `cheat_flag`, which only the title's code sets (T26:
+    /// `set = [{ var = "cheat_flag", value = 1 }]`); or, in a case lined up by loads, as its
+    /// routine is entered, on both sides (T33: `when = "load_world"`).
+    pub set: Vec<Set>,
     pub start: StartAt,
     pub align: Align,
 }
@@ -140,9 +176,15 @@ impl Case {
     }
 
     /// Whether this case starts in play (the level sync point) rather than on the title or at the
-    /// program's entry.
+    /// program's entry, or is lined up by loads.
     pub fn is_level(&self) -> bool {
-        self.script == LEVEL_1_SCRIPT && self.start == StartAt::Sync
+        self.script == LEVEL_1_SCRIPT && self.start == StartAt::Sync && self.align == Align::Frames
+    }
+
+    /// Whether this case is lined up by loads (`align = "loads"`): from the program's entry, or
+    /// from its sync frame on the way through a load (T33).
+    pub fn by_loads(&self) -> bool {
+        self.align == Align::Loads
     }
 
     /// Whether this case starts at the program's entry from power-on (`start = "entry"`).
@@ -199,7 +241,8 @@ impl Case {
             },
         };
         let entry = start == StartAt::Entry;
-        let level = script == LEVEL_1_SCRIPT && !entry;
+        let loads = align == Align::Loads;
+        let level = script == LEVEL_1_SCRIPT && !entry && !loads;
         let swap = get("swap").map(swap_table).transpose()?;
         let frames = get("frames")
             .ok_or_else(|| missing("frames"))?
@@ -241,7 +284,7 @@ impl Case {
             None => Vec::new(),
         };
         let set = match get("set") {
-            Some(v) => var_values(v, "set")?,
+            Some(v) => sets(v)?,
             None => Vec::new(),
         };
         if goal == Some(Goal::Idle) && !compare.vars {
@@ -306,10 +349,45 @@ impl Case {
                     return Err(format!("`{key}` is not for a `start = \"entry\"` case"));
                 }
             }
-        } else if align != Align::Frames {
-            return Err("`align = \"loads\"` is for a `start = \"entry\"` case".to_string());
+        } else if loads {
+            // From a snapshot at the sync frame, through a load (T33): what a power-on case takes,
+            // and a `set` made as its routine is entered on both sides.
+            if sync_frame == 0 {
+                return Err(
+                    "sync frame 0: a case lined up by loads from power-on is `start = \"entry\"`"
+                        .to_string(),
+                );
+            }
+            for (taken, key) in [
+                (!exclude.is_empty(), "exclude"),
+                (
+                    matches!(
+                        goal,
+                        Some(Goal::Idle | Goal::GameOver { .. } | Goal::LevelEnd { .. })
+                    ),
+                    "goal other than `all`",
+                ),
+            ] {
+                if taken {
+                    return Err(format!("`{key}` is not for a case lined up by loads"));
+                }
+            }
+            if let Some(s) = set.iter().find(|s| s.when.is_none()) {
+                return Err(format!(
+                    "`set` {}: a case lined up by loads sets a variable `when` a routine is \
+                     entered, on both sides",
+                    s.var
+                ));
+            }
         } else if compare.memory {
-            return Err("compare = [\"memory\"] is for a `start = \"entry\"` case".to_string());
+            return Err("compare = [\"memory\"] is for a case lined up by loads".to_string());
+        }
+        if !loads && let Some(s) = set.iter().find(|s| s.when.is_some()) {
+            return Err(format!(
+                "`set` {}: `when` is for a case lined up by loads (`align = \"loads\"`); a \
+                 level case sets at its sync point",
+                s.var
+            ));
         }
         if level {
             // The level sync point is the cached snapshot, which made its own disk change.
@@ -331,7 +409,7 @@ impl Case {
                             `{ level_end = true, by_frame = N }`"
                     .to_string());
             }
-        } else if !entry {
+        } else if !entry && !loads {
             // The title runner is forest-dumb-start's: one variable, state only.
             for (taken, key) in [
                 (goal.is_some(), "goal"),
@@ -695,6 +773,43 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
     })
 }
 
+/// `set`'s rows: `[{ var = "NAME", value = N }, ...]`, each a `LAYOUT` variable, each with an
+/// optional `when = "ROUTINE"`, a `func` of `re/symbols.toml`.
+fn sets(v: &Value) -> Result<Vec<Set>, String> {
+    v.list("set")?
+        .iter()
+        .map(|item| {
+            let p = item.table("set", &["var", "value", "when"])?;
+            let var = field(p, "var", "set")?.string("var")?;
+            known(&var)?;
+            let when = match p.iter().find(|(k, _)| k == "when") {
+                None => None,
+                Some((_, w)) => {
+                    let routine = w.string("when")?;
+                    let at = routine_entry(&routine)?;
+                    Some(When { routine, at })
+                }
+            };
+            Ok(Set {
+                var,
+                value: field(p, "value", "set")?.int("value")?,
+                when,
+            })
+        })
+        .collect()
+}
+
+/// The entry of `func` symbol `name` in `re/symbols.toml`.
+fn routine_entry(name: &str) -> Result<(u8, u32), String> {
+    let path = crate::code_seen::re_dir().join("symbols.toml");
+    let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    let syms = crate::code_seen::parse_symbols(&text)?;
+    syms.iter()
+        .find(|s| s.name == name && s.kind == "func")
+        .map(|s| (s.hunk as u8, s.offset))
+        .ok_or_else(|| format!("when = \"{name}\": not a func of re/symbols.toml"))
+}
+
 /// `[{ var = "NAME", value = N }, ...]`, each a `LAYOUT` variable.
 fn var_values(v: &Value, what: &str) -> Result<Vec<(String, u32)>, String> {
     v.list(what)?
@@ -854,13 +969,77 @@ mod tests {
             LEVEL,
             "\"vars\", \"picture\"]",
             "\"vars\", \"picture\", \"memory\"]",
-            "is for a `start = \"entry\"` case",
+            "is for a case lined up by loads",
         );
         refused(
             LEVEL,
             "frames = ",
             "align = \"loads\"\nframes = ",
-            "is for a `start = \"entry\"` case",
+            "`exclude` is not for a case lined up by loads",
+        );
+    }
+
+    /// A world start (T33): from a title frame, lined up by loads, `world_index` set as
+    /// `load_world` is entered.
+    const WORLD: &str = "sync = { script = \"boot-to-title\", frame = 4990 }\nalign = \"loads\"\n\
+                         swap = { frame = 3600, disk = 2 }\ninput = \"world-2-start\"\n\
+                         frames = 3000\ncompare = [\"memory\", \"picture\", \"writes\"]\n\
+                         set = [{ var = \"world_index\", value = 1, when = \"load_world\" }]\n\
+                         goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }\n";
+
+    #[test]
+    fn a_case_lined_up_by_loads_from_a_snapshot_parses() {
+        let c = Case::parse("w", WORLD).unwrap();
+        assert!(c.by_loads() && !c.is_entry() && !c.is_level());
+        assert_eq!(
+            c.set,
+            [Set {
+                var: "world_index".into(),
+                value: 1,
+                when: Some(When {
+                    routine: "load_world".into(),
+                    at: (0, 0x578),
+                }),
+            }]
+        );
+        assert_eq!(c.set[0].bytes(), [0, 0, 0, 1], "world_index is a long");
+        assert!(c.compare.memory);
+    }
+
+    #[test]
+    fn what_the_snapshot_by_loads_format_does_not_say_is_refused() {
+        refused(
+            &WORLD.replace("by_frame = 7990", "by_frame = 2990"),
+            "frame = 4990 }",
+            "frame = 0 }",
+            "is `start = \"entry\"`",
+        );
+        refused(
+            WORLD,
+            ", when = \"load_world\" }",
+            " }",
+            "`set` world_index: a case lined up by loads sets a variable `when`",
+        );
+        refused(WORLD, "\"load_world\"", "\"no_such_routine\"", "not a func of re/symbols.toml");
+        refused(WORLD, "\"load_world\"", "\"world_index\"", "not a func of re/symbols.toml");
+        refused(
+            WORLD,
+            "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }",
+            "goal = { game_over = true, by_frame = 7990 }",
+            "goal other than `all`",
+        );
+        refused(
+            WORLD,
+            "frames = 3000\n",
+            "frames = 3000\nexclude = [{ what = \"rows 1..2\", task = \"T1\" }]\n",
+            "`exclude` is not for a case lined up by loads",
+        );
+        // `when` is the loads runner's alone: the pass runner has no hook mid-step.
+        refused(
+            LEVEL,
+            "frames = ",
+            "set = [{ var = \"cheat_flag\", value = 1, when = \"load_world\" }]\nframes = ",
+            "`when` is for a case lined up by loads",
         );
     }
 
@@ -915,7 +1094,14 @@ mod tests {
         );
         let end = Case::parse("l", &end).unwrap();
         assert_eq!(end.goal, Some(Goal::LevelEnd { by_frame: 6400 }));
-        assert_eq!(end.set, [("cheat_flag".to_string(), 1)]);
+        assert_eq!(
+            end.set,
+            [Set {
+                var: "cheat_flag".into(),
+                value: 1,
+                when: None,
+            }]
+        );
         for (goal, says) in [
             (
                 "goal = { game_over = false, by_frame = 6400 }",

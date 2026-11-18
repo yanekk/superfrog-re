@@ -105,6 +105,16 @@ pub trait FrameEngine: Transplant {
     /// Before a power-on case's first frame: the raster line the original's entry ran on, where
     /// the engine starts its program ([`crate::sync::reach_entry`]).
     fn start_line(&mut self, _line: u16) {}
+    /// Before the first frame: write `bytes` at `addr` as the program enters the routine at `at`
+    /// (hunk, offset), once; a case's `set` with `when` (T33), which the runner makes on the
+    /// original at the same routine (`Amiga::poke_at`). An engine that cannot refuses.
+    fn write_at(&mut self, _at: (u8, u32), _addr: u32, _bytes: &[u8]) -> Result<(), String> {
+        Err("this engine makes no write as a routine is entered".into())
+    }
+    /// How many [`FrameEngine::write_at`] writes the engine has not made by the last frame's end.
+    fn writes_at_pending(&self) -> usize {
+        0
+    }
 }
 
 /// The channels a frame is judged on, and how many: state, Paula's writes, the picture, the other
@@ -710,17 +720,21 @@ pub fn run_title_frames(
     Ok(conclude(case, verdict, nothing))
 }
 
-/// Power-on case `case` (`start = "entry"`) on `engine`, which starts at the program's entry:
-/// paired with the oracle step that first runs it, then lined up by loads.
+/// Case `case`, lined up by loads (`align = "loads"`), on `engine`. A power-on case's
+/// (`start = "entry"`) engine starts at the program's entry, paired with the oracle step that
+/// first runs it; any other's starts from a snapshot at the end of its sync frame's step, paired
+/// with the next (T33), its `set` made on both sides as the program enters each row's routine
+/// (`Amiga::poke_at`, [`FrameEngine::write_at`]). A write either side never made fails the case.
 pub fn run_entry_frames(
     case: &Case,
     inputs: &Inputs,
     engine: &mut dyn FrameEngine,
     opts: &Options,
 ) -> Result<Verdict, String> {
-    if !case.is_entry() {
-        return Err(format!("{}: not a `start = \"entry\"` case", case.name));
+    if !case.by_loads() {
+        return Err(format!("{}: not lined up by loads", case.name));
     }
+    let end = case.sync_frame + case.frames;
     let goal = goal_vars(case)?;
     let mut judge = Judge::new(case, opts, SCREEN_WINDOW)?;
     let h = |(hunk, off): (u8, u32)| HUNK_BASES[hunk as usize] + off;
@@ -729,8 +743,22 @@ pub fn run_entry_frames(
     let mut pcs: Vec<u32> = opts.register.iter().map(crate::coverage::address).collect();
     pcs.extend(&entries);
     pcs.extend(&returns);
-    let (mut am, line) = sync::reach_entry(case, inputs, &pcs)?;
-    engine.start_line(line);
+    let (mut am, line) = if case.is_entry() {
+        sync::reach_entry(case, inputs, &pcs)?
+    } else {
+        let mut am = reach_title(case, inputs)?;
+        am.watch_pcs(&pcs);
+        (am, 0)
+    };
+    if case.is_entry() {
+        engine.start_line(line);
+    }
+    for s in &case.set {
+        let w = s.when.as_ref().ok_or("a `set` lined up by loads has a `when`")?;
+        let (bytes, addr) = (s.bytes(), s.address()?);
+        am.poke_at(h(w.at), addr, &bytes);
+        engine.write_at(w.at, addr, &bytes)?;
+    }
     let handler = h(sync::LEVEL3_HANDLER);
     let program_owns = |am: &Amiga| {
         let v = am.peek(sync::LEVEL3_VECTOR, 4);
@@ -752,7 +780,9 @@ pub fn run_entry_frames(
         (r, entered > returned)
     };
     let mut verdict = Verdict::new(opts.register);
-    verdict.entry = Some((am.frame(), line));
+    if case.is_entry() {
+        verdict.entry = Some((am.frame(), line));
+    }
     let mut align = ByReturns::new(LOAD_CAP);
     // The step just run: its input, its capture, whether the program had the machine before it.
     let mut input = inputs.at(am.frame() - 1);
@@ -768,7 +798,14 @@ pub fn run_entry_frames(
         let c = am.step(input).map_err(|e| e.to_string())?;
         Ok((input, c))
     };
-    // The entry's step's own hits: nothing loads before the entry.
+    if !case.is_entry() {
+        // The engine starts where the snapshot was taken, the sync frame's step's end: its first
+        // frame is the next step's.
+        owned_before = program_owns(&am);
+        (input, capture) = step(&mut am)?;
+        verdict.coverage.add(opts.register, am.pc_hits());
+    }
+    // The first step's own hits: nothing loads before the entry.
     let (r, l) = count(&am);
     align.original(r, l);
     loop {
@@ -795,7 +832,7 @@ pub fn run_entry_frames(
                 });
                 break;
             }
-            if am.frame() >= case.frames {
+            if am.frame() >= end {
                 break;
             }
             owned_before = program_owns(&am);
@@ -822,7 +859,7 @@ pub fn run_entry_frames(
             }
             goal_check(case, &goal, &*engine, &am, frame, &mut verdict);
         }
-        if am.frame() >= case.frames {
+        if am.frame() >= end {
             break;
         }
         owned_before = program_owns(&am);
@@ -833,6 +870,23 @@ pub fn run_entry_frames(
     }
     verdict.loads = align.returned().1;
     verdict.load_frames = align.skipped();
+    // A `set` is what the case says it compares under: both sides must have made it.
+    let pending = [am.pokes_at_pending(), engine.writes_at_pending()];
+    if verdict.firsts.is_empty() && pending != [0, 0] {
+        let sets: Vec<String> = case
+            .set
+            .iter()
+            .map(|s| format!("{} at {}", s.var, s.when.as_ref().map_or("?", |w| &w.routine)))
+            .collect();
+        verdict.firsts.push(Outcome::ComparedNothing {
+            what: format!(
+                "the set {}: {} writes never made on the original, {} on the engine",
+                sets.join(", "),
+                pending[0],
+                pending[1]
+            ),
+        });
+    }
     if verdict.firsts.is_empty() && align.returned().0 != align.returned().1 {
         let (e, o) = align.returned();
         verdict.firsts.push(Outcome::LoadApart {
@@ -854,7 +908,7 @@ fn reach_title(case: &Case, inputs: &Inputs) -> Result<Amiga, String> {
     let cfg = OracleConfig::new(
         kickstart,
         crate::disks::load()?,
-        case.sync_frame + case.frames,
+        case.sync_frame + case.frames + 1,
     );
     let mut am = Amiga::power_on(&cfg).map_err(|e| e.to_string())?;
     for frame in 0..case.sync_frame {

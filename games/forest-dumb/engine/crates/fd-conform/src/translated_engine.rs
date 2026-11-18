@@ -36,7 +36,7 @@ use pcode_rt::Stop;
 
 use crate::frames::{FrameEngine, run_frames};
 use crate::{
-    Case, Compare, Engine, HUNK_BASES, Inputs, Options, OracleMem, PASS_END, Verdict, address,
+    Case, Compare, Engine, HUNK_BASES, Inputs, Options, OracleMem, PASS_END, Verdict,
     disks, sync,
 };
 
@@ -122,10 +122,9 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
     if !level {
         return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, 0, last));
     }
-    for (name, value) in &case.set {
-        let v = layout_var(name).ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
-        let bytes = &value.to_be_bytes()[4 - v.width.bytes()..];
-        am.poke(address(name)?, bytes);
+    // A level case's rows have no `when` (Case::parse): all at the sync point.
+    for s in &case.set {
+        am.poke(s.address()?, &s.bytes());
     }
     am.watch_write(Some(PASS_END));
     let irq_count = layout_var("irq_count").ok_or("no irq_count in LAYOUT")?;
@@ -200,6 +199,8 @@ struct Frame {
     pass_ends: Vec<Vec<u8>>,
     /// Loads returned in the frame, and whether one runs at its end (power-on only).
     loads: (u32, bool),
+    /// `write_at` writes not made by the frame's end.
+    writes_at_pending: usize,
 }
 
 /// Where the game thread starts.
@@ -213,6 +214,9 @@ enum Begin {
         line: u16,
     },
 }
+
+/// A write the program makes as it enters a routine: (routine's hunk and offset, address, bytes).
+type WriteAt = ((u8, u32), u32, Vec<u8>);
 
 struct Link {
     to: Option<Sender<Input>>,
@@ -236,6 +240,10 @@ pub struct TranslatedEngine {
     stop: Option<(u32, Stop)>,
     passes: u32,
     loads: (u32, bool),
+    /// Writes handed to the game as it starts ([`FrameEngine::write_at`]), and those it has not
+    /// made by the last frame's end.
+    writes_at: Vec<WriteAt>,
+    writes_at_pending: usize,
 }
 
 impl TranslatedEngine {
@@ -252,6 +260,8 @@ impl TranslatedEngine {
             stop: None,
             passes: 0,
             loads: (0, false),
+            writes_at: Vec::new(),
+            writes_at_pending: 0,
         }
     }
 
@@ -276,6 +286,8 @@ impl TranslatedEngine {
             passes: 0,
             pass_ends: Vec::new(),
             loads: (0, false),
+            writes_at: Vec::new(),
+            writes_at_pending: 0,
         })
     }
 
@@ -294,7 +306,7 @@ impl TranslatedEngine {
         &self.mem
     }
 
-    fn spawn(start: Begin, first: Input) -> Link {
+    fn spawn(start: Begin, first: Input, writes_at: Vec<WriteAt>) -> Link {
         let (to, inputs) = channel::<Input>();
         let (frames, from) = channel::<Frame>();
         let thread = thread::Builder::new()
@@ -328,6 +340,9 @@ impl TranslatedEngine {
                         g
                     }
                 };
+                for (at, addr, bytes) in &writes_at {
+                    g.write_at(*at, *addr, bytes);
+                }
                 g.set_input(first);
                 g.watch_write(Some(PASS_END));
                 g.run(&mut |out| {
@@ -368,6 +383,7 @@ impl TranslatedEngine {
                         mem,
                         loads: (out.returns.len() as u32, !out.inside.is_empty()),
                         pass_ends: out.watched.clone(),
+                        writes_at_pending: out.writes_at_pending,
                     });
                     // The engine dropped: nobody wants the next frame.
                     match (sent, inputs.recv()) {
@@ -453,7 +469,10 @@ impl TranslatedEngine {
         }
         let input = Input::from(input);
         match self.start.take() {
-            Some(start) => self.link = Some(Self::spawn(start, input)),
+            Some(start) => {
+                let writes = std::mem::take(&mut self.writes_at);
+                self.link = Some(Self::spawn(start, input, writes));
+            }
             None => {
                 let link = self.link.as_ref().expect("started");
                 // A send fails only when the thread has ended; `receive` reports why.
@@ -468,6 +487,7 @@ impl TranslatedEngine {
         self.custom = f.custom;
         self.loads = f.loads;
         self.pass_ends = f.pass_ends;
+        self.writes_at_pending = f.writes_at_pending;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
@@ -526,13 +546,26 @@ impl FrameEngine for TranslatedEngine {
             *line = at;
         }
     }
+
+    fn write_at(&mut self, at: (u8, u32), addr: u32, bytes: &[u8]) -> Result<(), String> {
+        if self.start.is_none() {
+            return Err("a write at a routine is handed over before the first frame".into());
+        }
+        self.writes_at.push((at, addr, bytes.to_vec()));
+        self.writes_at_pending = self.writes_at.len();
+        Ok(())
+    }
+
+    fn writes_at_pending(&self) -> usize {
+        self.writes_at_pending
+    }
 }
 
 /// `case` as the frame bar judges the translated program (DESIGN §2.7): the case's state (every
-/// play variable in `LAYOUT` where a level case lists none; a power-on case's hunks, and its `vars`
-/// if it lists any), the picture, Paula's writes in order and the CPU's other custom writes as a
-/// multiset, every frame. A level case's exclusions are left out: each names a hand engine task,
-/// and an acceptance for the translated program is written with its own measurement (§2.7).
+/// play variable in `LAYOUT` where a level case lists none; a case lined up by loads, power-on's
+/// included, its hunks, and its `vars` if it lists any), the picture, Paula's writes in order and
+/// the CPU's other custom writes as a multiset, every frame. A level case's exclusions are left
+/// out: each names a hand engine task, and an acceptance for the translated program is written with its own measurement (§2.7).
 pub fn frame_bar(case: &Case) -> Case {
     let vars = if case.vars.is_empty() && case.is_level() {
         crate::bug::compared_vars()
@@ -544,7 +577,7 @@ pub fn frame_bar(case: &Case) -> Case {
             vars: !vars.is_empty(),
             picture: true,
             writes: true,
-            memory: case.is_entry(),
+            memory: case.by_loads(),
         },
         vars,
         exclude: Vec::new(),
@@ -554,11 +587,16 @@ pub fn frame_bar(case: &Case) -> Case {
 
 /// `case` on the translated program, judged on the frame bar ([`frame_bar`]): a level case from
 /// its pass end, a title case from its sync frame, a power-on case (`start = "entry"`, T32) from
-/// the program's entry with its loads lined up.
+/// the program's entry with its loads lined up, a case lined up by loads from a snapshot at its
+/// sync frame (T33).
 pub fn run_translated(case: &Case, opts: &Options) -> Result<Verdict, String> {
     let bar = frame_bar(case);
     if case.is_entry() {
         let mut e = TranslatedEngine::power_on(&disks::load()?)?;
+        return crate::frames::run_entry_frames(&bar, &Inputs::load(&bar)?, &mut e, opts);
+    }
+    if case.by_loads() {
+        let mut e = TranslatedEngine::new(case_start(&bar)?);
         return crate::frames::run_entry_frames(&bar, &Inputs::load(&bar)?, &mut e, opts);
     }
     let mut e = TranslatedEngine::new(case_start(&bar)?);

@@ -33,7 +33,6 @@ use crate::case::Case;
 use crate::code_writes::{MAX_LEN, read, run_case_seen_in};
 use crate::routine::{HunkSpans, PROGRAM, h, load_program};
 use crate::{address, conform_dir, disks, sync};
-use fd_core::{Width, layout_var};
 
 /// Where an entry came from, in the order one is preferred when several apply.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -565,15 +564,8 @@ pub(crate) fn drive_world(
     let mut frame = sync::LEVEL_1_SYNC;
     loop {
         if frame == end.sync_frame {
-            for (name, value) in &end.set {
-                let v = layout_var(name)
-                    .ok_or_else(|| format!("`{name}` is not in fd-core's LAYOUT"))?;
-                let bytes = match v.width {
-                    Width::Byte => vec![*value as u8],
-                    Width::Word => (*value as u16).to_be_bytes().to_vec(),
-                    Width::Long => value.to_be_bytes().to_vec(),
-                };
-                am.poke(address(name)?, &bytes);
+            for s in &end.set {
+                am.poke(s.address()?, &s.bytes());
             }
             am.poke(world_index, &(world - 2).to_be_bytes());
         }
