@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-18
-**Next `pir-work` will:** review T33; T49 (machine-dma-contention) is the head of T36's path.
+**Next `pir-work` will:** T49 (machine-dma-contention), the head of T36's and T51's paths.
 
 ## Tasks
 
@@ -47,7 +47,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T30 | level1-cases-a | T29 | ✅ | |
 | T31 | level1-cases-b | T29 | ✅ | |
 | T32 | power-on-cases | T29 | ✅ | |
-| T33 | later-world-cases | T32 | 🔍 | Built toolkit `Amiga::poke_at`, `TranslatedGame::write_at`, `set` rows with `when`, the loads runner from a snapshot, five world cases; 9 full tests, 3 smoke, 2 unit. Deviations: Done when unmet, 0 of 5 pass, each on world 1's speed difference (docs/14); no-stop over 300 passes shown by a separate test; toolkit change, owner's choice. |
+| T33 | later-world-cases | T32 | ✅ | Closed unproven (owner, 2026-11-18): 0 of 5 pass, first differences `h0+$7a9d` at 5977, 5998, 5951, 5843, 5837 (worlds 2 to 6), processor speed; passes carried to T51. Review: shim comment fix only. Ran stand-ins, 300-pass, world 2; mutated `write_at` and the never-made check, both red; power-on fails same on base. `next_world` claim read-only. |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
@@ -65,8 +65,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ⬜ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
+| T51 | world-starts-pass | T33, T49; blocks T42 | ⬜ | |
 
-**Review queue:** T33
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

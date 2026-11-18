@@ -7,7 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-18 | 🔄 | **Owner, T33:** `world_index` is set as `load_world` is entered on both sides, not via `next_world`: a `set` row's `when` makes toolkit `Amiga::poke_at` (shim exec hook, BUILD unchanged) and `TranslatedGame::write_at`. |
-| 2026-11-18 | 📌 | **T33 reading:** 0 of 5 world starts pass, each on world 1's speed difference (`h0+$7a9d` while SCENA builds, Paula from fire plus 33); 13 loads line up; translated plays 300 passes, no stop. docs/14. |
+| 2026-11-18 | 🔄 | **Owner, T33 review:** T33 closed unproven, 0 of 5 world starts pass on processor speed (`h0+$7a9d` first, Paula from fire plus 33); 13 loads line up, 300 passes no stop. T51 added, after T49, blocks T42. docs/14. |
 | 2026-11-18 | 📌 | `boot-to-level1.txt` says SCENA 1 waits for fire from 6206; its fire loop `h0+$7c7e` first runs at 6056 (T33, `watch_pcs`). Left alone. |
 | 2026-11-12 | 🔄 | **Owner, T47:** a write made by reading a write-only register (the `clr`'s) is compared by register only (`frames::LEFTOVER`). Its word is the bus's last, on the oracle a DMA slot's; matching it needs slot-exact DMA. |
 | 2026-11-12 | 📌 | **T47 measured:** Kickstart leaves DMACONR `$03f0`, INTENAR `$602c`, ADKCONR `$1100`, now the machine's power-on state. The disk 2 prompt draws (equal 3463 to 3966); frame 5001 equal. Left: processor speed (3462, 3967, from 5998) and play (6333). |
@@ -32,7 +32,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 📌 | **T28 w1-idle on the translated engine:** 199 of 199 passes equal (vars only), no stop; 50 frames from the sync point 10 s. Review: power-on 400 frames, fire held 100, no stop; deepest `Regs::depth` unrecorded. |
 | 2026-11-12 | 📌 | **T43:** Ghidra's no-return analysis set `CALL_RETURN` on all 82 `jsr load_file`; the export now follows each instruction's own fall-through (`check.no_return_calls`). Whole export 7 716 instructions, 291 kinds; power-on reaches the title with no stop. |
 | 2026-11-12 | 🔄 | **Owner accepted Haiku** (T44) as the default for `generate.py` and `reshape.py` despite rewrites 19 of 21: sessions call them first and write by hand after any other result (docs/11 "The procedure", steps 3 and 4). |
-| 2026-11-12 | 📌 | **T21 stage 7:** `default_check.py` 3 of 3 pass, `translate.py char_sprite_position` first at turns 6, 7, 6, about $0.37 a run. Its scratch worktree, inside the checkout, loads the root `CLAUDE.md` and auto-memory but lacks `build/`. |
 | 2026-11-12 | 📌 | T20 review sweep, left alone: stale Muse wording in `tools/reshape.py`'s docstring (line 5), `re/reshape.toml` header, smoke.toml `[[area]]`; `call_tree.py` `LIMIT` cites Muse. `task_pack.py` hard-codes `PLAN = 'forest-dumb-level-1'`, so a level 2 plan gets no pack. |
 | 2026-11-12 | 🐞 | **T19 Haiku trial below the mark:** generators 5 of 5 at Muse's branch ways; rewrites 19 of 21, `left_pressed` no answer in 300 s thrice, `run_right_step` three failed tries. 29 calls, $0.36 list. Recommended: accept. |
 | 2026-11-12 | 🐞 | **T27 oracle shim** (toolkit `amiga-oracle`): VHPOSR steps one a read; blit pointers do not wrap at 512 KB. Hence 12 routines differ on `pcode-machine` (`MACHINE_PINNED`). Fix: beam from cycles, pointers masked per word. Left alone. |
