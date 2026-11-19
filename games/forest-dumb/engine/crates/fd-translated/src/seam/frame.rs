@@ -170,7 +170,7 @@ pub fn time_alone(offset: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> 
     let mut g = level.base.clone();
     g.transplant(&NoPicture(&BusMem::new(bus, img)));
     let mem = BusMem::new(bus, img);
-    let peek = |o: u32| mem.read_at(img.h(0, o));
+    let peek = |h: u32, o: u32| mem.read_at(img.h(h, o));
     let path = g.level(|l| rules::path(offset, l, &peek));
     drop(mem);
     let Some(path) = path else {
@@ -819,7 +819,7 @@ impl Pass for BusPass<'_, '_, '_> {
         }
         let path = {
             let (mem, img) = (&*self.mem, self.img);
-            rules::path(offset, l, &|o| mem.read_at(img.h(0, o)))
+            rules::path(offset, l, &|h, o| mem.read_at(img.h(h, o)))
         };
         match path {
             Some(d) => {

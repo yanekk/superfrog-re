@@ -11,9 +11,10 @@ use fd_core::level::camera::{Camera, Dir, MAX_X, MAX_Y};
 
 use super::walk::Decision::{self, Branch, Count};
 
-/// Memory as a routine reads it, by hunk 0 offset: for what the typed state does not hold (a cell
-/// read past the object map's end).
-pub type Peek<'a> = &'a dyn Fn(u32) -> u8;
+/// Memory as a routine reads it, by hunk and offset: for what the typed state does not hold or
+/// holds only at the pass's end (a cell past the object map's end, the collision map as the
+/// foreground left it).
+pub type Peek<'a> = &'a dyn Fn(u32, u32) -> u8;
 
 /// The decisions of the routine at hunk 0 `offset` on `l` (and memory, `peek`), or `None` when it
 /// has no rule.
@@ -37,15 +38,16 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
         0x3698 => creatures_sort(l, &mut d),
         0x24ce => spring_trigger(l, peek, &mut d),
         0x2dd6 => creatures_write_back(l, peek, &mut d),
+        0x2fae => creatures_move(l, peek, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 15] = [
-    0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104,
-    0x21c0, 0x2c7e, 0x2d4c,
+pub const RULED: [u32; 16] = [
+    0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0,
+    0x2104, 0x21c0, 0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -448,7 +450,7 @@ fn spring_trigger(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
     // `addi.l`, `lsr.l #4`, `mulu.w #$60` of the column's low word, then the row added.
     let col = (s.char_x.wrapping_add(0xe) >> 4) & 0xffff;
     let at = (col * 0x60).wrapping_add(s.char_y.wrapping_add(0x23) >> 4);
-    let v = peek(fd_core::level::redraw::OBJECT_MAP.wrapping_add(at));
+    let v = peek(0, fd_core::level::redraw::OBJECT_MAP.wrapping_add(at));
     for k in 0x10..=0x13 {
         d.push(Branch(v == k));
         if v == k {
@@ -468,7 +470,7 @@ fn creatures_write_back(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
     let mut written: Vec<(u32, u8)> = Vec::new();
     let map = |w: &Vec<(u32, u8)>, at: u32| {
         w.iter().rev().find(|e| e.0 == at).map_or_else(
-            || peek(fd_core::level::redraw::OBJECT_MAP.wrapping_add(at)),
+            || peek(0, fd_core::level::redraw::OBJECT_MAP.wrapping_add(at)),
             |e| e.1,
         )
     };
@@ -511,6 +513,107 @@ fn creatures_write_back(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
                 written.push((at, v.kind.wrapping_add(1) as u8));
                 break;
             }
+        }
+        d.push(Branch(i != 4));
+    }
+}
+
+/// `h0_2fae`: for each of the five slots (`bne` on) whose flag is set, `h0_2fea` by its kind (`beq`
+/// on 0 to 5 and 7, any other returns): 7 counts its phase to `$20` (`bpl`); 0 faces the character
+/// (`bpl`) and steps by the phase's tables; 1 to 5 step their phase, test the facing (`bpl`), move
+/// by their tables and probe the collision map ahead of their feet and under them (`h0_3530`,
+/// `h0_3566`, `h0_35a0`, `h0_35dc`, `beq`/`bne`), turning on a wall or an edge.
+fn creatures_move(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let table = |at: u32, phase: u8| l.program.byte(at + (phase & 0x1f) as u32);
+    let map = |x: u16, y: u16, dx: u16, dy: u32| {
+        let row = (y as u32).wrapping_add(dy) & 0xff;
+        peek(
+            3,
+            fd_core::level::collision::MAP + row * 0x2e + (x.wrapping_add(dx) as u32 >> 3),
+        )
+    };
+    for i in 0..5 {
+        let on = s.edges.creatures.active[i] != 0;
+        d.push(Branch(!on));
+        if on {
+            let v = s.edges.creatures.slots[i];
+            let (mut x, mut y, mut facing) = (v.x, v.y, v.facing);
+            let phase = v.phase.wrapping_add(1);
+            let kinds = [0u16, 1, 2, 3, 4, 5, 7];
+            let k = kinds.iter().position(|&k| k == v.kind);
+            for j in 0..=k.unwrap_or(kinds.len() - 1) {
+                d.push(Branch(Some(j) == k));
+            }
+            // A probe: `beq` (a wall ahead turns it) or `bne` (an edge turns it).
+            let mut probe = |d: &mut Vec<Decision>,
+                             x: u16,
+                             y: u16,
+                             facing: &mut u8,
+                             dx: u16,
+                             dy: u32,
+                             wall: bool,
+                             to: u8| {
+                let m = map(x, y, dx, dy);
+                d.push(Branch(if wall { m == 0 } else { m != 0 }));
+                if (m != 0) == wall {
+                    *facing = to;
+                }
+            };
+            match v.kind {
+                7 => d.push(Branch(phase.wrapping_sub(0x20) & 0x80 == 0)),
+                0 => {
+                    let right = (x.wrapping_add(0x10).wrapping_sub(s.char_x as u16)) & 0x8000 == 0;
+                    d.push(Branch(right));
+                    d.push(Branch(!right));
+                }
+                1..=5 => {
+                    let back = facing & 0x80 != 0;
+                    d.push(Branch(!back));
+                    // The move before the probes (kind 5 moves after them).
+                    let (left_t, right_t, dy_t): (u32, u32, Option<u32>) = match v.kind {
+                        2 => (0x323a, 0x328a, None),
+                        3 => (0x334c, 0x334c, Some(0x336c)),
+                        4 => (0x33f6, 0x3416, None),
+                        _ => (0, 0, None),
+                    };
+                    match v.kind {
+                        1 => {
+                            x = if back {
+                                x.wrapping_sub(1)
+                            } else {
+                                x.wrapping_add(1)
+                            }
+                        }
+                        2..=4 => {
+                            let t = table(if back { left_t } else { right_t }, phase) as u16;
+                            x = if back {
+                                x.wrapping_sub(t)
+                            } else {
+                                x.wrapping_add(t)
+                            };
+                            if let Some(at) = dy_t {
+                                y = y.wrapping_add(table(at, phase) as i8 as i16 as u16);
+                            }
+                        }
+                        _ => {}
+                    }
+                    // Kind 3 probes only under its feet; the others ahead first.
+                    if back {
+                        if v.kind != 3 {
+                            probe(d, x, y, &mut facing, 0xffff, 0x21, false, 0);
+                        }
+                        probe(d, x, y, &mut facing, 0, 0x18, true, 0);
+                    } else {
+                        if v.kind != 3 {
+                            probe(d, x, y, &mut facing, 0x21, 0x21, false, 0xff);
+                        }
+                        probe(d, x, y, &mut facing, 0x20, 0x18, true, 0xff);
+                    }
+                }
+                _ => {}
+            }
+            let _ = (x, y, facing);
         }
         d.push(Branch(i != 4));
     }

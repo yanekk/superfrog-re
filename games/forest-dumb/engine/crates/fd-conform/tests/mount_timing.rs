@@ -17,7 +17,8 @@ use fd_translated::seam::rules::RULED;
 /// Each ruled routine and the routine judge's generator for it.
 /// A routine with no generator of its own is checked on [`varied`]: `game_frame`'s states, which
 /// hold the whole level at its sync point, with what those routines read varied.
-const CHECKED: [(&str, u32); 15] = [
+const CHECKED: [(&str, u32); 16] = [
+    ("h0_2fae", 0x2fae),
     ("h0_2dd6", 0x2dd6),
     ("h0_3698", 0x3698),
     ("h0_24ce", 0x24ce),
