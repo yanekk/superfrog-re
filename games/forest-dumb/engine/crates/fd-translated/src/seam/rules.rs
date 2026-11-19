@@ -14,16 +14,197 @@ use super::walk::Decision::{self, Branch, Count};
 /// The decisions of the routine at hunk 0 `offset` on `l`, or `None` when it has no rule.
 pub fn path(offset: u32, l: &LevelCtx) -> Option<Vec<Decision>> {
     let mut d = Vec::new();
+    let s = &*l.state;
     match offset {
+        0x9b06 => sprite_copy(s.motion.unhurt_t, &mut d),
+        0x94ba => fade(l, &mut d),
         0x4d7e => camera_update(l, &mut d),
-        0x513c => clamp(&l.state.camera, &mut d),
+        0x513c => clamp(&s.camera, &mut d),
+        0x5462 => sprite_position(l, &mut d),
+        0x9754 => copper_pointers(s.camera.y, &mut d),
+        // `read_joystick`'s branches hang on JOY1DAT: [`after_joy1dat`], once it is read.
+        0x8dfc => {}
+        0x20b0 => countdown_step(l, &mut d),
+        0x2104 => play_keys(l, &mut d),
+        0x21c0 => spring_redraw(l, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 2] = [0x4d7e, 0x513c];
+pub const RULED: [u32; 10] = [
+    0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0,
+];
+
+/// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
+/// and `#1` of `v`, `#8` and `#0` of `v ^ v >> 1`), then, unless `input_log` is full, a test of each
+/// flag it set for the log's byte. `full`: [`log_full`] as the routine found it.
+pub fn after_joy1dat(v: u16, full: bool) -> Vec<Decision> {
+    let x = v ^ (v >> 1);
+    let (left, right, up, down) = (v & 0x200 != 0, v & 2 != 0, x & 0x100 != 0, x & 1 != 0);
+    let mut d = vec![Branch(!left), Branch(!right), Branch(!up), Branch(!down)];
+    d.push(Branch(full));
+    if !full {
+        d.extend([Branch(!left), Branch(!right), Branch(!up), Branch(!down)]);
+    }
+    d
+}
+
+/// `input_log_index` at its end (`cmpi.l #$2ee0; beq`): `read_joystick` logs nothing more.
+pub fn log_full(l: &LevelCtx) -> bool {
+    l.state.input_log.index == 0x2ee0
+}
+
+/// `char_sprite_copy` (`h0_9b06`): with `char_unhurt_t` 0 the frame is copied; else it steps, and
+/// on two steps of four the sprite is copied, on the others cleared (`h0+$9c30`, four rows of ten
+/// `clr.l` runs).
+fn sprite_copy(unhurt: u8, d: &mut Vec<Decision>) {
+    d.push(Branch(unhurt != 0));
+    if unhurt == 0 {
+        return;
+    }
+    let k = unhurt.wrapping_add(1) & 3;
+    d.push(Branch(k == 0));
+    if k == 0 {
+        return;
+    }
+    d.push(Branch(k == 1));
+    if k == 1 {
+        return;
+    }
+    for row in (0..=3u16).rev() {
+        for run in (0..=9u16).rev() {
+            d.push(Count(run));
+        }
+        d.push(Count(row));
+    }
+}
+
+/// `h0_94ba`, the fade: off, nothing; on, `h0_94fe` steps each of the 32 colours by `h0_9550`'s
+/// three components (`beq` when the component is reached, else `beq` when the fade table says
+/// wait), then the pass count's test for the end.
+fn fade(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let f = &l.display.fade;
+    d.push(Branch(f.on != 0));
+    if f.on == 0 {
+        return;
+    }
+    let to = l.display_data.palette();
+    let d6 = (f.pass >> 1) as u16;
+    for (i, (&now, &to)) in f.now.iter().zip(to.iter()).enumerate() {
+        for (mask, shift) in [(0xfu16, 4i32), (0xf0, 0), (0xf00, -4)] {
+            let (t, n) = (to & mask, now & mask);
+            d.push(Branch(t == n));
+            if t != n {
+                let row = if shift >= 0 { t << shift } else { t >> -shift };
+                let at = fd_core::render::palette::FADE_TABLE + row.wrapping_add(d6) as u32;
+                d.push(Branch(l.program.byte(at) == 0));
+            }
+        }
+        d.push(Count(31 - i as u16));
+    }
+    d.push(Branch(f.pass.wrapping_add(1) != 0x20));
+}
+
+/// `char_sprite_position` (`h0_5462`): bit 0 of the screen x, then bit 8 of the screen y plus $31,
+/// then of that plus $28.
+fn sprite_position(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let x = (s.char_x as u16).wrapping_sub(s.camera.x);
+    let y = (s.char_y & 0xffff_0000 | (s.char_y as u16).wrapping_sub(s.camera.y) as u32)
+        .wrapping_add(0x31);
+    d.push(Branch(x & 1 == 0));
+    d.push(Branch(y & 0x100 == 0));
+    d.push(Branch(y.wrapping_add(0x28) & 0x100 == 0));
+}
+
+/// `h0_9754`: two loops of five copper pointers, then `cmpi.l #$f0; bmi` on the split line.
+fn copper_pointers(camera_y: u16, d: &mut Vec<Decision>) {
+    for _ in 0..2 {
+        d.extend((0..=4u16).rev().map(Count));
+    }
+    let line = ((camera_y as u32 & 0xff) ^ 0xff) + 0x2f;
+    d.push(Branch(line < 0xf0));
+}
+
+/// `countdown_step` (`h0+$20b0`): `bpl` at 63 passes, then `bne` while the countdown's word is not 0.
+fn countdown_step(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let tick = s.countdown_tick.wrapping_add(1);
+    let due = (tick.wrapping_sub(0x3f) as i32) >= 0;
+    d.push(Branch(due));
+    if due {
+        d.push(Branch(s.countdown >> 16 != 0));
+    }
+}
+
+/// `play_keys` (`h0_2104`): `help_key` (HELP with the cheat clears the key byte), `esc_key`, then
+/// the pause key's press and release.
+fn play_keys(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let k = &l.state.keys;
+    let mut key = k.last;
+    d.push(Branch(key == 0x41));
+    if key == 0x41 {
+        d.push(Branch(k.cheat != 0));
+        if k.cheat != 0 {
+            key = 0;
+        }
+    }
+    d.push(Branch(key != 0x75));
+    if key != 0x75 {
+        d.push(Branch(key != 0x74));
+        if key == 0x74 {
+            d.push(Branch(k.esc_down == 0));
+        }
+    }
+    d.push(Branch(key != 0xcd));
+    if key != 0xcd {
+        d.push(Branch(key != 0xcc));
+        if key == 0xcc {
+            d.push(Branch(k.pause_down == 0));
+        }
+    }
+}
+
+/// A sound's wait of `lines` changes of VHPOSR's high byte: `moveq #lines-1, d0`, each turn a
+/// `cmp.b; beq` loop and `dbra d0`.
+fn line_wait(lines: u16, d: &mut Vec<Decision>) {
+    for c in (0..lines).rev() {
+        d.push(Decision::Same);
+        d.push(Count(c));
+    }
+}
+
+/// `h0_21c0`, the spring's picture: nothing while its timer is 0; from 6 on, four cell blits (the
+/// third's row wrapped past the play screen's end, `cmpa.l; bmi`) and the timer cleared; at 1 the
+/// spring sound and two picture blits (`h0_3ab4` waits), by its kind; else the timer steps.
+fn spring_redraw(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let sp = &l.state.spring;
+    d.push(Branch(sp.timer != 0));
+    if sp.timer == 0 {
+        return;
+    }
+    let early = minus(sp.timer, 6);
+    d.push(Branch(early));
+    if !early {
+        // The third cell's address less the play screen's end, `cmpa.l #h3+$e998; bmi`: `lsr.w`
+        // and `andi.b` leave `spring_x`'s high word in the long `adda.l` adds.
+        let col = sp.x & 0xffff_0000 | (((sp.x as u16) >> 3) & !1) as u32;
+        let row = (sp.y as u16 & 0xf0) as u32 * 0xe6;
+        let third = (0x398u32 + 0xe60).wrapping_add(col).wrapping_add(row);
+        d.extend([Decision::Busy, Decision::Busy]);
+        d.push(Branch(third.wrapping_sub(0xe998) & 0x8000_0000 != 0));
+        d.extend([Decision::Busy, Decision::Busy]);
+        return;
+    }
+    d.push(Branch(sp.timer == 1));
+    if sp.timer == 1 {
+        line_wait(3, d);
+        d.push(Branch(sp.kind != 0));
+        d.extend([Decision::Busy, Decision::Busy]);
+    }
+}
 
 /// N after `cmpi.w #imm, v`.
 fn minus(v: u16, imm: u16) -> bool {

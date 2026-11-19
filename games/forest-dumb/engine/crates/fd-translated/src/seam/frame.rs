@@ -53,6 +53,9 @@ use super::walk::{Decision, Event, Until, Walk};
 pub const GAME_FRAME: (u8, u32) = (0, 0x1fec);
 const GAME_FRAME_AT: (u32, u32) = (GAME_FRAME.0 as u32, GAME_FRAME.1);
 
+/// `read_joystick`, whose branches hang on JOY1DAT ([`rules::after_joy1dat`]).
+const READ_JOYSTICK: u32 = 0x8dfc;
+
 /// `world_index` (`h0+$6dfe`, a long): 0 in world 1, where the hand engine plays.
 const WORLD_INDEX: u32 = 0x6dfe;
 
@@ -136,6 +139,7 @@ pub fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), St
             owed: 0,
             walk: Walk::new(GAME_FRAME_AT, crate::tree::shapes),
             walked: false,
+            log_full: false,
             stop: None,
         };
         // CLXDAT is read at `char_hit_check`, through `Pass::clxdat`.
@@ -174,6 +178,12 @@ pub fn time_alone(offset: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> 
     let mut w = Walk::new((0, offset), crate::tree::shapes);
     w.decide(path);
     w.free_writes();
+    if offset == READ_JOYSTICK {
+        let full = g.level(rules::log_full);
+        if let Event::Read(_, v) = w.run(bus, r, img, Until::Read(0x00c))? {
+            w.decide(rules::after_joy1dat(v, full));
+        }
+    }
     w.run(bus, r, img, Until::End)?;
     let (d, _) = w.left();
     if d > 0 {
@@ -213,6 +223,8 @@ struct BusPass<'m, 'a, 'b> {
     walk: Walk,
     /// The routine running is walked.
     walked: bool,
+    /// `read_joystick` found `input_log` full ([`rules::log_full`]).
+    log_full: bool,
     /// What stopped the run inside the pass (a hang, a fault the bus reported): the pass ticks
     /// nothing more and the mount returns it.
     stop: Option<Stop>,
@@ -794,6 +806,9 @@ impl Pass for BusPass<'_, '_, '_> {
             None => {}
         }
         self.at = offset;
+        if offset == READ_JOYSTICK {
+            self.log_full = rules::log_full(l);
+        }
         match rules::path(offset, l) {
             Some(d) => {
                 self.walk.decide(d);
@@ -853,7 +868,9 @@ impl Pass for BusPass<'_, '_, '_> {
     }
     fn joy1dat(&mut self, _: &FrameInput) -> u16 {
         if self.walked {
-            return self.walk_read(0x00c);
+            let v = self.walk_read(0x00c);
+            self.walk.decide(rules::after_joy1dat(v, self.log_full));
+            return v;
         }
         // `read_joystick` clears its four words (`move.w #0, abs.l`), then reads JOY1DAT.
         self.pay(4 * cy::of(Op::Move, Size::W, Ea::Imm, Ea::AbsL));

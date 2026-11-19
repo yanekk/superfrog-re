@@ -14,7 +14,20 @@ use fd_translated::seam::frame::time_alone;
 use fd_translated::seam::rules::RULED;
 
 /// Each ruled routine and the routine judge's generator for it.
-const CHECKED: [(&str, u32); 2] = [("camera_update", 0x4d7e), ("h0_513c", 0x513c)];
+/// A routine with no generator of its own is checked on `game_frame`'s, whose states hold the
+/// whole level.
+const CHECKED: [(&str, u32); 10] = [
+    ("game_frame", 0x9b06),
+    ("game_frame", 0x94ba),
+    ("camera_update", 0x4d7e),
+    ("h0_513c", 0x513c),
+    ("char_sprite_position", 0x5462),
+    ("h0_9754", 0x9754),
+    ("game_frame", 0x8dfc),
+    ("game_frame", 0x20b0),
+    ("game_frame", 0x2104),
+    ("h0_21c0", 0x21c0),
+];
 
 /// States a routine is checked on.
 const STATES: usize = 2000;
@@ -41,7 +54,10 @@ fn each_rule_spends_the_translated_routines_cycles_on_its_judge_states() {
     let only = std::env::var("MOUNT_TIMING_ONLY").ok();
     let mut failed = Vec::new();
     for (name, off) in CHECKED {
-        if only.as_deref().is_some_and(|o| o != name) {
+        if only
+            .as_deref()
+            .is_some_and(|o| o != name && o != format!("{off:x}"))
+        {
             continue;
         }
         let generator = fd_conform::generators::generator(name).unwrap();
@@ -61,7 +77,7 @@ fn each_rule_spends_the_translated_routines_cycles_on_its_judge_states() {
             Some(level.clone()),
         );
         if !(rep.pass() && rep.passed == STATES) {
-            failed.push(format!("{name}: {rep:?}"));
+            failed.push(format!("h0+${off:x} on {name}: {rep:?}"));
         }
     }
     assert!(failed.is_empty(), "{}", failed.join("\n"));
