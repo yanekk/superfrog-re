@@ -546,7 +546,7 @@ fn creatures_move(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
                 d.push(Branch(Some(j) == k));
             }
             // A probe: `beq` (a wall ahead turns it) or `bne` (an edge turns it).
-            let mut probe = |d: &mut Vec<Decision>,
+            let probe = |d: &mut Vec<Decision>,
                              x: u16,
                              y: u16,
                              facing: &mut u8,
