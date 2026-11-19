@@ -59,6 +59,9 @@ pub mod tree {
 }
 
 impl Bus for Mem {
+    fn mount_data(&self) -> Option<&dyn std::any::Any> {
+        self.mount_data.as_deref().map(|d| d as &dyn std::any::Any)
+    }
     fn rb(&mut self, a: u32) -> u8 {
         Mem::rb(self, a)
     }

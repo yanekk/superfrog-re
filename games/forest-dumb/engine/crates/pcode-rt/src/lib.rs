@@ -107,6 +107,13 @@ pub trait Bus {
         let _ = k;
         None
     }
+    /// What a mounted routine reads beside memory, as the host holds it (the seam, translator
+    /// T36): a frame mount's engine start, which a `fn` pointer cannot carry. The routine downcasts
+    /// it to its own type. Plain memory holds nothing.
+    #[inline]
+    fn mount_data(&self) -> Option<&dyn std::any::Any> {
+        None
+    }
     fn rb(&mut self, a: u32) -> u8;
     fn rw(&mut self, a: u32) -> u16;
     fn rl(&mut self, a: u32) -> u32;

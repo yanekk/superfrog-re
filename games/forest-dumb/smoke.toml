@@ -45,6 +45,9 @@ workspace = "engine"
     "a_panicking_replacement_fails_and_no_translation_fails_every_state",
     "custom_writes_are_held_in_order",
 ]
+# Translator T36: level 1 mounted. Keeping every case in one of the two lists takes no disks and
+# under a second; the 32 cases mounted (about 10 min) and the mount in play need the disks and tree.
+"crates/fd-conform/tests/mount_level_1.rs" = ["every_case_is_in_one_list"]
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [

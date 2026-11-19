@@ -34,12 +34,19 @@ impl EngineKind {
 
 /// `case` on `engine`.
 pub fn run_on(case: &Case, engine: EngineKind) -> Result<Verdict, String> {
+    run_mounted(case, engine, false)
+}
+
+/// `case` on `engine`, the translated program with level 1's hand engine mounted through the seam
+/// when `level_1` (`--mount level-1`, translator T36); the hand engine is the hand engine either way.
+pub fn run_mounted(case: &Case, engine: EngineKind, level_1: bool) -> Result<Verdict, String> {
     match engine {
         EngineKind::Hand => crate::run(case),
         EngineKind::Translated => crate::translated_engine::run_translated(
             case,
             &Options {
                 every_channel: true,
+                mount_level_1: level_1,
                 ..Options::default()
             },
         ),

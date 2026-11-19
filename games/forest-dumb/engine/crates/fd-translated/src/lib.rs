@@ -16,13 +16,14 @@
 //! snapshot was taken inside do.
 
 use std::cell::Cell;
+use std::sync::Arc;
 
 use pcode_machine::mem::SLOW_BASE;
 use pcode_machine::{Config, Disks, Input, Machine, Picture};
 use pcode_rt::{Bus, Image, Mounted, PC, Regs, SR, Stop, ops};
 
 pub mod seam;
-pub use seam::Seam;
+pub use seam::{Level1, Seam};
 
 /// The tree from `build/translator/tree/` or `FD_TRANSLATED`, else a stub with no entries
 /// (`buildscripts/fd_translated.rs`).
@@ -193,24 +194,38 @@ pub struct TranslatedGame {
     watched: Vec<(u32, u32)>,
     /// Writes waiting for their routine's entry ([`TranslatedGame::write_at`]).
     writes_at: Vec<WriteAt>,
+    /// Level 1's hand engine for the frame mount ([`TranslatedGame::mount_level_1`]), handed to it
+    /// through `Bus::mount_data`.
+    level_1: Option<Arc<Level1>>,
 }
 
 impl TranslatedGame {
-    /// The built-in tree on `start`, the program at the original's hunk bases, with every routine
-    /// `fd_core::PORTED` marks mounted run through the seam. A mounted routine with no adapter
-    /// stops the run at once, naming it.
+    /// The built-in tree on `start`, the program at the original's hunk bases, translated alone:
+    /// nothing mounted until [`TranslatedGame::mount_level_1`].
     pub fn new(start: Start) -> Self {
-        let mut g = Self::with_program(Program::BUILT_IN, &fd_core::HUNK_BASES, start);
+        Self::with_program(Program::BUILT_IN, &fd_core::HUNK_BASES, start)
+    }
+
+    /// Level 1's hand engine mounted (DESIGN §2.9, T36): every routine `fd_core::PORTED` marks
+    /// mounted run through the seam from the next run on, `game_frame` among them, which the hand
+    /// engine plays from `data` while the program is in world 1. A mounted routine with no adapter
+    /// stops the run at once, naming it.
+    pub fn mount_level_1(&mut self, data: Arc<fd_core::GameData>) {
         match Seam::from_ported(fd_core::PORTED) {
-            Ok(seam) => g.seam = seam,
+            Ok(seam) => {
+                for k in seam.addresses() {
+                    let f = seam.get(k).expect("listed");
+                    self.seam.mount((k.0 as u8, k.1), f);
+                }
+            }
             Err(e) => {
-                g.stopped.get_or_insert(Stop::Unsupported {
+                self.stopped.get_or_insert(Stop::Unsupported {
                     op: e,
                     at: "start".into(),
                 });
             }
         }
-        g
+        self.level_1 = Some(Arc::new(Level1::new(data)));
     }
 
     /// Whether a tree is built in (false on the stub).
@@ -287,6 +302,7 @@ impl TranslatedGame {
             seam: Seam::new(),
             watched: Vec::new(),
             writes_at: Vec::new(),
+            level_1: None,
         }
     }
 
@@ -327,6 +343,11 @@ impl TranslatedGame {
     /// What is mounted.
     pub fn seam(&self) -> &Seam {
         &self.seam
+    }
+
+    /// Level 1's hand engine, once [`TranslatedGame::mount_level_1`] mounted it.
+    pub fn level_1(&self) -> Option<&Level1> {
+        self.level_1.as_deref()
     }
 
     /// Keep RAM at every CPU write of `w` (register offset from `$DFF000`, word) in
@@ -371,6 +392,7 @@ impl TranslatedGame {
         let mut host = Host {
             m: &mut self.m,
             seam: &self.seam,
+            level_1: self.level_1.as_deref(),
             each,
             picture: &mut self.picture,
             host_stop: false,
@@ -438,6 +460,8 @@ impl TranslatedGame {
 struct Host<'a, 'b> {
     m: &'a mut Machine,
     seam: &'a Seam,
+    /// What the frame mount reads beside memory.
+    level_1: Option<&'a Level1>,
     each: &'b mut dyn FnMut(&FrameOut) -> Control,
     picture: &'a mut Picture,
     /// `each` said stop: the stop unwinding the run is the host's, not the program's.
@@ -592,6 +616,9 @@ impl Bus for Host<'_, '_> {
                 .set(Some(self.watched.contains(&k).then_some(k)));
         }
         self.seam.get(k)
+    }
+    fn mount_data(&self) -> Option<&dyn std::any::Any> {
+        self.level_1.map(|l| l as &dyn std::any::Any)
     }
     fn rb(&mut self, a: u32) -> u8 {
         self.m.rb(a)
