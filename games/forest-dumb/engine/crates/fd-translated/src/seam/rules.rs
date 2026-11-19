@@ -40,15 +40,16 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
         0x2dd6 => creatures_write_back(l, peek, &mut d),
         0x2fae => creatures_move(l, peek, &mut d),
         0x62b6 => animated_cells(l, peek, &mut d),
+        0x2698 => object_cells(l, peek, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 17] = [
-    0x62b6, 0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc,
-    0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
+pub const RULED: [u32; 18] = [
+    0x2698, 0x62b6, 0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754,
+    0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -704,5 +705,80 @@ fn animated_cells(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
             }
         }
         d.push(Branch(i != 11));
+    }
+}
+
+/// `char_object_cells` (`h0_2698`): `h0_26ec` on the object map's cell at the feet, then at the head
+/// (the first's pick-up seen by the second): the exit (`bne`), nothing below `$20` (`bmi`), an item
+/// below `$28` (`bpl`: taken, its cell redrawn, `items_left_minus_one`'s `bne`, the item sound's
+/// wait), `$40` to `$5f` (`bmi`, `bpl`) a bonus by its value (`bne` down the list; `$4c` the time
+/// sound and `countdown_plus_100`'s `bmi`, the rest the item sound), else nothing.
+fn object_cells(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let below = |v: u8, imm: u8| v.wrapping_sub(imm) & 0x80 != 0;
+    let mut cleared: Vec<u32> = Vec::new();
+    let mut items = s.items_left;
+    let mut countdown = (s.countdown >> 16) as u16;
+    let x = s.char_x.wrapping_add(0xe);
+    for row in [0x19u32, 9] {
+        let y = s.char_y.wrapping_add(row);
+        let at = ((x >> 4) & 0xffff) * 0x60 + (y >> 4);
+        let v = if cleared.contains(&at) {
+            0
+        } else {
+            peek(0, fd_core::level::redraw::OBJECT_MAP.wrapping_add(at))
+        };
+        d.push(Branch(v != 0xff));
+        if v == 0xff {
+            continue;
+        }
+        d.push(Branch(below(v, 0x20)));
+        if below(v, 0x20) {
+            continue;
+        }
+        d.push(Branch(!below(v, 0x28)));
+        if below(v, 0x28) {
+            cleared.push(at);
+            d.push(Decision::Busy);
+            d.push(Branch(items != 0));
+            if items != 0 {
+                // `sbcd`: only whether it reaches 0 is read again.
+                items = if items == 1 {
+                    0
+                } else {
+                    items.wrapping_sub(1).max(1)
+                };
+            }
+            line_wait(4, d);
+            continue;
+        }
+        d.push(Branch(below(v, 0x40)));
+        if below(v, 0x40) {
+            continue;
+        }
+        d.push(Branch(!below(v, 0x60)));
+        if !below(v, 0x60) {
+            continue;
+        }
+        cleared.push(at);
+        d.push(Decision::Busy);
+        for k in 0x40..=0x50u8 {
+            d.push(Branch(v != k));
+            if v != k {
+                continue;
+            }
+            line_wait(4, d);
+            if k == 0x4c {
+                let under = minus(countdown, 0x899);
+                d.push(Branch(under));
+                // `abcd` of 1 into its high byte, or `$999`.
+                countdown = if under {
+                    countdown.wrapping_add(0x100)
+                } else {
+                    0x999
+                };
+            }
+            break;
+        }
     }
 }
