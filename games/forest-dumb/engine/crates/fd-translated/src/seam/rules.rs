@@ -27,14 +27,16 @@ pub fn path(offset: u32, l: &LevelCtx) -> Option<Vec<Decision>> {
         0x20b0 => countdown_step(l, &mut d),
         0x2104 => play_keys(l, &mut d),
         0x21c0 => spring_redraw(l, &mut d),
+        0x2c7e => creatures_restore(l, &mut d),
+        0x2d4c => creatures_cut(l, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 10] = [
-    0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0,
+pub const RULED: [u32; 12] = [
+    0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -306,4 +308,97 @@ fn clamp(c: &Camera, d: &mut Vec<Decision>) {
     d.push(Branch(minus(x, MAX_X)));
     let x = if minus(x, MAX_X) { x } else { MAX_X };
     d.push(Branch(!minus(x, 0)));
+}
+
+/// The play screen's line, its first and last lines' offsets in hunk 3 (`h3+$398`, `h3+$e998`) and
+/// a band of 16 lines.
+const LINE: u32 = 0xe6;
+const SCREEN_AT: u32 = 0x398;
+const SCREEN_END: u32 = SCREEN_AT + 0x100 * LINE;
+const BAND: u32 = 0x10 * LINE;
+const VIEW_LINES: u16 = 0xd0;
+
+/// `cmpa.l #h3+$e998, a0; bmi` past a wrap: the screen's last line passed.
+fn wrapped(at: u32) -> bool {
+    at.wrapping_sub(SCREEN_END) & 0x8000_0000 == 0
+}
+
+/// `h0_2c7e`: for each of the five slots (`bne` on to the next), when its drawn flag is set, the
+/// tiles behind it restored by `h0_5e44`: three cell blits on its row and the next, the next a map
+/// row up past the view's foot (`bpl`), the screen wrapped (`bmi`); kinds 0, 3 and 7 off a cell's
+/// top line and above the view's foot get a third row.
+fn creatures_restore(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let c = &l.state.edges.creatures;
+    let cam = l.state.camera.y;
+    for i in 0..5 {
+        let on = c.active[i] != 0;
+        d.push(Branch(!on));
+        if on {
+            let v = c.slots[i];
+            let (x, y) = (v.x as u32, v.y as u32);
+            let mut at = SCREEN_AT + ((x >> 3) & 0xfffe) + (y & 0xf0) * LINE;
+            let mut next_row = |d: &mut Vec<Decision>| {
+                at = at.wrapping_add(BAND);
+                d.push(Branch(!wrapped(at)));
+                if wrapped(at) {
+                    at = at.wrapping_sub(0x100 * LINE);
+                }
+                d.extend([Decision::Busy; 3]);
+            };
+            d.extend([Decision::Busy; 3]);
+            let foot = cam.wrapping_add(VIEW_LINES);
+            d.push(Branch(
+                foot.wrapping_sub(v.y.wrapping_add(0x10)) & 0x8000 == 0,
+            ));
+            next_row(d);
+            let tall = [0, 3, 7].iter().position(|&k| k == v.kind);
+            for k in 0..=tall.unwrap_or(2) {
+                d.push(Branch(Some(k) == tall));
+            }
+            if tall.is_some() {
+                d.push(Branch(y & 0xf != 0));
+                if y & 0xf != 0 {
+                    let above = (y + 0x20).wrapping_sub(cam as u32 + VIEW_LINES as u32);
+                    d.push(Branch(above & 0x8000_0000 != 0));
+                    if above & 0x8000_0000 != 0 {
+                        next_row(d);
+                    }
+                }
+            }
+        }
+        d.push(Branch(i != 4));
+    }
+}
+
+/// `h0_2d4c`: the cuts' registers, then for each of the five slots whose flag is set `h0_5820`'s
+/// cut: whole when its 32 lines stay on the screen (`btst #8; beq`), else in two at the screen's
+/// last line (the second left out when it would be empty); each part tests the facing (`bmi`) and
+/// kind 7 (`bne`) for its frame.
+fn creatures_cut(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let c = &l.state.edges.creatures;
+    for i in 0..5 {
+        let on = c.active[i] != 0;
+        d.push(Branch(!on));
+        if on {
+            let v = c.slots[i];
+            let frame = [Branch(v.facing & 0x80 != 0), Branch(v.kind != 7)];
+            let low = v.y as u32 & 0xff;
+            let split = (low + 0x20) & 0x100 != 0;
+            d.push(Branch(!split));
+            d.extend(frame);
+            if !split {
+                d.push(Decision::Busy);
+            } else {
+                d.push(Branch(low ^ 0xff == 0x1f));
+                d.push(Decision::Busy);
+                d.extend(frame);
+                let rest = v.y.wrapping_add(0x20) & 0xff;
+                d.push(Branch(rest != 0));
+                if rest != 0 {
+                    d.push(Decision::Busy);
+                }
+            }
+        }
+        d.push(Branch(i != 4));
+    }
 }

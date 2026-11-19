@@ -742,13 +742,17 @@ impl DrawIo for DrawBus<'_, '_, '_, '_> {
         match b {
             // The cut's registers set once for the pass's cuts: no blit starts, so no wait.
             CreatureBlit::CutSetup => {
-                for (a, v, long) in [
+                let setup = [
                     w(0xdf_f066, 0x28),
                     w(0xdf_f064, 0x22),
                     w(0xdf_f062, 0x22),
                     w(0xdf_f060, 0x28),
                     l(0xdf_f044, 0xffff_0000),
-                ] {
+                ];
+                if self.0.walked {
+                    return self.0.walk_writes(&setup);
+                }
+                for (a, v, long) in setup {
                     self.0.write(a, v, long);
                 }
             }
