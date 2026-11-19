@@ -6,7 +6,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-19 | 🔄 | **T57 added** (coordinator, T38; blocks T40, T42): level 1 is silent in the app, its effects being `game_frame`'s, which the mount replaces; the hand engine drops `Io::sound`. No overlap with T56 except `power-on-level-1`. |
+| 2026-11-19 | 📌 | **T57 measured:** mounted, level 1's effects are the original's: item, stomp, slide, hurt in order in 11 cases (`mount_level_1.rs` `HEARS`), spring 13 of 13 in mechanic-spring. No time bonus in W1-1. 14 hear one a pass late: T55's. |
+| 2026-11-19 | 🐞 | **T57:** the premise was wrong: T36's mount already made every effect, T38's app script took none. The item sample opens with 106 zero bytes, so taken at line 233 mounted it is first heard the step after. |
 | 2026-11-19 | 📌 | **T38:** a fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch buildscripts/fd_translated.rs`: the build had cached the stub and ignored the new tree. |
 | 2026-11-19 | 🐞 | **T37 review:** Game ▸ Start Level… on the translated program skipped about a second of level 1: the pacer was reset before the headless run to level 1. Reproduced in release, fixed; `start_level_restarts_…` locks it, in release only. |
 | 2026-11-19 | 🐞 | **T37 review, open:** under load 30 to 100, `translated_app.rs` `start_by_its_key…` fails at `c.exit.success()`: fd-app's `--timeout 180 s` reached (debug, 1 220 captured frames). Idle, the file passes in 65 s. Left alone. |
@@ -22,7 +23,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 📌 | **T53:** in play (handler in `$6C`, a pass ended either side) load-aligned cases judge memory at pass ends by `irq_count`, custom writes by `custom_carried`. Worlds 2 to 6 pass; power-on-level-1 fails at 6301 (`h0+$1fe6`, engine $80, original $f1). |
 | 2026-11-19 | 📌 | **T52 cause:** the pass-477 creature was the picture: the machine showed a blit whole from BLTSIZE; D words now reach the picture at their bus slot. Speed: `TRAIL` 48 lumped `h0+$5500`'s 198 instructions; audio slots were untaken. |
 | 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24; same after the review fix. Owner's rule. |
-| 2026-11-19 | 🐞 | **T52 review:** `AUDIO_LAG` (a line) was falsified: `line_samples` `owners` are the line before `vpos`, and so read the oracle's AUD0 slots equal `AudioDma`'s exactly. Shift removed; `contention.rs` `audio_dma_takes_the_oracles_audio_slots` holds both. |
 | 2026-11-19 | 🐞 | Sweeps, left alone: toolkit `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) omits that owners are the line before `vpos` (T52's slip); Superfrog `sf-conform/examples/vbl_audio.rs` counts audio owners at `s.vpos` unshifted, a line late. |
 | 2026-11-19 | 🔄 | **Owner, T51:** a load's OS stretch to `system_off` lines up as the load's (`frames::OsTail`); `beam_sample_unread` left out of memory; a frame-end byte passes one frame on. World starts 5, 6 pass; T53 added for 2, 3, 4. |
 | 2026-11-19 | 🐞 | **T51 review, open:** `power-on-title` passes on the translated program under T51's rules (`power_on.rs`, reviewer run); its case notes still say `Fails today`. Not T51's case, left alone. |
