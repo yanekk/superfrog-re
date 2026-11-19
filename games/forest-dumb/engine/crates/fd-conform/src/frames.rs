@@ -66,7 +66,9 @@ use amiga_conform::{Mode, Tolerance, report};
 use amiga_oracle::{Amiga, AmigaMemory, FrameCapture, FrameInput, PaulaWrite, SLOW_BASE};
 use fd_core::{Mem, Transplant, Var, layout_var};
 
-use crate::sync::{self, HUNK_SIZES, LOAD_CAP, LOAD_RETURNS, LOAD_ROUTINES, OS_VALUES};
+use crate::sync::{
+    self, BEAM_VALUES, HUNK_SIZES, LOAD_CAP, LOAD_RETURNS, LOAD_ROUTINES, OS_VALUES,
+};
 use crate::{
     Case, GAME_OVER_SCREEN, Goal, HIGH_SCORES, HUNK_BASES, Inputs, Live, NEXT_WORLD, Options,
     OracleMem, Outcome, PASS_END, PLAY_WINDOW, Verdict, layout_vars, reach_case,
@@ -140,6 +142,42 @@ struct Judge<'a> {
     /// The channels still compared. With `Options::every_channel` a channel that differed is
     /// dropped and the run goes on with the rest.
     live: [bool; CHANNELS],
+    /// The last judged frame's memory differences, held for the next frame ([`one_frame_on`]).
+    held: Option<Held>,
+    /// Each side's RAM at its previous frame's end, set by the runner before [`Judge::frame`];
+    /// without it no difference is held: every byte must be equal.
+    before: Option<(Vec<u8>, AmigaMemory)>,
+}
+
+/// A frame's memory differences waiting for the next oracle frame (owner, T51): its pass and
+/// frame, and each differing byte.
+#[derive(Debug, Clone)]
+struct Held {
+    pass: u32,
+    frame: u32,
+    bytes: Vec<Byte>,
+}
+
+/// A byte differing at a frame's end: its address, the engine's and the original's value there,
+/// and each side's at its previous frame's end.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Byte {
+    pub at: u32,
+    pub engine: u8,
+    pub original: u8,
+    pub engine_before: u8,
+    pub original_before: u8,
+}
+
+impl Held {
+    /// Its bytes not one frame on by `next` (the next judged frame: number, engine's RAM,
+    /// original's), all of them when that is not the very next frame or there is none.
+    fn left_after(&self, next: Option<(u32, &[u8], &AmigaMemory)>) -> Vec<Byte> {
+        match next {
+            Some((f, ram, theirs)) if f == self.frame + 1 => one_frame_on(&self.bytes, ram, theirs),
+            _ => self.bytes.clone(),
+        }
+    }
 }
 
 impl<'a> Judge<'a> {
@@ -178,7 +216,54 @@ impl<'a> Judge<'a> {
                 w,
                 case.compare.memory,
             ],
+            held: None,
+            before: None,
         })
+    }
+
+    /// The held frame's memory differences judged by the frame after (`frame`, `ram` the engine's,
+    /// `theirs` the original's): `Some` naming the held frame when a byte is not one frame on.
+    fn settle(
+        &mut self,
+        frame: Option<(u32, &[u8], &AmigaMemory)>,
+        verdict: &mut Verdict,
+    ) -> Option<Outcome> {
+        let held = self.held.take()?;
+        let left = held.left_after(frame);
+        match left.first() {
+            None => {
+                verdict.memory_frames += 1;
+                verdict.memory_one_on += 1;
+                None
+            }
+            Some(&Byte {
+                at,
+                engine,
+                original,
+                ..
+            }) => Some(Outcome::Differs {
+                pass: held.pass,
+                frame: held.frame,
+                var: format!(
+                    "{} ({} bytes differ, {} not one frame on)",
+                    hunk_name(at),
+                    held.bytes.len(),
+                    left.len()
+                ),
+                engine: engine as u32,
+                oracle: original as u32,
+            }),
+        }
+    }
+
+    /// At the run's end: a frame still held has no frame after it to be judged by, and fails.
+    fn finish(&mut self, verdict: &mut Verdict) {
+        if self.live[4]
+            && let Some(o) = self.settle(None, verdict)
+        {
+            self.live[4] = false;
+            verdict.firsts.push(o);
+        }
     }
 
     /// Judge the frame the engine just ran against the oracle's last step (`capture`, numbered
@@ -218,18 +303,40 @@ impl<'a> Judge<'a> {
             let ram = engine
                 .ram()
                 .ok_or("the case compares memory but the engine gives none")?;
-            match memory_difference(ram, &am.memory()) {
-                Some(d) => differs.push((
-                    4,
-                    Outcome::Differs {
-                        pass,
-                        frame,
-                        var: format!("{} ({} bytes differ)", d.at, d.count),
-                        engine: d.engine as u32,
-                        oracle: d.original as u32,
-                    },
-                )),
-                None => verdict.memory_frames += 1,
+            let theirs = am.memory();
+            // A frame's end may fall a few instructions apart on the two sides while the CPU
+            // writes (owner, T51): its differences pass if each byte is one frame on.
+            if let Some(o) = self.settle(Some((frame, ram, &theirs)), verdict) {
+                differs.push((4, o));
+            } else {
+                let d = memory_differences(ram, &theirs);
+                match (&self.before, d.first()) {
+                    (_, None) => verdict.memory_frames += 1,
+                    (Some((ours_before, theirs_before)), _) => {
+                        let chip = theirs_before.chip.len();
+                        let bytes = d
+                            .iter()
+                            .map(|&(at, engine, original)| Byte {
+                                at,
+                                engine,
+                                original,
+                                engine_before: byte_ours(ours_before, chip, at),
+                                original_before: theirs_before.byte_at(at).unwrap_or(0),
+                            })
+                            .collect();
+                        self.held = Some(Held { pass, frame, bytes });
+                    }
+                    (None, Some(&(at, engine, original))) => differs.push((
+                        4,
+                        Outcome::Differs {
+                            pass,
+                            frame,
+                            var: format!("{} ({} bytes differ)", hunk_name(at), d.len()),
+                            engine: engine as u32,
+                            oracle: original as u32,
+                        },
+                    )),
+                }
             }
         }
         if self.live[1] && writes {
@@ -839,6 +946,9 @@ pub fn run_entry_frames(
     let mut input = inputs.at(am.frame() - 1);
     let mut capture = FrameCapture::default();
     let mut owned_before = false;
+    // Each side's RAM at its previous frame's end, for a memory difference one frame on (T51).
+    let keep = case.compare.memory;
+    let mut orig_before: Option<AmigaMemory> = None;
     let mut run = 0u32;
     let step = |am: &mut Amiga| -> Result<(FrameInput, FrameCapture), String> {
         let frame = am.frame();
@@ -853,6 +963,7 @@ pub fn run_entry_frames(
         // The engine starts where the snapshot was taken, the sync frame's step's end: its first
         // frame is the next step's.
         owned_before = program_owns(&am);
+        orig_before = keep.then(|| am.memory());
         (input, capture) = step(&mut am)?;
         verdict.coverage.add(opts.register, am.pc_hits());
     }
@@ -862,6 +973,7 @@ pub fn run_entry_frames(
     load_count += r;
     align.original(r + back, l || tail);
     loop {
+        let eng_before = keep.then(|| engine.ram().map(<[u8]>::to_vec)).flatten();
         engine.frame(input);
         run += 1;
         let pass = run;
@@ -894,6 +1006,7 @@ pub fn run_entry_frames(
             }
             owned_before = program_owns(&am);
             // The engine has run past this step's input: its next frame takes the next step's.
+            orig_before = keep.then(|| am.memory());
             (_, capture) = step(&mut am)?;
             verdict.coverage.add(opts.register, am.pc_hits());
             let (r, l) = count(&am);
@@ -911,6 +1024,7 @@ pub fn run_entry_frames(
             if !writes {
                 verdict.os_frames += 1;
             }
+            judge.before = eng_before.zip(orig_before.take());
             let differs =
                 judge.frame(&*engine, &am, &capture, pass, frame, writes, &mut verdict)?;
             if judge.record(differs, &mut verdict) {
@@ -922,12 +1036,16 @@ pub fn run_entry_frames(
             break;
         }
         owned_before = program_owns(&am);
+        orig_before = keep.then(|| am.memory());
         (input, capture) = step(&mut am)?;
         verdict.coverage.add(opts.register, am.pc_hits());
         let (r, l) = count(&am);
         let (back, tail) = os_tail.frame(r, program_owns(&am));
         load_count += r;
         align.original(r + back, l || tail);
+    }
+    if verdict.firsts.is_empty() || opts.every_channel {
+        judge.finish(&mut verdict);
     }
     verdict.loads = load_count;
     verdict.load_frames = align.skipped();
@@ -1088,39 +1206,80 @@ pub struct MemoryDifference {
 
 /// [`MemoryDifference`] of `ours` against `theirs`; `None` if every compared byte is equal.
 pub fn memory_difference(ours: &[u8], theirs: &AmigaMemory) -> Option<MemoryDifference> {
-    let chip = theirs.chip.len();
-    let byte_ours = |a: u32| -> u8 {
-        let i = if a >= SLOW_BASE {
-            chip + (a - SLOW_BASE) as usize
-        } else {
-            a as usize
-        };
-        ours.get(i).copied().unwrap_or(0)
+    let d = memory_differences(ours, theirs);
+    d.first().map(|&(a, engine, original)| MemoryDifference {
+        at: hunk_name(a),
+        engine,
+        original,
+        count: d.len() as u32,
+    })
+}
+
+/// Whether `(hunk, off)` is left out of the memory comparison: the OS's values and the beam's.
+fn left_out(hunk: usize, off: u32) -> bool {
+    OS_VALUES
+        .iter()
+        .chain(BEAM_VALUES.iter())
+        .any(|&(h, o, n)| h as usize == hunk && (o..o + n).contains(&off))
+}
+
+/// `a` as `hN+$off`.
+fn hunk_name(a: u32) -> String {
+    (0..HUNK_BASES.len())
+        .find(|&h| (HUNK_BASES[h]..HUNK_BASES[h] + HUNK_SIZES[h]).contains(&a))
+        .map_or(format!("${a:06x}"), |h| {
+            format!("h{h}+${:x}", a - HUNK_BASES[h])
+        })
+}
+
+/// The engine's byte at `a` in `ours` (chip RAM then slow RAM, as the original's is laid out).
+fn byte_ours(ours: &[u8], chip: usize, a: u32) -> u8 {
+    let i = if a >= SLOW_BASE {
+        chip + (a - SLOW_BASE) as usize
+    } else {
+        a as usize
     };
-    let mut first = None;
-    let mut count = 0u32;
+    ours.get(i).copied().unwrap_or(0)
+}
+
+/// Every compared byte of the hunks that differs, as (address, engine's, original's).
+pub fn memory_differences(ours: &[u8], theirs: &AmigaMemory) -> Vec<(u32, u8, u8)> {
+    let chip = theirs.chip.len();
+    let mut out = Vec::new();
     for (h, &size) in HUNK_SIZES.iter().enumerate() {
         let base = HUNK_BASES[h];
-        let left_out = |off: u32| {
-            OS_VALUES
-                .iter()
-                .any(|&(oh, o, n)| oh as usize == h && (o..o + n).contains(&off))
-        };
         for off in 0..size {
             let a = base + off;
-            let (o, t) = (byte_ours(a), theirs.byte_at(a).unwrap_or(0));
-            if o != t && !left_out(off) {
-                count += 1;
-                first.get_or_insert((format!("h{h}+${off:x}"), o, t));
+            let (o, t) = (byte_ours(ours, chip, a), theirs.byte_at(a).unwrap_or(0));
+            if o != t && !left_out(h, off) {
+                out.push((a, o, t));
             }
         }
     }
-    first.map(|(at, engine, original)| MemoryDifference {
-        at,
-        engine,
-        original,
-        count,
-    })
+    out
+}
+
+/// Of a frame's differing bytes, those not one frame on given the next frame's RAM (`next_ours`
+/// the engine's, `next_theirs` the original's). A byte is one frame on when one side's values
+/// over the three frames are the other's a frame later: the engine ahead (its value is the
+/// original's next, its previous the original's now), or behind (the original's value is the
+/// engine's next, the original's previous the engine's now). The frame's end then fell a few
+/// instructions apart in the same work; a one-frame glitch that reverts does not fit either.
+pub fn one_frame_on(bytes: &[Byte], next_ours: &[u8], next_theirs: &AmigaMemory) -> Vec<Byte> {
+    let chip = next_theirs.chip.len();
+    bytes
+        .iter()
+        .copied()
+        .filter(|b| {
+            let (eng_next, ori_next) = (
+                byte_ours(next_ours, chip, b.at),
+                next_theirs.byte_at(b.at).unwrap_or(0),
+            );
+            let ahead = b.engine == ori_next && b.engine_before == b.original;
+            let behind = b.original == eng_next && b.original_before == b.engine;
+            !(ahead || behind)
+        })
+        .collect()
 }
 
 /// The first (register, value) whose count differs between two frames' custom writes, by register
@@ -1422,5 +1581,114 @@ mod os_tail_tests {
         assert_eq!(t.frame(1, true), (0, false));
         assert_eq!(t.frame(0, false), (0, false));
         assert_eq!(t.frame(0, true), (0, false));
+    }
+}
+
+#[cfg(test)]
+mod one_frame_on_tests {
+    use super::*;
+
+    fn mem() -> (Vec<u8>, AmigaMemory) {
+        let theirs = AmigaMemory {
+            chip: vec![0; 0x8_0000],
+            slow: vec![0; 0x8_0000],
+        };
+        (vec![0; 0x10_0000], theirs)
+    }
+
+    /// `hN+$off`'s index in the engine's RAM and its address.
+    fn at(hunk: usize, off: u32) -> (usize, u32) {
+        let a = HUNK_BASES[hunk] + off;
+        let i = if a >= SLOW_BASE {
+            0x8_0000 + (a - SLOW_BASE) as usize
+        } else {
+            a as usize
+        };
+        (i, a)
+    }
+
+    fn set_theirs(m: &mut AmigaMemory, a: u32, v: u8) {
+        if a >= SLOW_BASE {
+            m.slow[(a - SLOW_BASE) as usize] = v;
+        } else {
+            m.chip[a as usize] = v;
+        }
+    }
+
+    /// The next frame's RAM: the engine's byte at `i` and the original's at `a`.
+    fn next(i: usize, a: u32, engine: u8, original: u8) -> (Vec<u8>, AmigaMemory) {
+        let (mut ours, mut theirs) = mem();
+        ours[i] = engine;
+        set_theirs(&mut theirs, a, original);
+        (ours, theirs)
+    }
+
+    /// Engine and original at the held frame, and each the frame before.
+    fn held(a: u32, now: (u8, u8), before: (u8, u8)) -> Held {
+        Held {
+            pass: 1,
+            frame: 100,
+            bytes: vec![Byte {
+                at: a,
+                engine: now.0,
+                original: now.1,
+                engine_before: before.0,
+                original_before: before.1,
+            }],
+        }
+    }
+
+    #[test]
+    fn the_beam_sample_and_the_os_values_are_left_out_and_other_bytes_are_not() {
+        let (mut ours, theirs) = mem();
+        for (h, off) in [(0, 0x8dfa), (0, 0x8dfb), (0, 0x908e)] {
+            ours[at(h, off).0] = 7;
+        }
+        assert_eq!(memory_differences(&ours, &theirs), vec![]);
+        let (i, a) = at(0, 0x8dfc);
+        ours[i] = 7;
+        assert_eq!(memory_differences(&ours, &theirs), vec![(a, 7, 0)]);
+        assert_eq!(memory_difference(&ours, &theirs).unwrap().at, "h0+$8dfc");
+    }
+
+    /// A screen byte drawn (0 to $ff) a few instructions before the frame's end on one side and
+    /// after it on the other: the measured view_tiles case (world 2, h3+$43f4, T51).
+    #[test]
+    fn a_byte_one_frame_on_either_way_passes() {
+        let (i, a) = at(3, 0x43f4);
+        // Engine ahead: it drew at frame 100, the original at 101.
+        let (o, t) = next(i, a, 0xff, 0xff);
+        let h = held(a, (0xff, 0x00), (0x00, 0x00));
+        assert_eq!(h.left_after(Some((101, &o, &t))), vec![]);
+        // Engine behind: the original drew at 100, the engine at 101.
+        let h = held(a, (0x00, 0xff), (0x00, 0x00));
+        assert_eq!(h.left_after(Some((101, &o, &t))), vec![]);
+    }
+
+    #[test]
+    fn a_third_value_on_both_sides_is_not_one_frame_on() {
+        let (i, a) = at(3, 0x43f4);
+        let (o, t) = next(i, a, 0x42, 0x42);
+        let h = held(a, (0xff, 0x00), (0x00, 0x00));
+        assert_eq!(h.left_after(Some((101, &o, &t))), h.bytes);
+    }
+
+    /// The engine's byte wrong for one frame and right again after: its next value is the
+    /// original's, but its previous was not the original's previous, so it fails.
+    #[test]
+    fn a_one_frame_glitch_that_reverts_is_not_one_frame_on() {
+        let (i, a) = at(0, 0x7cde);
+        let (o, t) = next(i, a, 0x10, 0x10);
+        let h = held(a, (0x11, 0x10), (0x10, 0x10));
+        assert_eq!(h.left_after(Some((101, &o, &t))), h.bytes);
+    }
+
+    #[test]
+    fn a_held_frame_with_no_very_next_frame_keeps_every_byte() {
+        let (i, a) = at(3, 0x43f4);
+        let (o, t) = next(i, a, 0xff, 0xff);
+        let h = held(a, (0xff, 0x00), (0x00, 0x00));
+        assert_eq!(h.left_after(Some((102, &o, &t))), h.bytes);
+        assert_eq!(h.left_after(None), h.bytes);
     }
 }

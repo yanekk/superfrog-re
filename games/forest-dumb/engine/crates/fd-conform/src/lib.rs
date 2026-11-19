@@ -866,6 +866,8 @@ pub struct Verdict {
     pub load_frames: u32,
     /// The engine's frames in the OS's stretch after a load, not compared (owner, T51).
     pub tail_frames: u32,
+    /// Of `memory_frames`, those whose differing bytes were each one frame on (owner, T51).
+    pub memory_one_on: u32,
     pub coverage: Coverage,
 }
 
@@ -898,6 +900,7 @@ impl Verdict {
             loads: 0,
             load_frames: 0,
             tail_frames: 0,
+            memory_one_on: 0,
             coverage: Coverage::new(register),
         }
     }
@@ -1010,9 +1013,17 @@ impl fmt::Display for Verdict {
         if self.memory_frames > 0 {
             write!(
                 f,
-                "\n{} frames' hunks compared byte for byte, the OS's values left out",
+                "\n{} frames' hunks compared byte for byte, the OS's values and the beam's left out",
                 self.memory_frames
             )?;
+            if self.memory_one_on > 0 {
+                write!(
+                    f,
+                    "; {} of them each differing byte one frame on, the frame's end a few \
+                     instructions apart",
+                    self.memory_one_on
+                )?;
+            }
         }
         if self.aligned_frames > 0 {
             write!(
