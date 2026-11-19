@@ -103,7 +103,38 @@ its entry. No other row is needed: `session_loop` already does what `next_world`
 `level_init` (`title_start_flag`, `h0+$500`, the camera, the score), so the world starts with a new
 game's score and lives where a world reached by play would carry them.
 
-**The reading:** 0 of 5 pass, every one on the same speed difference as `power-on-level-1` in world 1
+**The reading, 2026-11-19 (T51), on T49's machine: 2 of 5 pass** (`world-5-start`,
+`world-6-start`), under three rules of the owner's for cases lined up by loads (`frames.rs`):
+
+- **The OS's stretch after a load is the load's** (`OsTail`): from a load's return until the
+  program takes the machine back (`level3_handler` in `$6C`, at `system_off`), no frame is compared,
+  and the taking back counts as a return, so the original runs on to its own. There the original's
+  OS runs its interrupts, which the machine never does (DESIGN §2.8): world 2's byte scan
+  (`h0+$7a9e`, counting `$20..$27` bytes from `h0+$cb38`) covers 3 834 bytes in 5 frames, 4 015
+  with the OS's handlers at `$64/$68/$6C/$78` stubbed by `rte`, and `system_off` returns at 6026
+  instead of 6029. That was the T33 reading's speed difference.
+- **`beam_sample_unread` (`h0+$8dfa`) is left out of memory** (`sync::BEAM_VALUES`): its line is
+  equal every play frame, its position mostly 3 colour clocks apart.
+- **A byte differing at a frame's end passes when one frame on**: the engine's values over three
+  frames are the original's shifted a frame, either way. `view_tiles` draws after `system_off` at
+  68 to 69 tiles a frame on both sides, and at each frame's end the engine is 0 to 2 tile rows of
+  about 1 100 ahead (6 or 7 frames a case).
+
+Paula's writes are equal in all five, and so is the picture; the custom writes in all but world 3.
+The three left fail in play, on a frame's end inside `game_frame`, carried by T53 (the pass-end
+rule of DESIGN §2.7 applied to play):
+
+| World | Frames failing | First difference |
+|---|---|---|
+| 2 | 1 | 6154, `h0+$2c7d` (`h0_2d4c`'s slot counter), engine 1, original 2 |
+| 3 | 18 | 6180, `h0+$2c7d`, engine 2, original 1; a creature blit (`h3+$e84`) and `BLTCON0=$cfca` a pass apart at 6183, T52's kind |
+| 4 | 1 | 6132, `h0+$1e61` (`char_y`), engine $a4, original $a5 |
+
+`next_world` (checked against the listing, T51) sets `world_index`, `title_start_flag`, `h0+$500`,
+the camera and `score_add`, all of which `session_loop` sets too; a world reached by play differs only
+in carrying the score and lives, as below.
+
+**The T33 reading (2026-11-18):** 0 of 5 pass, every one on the same speed difference as `power-on-level-1` in world 1
 (T32, T47). In each, the 13 loads line up and `world_index` is the world's on both sides; the first
 difference is `h0+$7a9d` while the SCENA screen is built, then the copper list's start and the
 picture two to three frames early; in play, Paula's writes from fire plus 33, as world 1 from power-on
