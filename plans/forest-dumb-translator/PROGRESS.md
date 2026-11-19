@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** review T38 (app-sound); T57 (hand-engine-sound-effects) follows it.
+**Next `pir-work` will:** T57 (hand-engine-sound-effects), now unblocked by T38.
 
 ## Tasks
 
@@ -52,7 +52,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ✅ | |
-| T38 | app-sound | T37 | 🔍 | Sound mixed per frame (`fd_app::audio::Sound`), device-paced as sf-app; 3 unit, 3 e2e (`sound.rs`, full). Deviations: FrameOut gains `paula_beam`; `audio.rs` in the library, for tests; no mute option. Level 1 silent and equal to headless, its effect check waiting on T57. Device output unexercised: scripted runs open none. |
+| T38 | app-sound | T37 | ✅ | Review: one fix, a test tying `paula_beam` to each write's cycle (a vpos/hpos swap passed before). Probed: 399 of 600 title frames heard; previous-frame chip RAM mixes identically; an unscripted bounded run paced 50 fps on the real 48 kHz device (not listened to). Level 1 silent, its effect check carried by T57. |
 | T39 | app-stop | T37 | ⬜ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
 
-**Review queue:** T38
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
