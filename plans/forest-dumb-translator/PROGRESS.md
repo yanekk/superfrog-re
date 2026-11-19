@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T57; T39, T54 and T55 are open.
+**Next `pir-work` will:** T39, T54 and T55 are open.
 
 ## Tasks
 
@@ -70,9 +70,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
-| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | 🔍 | Measured, no engine change: T36's mount already makes every effect. `mount_level_1.rs` 2 tests (11 cases' Paula writes in order mounted; 14 named T55's), `sound.rs` 1 (an item heard in the app, equal headless). Deviations: `writes` set in the test, not the case files (`run_with` refuses it); no spring-passing case; docs only in fd-core. |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | No engine change: T36's mount already made the effects. Review fix: `sound.rs` passed with `Sound::Item` silenced (a stomp stood in); now requires the item. Mutations caught: item silenced reds collect-ledge/return, `Scratch::hw` dropped reds all 11. Spring and time-bonus claims `read-only`. |
 
-**Review queue:** T57
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
