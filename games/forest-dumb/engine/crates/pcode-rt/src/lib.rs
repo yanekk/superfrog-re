@@ -70,6 +70,17 @@ pub trait Bus {
         let _ = (r, img);
         Ok(())
     }
+    /// Called before each of a block's instructions after its first ([`insn_start`]): a 68000
+    /// takes an interrupt at any instruction boundary, and a block-start-only check took the
+    /// line-233 interrupt after `h0_6852`'s creature start where the original takes it two
+    /// instructions in (translator T50, DESIGN §2.8). It runs on every instruction, so a machine
+    /// answers from a cheap test and polls only when an interrupt may be due. Plain memory has
+    /// nothing to take.
+    #[inline]
+    fn insn(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        let _ = (r, img);
+        Ok(())
+    }
     /// A `jsr`/`bsr` to `a`, outside every hunk, made with the return address already pushed: where a
     /// machine answers the operating system's library vectors (translator T26). The answer returns
     /// as `rts` would, popping that address into `PC`, which the generated caller then checks.
@@ -433,6 +444,13 @@ pub fn block_start<B: Bus + ?Sized>(bus: &mut B, r: &mut Regs, img: &Image) -> R
         return Err(Stop::Hang { why: Hang::Steps });
     }
     bus.poll(r, img)
+}
+
+/// What every translated instruction but a block's first does first: the bus's [`Bus::insn`],
+/// where a machine takes an interrupt that became due inside the block (translator T50).
+#[inline]
+pub fn insn_start<B: Bus + ?Sized>(bus: &mut B, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+    bus.insn(r, img)
 }
 
 /// A load of `size` bytes at `a`, big-endian. An 8-byte load is two longs; any other size than

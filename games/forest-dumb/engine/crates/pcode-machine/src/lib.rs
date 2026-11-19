@@ -200,6 +200,11 @@ pub struct Machine {
     intreq: u16,
     /// Requests raised for a cycle count not yet reached: (INTREQ bit, at).
     raised: Vec<(u16, u64)>,
+    /// No interrupt can become due before this cycle count unless the CPU changes INTENA, INTREQ,
+    /// SR or a chip first ([`Bus::insn`]'s cheap test, translator T50): the next copper write, a
+    /// raised request, the keyboard's next byte, the frame's end; 0 while a blit that may
+    /// interrupt runs. Set by `poll_time`, cleared by every CPU access to a chip.
+    irq_at: u64,
     /// The translated program's `entry`, where `poll` finds a vector's handler.
     entry: Option<Entry>,
     /// DMACON as its set/clear writes leave it (DMACONR, with the blitter's BBUSY and BZERO).
@@ -261,6 +266,7 @@ impl Machine {
             intena: 0,
             intreq: 0,
             raised: Vec::new(),
+            irq_at: 0,
             entry: None,
             dmacon: 0,
             blitter: Blitter::default(),
@@ -521,10 +527,39 @@ impl Machine {
         self.now = r.cycles();
         // The keyboard's next byte, if its time has come since the last block.
         self.cia_a.tick(self.now);
+        self.arm();
         match &self.fault {
             Some(f) => Err(f.clone()),
             None => Ok(()),
         }
+    }
+
+    /// Set [`Machine::irq_at`](Machine) from the chips as they stand at `now`.
+    fn arm(&mut self) {
+        self.settle();
+        let mut at = self.frame_end();
+        if let Some(c) = self.copper.as_ref().and_then(|c| c.next_at()) {
+            at = at.min(c.max(0) as u64);
+        }
+        if let Some(&r) = self.raised.iter().map(|(_, t)| t).min() {
+            at = at.min(r);
+        }
+        if let Some(k) = self.cia_a.next_at() {
+            at = at.min(k);
+        }
+        // A blit's end is raised as the bus runs it (`contend`), so it has no time ahead.
+        let blit_irq = irq::INTEN | blitter::INT_BLIT;
+        if self.watch.dirty || (self.intena & blit_irq == blit_irq && self.blit_busy()) {
+            at = 0;
+        }
+        self.irq_at = at;
+    }
+
+    /// Whether no interrupt can be taken at `r`'s count: before [`Machine::arm`]'s bound and none
+    /// pending above SR's mask (an INTENA or INTREQ write, or SR lowered by `rte`, `move to SR`).
+    #[inline]
+    pub fn quiet(&self, r: &Regs) -> bool {
+        r.cycles() < self.irq_at && self.pending(r.get(pcode_rt::SR, 2) as u16).is_none()
     }
 
     /// The interrupt level to take now under `r`'s SR, with every request due by now in INTREQ.
@@ -952,6 +987,7 @@ impl Machine {
     pub(crate) fn reg_write(&mut self, reg: u16, v: u16, cpu: bool) {
         self.log.push((self.now, reg, v));
         if cpu {
+            self.irq_at = 0;
             if self.leftover {
                 self.cpu_leftover.push(self.cpu_log.len());
             }
@@ -1025,6 +1061,7 @@ impl Machine {
     }
 
     fn cia_write(&mut self, cia: Cia, reg: u16, v: u8) {
+        self.irq_at = 0;
         match self.cia_route[cia as usize] {
             0 if cia == Cia::A => {
                 self.cia_a.write(reg, v, self.now);
@@ -1058,6 +1095,7 @@ impl Machine {
     }
 
     pub fn set_input(&mut self, i: &Input) {
+        self.irq_at = 0;
         self.custom[custom::JOY1DAT as usize >> 1] = i.joy1;
         self.cia_a.fire = i.fire;
         self.cia_a.mouse_left = i.mouse_left;
@@ -1158,6 +1196,15 @@ impl Bus for Machine {
             }
         }
         Ok(())
+    }
+
+    /// Polls only once an interrupt may be due ([`Machine::quiet`]).
+    #[inline]
+    fn insn(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        if self.quiet(r) {
+            return Ok(());
+        }
+        self.poll(r, img)
     }
 
     fn sync(&mut self, r: &Regs) {

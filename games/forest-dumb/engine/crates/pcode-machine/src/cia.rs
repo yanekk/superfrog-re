@@ -184,6 +184,12 @@ impl CiaA {
         self.tick(at);
     }
 
+    /// The cycle count at which [`CiaA::tick`] would put the keyboard's next byte in SDR, if one
+    /// waits and its handshake is done.
+    pub fn next_at(&self) -> Option<u64> {
+        (!self.awaiting_handshake && !self.queue.is_empty()).then_some(self.ready_at)
+    }
+
     /// Time has reached `at`: the keyboard sends its next byte if the last was acknowledged and
     /// its time has come. The byte lands in SDR and sets the serial-port flag.
     pub fn tick(&mut self, at: u64) {

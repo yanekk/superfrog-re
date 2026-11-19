@@ -1,7 +1,7 @@
 // Generated from jump_table.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -86,6 +86,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x2 {
+                    insn_start(bus, r, img)?;
                     // h0+$2 add.w d0w,d0w
                     {
                         let v = int_add(r.get(0x2, 2), r.get(0x2, 2), 2);
@@ -93,6 +94,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 lea (h1+$0).l,a0
                     {
                         let v = (img.h(1, 0x0) as u64);
@@ -100,6 +102,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xa {
+                    insn_start(bus, r, img)?;
                     // h0+$a movea.l (0,a0,d0w.w),a1
                     {
                         bus.sync(r);
@@ -114,6 +117,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xe {
+                    insn_start(bus, r, img)?;
                     // h0+$e jmp (a1)
                     {
                         let a = r.get(0x24, 4) as u32;
@@ -135,6 +139,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x12 {
+                    insn_start(bus, r, img)?;
                     // h0+$12 rts
                     {
                         bus.sync(r);
@@ -160,6 +165,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x16 {
+                    insn_start(bus, r, img)?;
                     // h0+$16 rts
                     {
                         bus.sync(r);

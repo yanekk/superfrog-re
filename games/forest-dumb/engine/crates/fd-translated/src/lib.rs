@@ -568,6 +568,15 @@ impl Bus for Host<'_, '_> {
         }
         Ok(())
     }
+    /// The whole `poll` once an interrupt or the frame's end may be due ([`Machine::quiet`]); the
+    /// block bookkeeping it does first has nothing to do between instructions.
+    #[inline]
+    fn insn(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        if self.m.quiet(r) {
+            return Ok(());
+        }
+        self.poll(r, img)
+    }
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.m.call_outside(a, r, img)
     }

@@ -1,7 +1,7 @@
 // Generated from irq.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -11,10 +11,13 @@ pub const CODE: &[(u32, u32, u32)] = &[
     (0, 0x60, 0x78),
     (0, 0x80, 0x9c),
     (0, 0xa0, 0xae),
+    (0, 0xc0, 0xce),
+    (0, 0xd0, 0xde),
+    (0, 0xe0, 0xee),
 ];
 
 /// Each hunk's length, as the export gives it.
-pub const HUNK_SIZES: &[u32] = &[0xc0];
+pub const HUNK_SIZES: &[u32] = &[0x100];
 
 #[allow(dead_code)]
 pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;
@@ -28,6 +31,9 @@ pub fn entry(addr: &str) -> Option<Routine> {
         "h0+$60" => Some(h0_60),
         "h0+$80" => Some(h0_80),
         "h0+$a0" => Some(h0_a0),
+        "h0+$c0" => Some(h0_c0),
+        "h0+$d0" => Some(h0_d0),
+        "h0+$e0" => Some(h0_e0),
         _ => None,
     }
 }
@@ -41,6 +47,9 @@ fn by_addr(k: (u32, u32)) -> Option<Routine> {
         (0, 0x60) => Some(h0_60),
         (0, 0x80) => Some(h0_80),
         (0, 0xa0) => Some(h0_a0),
+        (0, 0xc0) => Some(h0_c0),
+        (0, 0xd0) => Some(h0_d0),
+        (0, 0xe0) => Some(h0_e0),
         _ => None,
     }
 }
@@ -88,6 +97,19 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
         (0, 0xa0)
         | (0, 0xa4)
         | (0, 0xac) => Some(h0_a0_from),
+        (0, 0xc0)
+        | (0, 0xc8)
+        | (0, 0xcc) => Some(h0_c0_from),
+        (0, 0xd0)
+        | (0, 0xd2)
+        | (0, 0xd4)
+        | (0, 0xd6)
+        | (0, 0xd8)
+        | (0, 0xda)
+        | (0, 0xdc) => Some(h0_d0_from),
+        (0, 0xe0)
+        | (0, 0xe4)
+        | (0, 0xec) => Some(h0_e0_from),
         _ => None,
     }
 }
@@ -119,6 +141,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 cmp.w d2,d0
                     {
                         let v = int_equal(r.get(0x2, 2), r.get(0xa, 2), 2);
@@ -126,6 +149,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x6 {
+                    insn_start(bus, r, img)?;
                     // h0+$6 bne.b h0+$0
                     {
                         let mut u_100: u64 = 0;
@@ -188,6 +212,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 cmp.w d2,d0
                     {
                         let v = int_equal(r.get(0x2, 2), r.get(0xa, 2), 2);
@@ -195,6 +220,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x6 {
+                    insn_start(bus, r, img)?;
                     // h0+$6 bne.b h0+$0
                     {
                         let mut u_100: u64 = 0;
@@ -232,13 +258,16 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x18 {
+                    insn_start(bus, r, img)?;
                     // h0+$18 addq.l #1,d1
                     {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
                         let v = int_add(r.get(0x4, 4), 0x1u64, 4);
                         r.set(0x4, 4, v);
                     }
                 }
                 if entered <= 0x1a {
+                    insn_start(bus, r, img)?;
                     // h0+$1a cmp.l d2,d1
                     {
                         let v = int_equal(r.get(0x4, 4), r.get(0x8, 4), 4);
@@ -246,6 +275,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x1c {
+                    insn_start(bus, r, img)?;
                     // h0+$1c bne.b h0+$10
                     {
                         let mut u_100: u64 = 0;
@@ -306,6 +336,7 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x44 {
+                    insn_start(bus, r, img)?;
                     // h0+$44 move.w #$20,($dff09c).l
                     {
                         bus.sync(r);
@@ -314,6 +345,7 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x4c {
+                    insn_start(bus, r, img)?;
                     // h0+$4c rte
                     {
                         r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
@@ -372,6 +404,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x68 {
+                    insn_start(bus, r, img)?;
                     // h0+$68 bra.b h0+$6a
                     {
                         pc = (0, 0x6a); continue 'b;
@@ -390,6 +423,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x6e {
+                    insn_start(bus, r, img)?;
                     // h0+$6e move.w #$8,($dff09c).l
                     {
                         bus.sync(r);
@@ -398,6 +432,7 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x76 {
+                    insn_start(bus, r, img)?;
                     // h0+$76 rte
                     {
                         r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
@@ -456,6 +491,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x88 {
+                    insn_start(bus, r, img)?;
                     // h0+$88 bra.b h0+$8a
                     {
                         pc = (0, 0x8a); continue 'b;
@@ -474,6 +510,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x8e {
+                    insn_start(bus, r, img)?;
                     // h0+$8e addq.w #1,($100).w
                     {
                         bus.sync(r);
@@ -488,6 +525,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x92 {
+                    insn_start(bus, r, img)?;
                     // h0+$92 move.w #$20,($dff09c).l
                     {
                         bus.sync(r);
@@ -496,6 +534,7 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x9a {
+                    insn_start(bus, r, img)?;
                     // h0+$9a rte
                     {
                         r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
@@ -560,6 +599,7 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0xa4 {
+                    insn_start(bus, r, img)?;
                     // h0+$a4 move.w #$8,($dff09c).l
                     {
                         bus.sync(r);
@@ -568,6 +608,7 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0xac {
+                    insn_start(bus, r, img)?;
                     // h0+$ac rte
                     {
                         r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
@@ -589,6 +630,232 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 pc = (0, 0xae);
+            }
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
+        }
+    }
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
+pub fn h0_c0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0xc0)) {
+        return f(r, bus, img);
+    }
+    h0_c0_from((0, 0xc0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_c0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
+    let mut pc: (u32, u32) = start;
+    'b: loop {
+        block_start(bus, r, img)?;
+        match pc {
+            (0, 0xc0) | (0, 0xc8) | (0, 0xcc) => {
+                let entered = pc.1;
+                if entered <= 0xc0 {
+                    // h0+$c0 move.w #$8020,($dff09c).l
+                    {
+                        bus.sync(r);
+                        let v = 0x8020u64;
+                        store(bus, img, 0xdff09cu64 as u32, 2, v)?;
+                    }
+                }
+                if entered <= 0xc8 {
+                    insn_start(bus, r, img)?;
+                    // h0+$c8 move.w ($100).w,d5
+                    {
+                        bus.sync(r);
+                        let v = load(bus, 0x100u64 as u32, 2);
+                        r.set(0x16, 2, v);
+                    }
+                }
+                if entered <= 0xcc {
+                    insn_start(bus, r, img)?;
+                    // h0+$cc rts
+                    {
+                        bus.sync(r);
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
+                }
+                pc = (0, 0xce);
+            }
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
+        }
+    }
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
+pub fn h0_d0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0xd0)) {
+        return f(r, bus, img);
+    }
+    h0_d0_from((0, 0xd0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_d0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
+    let mut pc: (u32, u32) = start;
+    'b: loop {
+        block_start(bus, r, img)?;
+        match pc {
+            (0, 0xd0) | (0, 0xd2) | (0, 0xd4) | (0, 0xd6) | (0, 0xd8) | (0, 0xda) | (0, 0xdc) => {
+                let entered = pc.1;
+                if entered <= 0xd0 {
+                    // h0+$d0 addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xd2 {
+                    insn_start(bus, r, img)?;
+                    // h0+$d2 addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xd4 {
+                    insn_start(bus, r, img)?;
+                    // h0+$d4 addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xd6 {
+                    insn_start(bus, r, img)?;
+                    // h0+$d6 addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xd8 {
+                    insn_start(bus, r, img)?;
+                    // h0+$d8 addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xda {
+                    insn_start(bus, r, img)?;
+                    // h0+$da addq.l #1,d1
+                    {
+                        r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        let v = int_add(r.get(0x4, 4), 0x1u64, 4);
+                        r.set(0x4, 4, v);
+                    }
+                }
+                if entered <= 0xdc {
+                    insn_start(bus, r, img)?;
+                    // h0+$dc rts
+                    {
+                        bus.sync(r);
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
+                }
+                pc = (0, 0xde);
+            }
+            k => {
+                let res = enter(k, r, bus, img);
+                r.depth -= 1;
+                return res;
+            }
+        }
+    }
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+#[inline]
+pub fn h0_e0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    if let Some(f) = bus.mounted((0, 0xe0)) {
+        return f(r, bus, img);
+    }
+    h0_e0_from((0, 0xe0), r, bus, img)
+}
+
+#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
+pub fn h0_e0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    fn_entry(r)?;
+    let mut pc: (u32, u32) = start;
+    'b: loop {
+        block_start(bus, r, img)?;
+        match pc {
+            (0, 0xe0) | (0, 0xe4) | (0, 0xec) => {
+                let entered = pc.1;
+                if entered <= 0xe0 {
+                    // h0+$e0 move.l d1,($104).w
+                    {
+                        bus.sync(r);
+                        let v = r.get(0x4, 4);
+                        store(bus, img, 0x104u64 as u32, 4, v)?;
+                    }
+                }
+                if entered <= 0xe4 {
+                    insn_start(bus, r, img)?;
+                    // h0+$e4 move.w #$20,($dff09c).l
+                    {
+                        bus.sync(r);
+                        let v = 0x20u64;
+                        store(bus, img, 0xdff09cu64 as u32, 2, v)?;
+                    }
+                }
+                if entered <= 0xec {
+                    insn_start(bus, r, img)?;
+                    // h0+$ec rte
+                    {
+                        r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) });
+                        bus.sync(r);
+                        let mut u_fff000: u64 = 0;
+                        let v = load(bus, r.get(0x3c, 4) as u32, 2);
+                        u_fff000 = v & 0xffff;
+                        let v = int_add(r.get(0x3c, 4), 0x2u64, 4);
+                        r.set(0x3c, 4, v);
+                        let v = load(bus, r.get(0x3c, 4) as u32, 4);
+                        r.set(0x50, 4, v);
+                        let v = int_add(r.get(0x3c, 4), 0x4u64, 4);
+                        r.set(0x3c, 4, v);
+                        pcode_rt::ops::sr_set(r, u_fff000);
+                        let v = r.get(0x50, 4);
+                        r.set(PC, 4, v);
+                        r.depth -= 1;
+                        return Ok(());
+                    }
+                }
+                pc = (0, 0xee);
             }
             k => {
                 let res = enter(k, r, bus, img);

@@ -1,7 +1,7 @@
 // Generated from nested_call.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -103,6 +103,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 move.l d2,d3
                     {
                         let v = r.get(0x8, 4);
@@ -110,6 +111,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x6 {
+                    insn_start(bus, r, img)?;
                     // h0+$6 rts
                     {
                         bus.sync(r);
@@ -172,6 +174,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x12 {
+                    insn_start(bus, r, img)?;
                     // h0+$12 addq.l #1,d2
                     {
                         let v = int_add(r.get(0x8, 4), 0x1u64, 4);
@@ -179,6 +182,7 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x14 {
+                    insn_start(bus, r, img)?;
                     // h0+$14 rts
                     {
                         bus.sync(r);
@@ -229,6 +233,7 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x22 {
+                    insn_start(bus, r, img)?;
                     // h0+$22 rts
                     {
                         bus.sync(r);

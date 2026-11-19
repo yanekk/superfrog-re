@@ -1,7 +1,7 @@
 // Generated from os_call.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -94,6 +94,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 lea (h1+$0).l,a1
                     {
                         let v = (img.h(1, 0x0) as u64);
@@ -101,6 +102,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xa {
+                    insn_start(bus, r, img)?;
                     // h0+$a jsr (-408,a6)
                     {
                         bus.sync(r);
@@ -130,6 +132,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xe {
+                    insn_start(bus, r, img)?;
                     // h0+$e movea.l d0,a5
                     {
                         let v = r.get(0x0, 4);
@@ -137,6 +140,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x10 {
+                    insn_start(bus, r, img)?;
                     // h0+$10 move.l #h1+$10,d1
                     {
                         let v = (img.h(1, 0x10) as u64);
@@ -144,6 +148,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x16 {
+                    insn_start(bus, r, img)?;
                     // h0+$16 move.l #$3ed,d2
                     {
                         let v = 0x3edu64;
@@ -151,6 +156,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x1c {
+                    insn_start(bus, r, img)?;
                     // h0+$1c jsr (-30,a5)
                     {
                         bus.sync(r);
@@ -180,6 +186,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x20 {
+                    insn_start(bus, r, img)?;
                     // h0+$20 move.l d0,d4
                     {
                         let v = r.get(0x0, 4);
@@ -187,6 +194,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x22 {
+                    insn_start(bus, r, img)?;
                     // h0+$22 move.l d0,d1
                     {
                         let v = r.get(0x0, 4);
@@ -194,6 +202,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x24 {
+                    insn_start(bus, r, img)?;
                     // h0+$24 move.l #h1+$20,d2
                     {
                         let v = (img.h(1, 0x20) as u64);
@@ -201,6 +210,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x2a {
+                    insn_start(bus, r, img)?;
                     // h0+$2a move.l #$60,d3
                     {
                         let v = 0x60u64;
@@ -208,6 +218,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x30 {
+                    insn_start(bus, r, img)?;
                     // h0+$30 jsr (-42,a5)
                     {
                         bus.sync(r);
@@ -237,6 +248,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x34 {
+                    insn_start(bus, r, img)?;
                     // h0+$34 move.l d0,d5
                     {
                         let v = r.get(0x0, 4);
@@ -244,6 +256,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x36 {
+                    insn_start(bus, r, img)?;
                     // h0+$36 move.l d4,d1
                     {
                         let v = r.get(0x10, 4);
@@ -251,6 +264,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x38 {
+                    insn_start(bus, r, img)?;
                     // h0+$38 jsr (-36,a5)
                     {
                         bus.sync(r);
@@ -280,6 +294,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x3c {
+                    insn_start(bus, r, img)?;
                     // h0+$3c rts
                     {
                         bus.sync(r);

@@ -24,7 +24,8 @@ The generated code, per call target, one function: its basic blocks are the arms
 the block address inside a loop. Each function counts itself into `Regs::depth` on entry and out on
 return (`DEPTH_CAP`); each block starts with `block_start`, which counts it into `Regs::steps`, one
 count for the whole run (`STEP_CAP_GLOBAL`), and calls the bus's `poll`, where a machine takes an
-interrupt (translator T14). An address that is no
+interrupt (translator T14); every later instruction of the block starts with `insn_start`, the
+bus's `insn`, so an interrupt is taken at the instruction boundary it falls on (translator T50). An address that is no
 block of the function falls to the last arm, which enters the translated function there (a jump
 into another routine's entry runs it; its return is checked by our caller) or stops with
 `Untranslated`. A computed call to an address outside every hunk goes to the bus's `call_outside`,
@@ -605,6 +606,10 @@ class Emit:
                     lines += ['                ' + x for x in body]
                 else:
                     lines += [f'                if entered <= {hex_lit(a[1])} {{']
+                    # A 68000 takes an interrupt between any two instructions; the block's first
+                    # is preceded by `block_start`'s poll (translator T50).
+                    if i > 0:
+                        lines.append('                    insn_start(bus, r, img)?;')
                     lines += ['                    ' + x for x in body] + ['                }']
             last = run[-1]
             lines.append(f'                pc = {key((last[0], last[1] + self.insns[last]["len"]))};')
@@ -647,7 +652,7 @@ def stats_of(funcs, insns):
 
 
 IMPORTS = ['#[allow(unused_imports)]',
-           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};']
+           'use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};']
 
 
 def head(export, funcs, source_name, path=lambda e: fn_name(e)):
