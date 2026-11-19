@@ -3,6 +3,7 @@
 //! ```text
 //! fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N]
 //!        [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1]
+//!        [--stop-after N]
 //! ```
 
 use std::ffi::OsString;
@@ -12,7 +13,8 @@ use std::path::PathBuf;
 pub const SCRIPT_TIMEOUT_S: u64 = 120;
 
 pub const USAGE: &str = "usage: fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] \
-[--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1]";
+[--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] \
+[--stop-after N]";
 
 /// Which engine plays (translator DESIGN §2.10).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -52,6 +54,9 @@ pub struct Args {
     /// `--level 1`: start at level 1's first frame, the translated program run headless through
     /// the title with Start pressed. The hand engine always starts there.
     pub level_1: bool,
+    /// `--stop-after N`, a test's seatbelt-style hook (translator T39): the translated program
+    /// stops at step N as if it had reached a stop, so the app's stop path runs without a defect.
+    pub stop_after: Option<u64>,
 }
 
 impl Args {
@@ -99,6 +104,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                     ));
                 }
             },
+            "--stop-after" => a.stop_after = Some(number(&name, value("a number")?)?),
             "--max-frames" => a.max_frames = Some(number(&name, value("a number")?)?),
             "--timeout" => a.timeout_s = Some(number(&name, value("a number of seconds")?)?),
             "--scale" => {
@@ -117,6 +123,14 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
         return Err(format!(
             "--capture-hashes needs --capture DIR to write in\n{USAGE}"
         ));
+    }
+    if a.stop_after.is_some() && a.engine == EngineChoice::Hand {
+        return Err(format!(
+            "--stop-after: only the translated program stops; drop --engine hand\n{USAGE}"
+        ));
+    }
+    if a.stop_after == Some(0) {
+        return Err(format!("--stop-after 0: the first step is 1\n{USAGE}"));
     }
     // A scripted run always ends: the watchdog is on unless it names its own limit.
     if a.script.is_some() && a.timeout_s.is_none() {
@@ -218,8 +232,18 @@ mod tests {
             EngineChoice::Translated
         );
         assert!(p(&["--level", "1"]).unwrap().level_1);
+        assert_eq!(p(&["--stop-after", "120"]).unwrap().stop_after, Some(120));
+        assert_eq!(p(&[]).unwrap().stop_after, None);
         assert!(p(&["--engine", "hand", "--level", "1"]).unwrap().level_1);
-        for bad in [&["--engine", "oracle"][..], &["--engine"], &["--level", "2"], &["--level"]] {
+        for bad in [
+            &["--engine", "oracle"][..],
+            &["--engine"],
+            &["--level", "2"],
+            &["--level"],
+            &["--stop-after", "0"],
+            &["--stop-after", "x"],
+            &["--engine", "hand", "--stop-after", "5"],
+        ] {
             let e = p(bad).unwrap_err();
             assert!(e.contains(USAGE), "{bad:?}: {e}");
         }

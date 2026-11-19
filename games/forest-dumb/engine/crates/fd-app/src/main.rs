@@ -16,6 +16,12 @@
 //! recorded until Stop Recording saves it as a bug zip (`recorder.rs`, DESIGN §2.8); while it runs
 //! the recording bar sits under the picture, the window that much taller.
 //!
+//! On the translated program a recording of the play from where it started (power-on, `--level
+//! 1` or the last Start Level…) always runs unseen. When the program stops (translator DESIGN
+//! §2.4, §2.10) the picture freezes, a band over it names the stop (`stop.rs`), and that recording
+//! is saved to the bugs folder at once, with the stop in its header; the app goes on ticking frozen,
+//! so Esc, ⌘Q and the menus still work. `--stop-after N` raises a test stop at step N.
+//!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
 //! inputs and each frame's state hash (`fd_app::HASHES`), without the frames' pictures under
 //! `--capture-hashes`; `--max-frames` and `--timeout` bound a
@@ -30,6 +36,7 @@ mod menu;
 mod recorder;
 mod script;
 mod settings;
+mod stop;
 mod translated;
 
 use std::io::Write as _;
@@ -45,7 +52,10 @@ use amiga_app::pacing::{Pacer, Presenter};
 use amiga_app::pad::{self, PadSource};
 use amiga_app::recording_bar::{BAR_HEIGHT, RecordingBar, elapsed};
 use amiga_app::video::Video;
-use fd_core::recording::{LevelId, recorder as start_recording};
+use fd_core::recording::{
+    EngineKind, LevelId, StartPoint, recorder as start_recording, recorder_from, stop_text,
+    test_stop,
+};
 use fd_core::{Event as GameEvent, Game, Start};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
@@ -62,11 +72,6 @@ use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
 use crate::translated::Translated;
-
-/// Start Level… with the recorder ticked, under the translated program (owner, T37): recording a
-/// translated run is T39's.
-const NO_TRANSLATED_RECORDING: &str =
-    "Recording a translated run is not available yet; starting without it.";
 
 /// The wall clock's rate in host samples: the app is silent (DESIGN §2.3), so nothing else paces it.
 const RATE: u32 = 48_000;
@@ -259,6 +264,16 @@ struct Run {
     recorder: Recorder,
     /// The recording bar, once a recording has first shown it; whether it shows is `video.bar`.
     bar: Option<RecordingBar>,
+    /// The translated program's play from where it started, always on, saved when it stops
+    /// (translator T39); off on the hand engine, which never stops.
+    trail: Recorder,
+    /// The stop band's lines once the translated program has stopped: the picture is frozen.
+    stopped: Option<Vec<String>>,
+}
+
+/// The translated program's recording from `start`, by this build.
+fn translated_recorder(start: StartPoint) -> Recorder {
+    recorder_from(start, EngineKind::Translated, LevelId::W1_1, fd_tools::ENGINE_BUILD)
 }
 
 /// The window's inner size at the scale: `N(n)` is n times the picture, `Auto` twice.
@@ -392,6 +407,14 @@ impl App {
             picture: size,
             recorder: Recorder::Off,
             bar: None,
+            trail: match self.args.engine {
+                EngineChoice::Hand => Recorder::Off,
+                EngineChoice::Translated if self.args.level_1 => {
+                    translated_recorder(StartPoint::Level1)
+                }
+                EngineChoice::Translated => translated_recorder(StartPoint::PowerOn),
+            },
+            stopped: None,
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
@@ -490,23 +513,21 @@ impl App {
         let run = self.run.as_mut().expect("running");
         // The one level a recording names today (`LevelId`), started as the app starts it.
         let LevelId::W1_1 = level;
-        let mut record = record;
         match &mut run.engine {
             Engine::Hand(g) => *g = Game::new(g.data().clone(), Start::Level1),
-            // As `--level 1` starts it (owner, T37): one start path. No recorder yet (T39).
+            // As `--level 1` starts it (owner, T37): one start path.
             Engine::Translated(_) => {
-                if record {
-                    eprintln!("fd-app: {NO_TRANSLATED_RECORDING}");
-                    self.ui.notice(NO_TRANSLATED_RECORDING);
-                    record = false;
-                }
                 let hashes = run.capture.is_some();
                 let made = translated(&run.disks, true, hashes);
                 // The notice and the run through the title held the main thread for a second or
                 // more: play carries on from now, not in a burst catching up on it.
                 run.pacer.skip_to(run.clock.samples());
                 match made {
-                    Ok(t) => run.engine = Engine::Translated(t),
+                    Ok(t) => {
+                        run.engine = Engine::Translated(t);
+                        run.trail = translated_recorder(StartPoint::Level1);
+                        run.stopped = None;
+                    }
                     Err(e) => {
                         eprintln!("fd-app: {e}");
                         return;
@@ -514,9 +535,10 @@ impl App {
                 }
             }
         }
-        run.recorder = match record {
-            true => start_recording(level, fd_tools::ENGINE_BUILD),
-            false => Recorder::Off,
+        run.recorder = match (record, &run.engine) {
+            (false, _) => Recorder::Off,
+            (true, Engine::Hand(_)) => start_recording(level, fd_tools::ENGINE_BUILD),
+            (true, Engine::Translated(_)) => translated_recorder(StartPoint::Level1),
         };
         // The level's first frame at once: the picture a Stop before any step saves.
         let (size, rgba) = run.engine.frame();
@@ -544,17 +566,17 @@ impl App {
     /// zip's name. A write that fails says so and the window stays open, so the note is not lost.
     fn save_recording(&mut self) {
         let run = self.run.as_mut().expect("running");
-        // Only the hand engine records (T39 brings the translated program's).
-        let Engine::Hand(game) = &run.engine else {
-            return;
+        let at = match &run.engine {
+            Engine::Hand(game) => Some(game.location()),
+            Engine::Translated(t) => t.frame().place,
         };
-        let at = game.location();
         let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
             return;
         };
+        let at = at.map_or_else(|| "the title".to_string(), |l| l.to_string());
         let ((w, h), rgba) = run.engine.frame();
         let shot = amiga_app::capture::png(w, h, &rgba);
-        let path = recorder::zip_name(&self.bugs_dir, rec.level, recorder::local_now());
+        let path = recorder::zip_name(&self.bugs_dir, recorder::zip_start(&rec), recorder::local_now());
         let name = path
             .file_name()
             .unwrap_or_default()
@@ -704,17 +726,29 @@ impl App {
         let run = self.run.as_mut().expect("running");
         run.steps = n;
         let input = run.input.frame();
+        // Stopped, the game is frozen: the app ticks on (its script, its capture, a quit), and
+        // nothing is stepped or recorded.
+        if run.stopped.is_some() {
+            return self.stepped(event_loop, n, input);
+        }
         run.recorder.step(input);
+        run.trail.step(input);
+        let stop_after = self.args.stop_after;
         let game = match &mut run.engine {
             Engine::Hand(g) => g,
             Engine::Translated(t) => {
-                let (was_level_1, was_stopped) = (t.frame().level_1, t.frame().stop.is_some());
-                let f = t.step(input);
+                let was_level_1 = t.frame().level_1;
+                t.step(input);
+                if stop_after == Some(n) {
+                    t.raise(test_stop(n));
+                }
+                let f = t.frame();
                 if f.level_1 && !was_level_1 {
                     eprintln!("fd-app: level 1 begins at step {n}");
                 }
-                if let (Some(s), false) = (&f.stop, was_stopped) {
+                if let Some(s) = f.stop.clone() {
                     eprintln!("fd-app: the translated program stopped at step {n}: {s}");
+                    self.on_stop(&s);
                 }
                 return self.stepped(event_loop, n, input);
             }
@@ -745,11 +779,62 @@ impl App {
         self.stepped(event_loop, n, input);
     }
 
+    /// The translated program has stopped with `why` on the frame just stepped: the recording of
+    /// its play saved now, with the stop, the frame without the band as its screenshot; any
+    /// recording the owner started ends in it (the same play from the same start); the band set.
+    fn on_stop(&mut self, why: &str) {
+        let run = self.run.as_mut().expect("running");
+        let Engine::Translated(t) = &run.engine else {
+            return;
+        };
+        let place = t.frame().place;
+        if run.recorder.is_recording() {
+            run.recorder = Recorder::Off;
+            eprintln!("fd-app: the recording running ends in the stop's");
+        }
+        let saved = match std::mem::take(&mut run.trail).finish(place, String::new()) {
+            None => "No bug recording was running.".to_string(),
+            Some(mut rec) => {
+                rec.stop = Some(stop_text(why));
+                let ((w, h), rgba) = run.engine.frame();
+                let shot = amiga_app::capture::png(w, h, &rgba);
+                let path = recorder::zip_name(
+                    &self.bugs_dir,
+                    recorder::zip_start(&rec),
+                    recorder::local_now(),
+                );
+                let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                match std::fs::create_dir_all(&self.bugs_dir)
+                    .and_then(|()| recorder::write_zip(&path, &rec, &shot))
+                {
+                    Ok(()) => {
+                        eprintln!(
+                            "fd-app: stop recording saved to {} ({} frames from {})",
+                            path.display(),
+                            rec.inputs.len(),
+                            rec.start.name()
+                        );
+                        format!("Bug recording saved as {name}")
+                    }
+                    Err(e) => {
+                        eprintln!("fd-app: the stop recording could not be saved as {}: {e}", path.display());
+                        format!("The bug recording could not be saved: {e}")
+                    }
+                }
+            }
+        };
+        run.stopped = Some(stop::lines(why, &saved));
+        self.show_menu();
+    }
+
     /// After step `n` on `input`: the capture, the picture shown, the recorder's limit, the frame
     /// cap.
     fn stepped(&mut self, event_loop: &ActiveEventLoop, n: u64, input: amiga_input::FrameInput) {
         let run = self.run.as_mut().expect("running");
-        let (size, rgba) = run.engine.frame();
+        let (size, mut rgba) = run.engine.frame();
+        if let Some(lines) = &run.stopped {
+            stop::draw(&mut rgba, size, lines);
+        }
         if let Some(c) = &mut run.capture {
             c.clock(n, run.clock.samples());
             c.input(n, input);
