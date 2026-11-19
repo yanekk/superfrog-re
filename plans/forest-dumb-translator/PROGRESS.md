@@ -68,9 +68,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
-| T54 | main-loop-spin-slot-exact | T50; blocks T42 | 🔍 | Bus and interrupts to the oracle's slot: VPOSR read-ahead, Paula's IPL pipe, interrupt bus order, copper writes and next frame's slots on the bus, `cycles::lead`; spin readings in tests_dma. `History::byte` read a running blit's unwritten words as written; fixed, one test. Both routes pass; other cases pass but power-on-level-1, unchanged; gate 89/100. No deviation. |
+| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | Review clean, no fix commit. Reran both routes translated (pass to level end), 5 other cases, gate 89/100 with every pin equal; four mutations caught; vAmiga VHPOSR, IPL pipe, Moira index timing read in source. Other 35 cases `read-only`. Open: chip-raised IPL delay (FINDINGS). |
 
-**Review queue:** T54
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
