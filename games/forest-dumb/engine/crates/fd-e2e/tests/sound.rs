@@ -55,6 +55,29 @@ fn headless(inputs: Vec<FrameInput>) -> Vec<Heard> {
                     heard.len() + 1,
                     out.stop
                 );
+                // `paula_beam` places each write in the frame for the mixer; both sides of the
+                // comparisons here share it, so it is checked against the cycle count the machine
+                // stamped the write with: two CPU cycles a colour clock, 227 a line, from one start.
+                let start = |&(at, _, _): &(u64, u16, u16), &(v, h): &(u16, u16)| {
+                    assert!(
+                        v < 313 && h < 227,
+                        "frame {}: beam ({v}, {h})",
+                        heard.len() + 1
+                    );
+                    at as i64 - 2 * (v as i64 * 227 + h as i64)
+                };
+                let starts: Vec<i64> = out
+                    .paula
+                    .iter()
+                    .zip(&out.paula_beam)
+                    .map(|(w, b)| start(w, b))
+                    .collect();
+                assert!(
+                    out.paula.len() == out.paula_beam.len()
+                        && starts.windows(2).all(|s| s[0] == s[1]),
+                    "frame {}: Paula writes' beam positions disagree with their cycles",
+                    heard.len() + 1
+                );
                 let mut samples = Vec::new();
                 sound.frame_out(out, &mut samples);
                 heard.push(Heard {
