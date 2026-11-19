@@ -208,8 +208,8 @@ m.raise(5, at);                       // a device sets INTREQ bit 5 (VERTB) at c
   taken at once, and a handler's own blocks poll too, so a higher level nests inside a lower one.
   Every instruction after a block's first calls `Bus::insn`, which polls only when `quiet(r)` is
   false: past `irq_at` (the next copper write, a raised request, the keyboard's next byte, the
-  frame's end; 0 while an interrupting blit runs; set by `poll_time`, cleared by any CPU access to
-  a chip or CIA and by `set_input`) or with a level pending above SR's mask. A host wrapping the
+  frame's end; 0 while an interrupting blit runs; set by `poll_time`, cleared by any CPU write to
+  a chip or CIA, by one to a chip RAM word the copper has yet to read, and by `set_input`) or with a level pending above SR's mask. A host wrapping the
   machine does the same with its own `poll`. Block starts only took line 233's interrupt after
   `h0_6852`'s creature start, a pass early (DESIGN §2.8, T50); the check costs about 7% of a case.
 - **A host that wraps the machine** (translator T28, `fd-translated`) runs the same steps itself so

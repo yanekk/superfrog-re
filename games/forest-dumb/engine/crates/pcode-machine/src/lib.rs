@@ -203,7 +203,8 @@ pub struct Machine {
     /// No interrupt can become due before this cycle count unless the CPU changes INTENA, INTREQ,
     /// SR or a chip first ([`Bus::insn`]'s cheap test, translator T50): the next copper write, a
     /// raised request, the keyboard's next byte, the frame's end; 0 while a blit that may
-    /// interrupt runs. Set by `poll_time`, cleared by every CPU access to a chip.
+    /// interrupt runs. Set by `poll_time`, cleared by every CPU write to a chip and by one to a
+    /// word of chip RAM the copper has yet to read.
     irq_at: u64,
     /// The translated program's `entry`, where `poll` finds a vector's handler.
     entry: Option<Entry>,
@@ -932,6 +933,11 @@ impl Machine {
                 if old != v {
                     self.journal.record(self.now, i as u32, old);
                     self.watch.written(i as u32, self.now);
+                    // A word the copper has yet to read: its re-run may write sooner than
+                    // `arm`'s bound, an INTREQ write among them.
+                    if self.watch.dirty {
+                        self.irq_at = 0;
+                    }
                     self.chip[i] = v;
                 }
             }

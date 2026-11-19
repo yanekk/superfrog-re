@@ -748,3 +748,58 @@ fn a_blits_words_are_seen_from_the_slot_the_bus_writes_each() {
         assert_eq!(w[1] - w[0], 4, "a word every second slot: {lands:?}");
     }
 }
+
+/// `Machine::quiet`'s bound is the copper's next write as its list stood; a CPU write to a word
+/// the copper has yet to read can bring an INTREQ write before it (translator T50 review).
+#[test]
+fn a_copper_list_rewritten_ahead_of_the_beam_ends_the_quiet() {
+    use crate::irq::{INTENA, INTREQ};
+    // WAIT line 100, WAIT line 200, MOVE INTREQ set COPER, end.
+    let list = [0x6401, 0xFFFE, 0xC801, 0xFFFE, INTREQ, 0x8010, 0xFFFF, 0xFFFE];
+    let mut m = machine(DMAEN | COPEN, 0x400, &[(0x400, &list)]);
+    put(&mut m, INTENA, 0xC010);
+    let mut r = Regs::new();
+    r.tick(beam::offset(50, 0) as u32);
+    m.poll(&mut r, &img()).unwrap();
+    // At line 50 the CPU moves the second WAIT, not yet fetched, up to line 120.
+    m.ww(0x404, 0x7801);
+    r.tick((beam::offset(150, 0) - beam::offset(50, 0)) as u32);
+    assert!(!m.quiet(&r), "COPER is due from line 120");
+    m.poll_time(&mut r).unwrap();
+    assert_eq!(m.due(&r), Some(3));
+}
+
+/// A CPU write to a chip register can bring an interrupt before `arm`'s bound with nothing yet
+/// pending: here a blit started with BLIT enabled, its end due a few slots on (translator T50 review).
+#[test]
+fn a_blit_the_cpu_starts_ends_the_quiet() {
+    use crate::irq::INTENA;
+    let mut m = machine(DMAEN | BLTEN, 0, &[]);
+    put(&mut m, INTENA, 0xC040);
+    let mut r = Regs::new();
+    r.tick(10);
+    m.poll(&mut r, &img()).unwrap();
+    put(&mut m, blitter::BLTCON0, 0x0100);
+    put(&mut m, blitter::BLTSIZE, 0x0041);
+    r.tick(190);
+    assert!(!m.quiet(&r), "the blit's end is due");
+    m.poll_time(&mut r).unwrap();
+    assert_eq!(m.due(&r), Some(3));
+}
+
+/// A request left pending under SR's mask is taken once SR is lowered (`move to SR`, `rte`), with
+/// no chip touched since `arm` (translator T50 review).
+#[test]
+fn a_request_pending_under_the_mask_ends_the_quiet_when_sr_is_lowered() {
+    use crate::irq::INTENA;
+    let mut m = machine(0, 0, &[]);
+    put(&mut m, INTENA, 0xC020);
+    m.raise(5, 0);
+    let mut r = Regs::new();
+    r.set(pcode_rt::SR, 2, 0x2700);
+    r.tick(10);
+    m.poll(&mut r, &img()).unwrap();
+    assert!(m.quiet(&r), "masked");
+    r.set(pcode_rt::SR, 2, 0x2000);
+    assert!(!m.quiet(&r), "VERTB is pending above the mask");
+}
