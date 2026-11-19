@@ -532,6 +532,10 @@ impl FrameEngine for TranslatedEngine {
             .collect()
     }
 
+    fn pass_end_ram(&self) -> &[Vec<u8>] {
+        &self.pass_ends
+    }
+
     fn stopped(&self) -> Option<String> {
         self.stop.as_ref().map(|(_, s)| s.to_string())
     }

@@ -868,6 +868,9 @@ pub struct Verdict {
     pub tail_frames: u32,
     /// Of `memory_frames`, those whose differing bytes were each one frame on (owner, T51).
     pub memory_one_on: u32,
+    /// A case lined up by loads (T53): pass ends in play whose hunks were compared, paired by
+    /// `irq_count`, in place of those frames' ends.
+    pub memory_passes: u32,
     pub coverage: Coverage,
 }
 
@@ -901,6 +904,7 @@ impl Verdict {
             load_frames: 0,
             tail_frames: 0,
             memory_one_on: 0,
+            memory_passes: 0,
             coverage: Coverage::new(register),
         }
     }
@@ -1024,6 +1028,14 @@ impl fmt::Display for Verdict {
                     self.memory_one_on
                 )?;
             }
+        }
+        if self.memory_passes > 0 {
+            write!(
+                f,
+                "\n{} pass ends in play compared byte for byte in place of their frames' ends, paired \
+                 by irq_count",
+                self.memory_passes
+            )?;
         }
         if self.aligned_frames > 0 {
             write!(

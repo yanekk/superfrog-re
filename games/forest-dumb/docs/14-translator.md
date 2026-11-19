@@ -103,6 +103,15 @@ its entry. No other row is needed: `session_loop` already does what `next_world`
 `level_init` (`title_start_flag`, `h0+$500`, the camera, the score), so the world starts with a new
 game's score and lives where a world reached by play would carry them.
 
+**The reading, 2026-11-19 (T53): 5 of 5 pass.** In play (the program's handler in `$6C`, a pass
+ended on either side) memory is judged at each pass end, paired by `irq_count`, a pass allowed to end
+`frames::PASS_LAG` frames apart, and the other custom writes are cut into passes at each side's
+`PASS_END` write, a write allowed a pass early or late (`frames::custom_carried`): DESIGN §2.7's
+pass-end rule, as a level case has it, with no new allowance. Before play (the title, SCENA) memory
+stays judged at frame ends under T51's rules below; the picture and Paula's writes stay per frame.
+Each case compares 319 pass ends in play. T51's failures below were frame ends falling mid-pass in
+`game_frame`; world 3's `BLTCON0=$cfca` at 6183 is the engine's a pass before the original's.
+
 **The reading, 2026-11-19 (T51), on T49's machine: 2 of 5 pass** (`world-5-start`,
 `world-6-start`), under three rules of the owner's for cases lined up by loads (`frames.rs`):
 
@@ -121,8 +130,7 @@ game's score and lives where a world reached by play would carry them.
   about 1 100 ahead (6 or 7 frames a case).
 
 Paula's writes are equal in all five, and so is the picture; the custom writes in all but world 3.
-The three left fail in play, on a frame's end inside `game_frame`, carried by T53 (the pass-end
-rule of DESIGN §2.7 applied to play):
+The three left failed in play, on a frame's end inside `game_frame`; T53 judges play at pass ends:
 
 | World | Frames failing | First difference |
 |---|---|---|

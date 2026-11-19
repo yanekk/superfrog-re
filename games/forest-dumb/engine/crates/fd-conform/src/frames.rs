@@ -55,6 +55,13 @@
 //! taken it back too. The original's OS runs its own interrupts there, about 5% of the CPU (world
 //! 2's byte scan, measured with the OS's handlers stubbed: `system_off` 3 frames sooner), which
 //! the machine never runs (DESIGN §2.8).
+//!
+//! **In play, at the pass end** (owner's §2.7 rule, T53): once the program has the machine and
+//! either side has ended a pass, memory is judged at each pass end
+//! ([`FrameEngine::pass_end_ram`], the oracle's `watched_memory`) paired by `irq_count` as a level
+//! case's state is, and the other custom writes are cut into passes with [`custom_carried`]'s pass
+//! of slack. The picture and Paula's writes stay per frame; before play (the title, SCENA) memory
+//! stays judged at frame ends with T51's allowances.
 
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Range;
@@ -99,6 +106,11 @@ pub trait FrameEngine: Transplant {
     /// `vars`' values at each pass end of the last frame (each CPU write of [`PASS_END`]), in
     /// order; empty if no pass ended in it.
     fn pass_ends(&self, vars: &[&Var]) -> Vec<Vec<u32>>;
+    /// Chip RAM then slow RAM at each pass end of the last frame (each CPU write of [`PASS_END`]),
+    /// in order: memory in play for a case lined up by loads (T53). Empty if no pass ended in it.
+    fn pass_end_ram(&self) -> &[Vec<u8>] {
+        &[]
+    }
     /// How the engine stopped (translator DESIGN §2.4: `untranslated: hN+$off` and the rest), once
     /// it has; no frame runs after it.
     fn stopped(&self) -> Option<String>;
@@ -147,6 +159,15 @@ struct Judge<'a> {
     /// Each side's RAM at its previous frame's end, set by the runner before [`Judge::frame`];
     /// without it no difference is held: every byte must be equal.
     before: Option<(Vec<u8>, AmigaMemory)>,
+    /// In play (T53): memory is judged at pass ends ([`Judge::play`]), not at the frame's end.
+    in_play: bool,
+    /// Each side's RAM at its pass ends in play, not yet paired.
+    theirs_ends: PassEnds<AmigaMemory>,
+    ours_ends: PassEnds<Vec<u8>>,
+    /// The other custom writes in play, cut into passes at each side's own [`PASS_END`] write and
+    /// carried a pass ([`custom_carried`]), as a level case's are.
+    custom_passes: [Passes; 2],
+    carried: BTreeMap<(u16, u16), Carried>,
 }
 
 /// A frame's memory differences waiting for the next oracle frame (owner, T51): its pass and
@@ -218,6 +239,11 @@ impl<'a> Judge<'a> {
             ],
             held: None,
             before: None,
+            in_play: false,
+            theirs_ends: PassEnds::default(),
+            ours_ends: PassEnds::default(),
+            custom_passes: [Passes::default(), Passes::default()],
+            carried: BTreeMap::new(),
         })
     }
 
@@ -308,6 +334,8 @@ impl<'a> Judge<'a> {
             // writes (owner, T51): its differences pass if each byte is one frame on.
             if let Some(o) = self.settle(Some((frame, ram, &theirs)), verdict) {
                 differs.push((4, o));
+            } else if self.in_play {
+                // Judged at the pass ends instead (`Judge::play`).
             } else {
                 let d = memory_differences(ram, &theirs);
                 match (&self.before, d.first()) {
@@ -389,7 +417,16 @@ impl<'a> Judge<'a> {
                 differs.push((2, Outcome::PictureDiffers { pass, frame, why }));
             }
         }
-        if self.live[3] && writes {
+        if self.live[3] && writes && self.in_play {
+            let theirs: Vec<(u16, u16)> = am
+                .cpu_writes()
+                .iter()
+                .map(|w| (w.reg & 0x1FE, w.value))
+                .collect();
+            if let Some(o) = self.custom_in_play(frame, &theirs, engine.custom_writes(), verdict) {
+                differs.push((3, o));
+            }
+        } else if self.live[3] && writes {
             let theirs: Vec<(u16, u16)> = am
                 .cpu_writes()
                 .iter()
@@ -415,6 +452,114 @@ impl<'a> Judge<'a> {
             }
         }
         Ok(differs)
+    }
+
+    /// Whether memory is judged at pass ends from this compared frame on (owner, T30's rule in play,
+    /// T53): once either side has ended a pass with the program holding the machine (`owned`, the
+    /// level 3 vector its handler at the step's start and end on the original). The original's
+    /// `game_frame` returns after the frame's end on almost every moving frame (docs/09), so a frame's
+    /// end in play is mid-pass on both sides, at points a machine of another pace does not share.
+    /// Before play (the title, SCENA) a frame's end stays the judge. Leaving the machine (a load)
+    /// ends play and drops the pass ends not yet paired.
+    fn enter_play(&mut self, owned: bool, ended: bool) {
+        if !owned {
+            self.leave_play();
+        } else if ended && self.live[4] {
+            self.in_play = true;
+        }
+    }
+
+    fn leave_play(&mut self) {
+        self.in_play = false;
+        self.theirs_ends = PassEnds::default();
+        self.ours_ends = PassEnds::default();
+        self.custom_passes = [Passes::default(), Passes::default()];
+        self.carried.clear();
+    }
+
+    /// Memory in play (T53): each side's RAM at its pass ends in this frame (`theirs` the
+    /// original's, the step's first only; `ours` the engine's), paired by `irq_count` as
+    /// [`run_frames_inputs`] pairs a level case's state, a pass allowed to end [`PASS_LAG`] frames
+    /// apart. The first pass whose hunks differ, or that ended too far apart, is returned.
+    fn play(
+        &mut self,
+        theirs: Option<AmigaMemory>,
+        ours: &[Vec<u8>],
+        frame: u32,
+        verdict: &mut Verdict,
+    ) -> Option<Outcome> {
+        if !self.in_play || !self.live[4] {
+            return None;
+        }
+        let irq = layout_var("irq_count").expect("irq_count in LAYOUT");
+        if let Some(m) = theirs {
+            let k = OracleMem(&m).value(irq);
+            self.theirs_ends.add(frame, k, m);
+        }
+        for ram in ours {
+            self.ours_ends.add(frame, ram_value(ram, irq), ram.clone());
+        }
+        while let Some((k, (at, theirs), (ours_at, ours))) =
+            pair_ends(&mut self.theirs_ends, &mut self.ours_ends, &mut verdict.unseen)
+        {
+            if let Some(o) = too_far(k, at, ours_at, &format!("memory at irq_count {k}")) {
+                return Some(o);
+            }
+            let d = memory_differences(&ours, &theirs);
+            if let Some(&(a, engine, original)) = d.first() {
+                return Some(Outcome::Differs {
+                    pass: k,
+                    frame: at,
+                    var: format!(
+                        "{} ({} bytes differ at the pass end, irq_count {k})",
+                        hunk_name(a),
+                        d.len()
+                    ),
+                    engine: engine as u32,
+                    oracle: original as u32,
+                });
+            }
+            verdict.memory_passes += 1;
+        }
+        ends_apart(&self.theirs_ends, &self.ours_ends, frame)
+    }
+
+    /// The other custom writes in play (T53): cut into passes at each side's [`PASS_END`] write,
+    /// paired in order, a pass allowed to end [`PASS_LAG`] frames apart and a write to fall a pass
+    /// early or late ([`custom_carried`]), as [`run_frames_inputs`] judges a level case's.
+    fn custom_in_play(
+        &mut self,
+        frame: u32,
+        theirs: &[(u16, u16)],
+        ours: &[(u16, u16)],
+        verdict: &mut Verdict,
+    ) -> Option<Outcome> {
+        let p = &mut self.custom_passes;
+        p[0].add(frame, theirs);
+        p[1].add(frame, ours);
+        while let Some((n, at, ours_at, theirs, ours)) = Passes::pair(p) {
+            if let Some(o) = too_far(n, at, ours_at, "custom writes") {
+                return Some(o);
+            }
+            match custom_carried(&mut self.carried, &leftover_counted(&ours, &theirs), &theirs) {
+                Some(d) => {
+                    return Some(Outcome::CustomWritesDiffer {
+                        pass: n,
+                        frame: at,
+                        reg: d.reg,
+                        value: d.value,
+                        original: d.original,
+                        engine: d.engine,
+                    });
+                }
+                None => {
+                    verdict.custom_writes +=
+                        theirs.iter().filter(|(r, _)| !is_paula(*r)).count() as u32;
+                    verdict.custom_frames += 1;
+                }
+            }
+        }
+        Passes::apart(p, frame, "custom writes")
     }
 
     /// Record `differs`: each channel's first goes into `verdict.firsts` and the channel is no
@@ -513,7 +658,7 @@ pub fn run_frames_inputs(
     probe.extend(goal.iter().map(|(v, _)| *v));
     probe.push(irq);
     let at_irq = probe.len() - 1;
-    let mut ends = [PassEnds::default(), PassEnds::default()];
+    let (mut theirs_ends, mut ours_ends) = (PassEnds::default(), PassEnds::default());
     let mut start_irq = 0u32;
     let mut paula_passes = [Passes::default(), Passes::default()];
     let mut custom_passes = [Passes::default(), Passes::default()];
@@ -547,12 +692,15 @@ pub fn run_frames_inputs(
         // State, at each pass end both sides have reached.
         if let Some(mem) = am.watched_memory() {
             let m = OracleMem(&mem);
-            ends[0].add(frame, probe.iter().map(|v| m.value(v)).collect(), at_irq);
+            let values: Vec<u32> = probe.iter().map(|v| m.value(v)).collect();
+            theirs_ends.add(frame, values[at_irq], values);
         }
         for values in engine.pass_ends(&probe) {
-            ends[1].add(frame, values, at_irq);
+            ours_ends.add(frame, values[at_irq], values);
         }
-        while let Some((k, theirs, ours)) = PassEnds::pair(&mut ends, &mut verdict.unseen) {
+        while let Some((k, theirs, ours)) =
+            pair_ends(&mut theirs_ends, &mut ours_ends, &mut verdict.unseen)
+        {
             let pass = k.wrapping_sub(start_irq);
             let at = theirs.0;
             if live[0]
@@ -588,7 +736,7 @@ pub fn run_frames_inputs(
             }
         }
         if live[0]
-            && let Some(o) = PassEnds::apart(&ends, frame)
+            && let Some(o) = ends_apart(&theirs_ends, &ours_ends, frame)
         {
             differs.push((0, o));
         }
@@ -906,6 +1054,8 @@ pub fn run_entry_frames(
     if case.is_entry() {
         engine.start_line(line);
     }
+    // Memory in play is judged at pass ends (T53).
+    am.watch_write(Some(PASS_END));
     for s in &case.set {
         let w = s.when.as_ref().ok_or("a `set` lined up by loads has a `when`")?;
         let (bytes, addr) = (s.bytes(), s.address()?);
@@ -942,9 +1092,11 @@ pub fn run_entry_frames(
     let mut engine_tail = os_tail;
     // The original's loads returned, without the takings back `align` also counts.
     let mut load_count = 0u32;
-    // The step just run: its input, its capture, whether the program had the machine before it.
+    // The step just run: its input, its capture, its first pass end's RAM, whether the program
+    // had the machine before it.
     let mut input = inputs.at(am.frame() - 1);
     let mut capture = FrameCapture::default();
+    let mut orig_end: Option<AmigaMemory> = None;
     let mut owned_before = false;
     // Each side's RAM at its previous frame's end, for a memory difference one frame on (T51).
     let keep = case.compare.memory;
@@ -965,6 +1117,7 @@ pub fn run_entry_frames(
         owned_before = program_owns(&am);
         orig_before = keep.then(|| am.memory());
         (input, capture) = step(&mut am)?;
+        orig_end = am.watched_memory();
         verdict.coverage.add(opts.register, am.pc_hits());
     }
     // The first step's own hits: nothing loads before the entry.
@@ -1008,6 +1161,7 @@ pub fn run_entry_frames(
             // The engine has run past this step's input: its next frame takes the next step's.
             orig_before = keep.then(|| am.memory());
             (_, capture) = step(&mut am)?;
+            orig_end = am.watched_memory();
             verdict.coverage.add(opts.register, am.pc_hits());
             let (r, l) = count(&am);
             let (back, tail) = os_tail.frame(r, program_owns(&am));
@@ -1018,15 +1172,26 @@ pub fn run_entry_frames(
             break;
         }
         let frame = am.frame();
-        if align.compared() {
+        if !align.compared() {
+            judge.leave_play();
+        } else {
             verdict.aligned_frames += 1;
             let writes = owned_before && program_owns(&am);
             if !writes {
                 verdict.os_frames += 1;
             }
             judge.before = eng_before.zip(orig_before.take());
-            let differs =
+            let ended = orig_end.is_some() || !engine.pass_end_ram().is_empty();
+            judge.enter_play(writes, ended);
+            let mut differs =
                 judge.frame(&*engine, &am, &capture, pass, frame, writes, &mut verdict)?;
+            if !differs.iter().any(|(k, _)| *k == 4)
+                && let Some(o) =
+                    judge.play(orig_end.take(), engine.pass_end_ram(), frame, &mut verdict)
+            {
+                differs.push((4, o));
+                differs.sort_by_key(|(k, _)| *k);
+            }
             if judge.record(differs, &mut verdict) {
                 break;
             }
@@ -1038,6 +1203,7 @@ pub fn run_entry_frames(
         owned_before = program_owns(&am);
         orig_before = keep.then(|| am.memory());
         (input, capture) = step(&mut am)?;
+        orig_end = am.watched_memory();
         verdict.coverage.add(opts.register, am.pc_hits());
         let (r, l) = count(&am);
         let (back, tail) = os_tail.frame(r, program_owns(&am));
@@ -1223,6 +1389,17 @@ fn left_out(hunk: usize, off: u32) -> bool {
         .any(|&(h, o, n)| h as usize == hunk && (o..o + n).contains(&off))
 }
 
+/// `v`'s value in `ram` (chip RAM then slow RAM, as the original's is laid out), zero-extended.
+fn ram_value(ram: &[u8], v: &Var) -> u32 {
+    let at = HUNK_BASES[v.hunk as usize] + v.offset;
+    (0..v.width.bytes() as u32).fold(0, |acc, k| {
+        acc << 8 | byte_ours(ram, CHIP, at + k) as u32
+    })
+}
+
+/// The A500's chip RAM, which an engine's RAM holds before slow RAM.
+const CHIP: usize = 0x8_0000;
+
 /// `a` as `hN+$off`.
 fn hunk_name(a: u32) -> String {
     (0..HUNK_BASES.len())
@@ -1313,58 +1490,74 @@ pub fn custom_difference(ours: &[(u16, u16)], theirs: &[(u16, u16)]) -> Option<C
         })
 }
 
-/// One side's pass ends not yet paired: `irq_count` → (oracle frame, the probed values).
-#[derive(Default)]
-struct PassEnds {
-    open: BTreeMap<u32, (u32, Vec<u32>)>,
+/// One side's pass ends not yet paired: `irq_count` → (oracle frame, what was read there: the
+/// probed values, or the whole RAM).
+struct PassEnds<T> {
+    open: BTreeMap<u32, (u32, T)>,
     /// The highest `irq_count` this side has ended a pass at.
     last: Option<u32>,
     /// The original's side: the last pass paired, so a pass it never showed is counted unseen.
     paired: Option<u32>,
 }
 
-type Ended = (u32, Vec<u32>);
+impl<T> Default for PassEnds<T> {
+    fn default() -> Self {
+        PassEnds {
+            open: BTreeMap::new(),
+            last: None,
+            paired: None,
+        }
+    }
+}
 
-impl PassEnds {
-    fn add(&mut self, frame: u32, values: Vec<u32>, at_irq: usize) {
-        let k = values[at_irq];
+impl<T> PassEnds<T> {
+    /// The pass ended at `irq_count` `k`, in oracle frame `frame`, `read` there.
+    fn add(&mut self, frame: u32, k: u32, read: T) {
         self.last = Some(self.last.map_or(k, |l| l.max(k)));
-        self.open.entry(k).or_insert((frame, values));
+        self.open.entry(k).or_insert((frame, read));
     }
+}
 
-    /// The lowest pass both sides ended, (irq_count, the original's, the engine's). The oracle
-    /// shows a step's first pass end only (docs/09): a pass the engine ended that the original has
-    /// gone past unseen is dropped, and every pass the original skipped is counted in `unseen`.
-    fn pair(ends: &mut [PassEnds; 2], unseen: &mut u32) -> Option<(u32, Ended, Ended)> {
-        if let Some(o) = ends[0].last {
-            let [theirs, ours] = ends;
-            ours.open
-                .retain(|k, _| *k >= o || theirs.open.contains_key(k));
-        }
-        let k = *ends[0].open.keys().find(|k| ends[1].open.contains_key(k))?;
-        if let Some(p) = ends[0].paired {
-            *unseen += k.saturating_sub(p + 1);
-        }
-        ends[0].paired = Some(k);
-        Some((k, ends[0].open.remove(&k)?, ends[1].open.remove(&k)?))
+/// The lowest pass both sides ended, (irq_count, the original's, the engine's). The oracle shows a
+/// step's first pass end only (docs/09): a pass the engine ended that the original has gone past
+/// unseen is dropped, and every pass the original skipped is counted in `unseen`.
+#[allow(clippy::type_complexity)]
+fn pair_ends<A, B>(
+    theirs: &mut PassEnds<A>,
+    ours: &mut PassEnds<B>,
+    unseen: &mut u32,
+) -> Option<(u32, (u32, A), (u32, B))> {
+    if let Some(o) = theirs.last {
+        ours.open
+            .retain(|k, _| *k >= o || theirs.open.contains_key(k));
     }
+    let k = *theirs.open.keys().find(|k| ours.open.contains_key(k))?;
+    if let Some(p) = theirs.paired {
+        *unseen += k.saturating_sub(p + 1);
+    }
+    theirs.paired = Some(k);
+    Some((k, theirs.open.remove(&k)?, ours.open.remove(&k)?))
+}
 
-    /// A pass one side ended more than [`PASS_LAG`] frames before `frame` that the other has not.
-    fn apart(ends: &[PassEnds; 2], frame: u32) -> Option<Outcome> {
-        (0..2).find_map(|side| {
-            let (k, (at, _)) = ends[side].open.iter().next()?;
-            (frame > at + PASS_LAG).then(|| Outcome::PassEndsApart {
-                pass: *k,
-                frame: *at,
-                why: format!(
-                    "irq_count {k} ended at oracle frame {at} in the {}, not by frame {} in the {}",
-                    SIDE[side],
-                    at + PASS_LAG,
-                    SIDE[1 - side]
-                ),
-            })
+/// A pass one side ended more than [`PASS_LAG`] frames before `frame` that the other has not.
+fn ends_apart<A, B>(theirs: &PassEnds<A>, ours: &PassEnds<B>, frame: u32) -> Option<Outcome> {
+    let first = [
+        theirs.open.iter().next().map(|(k, (at, _))| (*k, *at)),
+        ours.open.iter().next().map(|(k, (at, _))| (*k, *at)),
+    ];
+    (0..2).find_map(|side| {
+        let (k, at) = first[side]?;
+        (frame > at + PASS_LAG).then(|| Outcome::PassEndsApart {
+            pass: k,
+            frame: at,
+            why: format!(
+                "irq_count {k} ended at oracle frame {at} in the {}, not by frame {} in the {}",
+                SIDE[side],
+                at + PASS_LAG,
+                SIDE[1 - side]
+            ),
         })
-    }
+    })
 }
 
 const SIDE: [&str; 2] = ["original", "engine"];
