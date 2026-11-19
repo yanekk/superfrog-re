@@ -15,7 +15,7 @@ workspace = "."
 "crates/amiga-oracle/src" = "smoke"
 "crates/amiga-oracle/tests/boot.rs" = "smoke"
 "crates/amiga-oracle/tests/collision.rs" = "smoke"
-# T49 (translator): DMA-contention readings, sixteen since T52, and an audio-slot contract check, each a boot to the insert-disk screen, about 5 s.
+# T49 (translator): DMA-contention readings, eighteen since T54, and an audio-slot contract check, each a boot to the insert-disk screen, about 5 s.
 "crates/amiga-oracle/tests/contention.rs" = "smoke"
 # watching_does_not_change_the_run (13 s, 3 000 frames on three machines) stays in full.
 "crates/amiga-oracle/tests/exec_counts.rs" = [

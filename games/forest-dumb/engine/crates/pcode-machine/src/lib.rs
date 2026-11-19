@@ -198,6 +198,12 @@ pub struct Machine {
     /// INTENA and INTREQ as Paula holds them (bit 15 never set).
     intena: u16,
     intreq: u16,
+    /// The level Paula's IPL lines carry, from each change on: (cycle count, level), oldest first,
+    /// the first the one the CPU last saw ([`Machine::seen_level`]).
+    ipl: Vec<(u64, u8)>,
+    /// Where the CPU last sampled the IPL lines: the start of the last bus access fitted
+    /// (`dma::Slots::accesses`), before any wait for the bus.
+    sampled_at: u64,
     /// Requests raised for a cycle count not yet reached: (INTREQ bit, at).
     raised: Vec<(u16, u64)>,
     /// No interrupt can become due before this cycle count unless the CPU changes INTENA, INTREQ,
@@ -266,6 +272,8 @@ impl Machine {
             os: os::Os::new(),
             intena: 0,
             intreq: 0,
+            ipl: vec![(0, 0)],
+            sampled_at: 0,
             raised: Vec::new(),
             irq_at: 0,
             entry: None,
@@ -368,6 +376,7 @@ impl Machine {
         m.dmacon = custom[custom::DMACONR as usize >> 1] & 0x07FF;
         m.intena = custom[irq::INTENAR as usize >> 1] & 0x7FFF;
         m.intreq = custom[irq::INTREQR as usize >> 1] & 0x7FFF;
+        m.ipl = vec![(0, irq::ipl(m.intena, m.intreq))];
         m.clx = custom[collide::CLXDAT as usize >> 1] & 0x7FFF;
         let (line, h) = beam::decode(custom[2], custom[3]);
         m.sync_beam(0, line, h);
@@ -454,15 +463,37 @@ impl Machine {
     /// Move into INTREQ the requests raised for a count up to now.
     fn settle(&mut self) {
         let now = self.now;
-        let mut due = 0;
+        let mut due: Vec<(u64, u16)> = Vec::new();
         self.raised.retain(|&(bit, at)| {
             let d = at <= now;
             if d {
-                due |= 1 << bit;
+                due.push((at, bit));
             }
             !d
         });
-        self.intreq |= due;
+        due.sort_unstable();
+        for (at, bit) in due {
+            self.intreq |= 1 << bit;
+            self.ipl_changed(at);
+        }
+    }
+
+    /// INTENA or INTREQ changed at cycle count `at`: the level Paula asks for from then on.
+    fn ipl_changed(&mut self, at: u64) {
+        let level = irq::ipl(self.intena, self.intreq);
+        let &(last_at, last) = self.ipl.last().expect("never empty");
+        if level != last {
+            self.ipl.push((at.max(last_at), level));
+        }
+    }
+
+    /// The level the CPU saw on its IPL lines when it last sampled them: Paula's level from
+    /// [`irq::IPL_DELAY`] cycles before. Earlier changes are dropped.
+    fn seen_level(&mut self) -> u8 {
+        let p = self.sampled_at;
+        let k = self.ipl.iter().rposition(|&(at, _)| at + irq::IPL_DELAY <= p).unwrap_or(0);
+        self.ipl.drain(..k);
+        self.ipl[0].1
     }
 
     /// Take a level `level` interrupt as the 68000 does: [`Machine::enter_interrupt`], the handler
@@ -475,17 +506,21 @@ impl Machine {
 
     /// The first half of taking a level `level` interrupt as the 68000 does: SR copied, S set, T
     /// cleared and the mask raised (A7 becomes the system stack if it was the user's), 44 cycles
-    /// counted, PC and the old SR pushed, and the handler the vector points at found. The host calls
-    /// it with its own bus and then [`Machine::leave_interrupt`]: a host wrapping the machine runs
-    /// the handler on its wrapper, so it sees the handler's blocks too (translator T28).
+    /// counted as the bus sees them ([`irq::IRQ_BUS`]), PC and the old SR pushed, and the handler
+    /// the vector points at found. The host calls it with its own bus and then
+    /// [`Machine::leave_interrupt`]: a host wrapping the machine runs the handler on its wrapper,
+    /// so it sees the handler's blocks too (translator T28).
     pub fn enter_interrupt(&mut self, level: u8, r: &mut Regs, img: &Image) -> Result<Taken, Stop> {
         let old = ops::sr_get(r) as u16;
         // The interrupted code's PC register is not the 68000's PC (generated code keeps that in
         // a local), but it holds a call's return address between `rts` and its check: keep it.
         let pc = r.get(PC, 4);
         ops::sr_set(r, irq::handler_sr(old, level) as u64);
-        r.tick(irq::IRQ_CYCLES);
-        r.off_bus(irq::IRQ_OFF_BUS);
+        for (cycles, off, lead) in irq::IRQ_BUS {
+            r.tick(cycles);
+            r.off_bus(off);
+            r.idle_first(lead);
+        }
         self.now = r.cycles();
         let sp = r.a(7).wrapping_sub(6);
         pcode_rt::store(self, img, sp.wrapping_add(2), 4, irq::IRQ_RETURN as u64)?;
@@ -548,6 +583,12 @@ impl Machine {
         if let Some(k) = self.cia_a.next_at() {
             at = at.min(k);
         }
+        // A level change still in Paula's IPL pipe: it may become due once through it.
+        if let Some(&(t, _)) = self.ipl.last() {
+            if self.ipl.len() > 1 && t + irq::IPL_DELAY > self.now {
+                at = at.min(t + irq::IPL_DELAY);
+            }
+        }
         // A blit's end is raised as the bus runs it (`contend`), so it has no time ahead.
         let blit_irq = irq::INTEN | blitter::INT_BLIT;
         if self.watch.dirty || (self.intena & blit_irq == blit_irq && self.blit_busy()) {
@@ -566,7 +607,8 @@ impl Machine {
     /// The interrupt level to take now under `r`'s SR, with every request due by now in INTREQ.
     pub fn due(&mut self, r: &Regs) -> Option<u8> {
         self.settle();
-        self.pending(ops::sr_get(r) as u16)
+        let seen = self.seen_level();
+        irq::above_mask(seen, ops::sr_get(r) as u16)
     }
 
     /// DMACON as its set/clear writes leave it.
@@ -716,7 +758,11 @@ impl Machine {
                     r.tick(late as u32);
                 }
             }
-            _ => self.dma_idle(c),
+            _ => {
+                self.dma_idle(c);
+                // A machine's first mark, or a new `Regs`: the CPU ran before it, sampling as it went.
+                self.sampled_at = c;
+            }
         }
         r.clear_trail();
         self.synced = (0, 0, 0, (0, false));
@@ -821,6 +867,10 @@ impl Machine {
             audio: &mut self.audio,
             chip: &self.chip,
             custom: &self.custom,
+            sampled_at: &mut self.sampled_at,
+            pending: self.copper.as_ref().map_or(&[], |c| c.pending()),
+            passed: 0,
+            next_copper: None,
         };
         f(&mut slots, &beam)
     }
@@ -854,6 +904,18 @@ impl Machine {
                 op: op.into(),
                 at: format!("cycle {}", self.now),
             });
+        }
+    }
+
+    /// The beam as a VPOSR or VHPOSR read gives it: [`beam::READ_AHEAD`] slots ahead of the
+    /// read's slot, except that in the advanced position's slots 0 and 1 the line is still the old
+    /// one (vAmiga `Agnus::peekVHPOSR`, `peekVPOSR`; T54).
+    fn read_beam(&self) -> (u16, u16) {
+        let (line, h) = self.beam(self.now + 2 * beam::READ_AHEAD);
+        if h <= 1 {
+            (self.beam(self.now).0, h)
+        } else {
+            (line, h)
         }
     }
 
@@ -969,9 +1031,9 @@ impl Machine {
             collide::CLXDAT if !routed => self.read_clxdat(),
             irq::INTENAR => self.intena,
             irq::INTREQR => self.intreq(),
-            custom::VPOSR => beam::vposr(self.beam(self.now).0, self.cfg.frame_lines),
+            custom::VPOSR => beam::vposr(self.read_beam().0, self.cfg.frame_lines),
             custom::VHPOSR => {
-                let (line, h) = self.beam(self.now);
+                let (line, h) = self.read_beam();
                 beam::vhposr(line, h)
             }
             _ => match self.route[reg as usize >> 1] {
@@ -1026,7 +1088,11 @@ impl Machine {
                     _ => {}
                 }
             }
-            irq::INTENA => self.intena = irq::set_clear(self.intena, v),
+            irq::INTENA => {
+                self.settle();
+                self.intena = irq::set_clear(self.intena, v);
+                self.ipl_changed(self.now);
+            }
             custom::ADKCON => {
                 let r = custom::ADKCONR as usize >> 1;
                 self.custom[r] = irq::set_clear(self.custom[r], v) & 0x7FFF;
@@ -1035,6 +1101,7 @@ impl Machine {
                 // A request raised before this write is cleared by it like any other.
                 self.settle();
                 self.intreq = irq::set_clear(self.intreq, v);
+                self.ipl_changed(self.now);
             }
             blitter::BLTSIZE => self.start_blit(),
             copper::COPJMP1 | copper::COPJMP2 if cpu => {

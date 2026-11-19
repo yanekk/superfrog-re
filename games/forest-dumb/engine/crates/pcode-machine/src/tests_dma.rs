@@ -31,6 +31,10 @@ type Body = &'static [(u32, u32, u32)];
 const MOVES: Body = &[(12, 0, 0); 8];
 /// Four `lsl.l #8,d4` (24, one bus cycle) and a `move.w (a1),(a2)`.
 const SHIFTS: Body = &[(24, 20, 0), (24, 20, 0), (24, 20, 0), (24, 20, 0), (12, 0, 0)];
+/// `main_loop`'s wait for the interrupt count (`h0+$252`..`$2aa`, T54) as the oracle's `SPIN` has
+/// it: `move.w abs.l,d4` 16, `andi.l #$1f,d4` 16 (4 after its accesses), `bne.w` taken 10 (2
+/// before), `tst.w abs.l` 16, `bne.w` not taken 12 (4 before), `bra.w` 10 (2 before).
+const SPIN: Body = &[(16, 0, 0), (16, 4, 0), (10, 2, 2), (16, 0, 0), (12, 4, 4), (10, 2, 2)];
 /// `lsl.l #8,d4` and `move.w (a1),(a2)` in turn, 30 times: 61 instructions with the `dbf`.
 const LONG: Body = &{
     let mut body = [(12, 0, 0); 60];
@@ -203,6 +207,12 @@ fn readings() -> Vec<(&'static str, Case)> {
             "long block, 5 planes",
             Case { count: 20, within: 14, ..case(5, LONG, (0x50, 17), 11898) },
         ),
+        // T54: the wait spin, 9 095 and 11 043 slots on the machine (the harness's reads are a
+        // slot or two off the oracle's, as in every reading here). In the game its slots were the
+        // oracle's before T54 too: what moved the interrupt was the raster wait before it, the IPL
+        // pipe and a BLTPRI blit's wait (plans/forest-dumb-translator/FINDINGS.md, 2026-11-19).
+        ("spin, 0 planes", Case { within: 3, ..case(0, SPIN, (0x50, 31), 9098) }),
+        ("spin, 5 planes", Case { within: 3, ..case(5, SPIN, (0x50, 17), 11044) }),
         // T52: the audio channel's slots, which a BLTPRI blit loses (15 slots more than without).
         (
             "blit ABCD BLTPRI, audio",
@@ -211,9 +221,9 @@ fn readings() -> Vec<(&'static str, Case)> {
     ]
 }
 
-/// Every reading within 6 slots of the oracle's (of 10 000 to 21 000; the long block 14): the block's accesses are
-/// timed per instruction, an instruction idling before its accesses (`dbf`) as it does, and the
-/// blit's start is placed at the write from the plain case's read.
+/// Every reading within 6 slots of the oracle's (of 9 000 to 21 000; the long block 14, the spin
+/// 3): the block's accesses are timed per instruction, an instruction idling before its accesses
+/// (`dbf`) as it does, and the blit's start is placed at the write from the plain case's read.
 #[test]
 fn a_cpu_loop_takes_on_the_machine_what_it_took_on_the_oracle() {
     for (name, c) in readings() {
@@ -280,7 +290,8 @@ fn a_busy_copper_takes_its_slots() {
 
 /// A read is timed at its own instruction, not at its block's start (`Bus::sync`, T49 review):
 /// after ten instructions of 12 cycles off memory, `move.w 6(a0),d1` (12, three bus cycles) reads
-/// VHPOSR in its second, 62 slots on, with nothing taking the bus.
+/// VHPOSR in its second, 62 slots on, with nothing taking the bus; the read gives the beam five
+/// slots on (T54).
 #[test]
 fn a_read_sees_the_beam_at_its_instruction() {
     let mut m = machine(0, DMAEN, (0x50, 10));
@@ -291,7 +302,7 @@ fn a_read_sees_the_beam_at_its_instruction() {
     }
     m.sync(&r);
     let (line, h) = beam::decode(m.rw(0xDF_F004), m.rw(0xDF_F006));
-    assert_eq!((line, h), (0x50, 10 + 62));
+    assert_eq!((line, h), (0x50, 10 + 62 + 5));
 }
 
 /// An instruction's leading idle cycles are spent before its accesses (`cycles::lead`, T49
@@ -313,5 +324,110 @@ fn leading_idle_cycles_come_before_the_access() {
     assert_eq!(end(2), 2 + 2 + 4);
     // Access first: it takes the free slot, the idle cycles overlap the fetch.
     assert_eq!(end(0), 4 + 2);
+}
+
+
+/// The CPU sees an interrupt request [`irq::IPL_DELAY`] cycles after it is made, at an
+/// instruction's last access (vAmiga's IPL pipe, Moira's `POLL_IPL`; T54): raised at cycle 100, an
+/// instruction whose last access starts at 104 has not seen it, one whose last access starts at
+/// 108 has.
+#[test]
+fn a_request_is_seen_at_the_first_last_access_through_the_ipl_pipe() {
+    let mut m = machine(0, DMAEN, (0x10, 0));
+    m.ww(0xDF_F09A, 0xC020);
+    m.raise(5, 100);
+    let mut r = Regs::new();
+    m.poll(&mut r, &img()).unwrap();
+    // 25 accesses, the last at 96: the request is made after it.
+    r.tick(100);
+    m.poll_time(&mut r).unwrap();
+    assert_eq!(m.due(&r), None);
+    // Accesses at 100 and 104: inside the pipe.
+    r.tick(8);
+    m.poll_time(&mut r).unwrap();
+    assert_eq!(m.due(&r), None, "sampled at 104");
+    r.tick(4);
+    m.poll_time(&mut r).unwrap();
+    assert_eq!(m.due(&r), Some(3), "sampled at 108");
+}
+
+/// The interrupt's 44 cycles in Moira's order (`irq::IRQ_BUS`): its last access, the second
+/// prefetch, starts at 40, after 2 idle; the oracle's bus owners at `main_loop`'s line-239
+/// interrupt showed its seven accesses at +3, +9, +11, +13, +15, +17 and +20 slots (T54).
+#[test]
+fn an_interrupts_bus_cycles_are_moiras() {
+    // From slot 20, clear of the refresh slots.
+    let mut m = machine(0, DMAEN, (0x10, 0));
+    let end = m.with_slots(|s, beam| s.cpu(40, &irq::IRQ_BUS, (0, false), beam));
+    assert_eq!(end, 40 + irq::IRQ_CYCLES as u64);
+    assert_eq!(m.sampled_at, 40 + 40);
+    let off: u32 = irq::IRQ_BUS.iter().map(|b| b.1).sum();
+    assert_eq!((irq::IRQ_CYCLES - off) / 4, 7, "seven accesses");
+}
+
+/// `n` instructions of 12 cycles, three bus accesses each, fitted in blocks of `per` (a poll after
+/// each block, and the host's `end_frame` once the count is past the frame's end): the count they
+/// end at.
+fn fitted(m: &mut Machine, n: usize, per: usize) -> u64 {
+    let mut r = Regs::new();
+    m.poll(&mut r, &img()).unwrap();
+    let insns = vec![(12, 0, 0); n];
+    for chunk in insns.chunks(per) {
+        block(m, &mut r, chunk);
+        if r.cycles() >= m.frame_end() {
+            m.end_frame();
+        }
+    }
+    r.cycles()
+}
+
+/// A machine at `at` running the copper list `list` from the frame's start, at `LIST`.
+fn with_list(planes: u16, dma: u16, at: (u16, u16), list: Option<&[u16]>) -> Machine {
+    const LIST: u32 = 0x7_D000;
+    let mut m = machine(planes, dma, at);
+    if let Some(list) = list {
+        for (k, w) in list.iter().enumerate() {
+            m.ww(LIST + 2 * k as u32, *w);
+        }
+        m.ww(0xDF_F080, (LIST >> 16) as u16);
+        m.ww(0xDF_F082, LIST as u16);
+        m.set_cycles(0);
+        m.copper_run(LIST, None);
+    }
+    m
+}
+
+/// Work fitted in one long block meets the copper's writes as its slots pass them, as when it is
+/// fitted an instruction at a time with each write delivered between (T54: a CPU waiting out a
+/// BLTPRI blit across the copper's BPLCON0 write at the display's top missed the bitplanes' slots).
+#[test]
+fn a_long_block_meets_the_coppers_display_writes_on_its_way() {
+    // WAIT for line $40, then five planes on.
+    let list: &[u16] = &[0x4001, 0xFFFE, 0x0100, 0x5200, 0xFFFF, 0xFFFE];
+    let run = |per, list: Option<&[u16]>| {
+        let dma = DMAEN | BPLEN | if list.is_some() { 0x0080 } else { 0 };
+        fitted(&mut with_list(0, dma, (0x3E, 0), list), 240, per)
+    };
+    let (long, short, plain) = (run(240, Some(list)), run(1, Some(list)), run(240, None));
+    assert_eq!(long, short);
+    assert!(long > plain + 200, "the planes from line $40 cost: {long} against {plain}");
+}
+
+/// Work fitted across the frame's end finds the next frame's copper there, as when the host has
+/// ended the frame between (T54: a CPU waiting out a blit at the vertical blank, the copper's
+/// restart moves taking line 0's slots).
+#[test]
+fn a_block_across_the_frames_end_meets_the_next_frames_copper() {
+    // Thirty colour moves from the restart, on line 0.
+    let mut list: Vec<u16> = (0..30).flat_map(|k| [0x0180, k]).collect();
+    list.extend([0xFFFF, 0xFFFE]);
+    let run = |per, list: Option<&[u16]>| {
+        let dma = DMAEN | if list.is_some() { 0x0080 } else { 0 };
+        fitted(&mut with_list(0, dma, (311, 100), list), 200, per)
+    };
+    let (long, short, plain) = (run(200, Some(&list[..])), run(1, Some(&list[..])), run(200, None));
+    assert_eq!(long, short);
+    // 12 cycles: after a refresh wait the CPU's accesses fall between the copper's fetches.
+    assert!(long > plain, "the moves cost: {long} against {plain}");
 }
 
