@@ -290,7 +290,7 @@ fn a_recording_runs_through_level_1_complete_and_the_restart_and_replays_alike()
     // pressed first after it was let go, in step 88, restarts.
     assert_eq!((ended, restarted), (Some(63), Some(88)));
     let rec = r
-        .finish(g.location(), "through level 1 complete".into())
+        .finish(Some(g.location()), "through level 1 complete".into())
         .expect("recording");
     assert_eq!(rec.inputs, inputs, "the recording ran on until Stop");
     let replay = || {

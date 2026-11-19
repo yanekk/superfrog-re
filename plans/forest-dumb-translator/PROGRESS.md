@@ -50,10 +50,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | later-world-cases | T32 | ✅ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
-| T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
-| T37 | app-translated | T18, T32, T36 | ⬜ | |
-| T38 | app-sound | T37 | ⬜ | |
-| T39 | app-stop | T37 | ⬜ | |
+| T36 | mount-level-1 | T30, T31, T35 | ✅ | |
+| T37 | app-translated | T18, T32, T36 | ✅ | |
+| T38 | app-sound | T37 | ✅ | |
+| T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
@@ -69,6 +69,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | Review clean, no fix commit. Reran both routes translated (pass to level end), 5 other cases, gate 89/100 with every pin equal; four mutations caught; vAmiga VHPOSR, IPL pipe, Moira index timing read in source. Other 35 cases `read-only`. Open: chip-raised IPL delay (FINDINGS). |
+| T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
+| T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

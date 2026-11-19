@@ -17,3 +17,5 @@ pcode-rt = { path = "../pcode-rt" }
 pcode-machine = { path = "../pcode-machine" }
 # Where the original's hunks are loaded (`HUNK_BASES`), which the generated code is resolved against.
 fd-core = { path = "../fd-core" }
+# The input type `fd_core::Game::game_frame_on` takes (the frame mount, T36).
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }

@@ -15,7 +15,9 @@
 //! that the program it is mounted into sees the same thing. A state on which the replaced routine
 //! stops is not judged and is counted, since there is nothing to hold the replacement to.
 
+use std::any::Any;
 use std::panic::{AssertUnwindSafe, catch_unwind};
+use std::sync::Arc;
 
 use amiga_oracle::RETURN_SENTINEL;
 use pcode_rt::{Image, Mounted, PC, Regs};
@@ -93,7 +95,9 @@ fn run(
 }
 
 /// Run `replaced` (the translated entry at `entry`; `None` when the tree has none, which fails every
-/// state) and `replacing` over `cases` states of `generator`, seeded by `name`.
+/// state) and `replacing` over `cases` states of `generator`, seeded by `name`, both with
+/// `mount_data` as what the bus hands a mounted routine beside memory (level 1's hand engine for
+/// the frame mount, T36).
 #[allow(clippy::too_many_arguments)]
 pub fn check(
     rig: &Rig,
@@ -104,6 +108,7 @@ pub fn check(
     replaced: Option<Entry>,
     replacing: Mounted,
     regs: RegsCompared,
+    mount_data: Option<Arc<dyn Any + Send + Sync>>,
 ) -> SeamReport {
     let base = rig.memory_for(generator);
     let sizes = rig.hunk_sizes();
@@ -121,6 +126,7 @@ pub fn check(
     for case in 0..cases {
         let s = (generator.case)(&mut g);
         let mut before = Mem::new(base.clone(), &s.pokes);
+        before.mount_data = mount_data.clone();
         before.beam.set(s.beam as u16);
         before.hw_reads = s.hw_reads.iter().copied().collect();
         // Entered as a call is: the return address pushed below the stack, a7 on it.

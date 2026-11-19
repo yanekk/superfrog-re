@@ -17,6 +17,7 @@ cargo run -p fd-conform -- run cases/first-case.toml   # one case, prints the ve
 cargo run -p fd-conform -- run cases/w1-idle.toml      # a level case, on fd-core's Game
 cargo run -p fd-conform -- run cases/w1-idle.toml --engine translated   # on the translated program
 cargo run -p fd-conform -- run-all --engine translated --report ../build/translated-cases.md
+cargo run -p fd-conform -- run-all --engine translated --mount level-1   # level 1's hand engine mounted (T36)
 ```
 
 Exit 0 when the case passes, 1 for a failure or a missing input, 2 for a wrong command line. The

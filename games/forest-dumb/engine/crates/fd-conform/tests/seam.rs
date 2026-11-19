@@ -6,7 +6,11 @@
 //! byte), one that returns somewhere else and one that panics.
 //!
 //! Full (the disks and the generated tree): `fd-translated`'s two adapters, `camera_update` and
-//! `char_sprite_position`, against the translated routines they replace on 2 000 states each.
+//! `char_sprite_position`, against the translated routines they replace on 2 000 states each, and
+//! level 1's frame mount (`game_frame`, T36) on 2 000 of T39's states.
+
+use std::any::Any;
+use std::sync::Arc;
 
 use fd_conform::judge::seam::{self, SeamReport};
 use fd_conform::judge::translated::Entry;
@@ -70,6 +74,7 @@ fn judge(replaced: Option<Entry>, replacing: Mounted, regs: RegsCompared) -> Sea
         replaced,
         replacing,
         regs,
+        None,
     )
 }
 
@@ -182,8 +187,70 @@ fn the_two_adapters_pass_against_the_translated_routines_on_2000_states() {
             replaced,
             replacing,
             RegsCompared::NONE,
+            None,
         );
         assert!(r.pass(), "{name}: {r:?}");
         assert_eq!((r.passed, r.replaced_stopped), (2000, 0), "{name}: {r:?}");
     }
+}
+
+/// Level 1's frame mount (T36): the hand engine's `game_frame` against the translated one on 2 000
+/// states of T39's generator, with level 1's engine handed to it as the run hands it.
+#[test]
+#[ignore = "full: the disks and the generated tree (translate.py --build)"]
+fn the_frame_mount_passes_against_the_translated_game_frame_on_2000_states() {
+    assert!(
+        fd_translated::TranslatedGame::generated(),
+        "no generated tree: python3 -I games/forest-dumb/tools/translate.py --build"
+    );
+    let rig = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
+    let level: Arc<fd_translated::Level1> = Arc::new(fd_translated::Level1::new(data));
+    let level_1: Arc<dyn Any + Send + Sync> = level.clone();
+    let off = fd_translated::seam::frame::GAME_FRAME.1;
+    let generator = fd_conform::generators::generator("game_frame").unwrap();
+    let key = rig.name(h(0, off));
+    let replaced = fd_translated::tree::entry(&key);
+    assert!(replaced.is_some(), "{key} is not in the tree");
+    let replacing = fd_translated::seam::adapter((0, off)).unwrap();
+    let r = seam::check(
+        &rig,
+        "game_frame",
+        2000,
+        h(0, off),
+        &generator,
+        replaced,
+        replacing,
+        RegsCompared::NONE,
+        Some(level_1),
+    );
+    assert!(r.pass(), "{r:?}");
+    assert_eq!((r.passed, r.replaced_stopped), (2000, 0), "{r:?}");
+    // A mount that fell through to the translated routine would pass against itself: the hand
+    // engine must have played every state (T36 review).
+    assert_eq!(level.passes(), 2000, "the hand engine played {} passes", level.passes());
+}
+
+/// Without level 1's engine the frame mount stops, naming what is missing, rather than run the
+/// translated routine in its place.
+#[test]
+#[ignore = "full: the disks and the generated tree (translate.py --build)"]
+fn the_frame_mount_with_no_engine_handed_to_it_stops() {
+    let rig = Rig::new().unwrap_or_else(|e| panic!("{e}"));
+    let off = fd_translated::seam::frame::GAME_FRAME.1;
+    let generator = fd_conform::generators::generator("game_frame").unwrap();
+    let key = rig.name(h(0, off));
+    let r = seam::check(
+        &rig,
+        "game_frame",
+        5,
+        h(0, off),
+        &generator,
+        fd_translated::tree::entry(&key),
+        fd_translated::seam::adapter((0, off)).unwrap(),
+        RegsCompared::NONE,
+        None,
+    );
+    assert_eq!(r.failures, 5, "{r:?}");
+    assert!(r.first.contains("no level 1 engine"), "{}", r.first);
 }

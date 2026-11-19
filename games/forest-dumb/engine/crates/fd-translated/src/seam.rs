@@ -13,11 +13,11 @@
 //! says which run. Before one is mounted, `fd-judge --seam` holds it to the translated routine it
 //! replaces on the same states (fd-conform's `judge::seam`). Granularity (T00, 2026-11-11): both a
 //! single routine and level 1's whole `game_frame` pass mounted; level 1 is mounted as the frame
-//! (`h0+$1fec`, T36), the two routine adapters here are the seam's proof and the pattern.
+//! (`h0+$1fec`, T36, [`frame`]), the two routine adapters here are the seam's proof and the pattern.
 //!
-//! What a mounted routine does not do: count the original's cycles (the frame bar, DESIGN §2.7,
-//! decides whether that shows), count itself in `Regs::depth`, or leave the original's scratch
-//! registers; every caller of the routines here reloads or restores them.
+//! What a mounted routine does not do: count the original's cycles (the two routine adapters; the
+//! frame mount spends them, T55, [`frame`]), count itself in `Regs::depth`, or leave the original's
+//! scratch registers; every caller of the routines here reloads or restores them.
 
 use std::cell::RefCell;
 
@@ -27,6 +27,9 @@ use fd_core::{Mem, MemMut, Ported, WriteBack, layout_var};
 use pcode_rt::{Bus, Image, Regs, Stop, rts};
 
 pub use pcode_rt::Mounted;
+
+pub mod frame;
+pub use frame::Level1;
 
 /// What is mounted where: hunk, offset to the routine run instead of the translated one.
 #[derive(Clone, Default)]
@@ -96,6 +99,7 @@ pub fn adapter(addr: (u8, u32)) -> Option<Mounted> {
 pub const ADAPTERS: &[((u8, u32), Mounted)] = &[
     ((0, 0x4d7e), camera_update),
     ((0, 0x5462), char_sprite_position),
+    (frame::GAME_FRAME, frame::game_frame),
 ];
 
 /// The machine's memory as `fd-core` reads and writes it: by hunk and offset, resolved through the
@@ -111,6 +115,22 @@ impl<'a, 'b> BusMem<'a, 'b> {
             bus: RefCell::new(bus),
             img,
         }
+    }
+
+    /// The bus itself, for the custom-chip accesses a port makes in place.
+    pub fn bus(&mut self) -> &mut (dyn Bus + 'b) {
+        &mut **self.bus.get_mut()
+    }
+
+    /// The byte at address `a`.
+    pub fn read_at(&self, a: u32) -> u8 {
+        self.bus.borrow_mut().rb(a)
+    }
+
+    /// `n` bytes from address `a`.
+    pub fn read_bytes(&self, a: u32, n: u32) -> Vec<u8> {
+        let mut bus = self.bus.borrow_mut();
+        (0..n).map(|k| bus.rb(a.wrapping_add(k))).collect()
     }
 }
 
@@ -307,14 +327,18 @@ mod tests {
 
     #[test]
     fn the_seam_mounts_what_ported_marks_and_refuses_a_mount_with_no_adapter() {
-        // Today's register mounts nothing (T36 mounts level 1).
-        assert!(Seam::from_ported(PORTED).unwrap().is_empty());
+        // Today's register mounts level 1's frame alone (T36).
+        let s = Seam::from_ported(PORTED).unwrap();
+        assert_eq!(s.addresses().collect::<Vec<_>>(), [(0, 0x1fec)]);
         let mut reg: Vec<Ported> = PORTED.to_vec();
         for p in reg.iter_mut().filter(|p| p.offset == 0x5462) {
             p.mounted = true;
         }
         let s = Seam::from_ported(&reg).unwrap();
-        assert_eq!(s.addresses().collect::<Vec<_>>(), [(0, 0x5462)]);
+        assert_eq!(
+            s.addresses().collect::<Vec<_>>(),
+            [(0, 0x1fec), (0, 0x5462)]
+        );
         for p in reg.iter_mut().filter(|p| p.offset == 0x3e0c) {
             p.mounted = true;
         }

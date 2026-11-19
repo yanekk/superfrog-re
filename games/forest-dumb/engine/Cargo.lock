@@ -927,12 +927,15 @@ dependencies = [
  "amiga-app",
  "amiga-disk",
  "amiga-input",
+ "amiga-paula",
  "amiga-record",
  "fd-assets",
  "fd-core",
  "fd-tools",
+ "fd-translated",
  "libc",
  "muda",
+ "pcode-machine",
  "rfd",
  "toml 0.9.12+spec-1.1.0",
  "winit",
@@ -983,7 +986,9 @@ dependencies = [
  "fd-conform",
  "fd-core",
  "fd-tools",
+ "fd-translated",
  "libc",
+ "pcode-machine",
 ]
 
 [[package]]
@@ -1022,6 +1027,7 @@ dependencies = [
 name = "fd-translated"
 version = "0.1.0"
 dependencies = [
+ "amiga-input",
  "fd-core",
  "pcode-machine",
  "pcode-rt",

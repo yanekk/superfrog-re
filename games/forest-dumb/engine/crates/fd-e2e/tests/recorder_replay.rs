@@ -110,10 +110,40 @@ fn a_zip_from_another_build_or_level_is_refused_naming_the_difference() {
         "{err}"
     );
     let version = edited(&zip, "other-version.zip", |t| {
-        t.replacen("forest-dumb recording 1", "forest-dumb recording 9", 1)
+        t.replacen("forest-dumb recording 2", "forest-dumb recording 9", 1)
     });
     let out = bug_replay(&version);
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(!out.status.success());
     assert!(err.contains("recording format `9`"), "{err}");
+}
+
+/// The zip as one made before translator T39: format 1, no `start`, `engine` or `stop` line.
+#[test]
+fn an_old_version_1_zip_still_replays_on_the_hand_engine() {
+    let (_app, zip) = recorded();
+    let to_v1 = |t: &str| -> String {
+        let t = t.replacen("forest-dumb recording 2", "forest-dumb recording 1", 1);
+        t.lines()
+            .filter(|l| !["start ", "engine ", "stop "].iter().any(|k| l.starts_with(k)))
+            .map(|l| format!("{l}\n"))
+            .collect()
+    };
+    let (rec, _) = amiga_record::read_zip::<ForestDumb>(&std::fs::read(&zip).unwrap()).unwrap();
+    let text = to_v1(&Recording::to_text(&rec));
+    assert!(
+        text.starts_with("forest-dumb recording 1\nbuild ")
+            && !text.contains("\nstart ")
+            && text.contains("\nlevel W1-1\nframes 200\nstopped-at "),
+        "{text}"
+    );
+    let old = edited(&zip, "version-1.zip", to_v1);
+    let out = bug_replay(&old);
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{stdout}{}", String::from_utf8_lossy(&out.stderr));
+    assert!(stdout.contains("frames 200\nstart level-1\nengine hand\n"), "{stdout}");
+    assert!(stdout.contains("stop -\n") && !stdout.contains("replay-stop"), "{stdout}");
+    assert!(stdout.contains("screenshot equal\n"), "{stdout}");
+    let place = |key: &str| stdout.lines().find_map(|l| l.strip_prefix(key)).unwrap().to_string();
+    assert_eq!(place("stopped-at "), place("replay-at "));
 }

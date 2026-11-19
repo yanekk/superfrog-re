@@ -18,7 +18,7 @@ fn recording(inputs: &[FrameInput], note: &str) -> Recording {
         r.step(i);
         game.step(i);
     }
-    r.finish(game.location(), note.to_string())
+    r.finish(Some(game.location()), note.to_string())
         .expect("recording")
 }
 

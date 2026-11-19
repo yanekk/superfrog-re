@@ -2,14 +2,28 @@
 //!
 //! At launch, inside the event loop: the single-copy lock, the remembered settings, the game's data
 //! from the two zips (`disks.rs`; a plain message naming where it looked, and exit 1, when they
-//! cannot be read), then straight into `W1-1` at the level sync point, silent. The game is stepped
-//! once a PAL frame of 313 lines on the wall clock (`Pacer::new(rate, 313)`, docs/frame-length.md)
-//! and the newest frame is presented at each refresh at a whole-number scale. Keys and pads feed
+//! cannot be read), then the engine (translator DESIGN §2.10). By default the translated program
+//! from power-on (`translated.rs`: its entry, the disk 2 prompt, the title, the menus, the levels,
+//! level 1's hand engine mounted), shown through `fd_app::CANVAS`; `--level 1` first runs it
+//! headless through the title with Start pressed, so the window opens on level 1's first frame.
+//! Built with no translated program, the app says how to generate it and exits 1. `--engine hand`
+//! goes straight into `W1-1` at the level sync point on the hand engine, as before, silent. The
+//! translated program's Paula writes are played through `amiga-paula` to the audio device
+//! (`fd_app::audio`, T38), whose samples played are the clock: the game is stepped once a PAL frame
+//! of 313 lines of it (`Pacer::new(rate, 313)`, docs/frame-length.md), on the wall clock when there
+//! is no device (a scripted run, the hand engine, or a device that fails), and the newest frame is
+//! presented at each refresh at a whole-number scale. Keys and pads feed
 //! the game through `input.rs`; Controls and Quit are in the menu bar (`menu.rs`), Esc also quits.
 //!
 //! Game → Start Level… starts W1-1 afresh, and with its recorder on every stepped frame's input is
 //! recorded until Stop Recording saves it as a bug zip (`recorder.rs`, DESIGN §2.8); while it runs
 //! the recording bar sits under the picture, the window that much taller.
+//!
+//! On the translated program a recording of the play from where it started (power-on, `--level
+//! 1` or the last Start Level…) always runs unseen. When the program stops (translator DESIGN
+//! §2.4, §2.10) the picture freezes, a band over it names the stop (`stop.rs`), and that recording
+//! is saved to the bugs folder at once, with the stop in its header; the app goes on ticking frozen,
+//! so Esc, ⌘Q and the menus still work. `--stop-after N` raises a test stop at step N.
 //!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
 //! inputs and each frame's state hash (`fd_app::HASHES`), without the frames' pictures under
@@ -25,13 +39,15 @@ mod menu;
 mod recorder;
 mod script;
 mod settings;
+mod stop;
+mod translated;
 
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use amiga_app::audio::Clock;
+use amiga_app::audio::{Audio, Clock};
 use amiga_app::capture::Capture;
 use amiga_app::controls_window::ControlsWindow;
 use amiga_app::lock::{self, Lock};
@@ -39,7 +55,11 @@ use amiga_app::pacing::{Pacer, Presenter};
 use amiga_app::pad::{self, PadSource};
 use amiga_app::recording_bar::{BAR_HEIGHT, RecordingBar, elapsed};
 use amiga_app::video::Video;
-use fd_core::recording::{LevelId, recorder as start_recording};
+use fd_core::recording::{
+    EngineKind, LevelId, StartPoint, recorder as start_recording, recorder_from, stop_text,
+    test_stop,
+};
+use fd_app::audio::SILENT_RATE;
 use fd_core::{Event as GameEvent, Game, Start};
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
@@ -48,16 +68,15 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowId};
 
-use crate::args::Args;
+use crate::args::{Args, EngineChoice};
 use crate::controls::OpenControls;
 use crate::input::{HostInput, Input};
 use crate::menu::{Command, MenuBar};
 use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
+use crate::translated::Translated;
 
-/// The wall clock's rate in host samples: the app is silent (DESIGN §2.3), so nothing else paces it.
-const RATE: u32 = 48_000;
 
 /// The game's frame, in lines (docs/frame-length.md).
 const FRAME_LINES: u32 = 313;
@@ -175,17 +194,78 @@ struct App {
     status: i32,
 }
 
+/// What plays (translator DESIGN §2.10).
+enum Engine {
+    /// Level 1's hand engine alone (`--engine hand`).
+    Hand(Game),
+    /// The translated program, level 1's hand engine mounted.
+    Translated(Translated),
+}
+
+impl Engine {
+    /// The newest frame's picture as the window gets it: its size and RGBA.
+    fn frame(&self) -> ((u32, u32), Vec<u8>) {
+        match self {
+            Engine::Hand(g) => frame_of(&g.picture()),
+            Engine::Translated(t) => frame_of(&t.frame().picture),
+        }
+    }
+
+    /// Line `n` of the capture's `hashes.txt`: the hand engine's play state, or the translated
+    /// program's memory (`fd_app::memory_hash`).
+    fn hash_line(&self, n: u64) -> String {
+        match self {
+            Engine::Hand(g) => fd_app::hash_line(n, g),
+            Engine::Translated(t) => {
+                let h = t.frame().hash().expect("hashes asked for with the capture");
+                format!("{n} {h:016x}\n")
+            }
+        }
+    }
+}
+
+/// The translated program from power-on, its sound at `rate`, and, for `--level 1` and Start
+/// Level…, run headless to level 1's first frame (its sound mixed and not played).
+fn translated(
+    d: &disks::Disks,
+    level_1: bool,
+    hashes: bool,
+    rate: u32,
+) -> Result<Translated, String> {
+    let mut t = Translated::power_on(
+        d.program.clone(),
+        d.disk2.clone(),
+        d.data.clone(),
+        hashes,
+        rate,
+    );
+    if level_1 {
+        let n = t.to_level_1()?;
+        eprintln!("fd-app: level 1 reached headless after {n} frames from power-on");
+    }
+    Ok(t)
+}
+
 /// Everything a running game needs.
 struct Run {
     /// Held while the app runs (DESIGN §2.12).
     _lock: Lock,
     settings: Settings,
-    game: Game,
+    engine: Engine,
+    /// What the engine starts from, for Start Level… on the translated program.
+    disks: disks::Disks,
     input: Input,
     /// The real pads; none under a script, whose `pad …` lines stand in for them.
     pads: Option<Box<dyn PadSource>>,
     pacer: Pacer,
     clock: Clock,
+    /// The audio device, while it works; none plays a scripted run or the hand engine.
+    audio: Option<Audio>,
+    /// The mixer's rate: the device's, else [`SILENT_RATE`].
+    rate: u32,
+    /// How far ahead of the device's clock the game is stepped, in host samples: the queue holds
+    /// that much sound, so it does not run dry between two turns of the event loop (as Superfrog's).
+    lead: u64,
     capture: Option<Capture>,
     /// `--capture`'s `hashes.txt`, written as the run goes.
     hashes: Option<std::io::BufWriter<std::fs::File>>,
@@ -204,6 +284,23 @@ struct Run {
     recorder: Recorder,
     /// The recording bar, once a recording has first shown it; whether it shows is `video.bar`.
     bar: Option<RecordingBar>,
+    /// The translated program's play from where it started, always on, saved when it stops
+    /// (translator T39); off on the hand engine, which never stops.
+    trail: Recorder,
+    /// The stop band's lines once the translated program has stopped: the picture is frozen.
+    stopped: Option<Vec<String>>,
+}
+
+/// The translated program's recording from `start`, by this build.
+fn translated_recorder(start: StartPoint) -> Recorder {
+    recorder_from(start, EngineKind::Translated, LevelId::W1_1, fd_tools::ENGINE_BUILD)
+}
+
+impl Run {
+    /// The pacer's time: the clock, and the lead the device's queue is kept ahead by.
+    fn now(&self) -> u64 {
+        self.clock.samples() + self.lead
+    }
 }
 
 /// The window's inner size at the scale: `N(n)` is n times the picture, `Auto` twice.
@@ -220,12 +317,11 @@ fn min_size(picture: (u32, u32), bar: bool) -> LogicalSize<u32> {
     LogicalSize::new(picture.0, picture.1 + if bar { BAR_HEIGHT } else { 0 })
 }
 
-/// The game's picture as the window gets it: its size and RGBA.
-fn frame_of(game: &Game) -> ((u32, u32), Vec<u8>) {
-    let pic = game.picture();
+/// A picture as the window gets it: its size and RGBA.
+fn frame_of(pic: &pcode_machine::Picture) -> ((u32, u32), Vec<u8>) {
     let size = (pic.width as u32, pic.height as u32);
     let mut rgba = vec![0; size.0 as usize * size.1 as usize * 4];
-    fd_core::render::rgba(&pic, &mut rgba);
+    fd_core::render::rgba(pic, &mut rgba);
     (size, rgba)
 }
 
@@ -235,6 +331,10 @@ impl App {
         let menu = menu::build_menu();
         menu.install(event_loop);
         self.menu = Some(menu);
+        if self.args.engine == EngineChoice::Translated && !fd_translated::TranslatedGame::generated()
+        {
+            return self.refuse(event_loop, fd_app::NOT_GENERATED);
+        }
         let lock = match lock::acquire(&self.home, "Forest Dumb") {
             Ok(l) => l,
             Err(e) => return self.refuse(event_loop, &e),
@@ -243,12 +343,36 @@ impl App {
         if let Some(m) = damaged {
             eprintln!("fd-app: {m}");
         }
-        let data = match disks::folder(self.args.disks.as_deref()).and_then(|d| disks::read(&d)) {
+        let disks = match disks::folder(self.args.disks.as_deref()).and_then(|d| disks::read(&d)) {
             Ok(d) => d,
             Err(e) => return self.refuse(event_loop, &e),
         };
-        let game = Game::new(data, Start::Level1);
-        let (size, rgba) = frame_of(&game);
+        // The translated program's sound plays unless the run is scripted; the hand engine makes
+        // none, so its run keeps the wall clock as before.
+        let audio = if self.args.unattended() || self.args.engine == EngineChoice::Hand {
+            None
+        } else {
+            Audio::open(None, "fd-app")
+                .inspect_err(|e| eprintln!("fd-app: {e}; carrying on silently"))
+                .ok()
+        };
+        let rate = audio.as_ref().map_or(SILENT_RATE, |a| a.rate);
+        let (engine, playing) = match self.args.engine {
+            EngineChoice::Hand => (
+                Engine::Hand(Game::new(disks.data.clone(), Start::Level1)),
+                "W1-1",
+            ),
+            EngineChoice::Translated => {
+                match translated(&disks, self.args.level_1, self.args.capture.is_some(), rate) {
+                    Ok(t) if self.args.level_1 => {
+                        (Engine::Translated(t), "the translated program from W1-1")
+                    }
+                    Ok(t) => (Engine::Translated(t), "the translated program from power-on"),
+                    Err(e) => return self.fail(event_loop, &e),
+                }
+            }
+        };
+        let (size, rgba) = engine.frame();
         let scale = self.args.scale.map_or(settings.scale, Scale::N);
         let attrs = Window::default_attributes()
             .with_title("Forest Dumb")
@@ -280,13 +404,13 @@ impl App {
         let (capture, hashes) = match &self.args.capture {
             None => (None, None),
             Some(dir) => {
-                let made = Capture::new(dir, RATE).and_then(|mut c| {
+                let made = Capture::new(dir, rate).and_then(|mut c| {
                     if pictures {
                         c.frame(0, (size.0, size.1, &rgba))?;
                     }
                     let mut h =
                         std::io::BufWriter::new(std::fs::File::create(dir.join(fd_app::HASHES))?);
-                    h.write_all(fd_app::hash_line(0, &game).as_bytes())?;
+                    h.write_all(engine.hash_line(0).as_bytes())?;
                     Ok((c, h))
                 });
                 match made {
@@ -299,13 +423,20 @@ impl App {
             _lock: lock,
             input: Input::new(settings.keys.clone(), settings.pad.clone()),
             settings,
-            game,
+            engine,
+            disks,
             pads,
-            pacer: Pacer::new(RATE, FRAME_LINES),
-            clock: Clock::Wall {
-                start: Instant::now(),
-                rate: RATE,
+            pacer: Pacer::new(rate, FRAME_LINES),
+            clock: match &audio {
+                Some(a) => a.clock(),
+                None => Clock::Wall {
+                    start: Instant::now(),
+                    rate,
+                },
             },
+            lead: audio.as_ref().map_or(0, |a| a.rate as u64 / 25),
+            audio,
+            rate,
             capture,
             hashes,
             window,
@@ -319,13 +450,21 @@ impl App {
             picture: size,
             recorder: Recorder::Off,
             bar: None,
+            trail: match self.args.engine {
+                EngineChoice::Hand => Recorder::Off,
+                EngineChoice::Translated if self.args.level_1 => {
+                    translated_recorder(StartPoint::Level1)
+                }
+                EngineChoice::Translated => translated_recorder(StartPoint::PowerOn),
+            },
+            stopped: None,
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
         for e in present {
             self.pad_event(e);
         }
-        eprintln!("fd-app: playing W1-1");
+        eprintln!("fd-app: playing {playing}");
         self.show_newest();
     }
 
@@ -417,13 +556,35 @@ impl App {
         let run = self.run.as_mut().expect("running");
         // The one level a recording names today (`LevelId`), started as the app starts it.
         let LevelId::W1_1 = level;
-        run.game = Game::new(run.game.data().clone(), Start::Level1);
-        run.recorder = match record {
-            true => start_recording(level, fd_tools::ENGINE_BUILD),
-            false => Recorder::Off,
+        match &mut run.engine {
+            Engine::Hand(g) => *g = Game::new(g.data().clone(), Start::Level1),
+            // As `--level 1` starts it (owner, T37): one start path.
+            Engine::Translated(_) => {
+                let hashes = run.capture.is_some();
+                let made = translated(&run.disks, true, hashes, run.rate);
+                // The notice and the run through the title held the main thread for a second or
+                // more: play carries on from now, not in a burst catching up on it.
+                run.pacer.skip_to(run.now());
+                match made {
+                    Ok(t) => {
+                        run.engine = Engine::Translated(t);
+                        run.trail = translated_recorder(StartPoint::Level1);
+                        run.stopped = None;
+                    }
+                    Err(e) => {
+                        eprintln!("fd-app: {e}");
+                        return;
+                    }
+                }
+            }
+        }
+        run.recorder = match (record, &run.engine) {
+            (false, _) => Recorder::Off,
+            (true, Engine::Hand(_)) => start_recording(level, fd_tools::ENGINE_BUILD),
+            (true, Engine::Translated(_)) => translated_recorder(StartPoint::Level1),
         };
         // The level's first frame at once: the picture a Stop before any step saves.
-        let (size, rgba) = frame_of(&run.game);
+        let (size, rgba) = run.engine.frame();
         run.shown.completed((run.steps, size, rgba));
         let recording = if record { ", recording" } else { "" };
         eprintln!(
@@ -448,13 +609,17 @@ impl App {
     /// zip's name. A write that fails says so and the window stays open, so the note is not lost.
     fn save_recording(&mut self) {
         let run = self.run.as_mut().expect("running");
-        let at = run.game.location();
+        let at = match &run.engine {
+            Engine::Hand(game) => Some(game.location()),
+            Engine::Translated(t) => t.frame().place,
+        };
         let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
             return;
         };
-        let ((w, h), rgba) = frame_of(&run.game);
+        let at = at.map_or_else(|| "the title".to_string(), |l| l.to_string());
+        let ((w, h), rgba) = run.engine.frame();
         let shot = amiga_app::capture::png(w, h, &rgba);
-        let path = recorder::zip_name(&self.bugs_dir, rec.level, recorder::local_now());
+        let path = recorder::zip_name(&self.bugs_dir, recorder::zip_start(&rec), recorder::local_now());
         let name = path
             .file_name()
             .unwrap_or_default()
@@ -489,7 +654,7 @@ impl App {
     /// now.
     fn after_panel(&mut self) {
         if let Some(run) = self.run.as_mut() {
-            run.pacer.skip_to(run.clock.samples());
+            run.pacer.skip_to(run.now());
         }
     }
 
@@ -584,7 +749,12 @@ impl App {
                         .request_inner_size(LogicalSize::new(w, h));
                 }
                 // The title's cheat code, which the app has no title for: HELP then ends the level.
-                Event::Cheat => self.run.as_mut().expect("running").game.set_cheat(true),
+                Event::Cheat => match &mut self.run.as_mut().expect("running").engine {
+                    Engine::Hand(g) => g.set_cheat(true),
+                    Engine::Translated(_) => {
+                        eprintln!("fd-app: cheat is the hand engine's; the title takes its code by keys")
+                    }
+                },
                 Event::Hang => {
                     eprintln!("fd-app: the script hangs at frame {n}");
                     loop {
@@ -599,10 +769,36 @@ impl App {
         let run = self.run.as_mut().expect("running");
         run.steps = n;
         let input = run.input.frame();
-        let finished = run.game.finished();
-        run.game.step(input);
+        // Stopped, the game is frozen: the app ticks on (its script, its capture, a quit), and
+        // nothing is stepped or recorded.
+        if run.stopped.is_some() {
+            return self.stepped(event_loop, n, input, false);
+        }
         run.recorder.step(input);
-        for e in run.game.take_events() {
+        run.trail.step(input);
+        let stop_after = self.args.stop_after;
+        let game = match &mut run.engine {
+            Engine::Hand(g) => g,
+            Engine::Translated(t) => {
+                let was_level_1 = t.frame().level_1;
+                t.step(input);
+                if stop_after == Some(n) {
+                    t.raise(test_stop(n));
+                }
+                let f = t.frame();
+                if f.level_1 && !was_level_1 {
+                    eprintln!("fd-app: level 1 begins at step {n}");
+                }
+                if let Some(s) = f.stop.clone() {
+                    eprintln!("fd-app: the translated program stopped at step {n}: {s}");
+                    self.on_stop(&s);
+                }
+                return self.stepped(event_loop, n, input, true);
+            }
+        };
+        let finished = game.finished();
+        game.step(input);
+        for e in game.take_events() {
             match e {
                 GameEvent::Unported(v) => {
                     eprintln!("fd-app: object value {v} is not ported; left out")
@@ -623,8 +819,89 @@ impl App {
                 other => eprintln!("fd-app: {other:?}"),
             }
         }
-        let (size, rgba) = frame_of(&run.game);
+        self.stepped(event_loop, n, input, true);
+    }
+
+    /// The translated program has stopped with `why` on the frame just stepped: the recording of
+    /// its play saved now, with the stop, the frame without the band as its screenshot; any
+    /// recording the owner started ends in it (the same play from the same start); the band set.
+    fn on_stop(&mut self, why: &str) {
+        let run = self.run.as_mut().expect("running");
+        let Engine::Translated(t) = &run.engine else {
+            return;
+        };
+        let place = t.frame().place;
+        if run.recorder.is_recording() {
+            run.recorder = Recorder::Off;
+            eprintln!("fd-app: the recording running ends in the stop's");
+        }
+        let saved = match std::mem::take(&mut run.trail).finish(place, String::new()) {
+            None => "No bug recording was running.".to_string(),
+            Some(mut rec) => {
+                rec.stop = Some(stop_text(why));
+                let ((w, h), rgba) = run.engine.frame();
+                let shot = amiga_app::capture::png(w, h, &rgba);
+                let path = recorder::zip_name(
+                    &self.bugs_dir,
+                    recorder::zip_start(&rec),
+                    recorder::local_now(),
+                );
+                let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+                match std::fs::create_dir_all(&self.bugs_dir)
+                    .and_then(|()| recorder::write_zip(&path, &rec, &shot))
+                {
+                    Ok(()) => {
+                        eprintln!(
+                            "fd-app: stop recording saved to {} ({} frames from {})",
+                            path.display(),
+                            rec.inputs.len(),
+                            rec.start.name()
+                        );
+                        format!("Bug zip saved: {name}")
+                    }
+                    Err(e) => {
+                        eprintln!("fd-app: the stop recording could not be saved as {}: {e}", path.display());
+                        format!("The bug recording could not be saved: {e}")
+                    }
+                }
+            }
+        };
+        run.stopped = Some(stop::lines(why, &saved));
+        self.show_menu();
+    }
+
+    /// After step `n` on `input`: the capture, the picture shown, the recorder's limit, the frame
+    /// cap. `ran` is false for a step after a stop, which ran nothing.
+    fn stepped(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        n: u64,
+        input: amiga_input::FrameInput,
+        ran: bool,
+    ) {
+        let run = self.run.as_mut().expect("running");
+        let (size, mut rgba) = run.engine.frame();
+        if let Some(lines) = &run.stopped {
+            stop::draw(&mut rgba, size, lines);
+        }
+        // Frozen after a stop, the engine still holds the stop's frame: its sound was played
+        // once, on the stop's own step, and is not played again each tick.
+        let samples: &[[i16; 2]] = match &run.engine {
+            Engine::Translated(t) if ran => &t.frame().samples,
+            _ => &[],
+        };
+        // Fast-forwarded steps make no sound: the device's queue is unbounded, so their samples
+        // would play on long after the game is back on the clock.
+        let fast = self
+            .script
+            .as_ref()
+            .and_then(|s| s.fast_until)
+            .is_some_and(|until| n < until);
+        if let (Some(a), false) = (&run.audio, fast) {
+            a.push(samples);
+        }
         if let Some(c) = &mut run.capture {
+            c.audio(n, samples, &[samples.len()]);
             c.clock(n, run.clock.samples());
             c.input(n, input);
             let picture = match self.args.capture_hashes {
@@ -633,7 +910,7 @@ impl App {
             };
             let written = picture.and_then(|()| {
                 let h = run.hashes.as_mut().expect("hashes with the capture");
-                h.write_all(fd_app::hash_line(n, &run.game).as_bytes())
+                h.write_all(run.engine.hash_line(n).as_bytes())
             });
             if let Err(e) = written {
                 return self.fail(event_loop, &format!("capture: {e}"));
@@ -730,6 +1007,17 @@ impl ApplicationHandler for App {
             self.pad_event(e);
         }
         let Some(run) = &mut self.run else { return };
+        if run.audio.as_ref().is_some_and(Audio::failed) {
+            // The device is gone: carry on silently on the wall clock, from where it got to.
+            let at = run.clock.samples();
+            run.audio = None;
+            run.clock = Clock::Wall {
+                start: Instant::now()
+                    - Duration::from_nanos(at * 1_000_000_000 / run.rate as u64),
+                rate: run.rate,
+            };
+            run.lead = 0;
+        }
         // `fast-until N`: steps before N as fast as they run, in batches; reaching N, the pacer
         // counts the time spent as stepped, so the game carries on from now.
         if let Some(until) = self.script.as_ref().and_then(|s| s.fast_until)
@@ -744,12 +1032,12 @@ impl ApplicationHandler for App {
             self.show_newest();
             let run = self.run.as_mut().expect("running");
             if run.steps >= until {
-                run.pacer.skip_to(run.clock.samples());
+                run.pacer.skip_to(run.now());
             }
             event_loop.set_control_flow(ControlFlow::Poll);
             return;
         }
-        let due = run.pacer.due(run.clock.samples());
+        let due = run.pacer.due(run.now());
         for _ in 0..due {
             self.step(event_loop);
             if event_loop.exiting() {

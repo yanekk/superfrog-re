@@ -186,7 +186,11 @@ pub const PORTED: &[Ported] = &[
     port("h0_5820", 0x5820, "render::objects::Creatures::cut"),
     port("h0_5e44", 0x5e44, "render::objects::Creatures::restore"),
     // T63: the pass itself, once every routine it calls was ported (`level::game_frame_with`).
-    port("game_frame", 0x1fec, "level::game_frame"),
+    // T36: mounted, the frame mount of level 1 (fd-translated's `seam::frame`).
+    Ported {
+        mounted: true,
+        ..port("game_frame", 0x1fec, "level::game_frame")
+    },
 ];
 
 /// A hunk 0 routine's entry.

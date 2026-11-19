@@ -24,7 +24,8 @@ g.set_input(first_frame_input);
 // on a thread with RUN_STACK bytes of stack:
 let stop = g.run(&mut |frame| {
     // frame.picture, frame.writes (cycle, reg, word; CPU and copper), frame.cpu_writes (the CPU's
-    // alone), frame.paula, frame.chip, frame.slow; frame.cpu_leftover and frame.paula_leftover
+    // alone), frame.paula (frame.paula_beam: each at its beam position, for the mixer), frame.chip,
+    // frame.slow; frame.cpu_leftover and frame.paula_leftover
     // index the writes a read of a write-only register made (T47: compared by register only)
     Control::Next(next_input)          // or Control::Stop
 });
@@ -61,12 +62,17 @@ let stop = g.run(&mut |frame| {
 ## The seam
 
 A hand-written routine runs in place of the translated one at its address (translator DESIGN §2.9,
-T35). Every generated function asks `Bus::mounted` on entry; `TranslatedGame::new` mounts each
-`fd_core::PORTED` entry marked `mounted`, with its adapter in `src/seam.rs` (`seam::ADAPTERS`; a
-mounted entry with no adapter stops the run at start, naming it). `g.mount((hunk, offset), f)` mounts
-by hand (tests). An adapter reads `LAYOUT` and the values beside it through `seam::BusMem`, runs the
-port, writes back what differs (`fd_core::WriteBack`) and leaves by `pcode_rt::rts`. It counts no
-cycles. Judge one before mounting it: `cargo run -p fd-conform --bin fd-judge -- 'h0+$4d7e' --seam`.
+T35). Every generated function asks `Bus::mounted` on entry. `TranslatedGame::new` mounts nothing;
+`g.mount_level_1(data)` (T36) mounts each `fd_core::PORTED` entry marked `mounted`, with its adapter
+in `src/seam.rs` (`seam::ADAPTERS`; a mounted entry with no adapter stops the run at start, naming
+it): today that is level 1's frame, `game_frame` (`h0+$1fec`, `seam::frame`), the hand engine's pass
+with the transplant in and what it changed written back, run in world 1 (`world_index` 0) and the
+translated routine elsewhere. It reads level 1's engine (`seam::Level1`, built once from `data`)
+through `Bus::mount_data`, and stops without it; `g.level_1().unwrap().passes()` counts the passes
+it played. `g.mount((hunk, offset), f)` mounts by hand (tests). An adapter reads `LAYOUT` and the values beside it through `seam::BusMem`, runs the
+port, writes back what differs (`fd_core::WriteBack`) and leaves by `pcode_rt::rts`. The frame mount
+spends the original's time (T55, `seam/frame.rs`'s `COSTS`): each chip access by the original's
+instruction at its place, the rest of each callee a measured lump; the routine adapters count none. Judge one before mounting it: `cargo run -p fd-conform --bin fd-judge -- 'h0+$4d7e' --seam`.
 
 ## Shells
 
