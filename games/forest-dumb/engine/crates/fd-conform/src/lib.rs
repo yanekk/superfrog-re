@@ -864,6 +864,8 @@ pub struct Verdict {
     pub os_frames: u32,
     pub loads: u32,
     pub load_frames: u32,
+    /// The engine's frames in the OS's stretch after a load, not compared (owner, T51).
+    pub tail_frames: u32,
     pub coverage: Coverage,
 }
 
@@ -895,6 +897,7 @@ impl Verdict {
             os_frames: 0,
             loads: 0,
             load_frames: 0,
+            tail_frames: 0,
             coverage: Coverage::new(register),
         }
     }
@@ -1018,6 +1021,14 @@ impl fmt::Display for Verdict {
                  {} frames inside them not compared; {} frames' custom writes not compared, the OS \
                  having the machine",
                 self.aligned_frames, self.loads, self.load_frames, self.os_frames
+            )?;
+        }
+        if self.tail_frames > 0 {
+            write!(
+                f,
+                "\n{} engine frames in the OS's stretch after a load, not compared (the original's \
+                 among the frames inside loads)",
+                self.tail_frames
             )?;
         }
         if self.unseen > 0 {

@@ -48,6 +48,13 @@
 //! values ([`crate::sync::OS_VALUES`]), and the custom writes are compared only on frames the
 //! program had the machine for on the original ([`crate::sync::LEVEL3_HANDLER`] in place at the
 //! step's start and end): while the OS has it, its interrupts write registers the machine does not.
+//!
+//! **The OS's stretch after a load is part of the load** (owner, T51, [`OsTail`]): from a load's
+//! return until the program takes the machine back (its handler in the level 3 vector), a frame is
+//! not compared, and the taking back is counted as a return, so the original runs on until it has
+//! taken it back too. The original's OS runs its own interrupts there, about 5% of the CPU (world
+//! 2's byte scan, measured with the OS's handlers stubbed: `system_off` 3 frames sooner), which
+//! the machine never runs (DESIGN §2.8).
 
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Range;
@@ -720,6 +727,45 @@ pub fn run_title_frames(
     Ok(conclude(case, verdict, nothing))
 }
 
+/// One side's stretch after a load while the OS still has the machine (owner, T51): fed each frame
+/// the loads returned in it and whether the program has the machine at its end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct OsTail {
+    owned: bool,
+    after_load: bool,
+}
+
+impl OsTail {
+    /// `owned`: whether the program has the machine where this side starts.
+    pub fn new(owned: bool) -> OsTail {
+        OsTail {
+            owned,
+            after_load: false,
+        }
+    }
+
+    /// The frame's loads returned and ownership at its end: (1 if the program took the machine
+    /// back after a load in it, else 0; whether the frame ends in the OS's stretch after a load).
+    /// A taking back with no load before it (the entry installing its handlers) is not counted.
+    pub fn frame(&mut self, returned: u32, owned: bool) -> (u32, bool) {
+        let after_load = self.after_load || returned > 0;
+        let back = (!self.owned && owned && after_load) as u32;
+        self.owned = owned;
+        self.after_load = after_load && !owned;
+        (back, self.after_load)
+    }
+}
+
+/// Whether `ram` (chip RAM then slow) holds the program's handler in the level 3 vector; no RAM
+/// counts as the program's.
+fn owns(ram: Option<&[u8]>) -> bool {
+    let v = sync::LEVEL3_VECTOR as usize;
+    ram.and_then(|m| m.get(v..v + 4)).is_none_or(|b| {
+        u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+            == HUNK_BASES[sync::LEVEL3_HANDLER.0 as usize] + sync::LEVEL3_HANDLER.1
+    })
+}
+
 /// Case `case`, lined up by loads (`align = "loads"`), on `engine`. A power-on case's
 /// (`start = "entry"`) engine starts at the program's entry, paired with the oracle step that
 /// first runs it; any other's starts from a snapshot at the end of its sync frame's step, paired
@@ -784,6 +830,11 @@ pub fn run_entry_frames(
         verdict.entry = Some((am.frame(), line));
     }
     let mut align = ByReturns::new(LOAD_CAP);
+    // Both sides start from the same state: the snapshot's, or before the entry the OS's.
+    let mut os_tail = OsTail::new(program_owns(&am));
+    let mut engine_tail = os_tail;
+    // The original's loads returned, without the takings back `align` also counts.
+    let mut load_count = 0u32;
     // The step just run: its input, its capture, whether the program had the machine before it.
     let mut input = inputs.at(am.frame() - 1);
     let mut capture = FrameCapture::default();
@@ -807,7 +858,9 @@ pub fn run_entry_frames(
     }
     // The first step's own hits: nothing loads before the entry.
     let (r, l) = count(&am);
-    align.original(r, l);
+    let (back, tail) = os_tail.frame(r, program_owns(&am));
+    load_count += r;
+    align.original(r + back, l || tail);
     loop {
         engine.frame(input);
         run += 1;
@@ -818,7 +871,11 @@ pub fn run_entry_frames(
             break;
         }
         let (r, l) = engine.loads();
-        align.engine(r, l);
+        let (back, tail) = engine_tail.frame(r, owns(engine.ram()));
+        if tail {
+            verdict.tail_frames += 1;
+        }
+        align.engine(r + back, l || tail);
         // Loads apart ends the run whatever `every_channel` says: nothing after it lines up. A
         // channel's earlier difference does not (`firsts` holds those with `every_channel`).
         let mut apart = false;
@@ -840,7 +897,9 @@ pub fn run_entry_frames(
             (_, capture) = step(&mut am)?;
             verdict.coverage.add(opts.register, am.pc_hits());
             let (r, l) = count(&am);
-            align.original(r, l);
+            let (back, tail) = os_tail.frame(r, program_owns(&am));
+            load_count += r;
+            align.original(r + back, l || tail);
         }
         if apart || align.behind() {
             break;
@@ -866,9 +925,11 @@ pub fn run_entry_frames(
         (input, capture) = step(&mut am)?;
         verdict.coverage.add(opts.register, am.pc_hits());
         let (r, l) = count(&am);
-        align.original(r, l);
+        let (back, tail) = os_tail.frame(r, program_owns(&am));
+        load_count += r;
+        align.original(r + back, l || tail);
     }
-    verdict.loads = align.returned().1;
+    verdict.loads = load_count;
     verdict.load_frames = align.skipped();
     // A `set` is what the case says it compares under: both sides must have made it.
     let pending = [am.pokes_at_pending(), engine.writes_at_pending()];
@@ -1317,4 +1378,49 @@ pub fn custom_carried(
             original: c.original,
             engine: c.engine,
         })
+}
+
+#[cfg(test)]
+mod os_tail_tests {
+    use super::OsTail;
+
+    /// A load list: the program hands the machine to the OS, loads twice, runs on with the OS's
+    /// interrupts, then takes the machine back; the stretch after the first load is the tail.
+    #[test]
+    fn the_os_stretch_after_a_load_is_inside_it_until_the_program_takes_the_machine_back() {
+        let mut t = OsTail::new(true);
+        // system_on: the OS has the machine, no load yet: compared as before.
+        assert_eq!(t.frame(0, false), (0, false));
+        // A load returns, the OS keeps the machine: the tail.
+        assert_eq!(t.frame(1, false), (0, true));
+        assert_eq!(t.frame(0, false), (0, true));
+        assert_eq!(t.frame(1, false), (0, true));
+        // system_off: taken back, counted once, compared again.
+        assert_eq!(t.frame(0, true), (1, false));
+        assert_eq!(t.frame(0, true), (0, false));
+    }
+
+    #[test]
+    fn a_load_and_the_taking_back_in_one_frame_count_and_leave_no_tail() {
+        let mut t = OsTail::new(false);
+        assert_eq!(t.frame(1, true), (1, false));
+    }
+
+    /// The entry installing its handlers with no load before it is not a taking back: power-on
+    /// cases line up as before.
+    #[test]
+    fn taking_the_machine_with_no_load_before_counts_nothing() {
+        let mut t = OsTail::new(false);
+        assert_eq!(t.frame(0, false), (0, false));
+        assert_eq!(t.frame(0, true), (0, false));
+    }
+
+    /// A load the program makes while it keeps the machine leaves no tail and no count.
+    #[test]
+    fn a_load_while_the_program_has_the_machine_leaves_no_tail() {
+        let mut t = OsTail::new(true);
+        assert_eq!(t.frame(1, true), (0, false));
+        assert_eq!(t.frame(0, false), (0, false));
+        assert_eq!(t.frame(0, true), (0, false));
+    }
 }
