@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** review T53; T50 (then T36) is the head of the critical path.
+**Next `pir-work` will:** T50 (then T36) is the head of the critical path.
 
 ## Tasks
 
@@ -67,9 +67,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
-| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | 🔍 | Memory in play judged at pass ends by `irq_count` (`FrameEngine::pass_end_ram`); worlds 2 to 6 pass; 2 stand-in tests. Deviation: custom writes in play also cut into passes with `custom_carried` (DESIGN §2.7's write slack, not in the task doc), as world 3's `BLTCON0=$cfca` fell a pass early; `world_starts.rs` memory count assertion widened to include pass ends. |
+| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | Clean, no fix commit. Worlds 2 to 6 pass (`world_starts.rs` 11 of 11), world 3 CLI probe 319 pass ends. Mutations caught: pass-end compare gutted, frame-end skip removed. Custom-writes-by-pass deviation held: without it world 3 fails at 6183. `power_on_level_1` fails at 6301 identically on base. |
 
-**Review queue:** T53
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

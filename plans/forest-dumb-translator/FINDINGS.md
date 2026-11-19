@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🐞 | **T53 review, open:** a load-aligned case's `Verdict` headline reads `same on all 0 passes compared` (`lib.rs` Display uses `passes`, never set there), as before T53. Left alone. |
 | 2026-11-19 | 📌 | **T53:** in play (handler in `$6C`, a pass ended either side) load-aligned cases judge memory at pass ends by `irq_count`, custom writes by `custom_carried`. Worlds 2 to 6 pass, 319 pass ends; power-on-level-1 fails at 6301, before play. |
 | 2026-11-19 | 📌 | **T52 cause:** the pass-477 creature was the picture: the machine showed a blit whole from BLTSIZE; D words now reach the picture at their bus slot. Speed: `TRAIL` 48 lumped `h0+$5500`'s 198 instructions; audio slots were untaken. |
 | 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24; same after the review fix. Owner's rule. |
