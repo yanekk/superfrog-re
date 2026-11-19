@@ -5,7 +5,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-19
 **Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
@@ -51,7 +51,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
-| T37 | app-translated | T18, T32, T36 | ⬜ | |
+| T37 | app-translated | T18, T32, T36 | 🔍 | App runs translated program from power-on, level 1 mounted, on its own thread over channels; `--level 1`, `--engine hand`; fixed 320×256 `CANVAS`. 4 e2e full, 2 smoke, 5 unit. Deviations: input.rs unchanged, keys already reach the machine; headless check is the e2e `--level 1` test (fd-app cannot link fd-conform); Start Level… recorder and cheat off on translated (T39). |
 | T38 | app-sound | T37 | ⬜ | |
 | T39 | app-stop | T37 | ⬜ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
@@ -71,7 +71,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T37
 
 ## Blocked on the user
 
