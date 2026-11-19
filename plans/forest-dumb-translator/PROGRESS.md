@@ -67,7 +67,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ✅ | Review: one defect fixed, `quiet` stayed true after a CPU write to a copper word not yet read (reproduced by test, fixed, test locks it); two tests added for mutations that survived. Reran all 18 cases translated: 16 pass, routes first differ at pass 4161; insn no-op reproduces pass 1981. Gate 89/100 read-only. |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
-| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
+| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 
 **Review queue:** *(empty)*

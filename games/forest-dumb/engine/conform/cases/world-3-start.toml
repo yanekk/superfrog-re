@@ -10,10 +10,11 @@
 # CPU there, world 2: system_off at 6026 with them stubbed, not 6029); beam_sample_unread
 # (h0+$8dfa) is left out of memory, its hpos mostly 3 colour clocks apart; a frame-end byte passes
 # when one frame on (6 frames in view_tiles, the engine 0 to 2 tile rows of ~1100 a frame ahead).
-# Fails today in play, on frame ends inside game_frame: memory at 6180 (pass 454), h0+$2c7d
-# (h0_2d4c's slot counter) 2 in the engine, 1 in the original, 18 frames in all; a creature blit
-# (h3+$e84) and BLTCON0=$cfca a pass apart at 6183, T52's kind. Paula's writes are equal throughout.
-# Carried by T53 (pass-end rule in play, after T52).
+# In play memory is judged at pass ends, paired by irq_count, and the other custom writes cut into
+# passes, a write allowed a pass early or late (owner's §2.7 rule, T53): T51's 18 failing frame ends
+# (from 6180, h0+$2c7d) fell mid-pass, and the engine's BLTCON0=$cfca at 6183 is the original's
+# next pass's. Passes on the translated program, measured 2026-11-19 (T53): 319 pass ends in play
+# and 134 frame ends before it equal, the picture and Paula's writes every frame.
 sync = { script = "boot-to-level1", frame = 4990 }
 input = "world-3-start"
 align = "loads"
