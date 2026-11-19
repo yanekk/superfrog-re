@@ -501,7 +501,11 @@ impl App {
                     record = false;
                 }
                 let hashes = run.capture.is_some();
-                match translated(&run.disks, true, hashes) {
+                let made = translated(&run.disks, true, hashes);
+                // The notice and the run through the title held the main thread for a second or
+                // more: play carries on from now, not in a burst catching up on it.
+                run.pacer.skip_to(run.clock.samples());
+                match made {
                     Ok(t) => run.engine = Engine::Translated(t),
                     Err(e) => {
                         eprintln!("fd-app: {e}");

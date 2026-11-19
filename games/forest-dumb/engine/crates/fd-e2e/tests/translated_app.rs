@@ -212,6 +212,67 @@ fn level_1_starts_at_its_first_frame_run_headless_through_the_title() {
     assert_eq!(state(&e), hashes[1]);
 }
 
+/// The host samples the pacing clock had counted at each step (`clock.txt`).
+fn clock(c: &Captured) -> std::collections::BTreeMap<u64, u64> {
+    std::fs::read_to_string(c.dir.join("clock.txt"))
+        .expect("clock.txt")
+        .lines()
+        .map(|l| {
+            let (n, s) = l.split_once(' ').expect("`N samples`");
+            (n.parse().unwrap(), s.parse().unwrap())
+        })
+        .collect()
+}
+
+/// Game ▸ Start Level… under the translated program (coordinator's answer to T37): it starts as
+/// `--level 1` does, says the recorder is not available yet and starts without it, and play then
+/// goes on at the game's pace from level 1's first frame, not in a burst making up the seconds the
+/// run through the title took.
+#[test]
+fn start_level_restarts_as_level_1_does_without_the_recorder_and_at_the_games_pace() {
+    require_tree();
+    let mut app = App::launch_translated(LaunchOpts {
+        max_frames: 120,
+        timeout_s: 120,
+        ..Default::default()
+    });
+    let c = app.run_script_unread(
+        "20: menu start-level\nform level W1-1\nform record on\nform start\n",
+    );
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.stderr.contains("not available yet; starting without it"), "{}", c.stderr);
+    let after: u64 = c
+        .stderr
+        .lines()
+        .find_map(|l| l.strip_prefix("fd-app: started W1-1 after step "))
+        .unwrap_or_else(|| panic!("never restarted: {}", c.stderr))
+        .parse()
+        .unwrap_or_else(|_| panic!("recording after all: {}", c.stderr));
+    let frames: u64 = c
+        .stderr
+        .lines()
+        .find_map(|l| l.strip_prefix("fd-app: level 1 reached headless after "))
+        .and_then(|l| l.split(' ').next())
+        .unwrap_or_else(|| panic!("{}", c.stderr))
+        .parse()
+        .unwrap();
+    let mut e = headless();
+    for n in 0..frames {
+        e.frame(fd_app::to_level_1_input(n));
+    }
+    let hashes = common::hashes(&c);
+    let fed = common::inputs(&c);
+    for n in after + 1..=120 {
+        e.frame(fed.get(&n).copied().unwrap_or_default());
+        assert_eq!(state(&e), hashes[n as usize], "state at step {n}");
+    }
+    // 50 steps at 50 Hz take about a second, 48 000 samples; a catch-up burst takes none. Bites in
+    // release only: a debug build capturing every frame steps slower than the clock throughout.
+    let clock = clock(&c);
+    let took = clock[&(after + 51)] - clock[&(after + 1)];
+    assert!(took > 40_000, "50 steps after the restart took {took} samples: a burst");
+}
+
 /// The window's size in points, as `resize` asks for it.
 fn points(s: &fd_e2e::Shot) -> (u32, u32) {
     let p = |v: u32| (v as f64 / s.scale_factor).round() as u32;
