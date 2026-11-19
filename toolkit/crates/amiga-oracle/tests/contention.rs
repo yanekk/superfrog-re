@@ -197,17 +197,7 @@ fn copper(c: &Case) -> Vec<u8> {
 /// What the loop took on the beam: the line and slot VHPOSR read before it, and the DMA slots
 /// from that read to the one after it. Every frame measured must agree.
 pub fn measure(c: &Case) -> ((u16, u16), u32) {
-    let rom = kickstart_path().unwrap_or_else(|e| panic!("{e}"));
-    let mut a = Amiga::power_on(&OracleConfig::new(rom, Vec::new(), HAND + FRAMES + 1)).unwrap();
-    for _ in 0..HAND {
-        a.step(FrameInput::NONE).unwrap();
-    }
-    a.poke(BITPLANE, &vec![0; 40 * 256]);
-    a.poke(COPPER, &copper(c));
-    a.poke(SPRITE, &sprite());
-    a.poke(RESULT, &[0; 8]);
-    a.poke(HANDLER, &handler(c));
-    a.poke(0x6c, &HANDLER.to_be_bytes());
+    let mut a = started(c);
     let mut seen = Vec::new();
     for _ in 0..FRAMES {
         a.step(FrameInput::NONE).unwrap();
@@ -230,6 +220,22 @@ pub fn measure(c: &Case) -> ((u16, u16), u32) {
         assert!(!held || s.1.abs_diff(slots) <= 2, "frames disagree: {seen:?}");
     }
     (start, slots)
+}
+
+/// Kickstart at its insert-disk hand, the case's handler poked in to run from the next frame.
+fn started(c: &Case) -> Amiga {
+    let rom = kickstart_path().unwrap_or_else(|e| panic!("{e}"));
+    let mut a = Amiga::power_on(&OracleConfig::new(rom, Vec::new(), HAND + FRAMES + 1)).unwrap();
+    for _ in 0..HAND {
+        a.step(FrameInput::NONE).unwrap();
+    }
+    a.poke(BITPLANE, &vec![0; 40 * 256]);
+    a.poke(COPPER, &copper(c));
+    a.poke(SPRITE, &sprite());
+    a.poke(RESULT, &[0; 8]);
+    a.poke(HANDLER, &handler(c));
+    a.poke(0x6c, &HANDLER.to_be_bytes());
+    a
 }
 
 /// One sprite, its data words zero (DMA fetches them all the same), then the list's end.
@@ -340,4 +346,46 @@ fn a_cpu_loop_on_the_beam() {
     for (name, c, start, slots) in &all {
         assert_eq!(measure(c), (*start, *slots), "{name}");
     }
+}
+
+/// The toolkit's `AudioDma` takes the slots the reference emulator's audio DMA takes: audio
+/// channel 0 playing under the handler, the oracle's bus owners against the model run on the
+/// frame's own Paula writes. A line's owners come with the next line's sample (the display's
+/// first plane line, 44, is in the sample at 45), so an owner at sample `vpos` is line `vpos - 1`.
+/// Learned on: translator T52 review, where reading them unshifted put the model a line early.
+#[test]
+fn audio_dma_takes_the_oracles_audio_slots() {
+    const AUD0: u8 = 4; // vAmiga BusOwner::AUD0
+    let c = Case { audio: true, ..case(1) };
+    let mut a = started(&c);
+    a.step(FrameInput::NONE).unwrap();
+    let mut dma = amiga_paula::AudioDma::new();
+    dma.frame(&a.step(FrameInput::NONE).unwrap().paula, 313);
+    a.set_dma_profile();
+    let cap = a.step(FrameInput::NONE).unwrap();
+    let samples = a.line_samples();
+    a.set_profile(false);
+    // The bitplanes show the owners' line: the 256 display lines from 44.
+    let planes: Vec<u16> = samples
+        .iter()
+        .filter(|l| l.owners.iter().any(|&o| (8..=15).contains(&o)))
+        .map(|l| l.vpos - 1)
+        .collect();
+    assert_eq!((planes.first(), planes.len()), (Some(&44), 256));
+    let oracle: Vec<(u32, u32)> = samples
+        .iter()
+        .flat_map(|l| {
+            let line = l.vpos as u32 - 1;
+            l.owners.iter().enumerate().filter(|(_, o)| **o == AUD0).map(move |(h, _)| (line, h as u32))
+        })
+        .collect();
+    let last = oracle.iter().map(|o| o.0).max().unwrap();
+    let model: Vec<(u32, u32)> = dma
+        .frame(&cap.paula, 313)
+        .iter()
+        .map(|&(s, _)| (s / 227, s % 227))
+        .filter(|m| m.0 <= last)
+        .collect();
+    assert!(model.len() > 250, "about one fetch a line: {}", model.len());
+    assert_eq!(model, oracle);
 }

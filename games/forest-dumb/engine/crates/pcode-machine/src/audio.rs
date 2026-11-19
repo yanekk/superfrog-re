@@ -9,15 +9,11 @@
 //! the slots after its line, so a slot is looked up in the last run unless a write since then
 //! could have changed it; then the frame is run again (a frame of Paula's clocks, about 0.3 ms;
 //! the music player's writes come in a burst on one line, so about one rerun a frame).
+//!
+//! `AudioDma`'s slots are the oracle's bus owners' slot for slot (toolkit `contention.rs`,
+//! `audio_dma_takes_the_oracles_audio_slots`), so they are taken where the model puts them.
 
 use amiga_paula::{AudioDma, PaulaWrite};
-
-/// Where the oracle's bus has an audio fetch, after `AudioDma`'s position for it: a line later.
-/// Measured on frame 6777 of `camera-bottom-right`: 231 of 232 lines' audio slots equal the
-/// oracle's DMA debugger's so shifted, 7 unshifted. `AudioDma`'s line is the one its DAC timing
-/// was matched on, and the first game's bus timing is fitted on it as it is, so the toolkit's
-/// model is left alone.
-pub const AUDIO_LAG: u32 = amiga_clock::LINE_SLOTS as u32;
 
 const LINE: u32 = amiga_clock::LINE_SLOTS as u32;
 
@@ -28,10 +24,8 @@ pub(crate) struct Audio {
     /// This frame's Paula writes, at their beam positions, in order.
     writes: Vec<PaulaWrite>,
     /// The slots the channels take this frame, as DMA slots from its start, ascending: the last
-    /// run's, with `carried` first.
+    /// run's.
     slots: Vec<u32>,
-    /// The last frame's fetches that `AUDIO_LAG` moves into this frame's first line.
-    carried: Vec<u32>,
     /// The first slot a write since the last run may have changed: looking one up from there runs
     /// the frame again.
     stale_from: Option<u32>,
@@ -46,7 +40,6 @@ impl Audio {
             state: AudioDma::new(),
             writes: Vec::new(),
             slots: Vec::new(),
-            carried: Vec::new(),
             stale_from: Some(0),
             lines: matches!(frame_lines, 312 | 313).then_some(frame_lines as u32),
         }
@@ -58,7 +51,6 @@ impl Audio {
     pub fn start(&mut self, dmacon: u16) {
         self.state = AudioDma::booted(0x8000 | dmacon);
         self.writes.clear();
-        self.carried.clear();
         self.stale_from = Some(0);
     }
 
@@ -70,8 +62,8 @@ impl Audio {
             hpos,
             vpos,
         });
-        // It changes the model's fetches on its line at the earliest, which the bus has a line on.
-        let from = (vpos as u32 * LINE + AUDIO_LAG).min(self.stale_from.unwrap_or(u32::MAX));
+        // It changes the model's fetches on its line at the earliest.
+        let from = (vpos as u32 * LINE).min(self.stale_from.unwrap_or(u32::MAX));
         self.stale_from = Some(from);
     }
 
@@ -83,20 +75,9 @@ impl Audio {
         self.slots.binary_search(&slot).is_ok()
     }
 
-    /// The frame ends: its writes become the channels' state, and the fetches past its end are
-    /// the next frame's first.
+    /// The frame ends: its writes become the channels' state.
     pub fn end_frame(&mut self) {
-        if self.stale_from.is_some() {
-            self.run();
-        }
         if let Some(lines) = self.lines {
-            let end = lines * LINE;
-            self.carried = self
-                .slots
-                .iter()
-                .filter(|&&s| s >= end)
-                .map(|&s| s - end)
-                .collect();
             self.state.frame(&self.writes, lines);
         }
         self.writes.clear();
@@ -106,12 +87,10 @@ impl Audio {
     fn run(&mut self) {
         self.stale_from = None;
         self.slots.clear();
-        self.slots.extend_from_slice(&self.carried);
         if let Some(lines) = self.lines {
             let mut a = self.state.clone();
             let fetched = a.frame(&self.writes, lines);
-            self.slots
-                .extend(fetched.iter().map(|&(slot, _)| slot + AUDIO_LAG));
+            self.slots.extend(fetched.iter().map(|&(slot, _)| slot));
         }
     }
 }
@@ -130,18 +109,16 @@ mod tests {
     }
 
     #[test]
-    fn a_playing_channel_takes_its_slot_a_line_after_the_models_fetch() {
+    fn a_playing_channel_takes_the_models_slots() {
         let mut a = playing();
         let model: Vec<u32> = {
             let mut m = AudioDma::new();
             m.frame(&a.writes, 313).iter().map(|f| f.0).collect()
         };
         assert!(model.len() > 200, "about one fetch a line: {}", model.len());
-        for &s in &model {
-            assert_eq!(s % LINE, 0x0D, "channel 0's slot");
-            assert!(a.takes(s + AUDIO_LAG), "slot {s} a line on");
-        }
-        assert!(!a.takes(model[0]), "not where the model has it");
+        assert!(model.iter().all(|s| s % LINE == 0x0D), "channel 0's slot");
+        let taken: Vec<u32> = (0..313 * LINE).filter(|&s| a.takes(s)).collect();
+        assert_eq!(taken, model, "the model's slots, no other");
     }
 
     #[test]
@@ -150,20 +127,11 @@ mod tests {
         let line = |l: u32| l * LINE + 0x0D;
         let before: Vec<bool> = (100..110).map(|l| a.takes(line(l))).collect();
         assert!(before.iter().any(|&t| t));
-        // DMACON: AUD0EN off on line 104; lines up to 105 (the model's 104 a line on) keep theirs.
+        // DMACON: AUD0EN off on line 104, past its slot: lines up to 104 keep theirs.
         a.write(0x96, 0x0001, (104, 0x20));
-        for l in 100..=105 {
+        for l in 100..=104 {
             assert_eq!(a.takes(line(l)), before[(l - 100) as usize], "line {l}");
         }
-        assert!((107..200).all(|l| !a.takes(line(l))), "off from there");
-    }
-
-    #[test]
-    fn the_last_lines_fetches_carry_into_the_next_frame() {
-        let mut a = playing();
-        let last = 312 * LINE + 0x0D;
-        let carried = a.takes(last + AUDIO_LAG) as usize;
-        a.end_frame();
-        assert_eq!(a.takes(0x0D) as usize, carried);
+        assert!((106..200).all(|l| !a.takes(line(l))), "off from there");
     }
 }
