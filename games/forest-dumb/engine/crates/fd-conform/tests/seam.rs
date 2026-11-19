@@ -205,7 +205,8 @@ fn the_frame_mount_passes_against_the_translated_game_frame_on_2000_states() {
     );
     let rig = Rig::new().unwrap_or_else(|e| panic!("{e}"));
     let data = fd_conform::game_data().unwrap_or_else(|e| panic!("{e}"));
-    let level_1: Arc<dyn Any + Send + Sync> = Arc::new(fd_translated::Level1::new(data));
+    let level: Arc<fd_translated::Level1> = Arc::new(fd_translated::Level1::new(data));
+    let level_1: Arc<dyn Any + Send + Sync> = level.clone();
     let off = fd_translated::seam::frame::GAME_FRAME.1;
     let generator = fd_conform::generators::generator("game_frame").unwrap();
     let key = rig.name(h(0, off));
@@ -225,6 +226,9 @@ fn the_frame_mount_passes_against_the_translated_game_frame_on_2000_states() {
     );
     assert!(r.pass(), "{r:?}");
     assert_eq!((r.passed, r.replaced_stopped), (2000, 0), "{r:?}");
+    // A mount that fell through to the translated routine would pass against itself: the hand
+    // engine must have played every state (T36 review).
+    assert_eq!(level.passes(), 2000, "the hand engine played {} passes", level.passes());
 }
 
 /// Without level 1's engine the frame mount stops, naming what is missing, rather than run the
