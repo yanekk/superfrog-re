@@ -9,11 +9,6 @@
 # a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
 # The script is the frozen run's with a wait and jumps added on the way back (888 steps for 820) so no
 # life is lost; collect-ledge's stomp adds 250.
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 58 (oracle frame 6360), creature_active+$1 $ff on the engine, 0 in the original,
-# the same start as collect-ledge's (frame 6359, line 226 on the machine; frame 6360, line 163 on the
-# original); the machine's edge-redraw scan starts a creature (h0_681c) before the pass at line 233 that
-# cuts the original's scan (docs/10, "A creature start the next pass cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "collect-return"
 frames = 888

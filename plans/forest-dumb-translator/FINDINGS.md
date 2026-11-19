@@ -6,18 +6,18 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🔄 | **Owner, T50:** interrupts are taken at instruction boundaries (DESIGN §2.8, `Bus::insn`, `Machine::quiet`); block starts took line 233's after `h0_6852`'s creature start. T52's and T53's readings ran on block-start interrupts. |
+| 2026-11-19 | 🔄 | **T54 added** (owner, T50; blocks T42, not T36): route-W1-1 and route-both-W1-1 pass translated to pass 4160. For T36: with level 1 mounted, a difference before pass 4161 is the seam's, from it on T54's. |
+| 2026-11-19 | 📌 | **T50 measured:** 40 of 42 level cases pass translated; whole tree on the machine 89 of 100, `MACHINE_PINNED` unchanged; the check costs about 7% (death-spikes 46.2 s against 43.3 s, oracle included). |
 | 2026-11-19 | 📌 | **T52 cause:** the pass-477 creature was the picture: the machine showed a blit whole from BLTSIZE; D words now reach the picture at their bus slot. Speed: `TRAIL` 48 lumped `h0+$5500`'s 198 instructions; audio slots were untaken. |
 | 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24; same after the review fix. Owner's rule. |
-| 2026-11-19 | 📌 | **T52, for T50:** on T52's machine enemy-kind4, mechanic-spring, death-water and mechanic-vanish pass; route-W1-1 and route-both-W1-1 differ near pass 1980, `creature_active+$0` 255 against 0. |
 | 2026-11-19 | 🐞 | **T52 review:** `AUDIO_LAG` (a line) was falsified: `line_samples` `owners` are the line before `vpos`, and so read the oracle's AUD0 slots equal `AudioDma`'s exactly. Shift removed; `contention.rs` `audio_dma_takes_the_oracles_audio_slots` holds both. |
 | 2026-11-19 | 🐞 | Sweep, left alone: toolkit `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) does not say its owners are the line before `vpos`; the T52 slip came from that. |
 | 2026-11-19 | 🐞 | Sweep, left alone: Superfrog `sf-conform/examples/vbl_audio.rs` counts audio owners at `s.vpos` unshifted, a line late; `slot_audio.rs` and `story_draws.rs` subtract one. |
-| 2026-11-19 | 📌 | Block-boundary interrupts (DESIGN §2.8) took frame 6776's line-233 level 3 122 slots late, mid `h0_7cc`; taking it at the next access fixed that, but the case passes without it, so left as designed. |
 | 2026-11-19 | 🔄 | **Owner, T51:** a load's OS stretch to `system_off` lines up as the load's (`frames::OsTail`); `beam_sample_unread` left out of memory; a frame-end byte passes one frame on. World starts 5, 6 pass; T53 added for 2, 3, 4. |
 | 2026-11-19 | 📌 | **T51 measured** (supersedes T33's `h0+$7a9d` speed reading): after a load the OS's interrupts take ~5% of the CPU. World 2's scan `h0+$7a9e`: 3 834 bytes per 5 frames, 4 015 with `$64/$68/$6C/$78` stubbed; `system_off` 6026, not 6029. |
 | 2026-11-19 | 🐞 | **T51 review, open:** `power-on-title` passes on the translated program under T51's rules (`power_on.rs`, reviewer run); its case notes still say `Fails today`. Not T51's case, left alone. |
 | 2026-11-19 | 📌 | **T51 review, power-on-level-1** under T51's rules: memory first differs at 6301, play's first pass (`h0+$1fe6`, engine $80, original $f1), not 3462; 7 frames pass one frame on. Left alone. |
-| 2026-11-18 | 🔄 | **Owner, T49 review:** T52 blocks T50 too. DESIGN §2.7 and §8 now say DMA contention is modelled; the pass-end bar, a pass's one frame of slack and a non-Paula write's one pass unchanged. |
 | 2026-11-18 | 🐞 | **T49 review, open:** the shift loop (`lsl.l #8` four times, `move.w`) with refresh alone on the bus takes 11 873 slots on `pcode-machine`, 11 866 on the oracle, not held in `tests_dma.rs`. Moira's order (prefetch, then SYNC) checked. |
 | 2026-11-18 | 🐞 | Present at T49's base, left alone: `purity.rs` flags `pcode-machine/src/collide.rs:96`'s 18-element table (T31's); `test_insn_check.py` finds no `// h0+$4a bra.w` in the defects tree; `test_reshape` trips on a stale `/var/folders/.../toolkit` symlink. |
 | 2026-11-18 | 🔄 | **Owner, T33:** `world_index` is set as `load_world` is entered on both sides, not via `next_world`: a `set` row's `when` makes toolkit `Amiga::poke_at` (shim exec hook, BUILD unchanged) and `TranslatedGame::write_at`. |

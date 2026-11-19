@@ -10,11 +10,6 @@
 # compares state only; enemy-contact compares it with creatures drawn.
 # Goal: kind 4 in slot 3 at x 722, y 1472, facing left, phase $7c, where it is only after the turn
 # (reached at frame 7398).
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 93 (oracle frame 6395), creature_slots+$20 $01cb0050 on the engine, $01cc0050 in
-# the original, the same start as enemy-hop's (frame 6393 line 213 against frame 6394 line 141); the
-# machine's edge-redraw scan starts a creature (h0_681c) before the pass at line 233 that cuts the
-# original's scan (docs/10, "A creature start the next pass cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "enemy-kind4"
 frames = 1400

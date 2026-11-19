@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T50; once it is ✅, T36 may start (T54 blocks only T42).
 
 ## Tasks
 
@@ -64,12 +64,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T46 | level1-cases-a-rest | T30; blocks T36 | ✅ | |
 | T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
-| T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
+| T50 | level1-cases-b-rest | T48, T49; blocks T36 | 🔍 | Interrupts at instruction boundaries (owner's yes, DESIGN §2.8): `insn_start`, `Machine::quiet`; two irq.rs tests. 16 of 18 pass translated, 40 of 42 level cases; gate 89 of 100. Deviation: route-W1-1 and route-both-W1-1 fail at pass 4161, main_loop's spin interrupted elsewhere, carried to T54 (owner). T48 notes dropped. |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
+| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T50
 
 ## Blocked on the user
 
