@@ -16,6 +16,10 @@ path = "src/main.rs"
 # The game (DESIGN §3.2). Never fd-conform or amiga-oracle: the shipped game may not contain an
 # emulator (DESIGN §3.1, `tests/deps.rs`).
 fd-core = { path = "../fd-core" }
+# The translated program, run from power-on with level 1's hand engine mounted (translator DESIGN
+# §2.10), and the machine's input and disks it starts on. Both pure, no emulator (`tests/deps.rs`).
+fd-translated = { path = "../fd-translated" }
+pcode-machine = { path = "../pcode-machine" }
 fd-assets = { path = "../fd-assets" }
 # The disk lookup and the unpacker (DESIGN §2.9).
 fd-tools = { path = "../fd-tools" }
