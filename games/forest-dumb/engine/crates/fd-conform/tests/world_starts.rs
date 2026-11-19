@@ -7,6 +7,9 @@
 //! original from power-on to the same sync frame, which makes the case's write as the runner's
 //! original makes it (`Amiga::poke_at` at the routine's first instruction), or between frames at
 //! its start, where `title_code_world` overwrites it in the step `load_world` reads it.
+//!
+//! In play memory is judged at pass ends (T53): a stand-in whose frame ends at its pass end, not
+//! where the original's frame ends mid-pass, passes; one whose RAM differs at a pass end fails there.
 
 mod common;
 
@@ -18,6 +21,18 @@ use fd_conform::translated_engine::{TranslatedEngine, case_start, frame_bar, run
 use fd_conform::{Case, HUNK_BASES, Inputs, Options, Outcome, Verdict, disks};
 use fd_core::{Mem, Transplant, Var, layout_var};
 use fd_translated::TranslatedGame;
+
+/// What the stand-in reports in play (T53).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Play {
+    /// Its RAM as the original's: at the frame's end, and at the step's first pass end.
+    AsIs,
+    /// At the frame's end its RAM at the step's first pass end, as if its frame ended there and not
+    /// mid-pass where the original's does.
+    FrameEndsAtPassEnd,
+    /// One byte of `h0+$7cde` changed in its RAM at the pass end with this `irq_count`.
+    PassEndDiffers(u32),
+}
 
 /// How the stand-in makes the case's write.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -32,6 +47,10 @@ struct StandIn {
     am: Amiga,
     case: Case,
     write: Write,
+    play: Play,
+    /// Frames whose reported RAM at their end was not the original's there.
+    moved: u32,
+    pass_ends: Vec<Vec<u8>>,
     entered: u32,
     returned: u32,
     loads: (u32, bool),
@@ -45,9 +64,22 @@ fn h((hunk, off): (u8, u32)) -> u32 {
     HUNK_BASES[hunk as usize] + off
 }
 
+/// `v`'s value in `ram`, chip RAM then slow RAM.
+fn value(ram: &[u8], v: &Var) -> u32 {
+    let a = h((v.hunk, v.offset));
+    let i = if a >= amiga_oracle::SLOW_BASE {
+        (a - amiga_oracle::SLOW_BASE) as usize + 512 * 1024
+    } else {
+        a as usize
+    };
+    ram[i..i + v.width.bytes()]
+        .iter()
+        .fold(0, |acc, &x| acc << 8 | x as u32)
+}
+
 impl StandIn {
     /// The original from power-on to the end of `case`'s sync frame's step, as the runner's.
-    fn new(case: &Case, write: Write) -> StandIn {
+    fn new(case: &Case, write: Write, play: Play) -> StandIn {
         let inputs = Inputs::load(case).unwrap();
         let kickstart = kickstart_path().unwrap_or_else(|e| panic!("{e}"));
         let cfg = OracleConfig::new(
@@ -69,10 +101,14 @@ impl StandIn {
             .map(h)
             .collect();
         am.watch_pcs(&pcs);
+        am.watch_write(Some(fd_conform::PASS_END));
         StandIn {
             am,
             case: case.clone(),
             write,
+            play,
+            moved: 0,
+            pass_ends: Vec::new(),
             entered: 0,
             returned: 0,
             loads: (0, false),
@@ -114,9 +150,29 @@ impl FrameEngine for StandIn {
         self.entered += count(&LOAD_ROUTINES);
         self.returned += r;
         self.loads = (r, self.entered > self.returned);
-        let m = self.am.memory();
-        self.ram = m.chip.clone();
-        self.ram.extend_from_slice(&m.slow);
+        let flat = |m: amiga_oracle::AmigaMemory| {
+            let mut v = m.chip;
+            v.extend_from_slice(&m.slow);
+            v
+        };
+        self.ram = flat(self.am.memory());
+        self.pass_ends = self.am.watched_memory().map(flat).into_iter().collect();
+        let irq_count = layout_var("irq_count").unwrap();
+        for ram in &mut self.pass_ends {
+            match self.play {
+                Play::FrameEndsAtPassEnd => {
+                    if *ram != self.ram {
+                        self.moved += 1;
+                    }
+                    self.ram = ram.clone();
+                }
+                Play::PassEndDiffers(k) if value(ram, irq_count) == k => {
+                    let a = (h((0, 0x7cde)) - amiga_oracle::SLOW_BASE) as usize + 512 * 1024;
+                    ram[a] ^= 0x01;
+                }
+                _ => {}
+            }
+        }
         self.pic = Some(self.am.picture_in(SCREEN_WINDOW.0, SCREEN_WINDOW.1));
         self.paula = c.paula;
         self.custom = self
@@ -137,6 +193,9 @@ impl FrameEngine for StandIn {
     }
     fn pass_ends(&self, _: &[&Var]) -> Vec<Vec<u32>> {
         unreachable!("lined up by loads, not pass ends")
+    }
+    fn pass_end_ram(&self) -> &[Vec<u8>] {
+        &self.pass_ends
     }
     fn stopped(&self) -> Option<String> {
         None
@@ -172,14 +231,52 @@ fn world_2_short(when: &str) -> Case {
 
 /// The case against a stand-in, and the stand-in's `world_index` at the end.
 fn stand_in(case: &Case, write: Write) -> (Verdict, u32) {
+    let (v, s) = stand_in_playing(case, write, Play::AsIs);
+    (v, s.probe(layout_var("world_index").unwrap()))
+}
+
+fn stand_in_playing(case: &Case, write: Write, play: Play) -> (Verdict, StandIn) {
     let inputs = Inputs::load(case).unwrap();
-    let mut s = StandIn::new(case, write);
+    let mut s = StandIn::new(case, write, play);
     let opts = Options {
         every_channel: true,
         ..Options::default()
     };
     let v = run_entry_frames(case, &inputs, &mut s, &opts).unwrap_or_else(|e| panic!("{e}"));
-    (v, s.probe(layout_var("world_index").unwrap()))
+    (v, s)
+}
+
+/// A stand-in whose play frames end at the pass end, where the original's `game_frame` returns
+/// after its frame's end (docs/09): its RAM at most play frames' ends is not the original's, and
+/// the case passes, judged at the pass ends (owner's §2.7 rule, T53).
+#[test]
+#[ignore = "full: the disks and Kickstart; the original from power-on twice"]
+fn a_play_frame_ending_mid_pass_apart_from_the_original_passes_judged_at_pass_ends() {
+    let case = world_2_short("load_world");
+    let (v, s) = stand_in_playing(&case, Write::AtRoutine, Play::FrameEndsAtPassEnd);
+    assert_eq!(v.outcome, Outcome::Same, "{v}");
+    assert!(s.moved >= 20, "frame ends apart in play: {} frames", s.moved);
+    assert!(v.memory_passes >= 25, "pass ends compared in play: {v}");
+    assert!(v.goal_met.is_some(), "{v}");
+}
+
+/// The same stand-in's RAM differing at one pass end, its frame's end equal, fails naming the
+/// pass by `irq_count`.
+#[test]
+#[ignore = "full: the disks and Kickstart; the original from power-on twice"]
+fn a_difference_at_a_pass_end_in_play_fails_naming_the_pass() {
+    let case = world_2_short("load_world");
+    let (v, _) = stand_in_playing(&case, Write::AtRoutine, Play::PassEndDiffers(10));
+    match &v.outcome {
+        Outcome::Differs { pass, var, .. } => {
+            assert_eq!(*pass, 10, "{v}");
+            assert!(
+                var.starts_with("h0+$7cde (1 bytes differ at the pass end, irq_count 10)"),
+                "{v}"
+            );
+        }
+        other => panic!("expected memory apart at irq_count 10, got {other}"),
+    }
 }
 
 /// The `set` applied once, to both sides, at the same point: a copy of the original that writes
@@ -193,7 +290,11 @@ fn a_set_made_on_both_sides_as_load_world_is_entered_loads_the_same_world() {
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert_eq!(world, 1, "{v}");
     assert_eq!(v.loads, 13, "world 2's load list, title's loads not among them: {v}");
-    assert!(v.memory_frames >= 150, "the frames outside the load compared: {v}");
+    // In play memory is judged at the pass ends instead of the frames' (T53).
+    assert!(
+        v.memory_frames + v.memory_passes >= 150,
+        "the frames outside the load compared: {v}"
+    );
     assert!(v.goal_met.is_some(), "world_index 1 and 30 passes on both sides: {v}");
 }
 
@@ -291,9 +392,9 @@ fn translated(w: u32) -> Verdict {
     run_translated(&case(w), &Options::default()).unwrap_or_else(|e| panic!("{e}"))
 }
 
-// The finish line (T33's, then T51's Done when): each world's case passes on the translated
-// program. Measured 2026-11-19 (T51): worlds 5 and 6 pass; 2, 3 and 4 fail in play on a frame's
-// end inside game_frame, carried by T53 (docs/14-translator.md, "Worlds 2 to 6").
+// The finish line (T33's, T51's, then T53's Done when): each world's case passes on the translated
+// program. Measured 2026-11-19 (T53): all five, play judged at pass ends (docs/14-translator.md,
+// "Worlds 2 to 6").
 #[test]
 #[ignore = "full: the disks, Kickstart and the generated tree; world 2 from the title"]
 fn world_2_start_passes_on_the_translated_program() {
