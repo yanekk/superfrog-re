@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** review T51; T52, then T50 and T53; T36 to T42 after them.
+**Next `pir-work` will:** T52, then T50 and T53; T36 to T42 after them.
 
 ## Tasks
 
@@ -65,11 +65,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
-| T51 | world-starts-pass | T33, T49; blocks T42 | 🔍 | Owner's rules in fd-conform's runner, not the machine (deviation): a load's OS stretch lines up as the load's; beam_sample_unread left out; a frame-end byte passes one frame on. World starts 5, 6 pass; 2, 3, 4 unproven, failing in play mid-pass, carried by T53 (owner). next_world checked. 9 unit tests; power_on.rs stand-in case to 4000. |
+| T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | Worlds 5, 6 pass (reviewer run); 2 fails at 6154 as recorded; 2, 3, 4 carried by T53. Fix: DESIGN §2.7 records the owner's three rules; power-on-level-1 finding corrected to 6301. next_world and beam_sample_unread checked in the listing. Mutations caught: held bytes always passing (power_on.rs, full), the behind check (unit). |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ⬜ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
 
-**Review queue:** T51
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
