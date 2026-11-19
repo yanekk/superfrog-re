@@ -66,7 +66,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
-| T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ⬜ | |
+| T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
 
 **Review queue:** *(empty)*
