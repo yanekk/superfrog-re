@@ -169,7 +169,11 @@ pub fn time_alone(offset: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> 
     };
     let mut g = level.base.clone();
     g.transplant(&NoPicture(&BusMem::new(bus, img)));
-    let Some(path) = g.level(|l| rules::path(offset, l)) else {
+    let mem = BusMem::new(bus, img);
+    let peek = |o: u32| mem.read_at(img.h(0, o));
+    let path = g.level(|l| rules::path(offset, l, &peek));
+    drop(mem);
+    let Some(path) = path else {
         return Err(Stop::Unsupported {
             op: "seam: no timing rule".into(),
             at: at(),
@@ -813,7 +817,11 @@ impl Pass for BusPass<'_, '_, '_> {
         if offset == READ_JOYSTICK {
             self.log_full = rules::log_full(l);
         }
-        match rules::path(offset, l) {
+        let path = {
+            let (mem, img) = (&*self.mem, self.img);
+            rules::path(offset, l, &|o| mem.read_at(img.h(0, o)))
+        };
+        match path {
             Some(d) => {
                 self.walk.decide(d);
                 self.walked = true;

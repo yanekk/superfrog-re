@@ -11,8 +11,13 @@ use fd_core::level::camera::{Camera, Dir, MAX_X, MAX_Y};
 
 use super::walk::Decision::{self, Branch, Count};
 
-/// The decisions of the routine at hunk 0 `offset` on `l`, or `None` when it has no rule.
-pub fn path(offset: u32, l: &LevelCtx) -> Option<Vec<Decision>> {
+/// Memory as a routine reads it, by hunk 0 offset: for what the typed state does not hold (a cell
+/// read past the object map's end).
+pub type Peek<'a> = &'a dyn Fn(u32) -> u8;
+
+/// The decisions of the routine at hunk 0 `offset` on `l` (and memory, `peek`), or `None` when it
+/// has no rule.
+pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
     let mut d = Vec::new();
     let s = &*l.state;
     match offset {
@@ -29,14 +34,17 @@ pub fn path(offset: u32, l: &LevelCtx) -> Option<Vec<Decision>> {
         0x21c0 => spring_redraw(l, &mut d),
         0x2c7e => creatures_restore(l, &mut d),
         0x2d4c => creatures_cut(l, &mut d),
+        0x3698 => creatures_sort(l, &mut d),
+        0x24ce => spring_trigger(l, peek, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 12] = [
-    0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
+pub const RULED: [u32; 14] = [
+    0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0,
+    0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -400,5 +408,50 @@ fn creatures_cut(l: &LevelCtx, d: &mut Vec<Decision>) {
             }
         }
         d.push(Branch(i != 4));
+    }
+}
+
+/// `h0_3698`: five passes (`dbra`) of a bubble sort of the five slots' y, each four compares and
+/// swaps; the middle two compare bytes (`cmp.b`), the outer two words (`bpl` keeps the order).
+fn creatures_sort(l: &LevelCtx, d: &mut Vec<Decision>) {
+    let mut y: [u16; 5] = core::array::from_fn(|i| l.state.edges.creatures.slots[i].y);
+    for pass in (0..=4u16).rev() {
+        for (k, byte) in [(0, false), (1, true), (2, true), (3, false)] {
+            let (a, b) = (y[k], y[k + 1]);
+            let kept = if byte {
+                (b as u8).wrapping_sub(a as u8) & 0x80 == 0
+            } else {
+                b.wrapping_sub(a) & 0x8000 == 0
+            };
+            d.push(Branch(kept));
+            if !kept {
+                y.swap(k, k + 1);
+            }
+        }
+        d.push(Count(pass));
+    }
+}
+
+/// `h0_24ce`: while falling and not dying, the object map's cell under the feet tested against the
+/// four spring values (`beq` each).
+fn spring_trigger(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    d.push(Branch(s.motion.falling != 0));
+    if s.motion.falling == 0 {
+        return;
+    }
+    d.push(Branch(s.motion.dying == 0));
+    if s.motion.dying != 0 {
+        return;
+    }
+    // `addi.l`, `lsr.l #4`, `mulu.w #$60` of the column's low word, then the row added.
+    let col = (s.char_x.wrapping_add(0xe) >> 4) & 0xffff;
+    let at = (col * 0x60).wrapping_add(s.char_y.wrapping_add(0x23) >> 4);
+    let v = peek(fd_core::level::redraw::OBJECT_MAP.wrapping_add(at));
+    for k in 0x10..=0x13 {
+        d.push(Branch(v == k));
+        if v == k {
+            return;
+        }
     }
 }
