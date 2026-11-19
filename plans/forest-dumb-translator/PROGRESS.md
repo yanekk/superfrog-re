@@ -53,7 +53,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ✅ | |
 | T38 | app-sound | T37 | ✅ | |
-| T39 | app-stop | T37 | ⬜ | |
+| T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
