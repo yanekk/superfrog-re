@@ -39,15 +39,16 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
         0x24ce => spring_trigger(l, peek, &mut d),
         0x2dd6 => creatures_write_back(l, peek, &mut d),
         0x2fae => creatures_move(l, peek, &mut d),
+        0x62b6 => animated_cells(l, peek, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 16] = [
-    0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0,
-    0x2104, 0x21c0, 0x2c7e, 0x2d4c,
+pub const RULED: [u32; 17] = [
+    0x62b6, 0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc,
+    0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -547,13 +548,13 @@ fn creatures_move(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
             }
             // A probe: `beq` (a wall ahead turns it) or `bne` (an edge turns it).
             let probe = |d: &mut Vec<Decision>,
-                             x: u16,
-                             y: u16,
-                             facing: &mut u8,
-                             dx: u16,
-                             dy: u32,
-                             wall: bool,
-                             to: u8| {
+                         x: u16,
+                         y: u16,
+                         facing: &mut u8,
+                         dx: u16,
+                         dy: u32,
+                         wall: bool,
+                         to: u8| {
                 let m = map(x, y, dx, dy);
                 d.push(Branch(if wall { m == 0 } else { m != 0 }));
                 if (m != 0) == wall {
@@ -616,5 +617,92 @@ fn creatures_move(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
             let _ = (x, y, facing);
         }
         d.push(Branch(i != 4));
+    }
+}
+
+/// `h0_62b6`: the animation's phase stepped (`bne` past the tick's step), then the phase's list of
+/// twelve cells (`bne` on to the next): a used cell whose object map byte is gone (`bne`) or out of
+/// the view (`bpl`, `bmi`, `bpl`, `bmi`) is dropped; else by its value (`bpl`, `bne`, `beq`, `bne`,
+/// `bpl`, `bmi`, `beq`) an element frame, water, the second water, the end of the list, a
+/// vanishing block (its collision set or cleared by the frame table's word, `beq`) or the flame.
+fn animated_cells(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let a = s.animation;
+    let phase = a.phase.wrapping_add(1) & 3;
+    d.push(Branch(phase != 0));
+    let tick = if phase == 0 {
+        a.tick.wrapping_add(1)
+    } else {
+        a.tick
+    };
+    let list = phase as usize;
+    let c = &s.camera;
+    let below = |p: u16, q: u16| p.wrapping_sub(q) & 0x8000 != 0;
+    for i in 0..12 {
+        let used = s.edges.cells.used[list][i] != 0;
+        d.push(Branch(used));
+        if used {
+            let cell = s.edges.cells.cells[list][i];
+            let (x, y) = (cell.x, cell.y);
+            let at = (x as u32 >> 4) * 0x60 + (y as u32 >> 4);
+            let there = peek(0, fd_core::level::redraw::OBJECT_MAP.wrapping_add(at)) != 0;
+            d.push(Branch(there));
+            if there {
+                // Out the left, the right, the top, the bottom: each `bpl`/`bmi` taken leaves.
+                let tests = [
+                    !below(c.x.wrapping_sub(0x10), x),
+                    below(c.x.wrapping_add(0x130), x),
+                    !below(c.y.wrapping_sub(0x20), y),
+                    below(c.y.wrapping_add(0xc0), y),
+                ];
+                let mut out = false;
+                for t in tests {
+                    d.push(Branch(t));
+                    if t {
+                        out = true;
+                        break;
+                    }
+                }
+                if !out {
+                    let v = cell.code.wrapping_sub(0x20);
+                    let under = |imm: u8| v.wrapping_sub(imm) & 0x80 != 0;
+                    d.push(Branch(!under(8)));
+                    if under(8) {
+                        d.push(Decision::Busy);
+                    } else {
+                        d.push(Branch(v != 8));
+                        if v == 8 {
+                            d.push(Branch(a.water_cycle == 0));
+                            d.push(Decision::Busy);
+                        } else {
+                            d.push(Branch(v != 0xa));
+                            if v == 0xa {
+                                d.push(Decision::Busy);
+                            } else {
+                                d.push(Branch(!under(0x10)));
+                                if under(0x10) {
+                                    return;
+                                }
+                                d.push(Branch(under(0x14)));
+                                if under(0x14) {
+                                    let k = (v - 0x10) as u32;
+                                    let idx = ((k << 4) + tick as u32) & 0x3f;
+                                    let word = l.program.byte(0x63ec + 4 * idx + 3);
+                                    d.push(Decision::Busy);
+                                    d.push(Branch(word == 0x14));
+                                } else {
+                                    d.push(Branch(v == 0x14));
+                                    if v != 0x14 {
+                                        return;
+                                    }
+                                    d.extend([Decision::Busy, Decision::Busy]);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        d.push(Branch(i != 11));
     }
 }

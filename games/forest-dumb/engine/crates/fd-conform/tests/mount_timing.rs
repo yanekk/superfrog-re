@@ -17,7 +17,8 @@ use fd_translated::seam::rules::RULED;
 /// Each ruled routine and the routine judge's generator for it.
 /// A routine with no generator of its own is checked on [`varied`]: `game_frame`'s states, which
 /// hold the whole level at its sync point, with what those routines read varied.
-const CHECKED: [(&str, u32); 16] = [
+const CHECKED: [(&str, u32); 17] = [
+    ("varied", 0x62b6),
     ("h0_2fae", 0x2fae),
     ("h0_2dd6", 0x2dd6),
     ("h0_3698", 0x3698),
@@ -80,6 +81,27 @@ fn varied(g: &mut Gen) -> Setup {
     s.l(h0(0x21b8), g.below(0x560) as u32);
     s.w(h0(0x21bc), g.pick(&[0, 1, 2, 5, 6, 7]));
     s.w(h0(0x21be), g.pick(&[0, 1]));
+    // The animated cells' four lists of twelve (`h2+$1680` used, `h2+$16b0` x, y, value), near the
+    // camera so that some are in view, with any value from the items to the flame and past it.
+    let (cx, cy) = (g.below(0x1600) as u16, g.below(0x480) as u16);
+    s.w(h0(0x1e62), cx);
+    s.w(h0(0x1e64), cy);
+    s.b(h0(0x62b2), g.below(0x100) as u8);
+    s.b(h0(0x62b3), g.below(4) as u8);
+    s.w(h0(0x6342), g.pick(&[0, 1]));
+    for n in 0..48u32 {
+        s.b(h(2, 0x1680 + n), g.pick(&[0, 1, 1]));
+        let at = h(2, 0x16b0 + 8 * n);
+        let x = cx.wrapping_add(g.below(0x180) as u16).wrapping_sub(0x20);
+        let y = cy.wrapping_add(g.below(0x120) as u16).wrapping_sub(0x30);
+        s.w(at, x);
+        s.w(at + 2, y);
+        s.b(at + 4, 0x20 + g.below(0x18) as u8);
+        if !g.one_in(4) {
+            let cell = (x as u32 >> 4) * 0x60 + (y as u32 >> 4);
+            s.b(h0(0xcb38 + cell), 1 + g.below(0x30) as u8);
+        }
+    }
     s
 }
 
