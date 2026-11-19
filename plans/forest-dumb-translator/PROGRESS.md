@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T52; then T50 and T51, and T36 once T50 is done.
 
 ## Tasks
 
@@ -66,9 +66,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ⬜ | |
-| T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ⬜ | |
+| T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | 🔍 | Passes, with T49's 23; gate 89/100, pins unchanged. Blit D words reach the picture at their bus slot; `TRAIL` 256 (longest block 198); audio DMA slots via `AudioDma`, a line later. Two oracle readings, three tests. Deviation: the long block held within 14, not 6, the known shift excess. Slack measured in FINDINGS. |
 
-**Review queue:** *(empty)*
+**Review queue:** T52
 
 ## Blocked on the user
 
