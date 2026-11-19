@@ -602,7 +602,8 @@ impl Character<'_> {
     }
 
     /// `h0+$3f2a`: the slide's sound on audio channel 2, after a wait of four beam lines. Sound is
-    /// out of scope (DESIGN §8); the writes are kept in [`Scratch`] for the rig.
+    /// out of scope (DESIGN §8); the writes are kept in [`Scratch`] for the rig, and the translated
+    /// program's frame mount makes them on the machine (translator T57).
     fn slide_sound(&mut self) {
         let r = &mut *self.scratch;
         r.d[7] = r.d[0];

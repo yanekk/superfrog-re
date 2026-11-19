@@ -4,7 +4,7 @@ The macOS app the owner plays (plan `forest-dumb-level-1`, DESIGN §2.7; transla
 reads the two zips and runs the translated program (`fd-translated`) from power-on, the disk 2 prompt,
 title and menus included, level 1's hand engine mounted through the seam, with its sound (`src/audio.rs`: each frame's Paula
 writes through `amiga-paula` to the audio device, whose clock paces the game; a scripted run plays
-nothing aloud and captures it; level 1 is silent until T57); `--engine hand`
+nothing aloud and captures it; level 1 has no music, only its effects, which the mount starts as the original does, T57); `--engine hand`
 instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Either is stepped once a
 313-line PAL frame on the wall clock. Built with no generated translation it prints `NOT_GENERATED`
 (run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level… and the bug recorder.

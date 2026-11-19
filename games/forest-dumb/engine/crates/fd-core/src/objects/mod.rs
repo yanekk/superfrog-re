@@ -23,8 +23,10 @@ use crate::level::collision::CollisionPlane;
 use crate::level::redraw::{Blit, IMAGE_END, LevelImage, OBJECT_MAP, SHAPES};
 use crate::program::Program;
 
-/// A sound a port starts. The plan is silent, so play drops them; the routine rig compares the Paula
-/// writes each one makes.
+/// A sound a port starts. `--engine hand` play drops them (the level 1 plan was silent); the routine
+/// rig compares the Paula writes each one makes, and the translated program's frame mount
+/// (`fd-translated` `seam::frame`) makes them on the machine, where the app plays them (translator
+/// T57).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Sound {
     /// `item_sound` (`h0+$2648`): the item sample on audio channel 2, for an item or a bonus.
