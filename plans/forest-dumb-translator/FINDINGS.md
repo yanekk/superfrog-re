@@ -8,7 +8,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 |---|---|---|
 | 2026-11-19 | 🔄 | **Owner, T51:** a load's OS stretch to `system_off` lines up as the load's (`frames::OsTail`); `beam_sample_unread` left out of memory; a frame-end byte passes one frame on. World starts 5, 6 pass; T53 added for 2, 3, 4. |
 | 2026-11-19 | 📌 | **T51 measured** (supersedes T33's `h0+$7a9d` speed reading): after a load the OS's interrupts take ~5% of the CPU. World 2's scan `h0+$7a9e`: 3 834 bytes per 5 frames, 4 015 with `$64/$68/$6C/$78` stubbed; `system_off` 6026, not 6029. |
-| 2026-11-19 | 📌 | **T51, power-on-level-1** with the OS stretch lined up: picture, Paula and custom writes now equal throughout; memory still differs from 3462 (`h3+$371d7`, T47's). Left alone. |
+| 2026-11-19 | 🐞 | **T51 review, open:** `power-on-title` passes on the translated program under T51's rules (`power_on.rs`, reviewer run); its case notes still say `Fails today`. Not T51's case, left alone. |
+| 2026-11-19 | 📌 | **T51 review, power-on-level-1** under T51's rules: memory first differs at 6301, play's first pass (`h0+$1fe6`, engine $80, original $f1), not 3462; 7 frames pass one frame on. Left alone. |
 | 2026-11-18 | 🔄 | **Owner, T49 review:** T52 blocks T50 too. DESIGN §2.7 and §8 now say DMA contention is modelled; the pass-end bar, a pass's one frame of slack and a non-Paula write's one pass unchanged. |
 | 2026-11-18 | 🐞 | **T49 review, open:** the shift loop (`lsl.l #8` four times, `move.w`) with refresh alone on the bus takes 11 873 slots on `pcode-machine`, 11 866 on the oracle, not held in `tests_dma.rs`. Moira's order (prefetch, then SYNC) checked. |
 | 2026-11-18 | 📌 | **T49 review, for T50** (supersedes T48's reading): on T49's machine 6 of T48's 14 still fail: death-water, enemy-kind4, mechanic-spring, mechanic-vanish, route-W1-1, route-both-W1-1. enemy-kind4 and mechanic-spring fail at camera-bottom-right's pass 477, pixel (224, 17). |
