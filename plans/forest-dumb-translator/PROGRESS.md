@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** T56 (mount-routine-timing), which T40 and T42 wait for; T37 and T54 can run beside it.
+**Next `pir-work` will:** T56 (mount-routine-timing) and T57 (hand-engine-sound-effects), which T40 and T42 wait for; T54 can run beside them.
 
 ## Tasks
 
@@ -51,9 +51,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
-| T37 | app-translated | T18, T32, T36 | ⬜ | |
-| T38 | app-sound | T37 | ⬜ | |
-| T39 | app-stop | T37 | ⬜ | |
+| T37 | app-translated | T18, T32, T36 | ✅ | |
+| T38 | app-sound | T37 | ✅ | |
+| T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
@@ -71,6 +71,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | Review clean, one doc fix (T56's missing Interface). Ran: 39 mounted cases pass, `--seam 'h0+$1fec'` 2 000 of 2 000, CLXDAT test; death-spikes fails mounted, passes alone. Mutations caught: no callee cost (CLXDAT 32 lines early), no `shown` (seam judge). Sound waits and blit waits checked against the listing. `CLX_LINES_OFF` 2, T56's. |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | Unproven mounted (T55): camera-bottom-right, enemy-kind4, mechanic-spring pass 474 `edge_latch_down`; contact-route, enemy-contact 116 `char_x`; pictures death-spikes 1343 (passed before T55), death-water 1004, mechanic-vanish 326, route-W1-1 945, route-both-W1-1 943. Failing alone too: power-on-level-1 (6301, T53); the routes from 4161 (T54). |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

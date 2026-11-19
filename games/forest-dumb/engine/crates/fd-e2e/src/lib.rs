@@ -97,15 +97,39 @@ impl DerefMut for App {
 }
 
 impl App {
-    /// A temporary home, every launch reading the owner's disks (`--disks`).
+    /// A temporary home, every launch reading the owner's disks (`--disks`), on the hand engine
+    /// (`--engine hand`): these tests need no generated translation (owner, translator plan review
+    /// 2026-11-11).
     pub fn launch(mut opts: LaunchOpts) -> App {
+        opts.extra_args.splice(
+            0..0,
+            [
+                "--engine".to_string(),
+                "hand".to_string(),
+                "--disks".to_string(),
+                disks().display().to_string(),
+            ],
+        );
+        App(amiga_e2e::App::launch(spec(), opts))
+    }
+
+    /// As [`App::launch`], the disks left to the arguments `opts` passes (a missing-disks test).
+    pub fn launch_bare(mut opts: LaunchOpts) -> App {
+        opts.extra_args
+            .splice(0..0, ["--engine".to_string(), "hand".to_string()]);
+        App(amiga_e2e::App::launch(spec(), opts))
+    }
+
+    /// The app's default engine, the translated program (translator DESIGN §2.10), on the owner's
+    /// disks. Needs the generated tree: in the full set.
+    pub fn launch_translated(mut opts: LaunchOpts) -> App {
         opts.extra_args
             .splice(0..0, ["--disks".to_string(), disks().display().to_string()]);
         App(amiga_e2e::App::launch(spec(), opts))
     }
 
-    /// As [`App::launch`], the disks left to the arguments `opts` passes (a missing-disks test).
-    pub fn launch_bare(opts: LaunchOpts) -> App {
+    /// The default engine with nothing added: the arguments are `opts`'s alone.
+    pub fn launch_translated_bare(opts: LaunchOpts) -> App {
         App(amiga_e2e::App::launch(spec(), opts))
     }
 }

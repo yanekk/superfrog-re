@@ -286,6 +286,19 @@ workspace = "engine"
 # seconds of steps for a resize to land under load (a debug build capturing every frame): 75 to 115 s, full.
 "crates/fd-e2e/tests/drill.rs" = "smoke"
 "crates/fd-e2e/tests/drill_sizes.rs" = "full"
+# Translator T37: the app built with no translation names `translate.py --build` and exits 1 (with a
+# tree, goes on to the disks), and `--engine hand` needs none: two launches, about 3 s warm.
+"crates/fd-e2e/tests/not_generated.rs" = "smoke"
+# Translator T37: the translated program in the real app against headless from power-on: the title,
+# Start by key and 600 frames of play, `--level 1`, the drill sizes; about 46 s and the generated tree.
+"crates/fd-e2e/tests/translated_app.rs" = "full"
+# Translator T39: a stop in the app (`--stop-after`): frozen picture, its band at 1×, the zip saved and
+# replayed by `fd-conform bug replay` on the translated program; Esc and ⌘Q after it; Start Level…'s
+# recorder on the translated program. Five launches, about 35 s, and the generated tree.
+"crates/fd-e2e/tests/app_stop.rs" = "full"
+# Translator T38: the translated program's sound in the real app against headless, the title and
+# level 1, and two headless runs of the title alike; about 16 s warm and the generated tree.
+"crates/fd-e2e/tests/sound.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
@@ -719,3 +732,7 @@ covers = ["crates/fd-conform/tests/frames.rs"]
 [[area]]
 name = "a hand-written routine held to the translated routine it replaces (the seam)"
 covers = ["crates/fd-conform/tests/seam.rs::one_byte_written_differently_fails_naming_it"]
+
+[[area]]
+name = "the app built with no translation says how to generate it"
+covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_the_app_names_the_command_and_exits_1"]

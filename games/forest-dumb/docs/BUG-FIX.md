@@ -15,8 +15,8 @@ session's evidence is the headless replay and the original running on the oracle
   checkout. From a worktree: `"$(git rev-parse --path-format=absolute --git-common-dir)/../games/forest-dumb/bugs/<zip>"`.
   Below, `$ZIP` is that absolute path. Never commit the zip or anything rendered from it: only a
   case and its script, which are inputs.
-- **What is in it.** `recording.txt` (build, level, frames, `stopped-at`, the owner's `note`, the
-  inputs one a step) and `screenshot.png` (the frame Stop was pressed on). Read the header first:
+- **What is in it.** `recording.txt` (build, `start`, `engine`, level, frames, `stopped-at`,
+  `stop`, the owner's `note`, the inputs one a step) and `screenshot.png` (the frame Stop was pressed on). Read the header first:
   `unzip -p "$ZIP" recording.txt | sed -n '1,/^inputs$/p'`.
 - **The zip is tied to its build.** `bug replay` and `bug compare` refuse a zip whose `build` line
   is not this engine's (DESIGN §2.12) and name both builds. Work from the commit the build line
@@ -27,14 +27,35 @@ session's evidence is the headless replay and the original running on the oracle
   `games/forest-dumb/engine/`.
 - Read `plans/forest-dumb-level-1/FINDINGS.md` before touching a mechanic.
 
+## A stop zip: the translated program stopped
+
+The app saves a zip by itself when the translated program stops (translator DESIGN §2.4, §2.10):
+`bug-power-on-<date>.zip` or `bug-W1-1-<date>.zip`, no note. Its header says `engine translated`,
+`start power-on` or `start level-1` (power-on, then the title on `to_level_1_input` until level 1),
+and `stop <how>` (`untranslated: h0+$1a2b4`, `write-into-code: …`, `unsupported: <op> at …`,
+`hang (steps)`, `hang (depth)`, `trap: …`, `outside-memory: …`, `os: …`; `test-stop: --stop-after N`
+is a test's, no defect behind it). `stopped-at` is the character's cell in level 1, `-` elsewhere.
+
+The original would have carried on, so a stop is always a translator or machine defect, never a
+quirk to keep: step 3 does not apply. Replay it (step 1): on the build that made it, expect
+`replay-stop <how> at frame N` with N the `frames` line, and `screenshot equal`. Then fix it as the
+translator's procedure says (`games/forest-dumb/docs/11-translation.md`): by mnemonic or P-code
+pattern, never a hint or an address special case (translator DESIGN §2.2), the stop's address
+naming where to look. The fix is shown by the same replay no longer stopping there. `bug compare`
+starts at the level sync point on the hand engine: it refuses a `power-on` zip, and on a `level-1`
+one it compares the hand engine, not the translated program.
+
 ## 1. Replay it
 
 ```sh
 cargo run -q --release -p fd-conform -- bug replay "$ZIP" --out /tmp/bug
 ```
 
-It prints `frames N`, `stopped-at`, `replay-at` and `screenshot equal|differs (P pixels)`, and
-writes the last frame as `last.png`. On the build the recording was made with, expect `screenshot
+It prints `frames N`, `start`, `engine`, `stopped-at`, `replay-at`, `stop`, on the translated program
+`replay-stop <how> at frame K` or `replay-stop -`, and `screenshot equal|differs (P pixels)`, and
+writes the last frame as `last.png`. It replays on the engine the zip names (`engine`; a zip from
+before translator T39 has none and is the hand engine's); `--engine hand|translated` picks the
+other for a `level-1` zip. On the build the recording was made with, expect `screenshot
 equal` and `replay-at` equal to `stopped-at`. A difference here, before any fix, means the replay
 is not the owner's game: stop and report that to the owner, with both lines.
 

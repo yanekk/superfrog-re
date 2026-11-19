@@ -16,6 +16,10 @@ path = "src/main.rs"
 # The game (DESIGN §3.2). Never fd-conform or amiga-oracle: the shipped game may not contain an
 # emulator (DESIGN §3.1, `tests/deps.rs`).
 fd-core = { path = "../fd-core" }
+# The translated program, run from power-on with level 1's hand engine mounted (translator DESIGN
+# §2.10), and the machine's input and disks it starts on. Both pure, no emulator (`tests/deps.rs`).
+fd-translated = { path = "../fd-translated" }
+pcode-machine = { path = "../pcode-machine" }
 fd-assets = { path = "../fd-assets" }
 # The disk lookup and the unpacker (DESIGN §2.9).
 fd-tools = { path = "../fd-tools" }
@@ -26,6 +30,9 @@ amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The app's game-free parts: pacing, pads, the picture on the GPU, capture files, the lock, keys,
 # settings.toml, the Controls window and a script's game-free lines (T12).
 amiga-app = { path = "../../../../../toolkit/crates/amiga-app" }
+# The mixer the translated program's Paula writes are played through (translator T38), as
+# Superfrog's app plays its engine's. Pure.
+amiga-paula = { path = "../../../../../toolkit/crates/amiga-paula" }
 # The window and its events.
 winit = "0.30"
 # The --timeout seatbelt stops the app's whole process group (DESIGN §5.2).

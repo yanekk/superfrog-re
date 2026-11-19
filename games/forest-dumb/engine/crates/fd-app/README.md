@@ -1,17 +1,23 @@
 # fd-app
 
-The macOS app the owner plays (plan `forest-dumb-level-1`, DESIGN §2.7): it reads the two zips, opens
-straight in W1-1 at the level sync point, silent, and steps fd-core's `Game` once a 313-line PAL frame
-on the wall clock. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level… and the bug recorder.
+The macOS app the owner plays (plan `forest-dumb-level-1`, DESIGN §2.7; translator DESIGN §2.10): it
+reads the two zips and runs the translated program (`fd-translated`) from power-on, the disk 2 prompt,
+title and menus included, level 1's hand engine mounted through the seam, with its sound (`src/audio.rs`: each frame's Paula
+writes through `amiga-paula` to the audio device, whose clock paces the game; a scripted run plays
+nothing aloud and captures it; level 1 is silent until T57); `--engine hand`
+instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Either is stepped once a
+313-line PAL frame on the wall clock. Built with no generated translation it prints `NOT_GENERATED`
+(run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level… and the bug recorder.
 Its game-free parts (pacing, pads, video, capture, lock, keys, settings, windows, a script's
 game-free lines) are `toolkit/crates/amiga-app`. It never links an emulator or test tooling (`tests/deps.rs`). Tests drive it
-through `fd-e2e`, not by calling its code; the library exports only the state hash.
+through `fd-e2e`, not by calling its code; the library exports the state hashes, the translated program's window (`CANVAS`) and `--level 1`'s way through the title.
 
 ## Start here
 
 From `games/forest-dumb/engine/`:
 
-1. Play: `cargo run --release -p fd-app`. Esc or ⌘Q quits.
+1. Play: `cargo run --release -p fd-app` (power-on; `-- --level 1` opens in level 1, `-- --engine hand`
+   the hand engine). Esc or ⌘Q quits.
 2. A bounded scripted run with a capture:
    `cargo run -p fd-app -- --home /tmp/h --script run.txt --capture /tmp/cap --max-frames 240 --bugs-dir /tmp/bugs`
 3. From a test: `fd_e2e::App::launch` then `run_script(...)` (`crates/fd-e2e/tests/smoke.rs`); compare
@@ -19,7 +25,7 @@ From `games/forest-dumb/engine/`:
 
 ## Flags (`src/args.rs`)
 
-`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR]`
+`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] [--stop-after N]`
 
 - `--home DIR`: app-data folder; else `FOREST_DUMB_HOME`, else `~/Library/Application Support/Forest-Dumb-RE`. One copy runs per home (a second is refused, "already running").
 - `--disks DIR`: the folder of both zips; else `fd_tools::disk_dir()` (`FOREST_DUMB_DISKS`, then the main checkout). Missing disks: a plain message and exit 1.
@@ -30,7 +36,24 @@ From `games/forest-dumb/engine/`:
 - `--scale N`: 1 to 16, for this run only.
 - `--bugs-dir DIR`: where bug zips go; else `<home>/bugs` for a scripted run, else `games/forest-dumb/bugs/` of the main checkout, else `~/Documents/Forest Dumb Bugs/`. Zips are `bug-<level>-<YYYY-MM-DD-HHMM>.zip`, `-2`, `-3` on a clash.
 
+- `--engine translated|hand`: the translated program (default) or level 1's hand engine alone, as before the translator plan. Tests that run without a generated tree pass `hand` (`fd_e2e::App::launch` does).
+- `--level 1`: the translated program run headless from power-on through the title with fire pressed ten frames in twenty (`to_level_1_input`, at most `TO_LEVEL_1_FRAMES`), so the window opens on level 1's first frame (about 500 frames). Game ▸ Start Level… starts the same way, its recorder on the translated program too (translator T39).
+- `--stop-after N`: a test's hook (translator T39): the translated program stops at step N with `test-stop: --stop-after N`, so the stop path runs with no defect behind it. Refused with `--engine hand` and for 0.
+
 Bad arguments: exit 2 with the usage.
+
+## A stop (translator DESIGN §2.4, §2.10; T39)
+
+On the translated program a recording of the play from where it started (power-on, `--level 1`, the
+last Start Level…) always runs unseen. When the program stops (`untranslated`, `write-into-code`,
+`unsupported`, `hang`, …) the picture freezes on its last frame, a band over its foot (`src/stop.rs`,
+a 5×7 font drawn into the frame, so captures hold it) says `Stopped: <stop>`, `Bug zip saved:
+<name>` and `Esc or Cmd-Q quits`, and the zip is written at once into the bugs folder, no window
+asked: its recording has `start power-on|level-1`, `engine translated` and `stop <stop>`, its
+screenshot the frame without the band. A recording the owner started ends in it. The app keeps
+ticking frozen, so the script, the capture and quitting go on; nothing more is stepped or recorded.
+`fd-conform bug replay <zip>` replays it on the translated program. Zips from power-on are named
+`bug-power-on-<date>.zip`.
 
 ## Script format (`src/script.rs`)
 
@@ -77,16 +100,20 @@ never reaches the game; ⌘ plus a key is the app's.
 
 `--capture` writes the files `amiga_app::capture` lists (`frame-NNNNN.png`, `inputs.txt`,
 `window-NNNNN.png`, `prompts.txt`, …) plus `hashes.txt`: `N hash` in hex a frame, frame 0 the start.
-stderr lines start `fd-app: ` (`playing W1-1`, `menu <id> after step N`, `controls: <status>`,
+stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`,
 `game over`, `level 1 complete`, `quit after step N`).
 
 ## Library API (`src/lib.rs`)
 
 `HASHES` (`"hashes.txt"`); `state_hash(g: &Game) -> u64` (scene, state, objects, collision plane;
-stable within one build only); `hash_line(n: u64, g: &Game) -> String`.
+stable within one build only); `hash_line(n: u64, g: &Game) -> String`. For the translated program (its `hashes.txt` is
+`memory_hash` of chip then slow RAM): `NOT_GENERATED`, `CANVAS` and `canvas(&Picture)` (the fixed window
+every screen is shown through), `memory_hash`, `memory_hash_line`, `to_level_1_input(n)`,
+`TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
+`frame_out(&FrameOut, &mut out)`; `audio::SILENT_RATE` (48 000, a scripted run's and the capture's rate).
 
 ## Where the details are
 
-- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`.
+- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`; `translated.rs` the translated program on its own thread, one frame a step over channels, its sound mixed there; `audio.rs` (library) the mixer, which tests use for the headless samples.
 - `toolkit/crates/amiga-app/src/` (`script_core.rs`, `keys.rs`, `settings.rs`, `capture.rs`).
 - `plans/forest-dumb-level-1/DESIGN.md` §2.7, §2.8, §5.2; `games/forest-dumb/CLAUDE.md` "Playing it"; `games/forest-dumb/docs/BUG-FIX.md`, `frame-length.md`.
