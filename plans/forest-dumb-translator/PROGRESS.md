@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** review T36; then T55 (mount-timing), with T37 to T39 beside it.
+**Next `pir-work` will:** T55 (mount-timing), with T37 to T39 beside it.
 
 ## Tasks
 
@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | later-world-cases | T32 | ✅ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
-| T36 | mount-level-1 | T30, T31, T35 | 🔍 | Frame mount `seam::frame` (game_frame, world 1), `mount_level_1`, `--mount level-1`, `Bus::mount_data`; 7 tests. 32 of 50 cases pass mounted, the other 18 are T55's (`mount_level_1.rs` lists them). Fail translated alone too: power-on-level-1 (T53), route cases from pass 4161 (T54). Deviation: cases-pass and power-on checks moved to T55 (owner); `TranslatedGame::new` mounts nothing. |
+| T36 | mount-level-1 | T30, T31, T35 | ✅ | Review: one fix, the 2 000-state seam check passed with the mount falling through to translated; now asserts the hand engine ran. Probed: fd-judge --seam, in-play test, contact-route and death-esc mounted, three write-back mutations. 32-case list read-only. Case checks carried by T55; T37 not blocked by it (app against headless). |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
 | T38 | app-sound | T37 | ⬜ | |
 | T39 | app-stop | T37 | ⬜ | |
@@ -71,7 +71,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
 
-**Review queue:** T36
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

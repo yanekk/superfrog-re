@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🐞 | **T36 review:** `fd-judge --seam 'h0+$1fec'` would print `pass` if the frame mount fell through to the translated routine (translated against itself). `seam.rs` now asserts `Level1::passes()`; the CLI's JSON carries no such count, left alone. |
 | 2026-11-19 | 🔄 | **T55 added** (owner, T36; blocks T40, T42): the frame mount spends the original's time; carries T36's cases-pass-mounted check and amends DESIGN §2.9's no-cycles line. Whole-frame mount kept, collisions judged as before. |
 | 2026-11-19 | 📌 | **T36 measured:** one routine mounted, `game_frame` as the frame (`seam::frame`); `--seam` 2 000 of 2 000; 32 of 50 cases pass mounted. Mounted, CLXDAT is read at the pass start: 11 cases differ at pass 2 on `clxdat_copy`. |
 | 2026-11-19 | 🐞 | T36, left alone: `watch_returns` counts a mounted routine's entry and return (`Host::mounted` sets `entered` before the seam answers), though `fd-translated/README.md` and its doc say a mount hides it. |
@@ -32,7 +33,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 🔄 | **T50 added** (owner, T48): carries T48's 14 failing cases, after T49's DMA contention, blocks T36; finish line all 18 pass. T48 hands in measurements only, no fix: nothing non-timing found. |
 | 2026-11-12 | 🔄 | **T32 closed unproven, T47 added** (owner, T32 review): power-on-title and power-on-level-1 fail from frame 3462. T47 (blocks T33) carries Kickstart's DMA at the disk 2 prompt (frames 3463 to 3967) and `clr`'s bus value (frame 5001). |
 | 2026-11-12 | 📌 | **T32 line-up:** 18 loads to level 1, 1 794 original frames skipped; the title and world 1's loads equal every compared frame; first-case passes translated, 15 078 frames. The entry runs at frame 3461, line 179. |
-| 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |
 | 2026-11-12 | 🐞 | `toolkit-checks/tests/purity.rs:162` and `sf-conform/tests/purity.rs:183` lex a hex literal ending in `f32`/`f64` (`0x18f32`) as a float literal: a false purity violation. Fixed in fd-conform's copy (T34 review sweep); both left alone. |
 | 2026-11-12 | 🔄 | **Owner exempted `CODE` from the table bar** (T34), a deliberate exception to DESIGN §3.1: only in `pcode_rust.py` output, only `const CODE: &[(u32, u32, u32)]` of (hunk, start, end) triples. It is the translator's index, not game data. |
 | 2026-11-12 | 📌 | **T28 snapshot starts:** at every step's end the original is inside `level3_handler`, so translated code resumes mid-function: `pcode_rust.py` emits `NAME_from(start)` and `resume(k)`. T08's 15 routines still pass; whole gate not rerun. |
@@ -64,6 +64,5 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |
 | 2026-11-11 | 📌 | First `generate.py` on Haiku: `h0+$513c` covered, 4 of 4 branches, 2 000 returns, 2 tries (the first left its name out of `ALL`), 22 s, $0.011 list. `claude -p` keeps no conversation; retries go as one transcript prompt. |
 | 2026-11-11 | 📌 | Round trip (write back whole, transplant again) over `camera-right-left`'s first 100 steps: 0 equal. Not transplanted: `edges.pos` (`h0+$1e66`), pointers `p840`, `p83c`, the `input_log` bytes. Screen and plane share `h3+$fa10..$fa4f`; 4 bytes disagree. `game_frame` reads none. |
-| 2026-11-11 | 📌 | Whole write-back is 129 500 bytes (display 75 101, object map 38 400, plane 15 152, outside-`LAYOUT` extras 539, `LAYOUT` 207, input log 101); the frame mount stores only what changed. |
 | 2026-11-11 | 🐞 | `Cpu68k::call` with an odd entry runs the instruction at the even address below it (probe: call(0x2001) ran moveq at 0x2000); Moira's reset ignores bit 0. Fixed in `step` (T05 review), left open in `call`. |
 | 2026-11-11 | 🐞 | Smoke in a fresh worktree (cold build) hit `tools/smoke.py`'s 1 200 s limit, no test failed: forest-dumb done at 783 s, Superfrog unrun. Owner chose to start the build anyway (plan review). Translated-program tests go in full. |
