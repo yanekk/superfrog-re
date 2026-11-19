@@ -28,3 +28,5 @@ amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 # Whether the generated tree is built in, for the translated app's tests (translator T37); the
 # headless translated run they compare with is fd-conform's.
 fd-translated = { path = "../fd-translated" }
+# A headless translated run's frames as the app's thread runs them, for its sound (T38).
+pcode-machine = { path = "../pcode-machine" }

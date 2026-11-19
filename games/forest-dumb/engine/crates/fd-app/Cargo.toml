@@ -30,6 +30,9 @@ amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The app's game-free parts: pacing, pads, the picture on the GPU, capture files, the lock, keys,
 # settings.toml, the Controls window and a script's game-free lines (T12).
 amiga-app = { path = "../../../../../toolkit/crates/amiga-app" }
+# The mixer the translated program's Paula writes are played through (translator T38), as
+# Superfrog's app plays its engine's. Pure.
+amiga-paula = { path = "../../../../../toolkit/crates/amiga-paula" }
 # The window and its events.
 winit = "0.30"
 # The --timeout seatbelt stops the app's whole process group (DESIGN §5.2).

@@ -149,6 +149,9 @@ pub struct FrameOut<'a> {
     pub paula: Vec<(u64, u16, u16)>,
     /// Indices into `paula` of the writes made with a leftover bus word, as `cpu_leftover`.
     pub paula_leftover: Vec<usize>,
+    /// The beam position `(vpos, hpos)` each of `paula` was made at, in the same order: where
+    /// the app's mixer (`amiga_paula::Paula::frame`) plays it in the frame (translator T38).
+    pub paula_beam: Vec<(u16, u16)>,
     /// Set on the last frame of a run the program stopped: how it stopped.
     pub stop: Option<Stop>,
     /// Chip RAM then slow RAM at each CPU write of the frame that [`TranslatedGame::watch_write`]
@@ -433,7 +436,7 @@ impl TranslatedGame {
             host.inside.pop();
             host.returns.push(k);
         }
-        let (paula, paula_leftover) = host.paula();
+        let (paula, paula_leftover, paula_beam) = host.paula();
         let out = FrameOut {
             picture: host.picture.clone(),
             writes: host.m.custom_writes().to_vec(),
@@ -441,6 +444,7 @@ impl TranslatedGame {
             cpu_leftover: host.m.cpu_leftover().to_vec(),
             paula,
             paula_leftover,
+            paula_beam,
             stop: Some(stop.clone()),
             watched: host.m.take_watched(),
             chip: host.m.chip(),
@@ -509,19 +513,22 @@ impl Host<'_, '_> {
         }
     }
 
-    fn paula(&mut self) -> (Vec<(u64, u16, u16)>, Vec<usize>) {
+    /// The frame's Paula writes, which of them a leftover bus word made, and their beam positions.
+    #[allow(clippy::type_complexity)]
+    fn paula(&mut self) -> (Vec<(u64, u16, u16)>, Vec<usize>, Vec<(u16, u16)>) {
         let (writes, leftover) = self.m.take_paula_writes_marked();
+        let beam = writes.iter().map(|(_, w)| (w.vpos, w.hpos)).collect();
         let writes = writes
             .into_iter()
             .map(|(at, w)| (at, w.reg, w.value))
             .collect();
-        (writes, leftover)
+        (writes, leftover, beam)
     }
 
     /// The frame that ended at `frame_end()`: drawn, handed to `each`, the next one's input taken.
     fn end_frame(&mut self, r: &mut Regs) -> Result<(), Stop> {
         let frame = self.m.end_frame();
-        let (paula, paula_leftover) = self.paula();
+        let (paula, paula_leftover, paula_beam) = self.paula();
         // One step count per frame (pcode-rt: a host running frame by frame resets it).
         r.steps = 0;
         let out = FrameOut {
@@ -531,6 +538,7 @@ impl Host<'_, '_> {
             cpu_leftover: frame.cpu_leftover,
             paula,
             paula_leftover,
+            paula_beam,
             stop: None,
             watched: frame.watched,
             chip: self.m.chip(),

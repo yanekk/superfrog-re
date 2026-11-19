@@ -24,7 +24,8 @@ g.set_input(first_frame_input);
 // on a thread with RUN_STACK bytes of stack:
 let stop = g.run(&mut |frame| {
     // frame.picture, frame.writes (cycle, reg, word; CPU and copper), frame.cpu_writes (the CPU's
-    // alone), frame.paula, frame.chip, frame.slow; frame.cpu_leftover and frame.paula_leftover
+    // alone), frame.paula (frame.paula_beam: each at its beam position, for the mixer), frame.chip,
+    // frame.slow; frame.cpu_leftover and frame.paula_leftover
     // index the writes a read of a write-only register made (T47: compared by register only)
     Control::Next(next_input)          // or Control::Stop
 });
