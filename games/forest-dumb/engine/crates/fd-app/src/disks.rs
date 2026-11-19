@@ -29,8 +29,19 @@ pub fn folder(arg: Option<&Path>) -> Result<PathBuf, String> {
     }
 }
 
+/// What the two engines start from.
+pub struct Disks {
+    /// Everything the hand engine reads.
+    pub data: Arc<GameData>,
+    /// The main program's file, as stored on disk 1: what the translated program is loaded from
+    /// (translator DESIGN §2.8).
+    pub program: Vec<u8>,
+    /// Disk 2's ADF, in the translated machine's df0.
+    pub disk2: Vec<u8>,
+}
+
 /// Everything the game reads, from the zips in `dir`.
-pub fn read(dir: &Path) -> Result<Arc<GameData>, String> {
+pub fn read(dir: &Path) -> Result<Disks, String> {
     let zips = fd_tools::zip_paths(dir)?;
     let adfs = [fd_tools::read_adf(&zips[0])?, fd_tools::read_adf(&zips[1])?];
     let mut images = Vec::new();
@@ -49,7 +60,15 @@ pub fn read(dir: &Path) -> Result<Arc<GameData>, String> {
             AssetError::missing(name, format!("disk {} ({}): {e}", i + 1, zip.display()))
         })
     };
-    GameData::read(&files)
+    let data = GameData::read(&files)
         .map(Arc::new)
-        .map_err(|e| format!("the game's data in {}: {e}", dir.display()))
+        .map_err(|e| format!("the game's data in {}: {e}", dir.display()))?;
+    let program = images[0].1.read_file(PROGRAM_FILE).map_err(|e| {
+        format!("{PROGRAM_FILE}: disk 1 ({}): {e}", images[0].0.display())
+    })?;
+    Ok(Disks {
+        data,
+        program,
+        disk2: adfs[1].clone(),
+    })
 }

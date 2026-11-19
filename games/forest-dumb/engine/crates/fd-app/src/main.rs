@@ -2,7 +2,12 @@
 //!
 //! At launch, inside the event loop: the single-copy lock, the remembered settings, the game's data
 //! from the two zips (`disks.rs`; a plain message naming where it looked, and exit 1, when they
-//! cannot be read), then straight into `W1-1` at the level sync point, silent. The game is stepped
+//! cannot be read), then the engine (translator DESIGN §2.10). By default the translated program
+//! from power-on (`translated.rs`: its entry, the disk 2 prompt, the title, the menus, the levels,
+//! level 1's hand engine mounted), shown through `fd_app::CANVAS`; `--level 1` first runs it
+//! headless through the title with Start pressed, so the window opens on level 1's first frame.
+//! Built with no translated program, the app says how to generate it and exits 1. `--engine hand`
+//! goes straight into `W1-1` at the level sync point on the hand engine, as before. The game is stepped
 //! once a PAL frame of 313 lines on the wall clock (`Pacer::new(rate, 313)`, docs/frame-length.md)
 //! and the newest frame is presented at each refresh at a whole-number scale. Keys and pads feed
 //! the game through `input.rs`; Controls and Quit are in the menu bar (`menu.rs`), Esc also quits.
@@ -25,6 +30,7 @@ mod menu;
 mod recorder;
 mod script;
 mod settings;
+mod translated;
 
 use std::io::Write as _;
 use std::path::PathBuf;
@@ -48,13 +54,19 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::keyboard::PhysicalKey;
 use winit::window::{Window, WindowId};
 
-use crate::args::Args;
+use crate::args::{Args, EngineChoice};
 use crate::controls::OpenControls;
 use crate::input::{HostInput, Input};
 use crate::menu::{Command, MenuBar};
 use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
 use crate::settings::{Scale, Settings};
+use crate::translated::Translated;
+
+/// Start Level… with the recorder ticked, under the translated program (owner, T37): recording a
+/// translated run is T39's.
+const NO_TRANSLATED_RECORDING: &str =
+    "Recording a translated run is not available yet; starting without it.";
 
 /// The wall clock's rate in host samples: the app is silent (DESIGN §2.3), so nothing else paces it.
 const RATE: u32 = 48_000;
@@ -175,12 +187,55 @@ struct App {
     status: i32,
 }
 
+/// What plays (translator DESIGN §2.10).
+enum Engine {
+    /// Level 1's hand engine alone (`--engine hand`).
+    Hand(Game),
+    /// The translated program, level 1's hand engine mounted.
+    Translated(Translated),
+}
+
+impl Engine {
+    /// The newest frame's picture as the window gets it: its size and RGBA.
+    fn frame(&self) -> ((u32, u32), Vec<u8>) {
+        match self {
+            Engine::Hand(g) => frame_of(&g.picture()),
+            Engine::Translated(t) => frame_of(&t.frame().picture),
+        }
+    }
+
+    /// Line `n` of the capture's `hashes.txt`: the hand engine's play state, or the translated
+    /// program's memory (`fd_app::memory_hash`).
+    fn hash_line(&self, n: u64) -> String {
+        match self {
+            Engine::Hand(g) => fd_app::hash_line(n, g),
+            Engine::Translated(t) => {
+                let h = t.frame().hash().expect("hashes asked for with the capture");
+                format!("{n} {h:016x}\n")
+            }
+        }
+    }
+}
+
+/// The translated program from power-on and, for `--level 1` and Start Level…, run headless to
+/// level 1's first frame.
+fn translated(d: &disks::Disks, level_1: bool, hashes: bool) -> Result<Translated, String> {
+    let mut t = Translated::power_on(d.program.clone(), d.disk2.clone(), d.data.clone(), hashes);
+    if level_1 {
+        let n = t.to_level_1()?;
+        eprintln!("fd-app: level 1 reached headless after {n} frames from power-on");
+    }
+    Ok(t)
+}
+
 /// Everything a running game needs.
 struct Run {
     /// Held while the app runs (DESIGN §2.12).
     _lock: Lock,
     settings: Settings,
-    game: Game,
+    engine: Engine,
+    /// What the engine starts from, for Start Level… on the translated program.
+    disks: disks::Disks,
     input: Input,
     /// The real pads; none under a script, whose `pad …` lines stand in for them.
     pads: Option<Box<dyn PadSource>>,
@@ -220,12 +275,11 @@ fn min_size(picture: (u32, u32), bar: bool) -> LogicalSize<u32> {
     LogicalSize::new(picture.0, picture.1 + if bar { BAR_HEIGHT } else { 0 })
 }
 
-/// The game's picture as the window gets it: its size and RGBA.
-fn frame_of(game: &Game) -> ((u32, u32), Vec<u8>) {
-    let pic = game.picture();
+/// A picture as the window gets it: its size and RGBA.
+fn frame_of(pic: &pcode_machine::Picture) -> ((u32, u32), Vec<u8>) {
     let size = (pic.width as u32, pic.height as u32);
     let mut rgba = vec![0; size.0 as usize * size.1 as usize * 4];
-    fd_core::render::rgba(&pic, &mut rgba);
+    fd_core::render::rgba(pic, &mut rgba);
     (size, rgba)
 }
 
@@ -235,6 +289,10 @@ impl App {
         let menu = menu::build_menu();
         menu.install(event_loop);
         self.menu = Some(menu);
+        if self.args.engine == EngineChoice::Translated && !fd_translated::TranslatedGame::generated()
+        {
+            return self.refuse(event_loop, fd_app::NOT_GENERATED);
+        }
         let lock = match lock::acquire(&self.home, "Forest Dumb") {
             Ok(l) => l,
             Err(e) => return self.refuse(event_loop, &e),
@@ -243,12 +301,26 @@ impl App {
         if let Some(m) = damaged {
             eprintln!("fd-app: {m}");
         }
-        let data = match disks::folder(self.args.disks.as_deref()).and_then(|d| disks::read(&d)) {
+        let disks = match disks::folder(self.args.disks.as_deref()).and_then(|d| disks::read(&d)) {
             Ok(d) => d,
             Err(e) => return self.refuse(event_loop, &e),
         };
-        let game = Game::new(data, Start::Level1);
-        let (size, rgba) = frame_of(&game);
+        let (engine, playing) = match self.args.engine {
+            EngineChoice::Hand => (
+                Engine::Hand(Game::new(disks.data.clone(), Start::Level1)),
+                "W1-1",
+            ),
+            EngineChoice::Translated => {
+                match translated(&disks, self.args.level_1, self.args.capture.is_some()) {
+                    Ok(t) if self.args.level_1 => {
+                        (Engine::Translated(t), "the translated program from W1-1")
+                    }
+                    Ok(t) => (Engine::Translated(t), "the translated program from power-on"),
+                    Err(e) => return self.fail(event_loop, &e),
+                }
+            }
+        };
+        let (size, rgba) = engine.frame();
         let scale = self.args.scale.map_or(settings.scale, Scale::N);
         let attrs = Window::default_attributes()
             .with_title("Forest Dumb")
@@ -286,7 +358,7 @@ impl App {
                     }
                     let mut h =
                         std::io::BufWriter::new(std::fs::File::create(dir.join(fd_app::HASHES))?);
-                    h.write_all(fd_app::hash_line(0, &game).as_bytes())?;
+                    h.write_all(engine.hash_line(0).as_bytes())?;
                     Ok((c, h))
                 });
                 match made {
@@ -299,7 +371,8 @@ impl App {
             _lock: lock,
             input: Input::new(settings.keys.clone(), settings.pad.clone()),
             settings,
-            game,
+            engine,
+            disks,
             pads,
             pacer: Pacer::new(RATE, FRAME_LINES),
             clock: Clock::Wall {
@@ -325,7 +398,7 @@ impl App {
         for e in present {
             self.pad_event(e);
         }
-        eprintln!("fd-app: playing W1-1");
+        eprintln!("fd-app: playing {playing}");
         self.show_newest();
     }
 
@@ -417,13 +490,32 @@ impl App {
         let run = self.run.as_mut().expect("running");
         // The one level a recording names today (`LevelId`), started as the app starts it.
         let LevelId::W1_1 = level;
-        run.game = Game::new(run.game.data().clone(), Start::Level1);
+        let mut record = record;
+        match &mut run.engine {
+            Engine::Hand(g) => *g = Game::new(g.data().clone(), Start::Level1),
+            // As `--level 1` starts it (owner, T37): one start path. No recorder yet (T39).
+            Engine::Translated(_) => {
+                if record {
+                    eprintln!("fd-app: {NO_TRANSLATED_RECORDING}");
+                    self.ui.notice(NO_TRANSLATED_RECORDING);
+                    record = false;
+                }
+                let hashes = run.capture.is_some();
+                match translated(&run.disks, true, hashes) {
+                    Ok(t) => run.engine = Engine::Translated(t),
+                    Err(e) => {
+                        eprintln!("fd-app: {e}");
+                        return;
+                    }
+                }
+            }
+        }
         run.recorder = match record {
             true => start_recording(level, fd_tools::ENGINE_BUILD),
             false => Recorder::Off,
         };
         // The level's first frame at once: the picture a Stop before any step saves.
-        let (size, rgba) = frame_of(&run.game);
+        let (size, rgba) = run.engine.frame();
         run.shown.completed((run.steps, size, rgba));
         let recording = if record { ", recording" } else { "" };
         eprintln!(
@@ -448,11 +540,15 @@ impl App {
     /// zip's name. A write that fails says so and the window stays open, so the note is not lost.
     fn save_recording(&mut self) {
         let run = self.run.as_mut().expect("running");
-        let at = run.game.location();
+        // Only the hand engine records (T39 brings the translated program's).
+        let Engine::Hand(game) = &run.engine else {
+            return;
+        };
+        let at = game.location();
         let Some(mut rec) = std::mem::take(&mut run.recorder).finish(at, String::new()) else {
             return;
         };
-        let ((w, h), rgba) = frame_of(&run.game);
+        let ((w, h), rgba) = run.engine.frame();
         let shot = amiga_app::capture::png(w, h, &rgba);
         let path = recorder::zip_name(&self.bugs_dir, rec.level, recorder::local_now());
         let name = path
@@ -584,7 +680,12 @@ impl App {
                         .request_inner_size(LogicalSize::new(w, h));
                 }
                 // The title's cheat code, which the app has no title for: HELP then ends the level.
-                Event::Cheat => self.run.as_mut().expect("running").game.set_cheat(true),
+                Event::Cheat => match &mut self.run.as_mut().expect("running").engine {
+                    Engine::Hand(g) => g.set_cheat(true),
+                    Engine::Translated(_) => {
+                        eprintln!("fd-app: cheat is the hand engine's; the title takes its code by keys")
+                    }
+                },
                 Event::Hang => {
                     eprintln!("fd-app: the script hangs at frame {n}");
                     loop {
@@ -599,10 +700,24 @@ impl App {
         let run = self.run.as_mut().expect("running");
         run.steps = n;
         let input = run.input.frame();
-        let finished = run.game.finished();
-        run.game.step(input);
         run.recorder.step(input);
-        for e in run.game.take_events() {
+        let game = match &mut run.engine {
+            Engine::Hand(g) => g,
+            Engine::Translated(t) => {
+                let (was_level_1, was_stopped) = (t.frame().level_1, t.frame().stop.is_some());
+                let f = t.step(input);
+                if f.level_1 && !was_level_1 {
+                    eprintln!("fd-app: level 1 begins at step {n}");
+                }
+                if let (Some(s), false) = (&f.stop, was_stopped) {
+                    eprintln!("fd-app: the translated program stopped at step {n}: {s}");
+                }
+                return self.stepped(event_loop, n, input);
+            }
+        };
+        let finished = game.finished();
+        game.step(input);
+        for e in game.take_events() {
             match e {
                 GameEvent::Unported(v) => {
                     eprintln!("fd-app: object value {v} is not ported; left out")
@@ -623,7 +738,14 @@ impl App {
                 other => eprintln!("fd-app: {other:?}"),
             }
         }
-        let (size, rgba) = frame_of(&run.game);
+        self.stepped(event_loop, n, input);
+    }
+
+    /// After step `n` on `input`: the capture, the picture shown, the recorder's limit, the frame
+    /// cap.
+    fn stepped(&mut self, event_loop: &ActiveEventLoop, n: u64, input: amiga_input::FrameInput) {
+        let run = self.run.as_mut().expect("running");
+        let (size, rgba) = run.engine.frame();
         if let Some(c) = &mut run.capture {
             c.clock(n, run.clock.samples());
             c.input(n, input);
@@ -633,7 +755,7 @@ impl App {
             };
             let written = picture.and_then(|()| {
                 let h = run.hashes.as_mut().expect("hashes with the capture");
-                h.write_all(fd_app::hash_line(n, &run.game).as_bytes())
+                h.write_all(run.engine.hash_line(n).as_bytes())
             });
             if let Err(e) = written {
                 return self.fail(event_loop, &format!("capture: {e}"));
