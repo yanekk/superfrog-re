@@ -4,10 +4,8 @@
 # compares, on every pass, and the whole picture on every frame, nothing set aside. Goal: the
 # level's end found in the same step on both sides. tests/full_route.rs holds that no life is lost
 # on the way and that the two files hold the same inputs.
-# T50 (2026-11-19), --engine translated: passes from the sync point to pass 4160; first difference pass
-# 4161 (oracle frame 10463), edge_at_down_x $227 on the engine, $22b in the original, carried to T54:
-# route-W1-1's cause on the same frames (its notes), main_loop's wait spin interrupted at a different
-# instruction, so the status redraw and the edge redraws run in another order.
+# T54 (2026-11-19), --engine translated: same on all 21 821 passes to the level's end (the machine's
+# bus and interrupts at the oracle's slot over main_loop's wait spin).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "route-both-W1-1"
 frames = 22472

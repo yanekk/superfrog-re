@@ -5,7 +5,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
+**Last updated:** 2026-11-19
 **Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
 
 ## Tasks
@@ -68,9 +68,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
-| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
+| T54 | main-loop-spin-slot-exact | T50; blocks T42 | 🔍 | Bus and interrupts to the oracle's slot: VPOSR read-ahead, Paula's IPL pipe, interrupt bus order, copper writes and next frame's slots on the bus, `cycles::lead`; spin readings in tests_dma. `History::byte` read a running blit's unwritten words as written; fixed, one test. Both routes pass; other cases pass but power-on-level-1, unchanged; gate 89/100. No deviation. |
 
-**Review queue:** *(empty)*
+**Review queue:** T54
 
 ## Blocked on the user
 

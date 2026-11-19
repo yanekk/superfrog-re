@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 📌 | **T54:** both W1-1 routes pass translated to the level's end; every other case passes but power-on-level-1, as at T51; gate 89 of 100, `MACHINE_PINNED` unchanged. For T36: a route difference with level 1 mounted is the seam's. |
 | 2026-11-19 | 🔄 | **Owner, T50:** interrupts are taken at instruction boundaries (DESIGN §2.8, `Bus::insn`, `Machine::quiet`); block starts took line 233's after `h0_6852`'s creature start. T52's and T53's readings ran on block-start interrupts. |
 | 2026-11-19 | 🔄 | **T54 added** (owner, T50; blocks T42, not T36): route-W1-1 and route-both-W1-1 pass translated to pass 4160. For T36: with level 1 mounted, a difference before pass 4161 is the seam's, from it on T54's. |
 | 2026-11-19 | 📌 | **T50 measured:** 40 of 42 level cases pass translated; whole tree on the machine 89 of 100, `MACHINE_PINNED` unchanged; the check costs about 7% (death-spikes 46.2 s against 43.3 s, oracle included). |
@@ -14,8 +15,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 📌 | **T52 cause:** the pass-477 creature was the picture: the machine showed a blit whole from BLTSIZE; D words now reach the picture at their bus slot. Speed: `TRAIL` 48 lumped `h0+$5500`'s 198 instructions; audio slots were untaken. |
 | 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24; same after the review fix. Owner's rule. |
 | 2026-11-19 | 🐞 | **T52 review:** `AUDIO_LAG` (a line) was falsified: `line_samples` `owners` are the line before `vpos`, and so read the oracle's AUD0 slots equal `AudioDma`'s exactly. Shift removed; `contention.rs` `audio_dma_takes_the_oracles_audio_slots` holds both. |
-| 2026-11-19 | 🐞 | Sweep, left alone: toolkit `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) does not say its owners are the line before `vpos`; the T52 slip came from that. |
-| 2026-11-19 | 🐞 | Sweep, left alone: Superfrog `sf-conform/examples/vbl_audio.rs` counts audio owners at `s.vpos` unshifted, a line late; `slot_audio.rs` and `story_draws.rs` subtract one. |
+| 2026-11-19 | 🐞 | Sweep, left alone: `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) omits that owners are the line before `vpos` (T52's slip); Superfrog `sf-conform/examples/vbl_audio.rs` counts them at `s.vpos`, a line late. |
 | 2026-11-19 | 🔄 | **Owner, T51:** a load's OS stretch to `system_off` lines up as the load's (`frames::OsTail`); `beam_sample_unread` left out of memory; a frame-end byte passes one frame on. World starts 5, 6 pass; T53 added for 2, 3, 4. |
 | 2026-11-19 | 🐞 | **T51 review, open:** `power-on-title` passes on the translated program under T51's rules (`power_on.rs`, reviewer run); its case notes still say `Fails today`. Not T51's case, left alone. |
 | 2026-11-19 | 📌 | **T51 review, power-on-level-1** under T51's rules: memory first differs at 6301, play's first pass (`h0+$1fe6`, engine $80, original $f1), not 3462; 7 frames pass one frame on. Left alone. |

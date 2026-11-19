@@ -8,13 +8,8 @@
 # reached on the original (220 frames, engine/conform/README.md); nine frames are past a few pixels,
 # never three in a row, each a taken item the original erased behind the beam (frames 10 358,
 # 11 699, 11 704, 13 438, 13 439, 15 761, 15 809, 15 813, 20 693).
-# T50 (2026-11-19), --engine translated: passes from the sync point to pass 4160; first difference pass
-# 4161 (oracle frame 10463), edge_at_down_x $244 on the engine, $248 in the original, carried to T54.
-# The pass at line 239 of frame 10460 interrupts main_loop's wait spin (h0+$252..$2aa) at a different
-# instruction on the two sides: the original's $252 then reads the new irq_count, whose low five bits
-# are 0, and runs the status redraw (h0_6a96) before the edge redraws; the machine's read was already
-# made, so it redraws the edges first and the status bar a pass later. Sub-slot contention over about
-# 500 spins (DESIGN §2.7 does not admit it: state differs at the pass end).
+# T54 (2026-11-19), --engine translated: same on all 21 764 passes to the level's end (the machine's
+# bus and interrupts at the oracle's slot over main_loop's wait spin).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "route-W1-1"
 frames = 22536
