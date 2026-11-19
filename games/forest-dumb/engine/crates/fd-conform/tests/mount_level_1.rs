@@ -2,10 +2,12 @@
 //! `game_frame` (`h0+$1fec`) run by `fd-translated`'s frame mount, through `--mount level-1`.
 //!
 //! Full (the disks, Kickstart and the generated tree): every case that passes mounted today still
-//! does, and the mount really replaces the translated `game_frame` in play. The cases that differ
-//! mounted are T55's (mount-timing): the mount takes no machine time, so CLXDAT, read by
-//! `char_hit_check`, is read before the beam has drawn the lines the original's read sees. A no-disk
-//! check keeps every case in one of the two lists.
+//! does, the mount really replaces the translated `game_frame` in play, and (T55) its CLXDAT read
+//! lands on the translated program's line. The mount spends the original's time by a cost rule a
+//! callee (T55, `fd-translated/src/seam/frame.rs`); the cases that still differ mounted are T56's
+//! (mount-routine-timing): where a routine's time varies with its state the rule misses by up to
+//! 7 000 cycles, enough to move JOY1DAT's read across a frame's end. A no-disk check keeps every
+//! case in one of the two lists.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -15,9 +17,11 @@ use fd_conform::reading::{EngineKind, run_mounted};
 use fd_conform::translated_engine::{case_start, frame_bar};
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
 use pcode_machine::{Disks, Input};
+use pcode_rt::{Image, Regs, Stop};
 
-/// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19).
-const PASS_MOUNTED: [&str; 32] = [
+/// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19; the eight
+/// after `world-6-start`, T55, 2026-11-19).
+const PASS_MOUNTED: [&str; 39] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -31,7 +35,6 @@ const PASS_MOUNTED: [&str; 32] = [
     "death-countdown",
     "death-esc",
     "death-pit",
-    "death-spikes",
     "first-case",
     "level-end",
     "picture-first-frame",
@@ -50,25 +53,28 @@ const PASS_MOUNTED: [&str; 32] = [
     "world-4-start",
     "world-5-start",
     "world-6-start",
-];
-
-/// Cases that differ mounted, T55's to make pass (or, for the last three, not the seam's: they fail
-/// on the translated program alone, `power-on-level-1` from frame 6301 (T53) and the two routes
-/// from pass 4161 (T54)).
-const T55: [&str; 18] = [
-    "camera-bottom-right",
     "camera-right-left",
     "character-edge-pit",
     "character-run-slide-buttons",
     "collect-ledge",
     "collect-return",
-    "contact-route",
-    "death-water",
     "edge-latch-route",
-    "enemy-contact",
     "enemy-hop",
-    "enemy-kind4",
     "enemy-route",
+];
+
+/// Cases that differ mounted, T56's to make pass (`death-spikes` passed with T36's instant mount;
+/// T55's rule starts its creature cuts two to three lines early) (or, for the last three, not the
+/// mount's alone:
+/// they fail on the translated program alone, `power-on-level-1` from frame 6301 (T53) and the two
+/// routes from pass 4161 (T54)).
+const T56: [&str; 11] = [
+    "camera-bottom-right",
+    "contact-route",
+    "death-spikes",
+    "death-water",
+    "enemy-contact",
+    "enemy-kind4",
     "mechanic-spring",
     "mechanic-vanish",
     "power-on-level-1",
@@ -99,7 +105,7 @@ fn every_case_is_in_one_list() {
     on_disk.sort();
     let mut listed: Vec<String> = PASS_MOUNTED
         .iter()
-        .chain(T55.iter())
+        .chain(T56.iter())
         .map(|s| s.to_string())
         .collect();
     listed.sort();
@@ -107,7 +113,7 @@ fn every_case_is_in_one_list() {
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 32 cases, about 10 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 39 cases, about 15 min"]
 fn every_case_that_passes_mounted_still_does() {
     generated();
     let cases: Vec<Case> = PASS_MOUNTED
@@ -194,9 +200,141 @@ fn the_mount_replaces_the_translated_game_frame_in_play() {
         "translated alone: {alone} returns, {hand} hand passes"
     );
     let (mounted, hand) = game_frame_runs(true, 30);
-    assert_eq!(
-        hand as usize, mounted,
-        "mounted: every pass the hand engine's"
+    // The mount takes the pass's time (T55), so the run may stop at a frame's end inside a pass
+    // the hand engine has started and not returned from.
+    assert!(
+        hand as usize == mounted || hand as usize == mounted + 1,
+        "mounted: every pass the hand engine's: {hand} hand passes, {mounted} returns"
     );
     assert!(hand >= 25, "mounted: {hand} hand passes");
+}
+
+/// CLXDAT as the first pass from contact-route's start reads it, level 1 mounted or not: the value
+/// and VHPOSR's high byte (the line) read just after it.
+static CLX: Mutex<Option<(u16, u8)>> = Mutex::new(None);
+
+/// The bus inside `game_frame`, noting the first CLXDAT read.
+struct NoteClx<'a>(&'a mut dyn pcode_rt::Bus);
+
+impl pcode_rt::Bus for NoteClx<'_> {
+    fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.0.poll(r, img)
+    }
+    fn insn(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.0.insn(r, img)
+    }
+    fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.0.call_outside(a, r, img)
+    }
+    fn sync(&mut self, r: &Regs) {
+        self.0.sync(r)
+    }
+    fn mounted(&self, k: (u32, u32)) -> Option<pcode_rt::Mounted> {
+        self.0.mounted(k)
+    }
+    fn mount_data(&self) -> Option<&dyn std::any::Any> {
+        self.0.mount_data()
+    }
+    fn rb(&mut self, a: u32) -> u8 {
+        self.0.rb(a)
+    }
+    fn rw(&mut self, a: u32) -> u16 {
+        let v = self.0.rw(a);
+        if a == 0xdf_f00e {
+            let mut c = CLX.lock().unwrap();
+            if c.is_none() {
+                *c = Some((v, self.0.rb(0xdf_f006)));
+            }
+        }
+        v
+    }
+    fn rl(&mut self, a: u32) -> u32 {
+        self.0.rl(a)
+    }
+    fn wb(&mut self, a: u32, v: u8) {
+        self.0.wb(a, v)
+    }
+    fn ww(&mut self, a: u32, v: u16) {
+        self.0.ww(a, v)
+    }
+    fn wl(&mut self, a: u32, v: u32) {
+        self.0.wl(a, v)
+    }
+    fn ww_leftover(&mut self, a: u32, v: u16) {
+        self.0.ww_leftover(a, v)
+    }
+}
+
+fn translated_frame(r: &mut Regs, bus: &mut dyn pcode_rt::Bus, img: &Image) -> Result<(), Stop> {
+    let k = (0, 0x1fec);
+    let f = fd_translated::tree::resume(k).expect("game_frame translated");
+    f(k, r, &mut NoteClx(bus), img)
+}
+
+fn mounted_frame(r: &mut Regs, bus: &mut dyn pcode_rt::Bus, img: &Image) -> Result<(), Stop> {
+    fd_translated::seam::frame::game_frame(r, &mut NoteClx(bus), img)
+}
+
+/// The first pass's CLXDAT read from contact-route's start, through `frame` mounted at
+/// `game_frame` (the engine handed to it when `mounted`).
+fn first_clx(frame: pcode_rt::Mounted, mounted: bool) -> (u16, u8) {
+    let case = Case::load(&cases_dir().join("contact-route.toml")).unwrap();
+    let start = case_start(&frame_bar(&case)).unwrap_or_else(|e| panic!("{e}"));
+    let data = mounted.then(|| fd_conform::game_data().unwrap_or_else(|e| panic!("{e}")));
+    *CLX.lock().unwrap() = None;
+    std::thread::Builder::new()
+        .stack_size(RUN_STACK)
+        .spawn(move || {
+            let mut g = TranslatedGame::new(Start::Snapshot {
+                mem: &start.mem,
+                regs: start.regs,
+                custom: &start.custom,
+                disks: Disks {
+                    df0: start.disk2.clone(),
+                },
+            });
+            g.held_at_start(&Input::from(start.input));
+            if let Some(d) = data {
+                g.mount_level_1(d);
+            }
+            g.mount((0, 0x1fec), frame);
+            let mut n = 0;
+            g.run(&mut |_| {
+                n += 1;
+                if n < 4 && CLX.lock().unwrap().is_none() {
+                    Control::Next(Input::default())
+                } else {
+                    Control::Stop
+                }
+            });
+        })
+        .unwrap()
+        .join()
+        .unwrap();
+    CLX.lock().unwrap().expect("a pass read CLXDAT")
+}
+
+/// How many lines the mount's CLXDAT read may fall from the translated program's on the pass
+/// below: 2 with T55's cost rule (measured 2026-11-19, line 304 against 302), which misses
+/// `camera_update`'s and the creatures' varying time; T56 times those routines and makes it 0.
+const CLX_LINES_OFF: u8 = 2;
+
+/// T36's first mounted difference: contact-route's pass 2 (oracle frame 6304) read `$8060`, the
+/// original `$8061`, the mount having read CLXDAT at the pass's start. With the mount's time
+/// (T55) it reads the original's bit, on the translated program's line within [`CLX_LINES_OFF`].
+#[test]
+#[ignore = "full: the disks, Kickstart and the generated tree; about 20 s"]
+fn the_mounts_clxdat_read_lands_on_the_translated_programs_line() {
+    generated();
+    let translated = first_clx(translated_frame, false);
+    let mounted = first_clx(mounted_frame, true);
+    assert_eq!(translated.0, 0x8061, "the translated program's read");
+    assert_eq!(mounted.0, translated.0, "CLXDAT mounted against translated");
+    let off = mounted.1.wrapping_sub(translated.1);
+    assert!(
+        off <= CLX_LINES_OFF,
+        "mounted read on line byte {}, translated {}",
+        mounted.1,
+        translated.1
+    );
 }

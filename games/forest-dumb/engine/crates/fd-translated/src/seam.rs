@@ -15,9 +15,9 @@
 //! single routine and level 1's whole `game_frame` pass mounted; level 1 is mounted as the frame
 //! (`h0+$1fec`, T36, [`frame`]), the two routine adapters here are the seam's proof and the pattern.
 //!
-//! What a mounted routine does not do: count the original's cycles (the frame bar, DESIGN §2.7,
-//! decides whether that shows), count itself in `Regs::depth`, or leave the original's scratch
-//! registers; every caller of the routines here reloads or restores them.
+//! What a mounted routine does not do: count the original's cycles (the two routine adapters; the
+//! frame mount spends them, T55, [`frame`]), count itself in `Regs::depth`, or leave the original's
+//! scratch registers; every caller of the routines here reloads or restores them.
 
 use std::cell::RefCell;
 

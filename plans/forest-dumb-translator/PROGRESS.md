@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T55; then T56 (mount-routine-timing), which T40 and T42 wait for; T37 and T54 can run beside it.
 
 ## Tasks
 
@@ -69,9 +69,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
-| T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
+| T55 | mount-timing | T36; blocks T40, T42 | 🔍 | Mount spends time: chip accesses by the original's instructions, a measured lump a callee (`COSTS`); `Pass::clxdat`, `Pass::shown` hooks; 39 of 50 pass mounted, 8 moved; one new full test. Deviations: per-callee cost table (owner: rules from state go to T56); CLXDAT check allows 2 lines; 11 cases to T56 (owner), death-spikes newly failing. |
+| T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | Unproven mounted (T55): camera-bottom-right, enemy-kind4, mechanic-spring pass 474 `edge_latch_down`; contact-route, enemy-contact 116 `char_x`; pictures death-spikes 1343 (passed before T55), death-water 1004, mechanic-vanish 326, route-W1-1 945, route-both-W1-1 943. Failing alone too: power-on-level-1 (6301, T53); the routes from 4161 (T54). |
 
-**Review queue:** *(empty)*
+**Review queue:** T55
 
 ## Blocked on the user
 

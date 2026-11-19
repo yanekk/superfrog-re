@@ -36,11 +36,11 @@ use fd_core::level::redraw::{Blit, OBJECT_MAP};
 use fd_core::level::{LevelCtx, Pass};
 use fd_core::objects::{Io, MapObjects, Sound};
 use fd_core::render::COLOURS;
+use fd_core::render::Display;
 use fd_core::render::objects::{CharSprite, CreatureBlit, Creatures, DrawIo};
 use fd_core::render::palette::Fade;
 use fd_core::render::playfield::{SCREEN as SCREEN_AT, Scroll};
 use fd_core::render::status::STATUS;
-use fd_core::render::Display;
 use fd_core::{Game, GameData, LAYOUT, Mem, MemMut, Scratch, Start, State, Transplant};
 use pcode_rt::cycles::{self as cy, Ea, Op, Size};
 use pcode_rt::{Bus, Image, Regs, Stop, block_start, insn_start, rts};
@@ -193,27 +193,107 @@ struct Cost {
 }
 
 const COSTS: [Cost; 20] = [
-    Cost { at: 0x9b06, base: 3232, per_blit: 0 },
+    Cost {
+        at: 0x9b06,
+        base: 3232,
+        per_blit: 0,
+    },
     // `h0_94ba` with the fade off; [`FADE_ON`] while it runs.
-    Cost { at: 0x94ba, base: 72, per_blit: 0 },
-    Cost { at: 0x4d7e, base: 1240, per_blit: 0 },
-    Cost { at: 0x513c, base: 128, per_blit: 0 },
-    Cost { at: 0x5462, base: 434, per_blit: 0 },
-    Cost { at: 0x9754, base: 1272, per_blit: 0 },
-    Cost { at: 0x2c7e, base: 608, per_blit: 306 },
-    Cost { at: 0x2fae, base: 1414, per_blit: 0 },
-    Cost { at: 0x21c0, base: 44, per_blit: 1060 },
-    Cost { at: 0x62b6, base: 1030, per_blit: 1070 },
-    Cost { at: 0x2dd6, base: 1142, per_blit: 0 },
-    Cost { at: 0x3698, base: 1546, per_blit: 0 },
-    Cost { at: 0x2d4c, base: 716, per_blit: 840 },
-    Cost { at: 0x8dfc, base: 456, per_blit: 0 },
-    Cost { at: 0x3b2a, base: 98, per_blit: 0 },
-    Cost { at: 0x20b0, base: 92, per_blit: 0 },
-    Cost { at: 0x24ce, base: 44, per_blit: 0 },
-    Cost { at: 0x3e0c, base: 15968, per_blit: 0 },
-    Cost { at: 0x2698, base: 600, per_blit: 1000 },
-    Cost { at: 0x2104, base: 220, per_blit: 0 },
+    Cost {
+        at: 0x94ba,
+        base: 72,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x4d7e,
+        base: 1240,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x513c,
+        base: 128,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x5462,
+        base: 434,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x9754,
+        base: 1272,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x2c7e,
+        base: 608,
+        per_blit: 306,
+    },
+    Cost {
+        at: 0x2fae,
+        base: 1414,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x21c0,
+        base: 44,
+        per_blit: 1060,
+    },
+    Cost {
+        at: 0x62b6,
+        base: 1030,
+        per_blit: 1070,
+    },
+    Cost {
+        at: 0x2dd6,
+        base: 1142,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x3698,
+        base: 1546,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x2d4c,
+        base: 716,
+        per_blit: 840,
+    },
+    Cost {
+        at: 0x8dfc,
+        base: 456,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x3b2a,
+        base: 98,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x20b0,
+        base: 92,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x24ce,
+        base: 44,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x3e0c,
+        base: 15968,
+        per_blit: 0,
+    },
+    Cost {
+        at: 0x2698,
+        base: 600,
+        per_blit: 1000,
+    },
+    Cost {
+        at: 0x2104,
+        base: 220,
+        per_blit: 0,
+    },
 ];
 
 /// `h0_94ba` while the fade runs (`h0+$94b4` set as the pass starts).

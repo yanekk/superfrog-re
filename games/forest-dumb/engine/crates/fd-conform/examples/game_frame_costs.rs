@@ -210,11 +210,15 @@ fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
         let (p0, n) = l.pass.take().unwrap();
         let case = l.case.clone();
         if PASSES.load(Ordering::Relaxed) {
-            let s = |v: Option<(u64, u16)>| {
-                v.map_or("-\t-".into(), |(at, v)| format!("{at}\t{v:04x}"))
-            };
+            let s =
+                |v: Option<(u64, u16)>| v.map_or("-\t-".into(), |(at, v)| format!("{at}\t{v:04x}"));
             let [clx, joy] = *READS.lock().unwrap();
-            let mut row = format!("{case}\t{n}\t{p0}\t{}\t{}\t{}", r.cycles() - p0, s(clx), s(joy));
+            let mut row = format!(
+                "{case}\t{n}\t{p0}\t{}\t{}\t{}",
+                r.cycles() - p0,
+                s(clx),
+                s(joy)
+            );
             if SHOW_BLITS.load(Ordering::Relaxed) {
                 for (at, v) in BLITS.lock().unwrap().iter() {
                     row += &format!("\t{at}:{v:04x}");
@@ -284,10 +288,26 @@ macro_rules! wrappers {
 }
 
 wrappers!(
-    w9b06 = 0x9b06, w94ba = 0x94ba, w4d7e = 0x4d7e, w513c = 0x513c, w5462 = 0x5462,
-    w9754 = 0x9754, w2104 = 0x2104, w2c7e = 0x2c7e, w2fae = 0x2fae, w21c0 = 0x21c0,
-    w62b6 = 0x62b6, w2dd6 = 0x2dd6, w3698 = 0x3698, w2d4c = 0x2d4c, w8dfc = 0x8dfc,
-    w3b2a = 0x3b2a, w20b0 = 0x20b0, w24ce = 0x24ce, w3e0c = 0x3e0c, w2698 = 0x2698,
+    w9b06 = 0x9b06,
+    w94ba = 0x94ba,
+    w4d7e = 0x4d7e,
+    w513c = 0x513c,
+    w5462 = 0x5462,
+    w9754 = 0x9754,
+    w2104 = 0x2104,
+    w2c7e = 0x2c7e,
+    w2fae = 0x2fae,
+    w21c0 = 0x21c0,
+    w62b6 = 0x62b6,
+    w2dd6 = 0x2dd6,
+    w3698 = 0x3698,
+    w2d4c = 0x2d4c,
+    w8dfc = 0x8dfc,
+    w3b2a = 0x3b2a,
+    w20b0 = 0x20b0,
+    w24ce = 0x24ce,
+    w3e0c = 0x3e0c,
+    w2698 = 0x2698,
     w3ab4 = 0x3ab4,
 );
 
@@ -348,7 +368,11 @@ fn run_case(name: &str) -> Result<Vec<String>, String> {
 
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
-    for (flag, on) in [("--passes", &PASSES), ("--mounted", &MOUNTED), ("--blits", &SHOW_BLITS)] {
+    for (flag, on) in [
+        ("--passes", &PASSES),
+        ("--mounted", &MOUNTED),
+        ("--blits", &SHOW_BLITS),
+    ] {
         if let Some(i) = args.iter().position(|a| a == flag) {
             args.remove(i);
             on.store(true, Ordering::Relaxed);
@@ -357,7 +381,9 @@ fn main() {
     if PASSES.load(Ordering::Relaxed) {
         println!("case\tpass\tentry\tdur\tclx_at\tclx\tjoy_at\tjoy");
     } else {
-        println!("case\tpass\tcallee\tfrom\tdur\tdmaconr\tvhposr\tbltsize\tblit_wait\tbeam_wait\tdma_wait\tclx\tjoy");
+        println!(
+            "case\tpass\tcallee\tfrom\tdur\tdmaconr\tvhposr\tbltsize\tblit_wait\tbeam_wait\tdma_wait\tclx\tjoy"
+        );
     }
     for name in args {
         match run_case(&name) {

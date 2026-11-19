@@ -112,6 +112,7 @@ At the end translated routines are judged on the machine with real hardware effe
 | [T53](tasks/T53-world-starts-play-at-pass-ends.md) | world-starts-play-at-pass-ends | T51, T52; blocks T42 |
 | [T54](tasks/T54-main-loop-spin-slot-exact.md) | main-loop-spin-slot-exact | T50; blocks T42 |
 | [T55](tasks/T55-mount-timing.md) | mount-timing | T36; blocks T40, T42 |
+| [T56](tasks/T56-mount-routine-timing.md) | mount-routine-timing | T55; blocks T40, T42 |
 
 T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worker that finds more failure kinds than fit asks to add a task (CLAUDE.md, adding a task mid-run).
 
