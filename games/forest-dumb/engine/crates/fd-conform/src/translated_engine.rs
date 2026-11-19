@@ -23,13 +23,14 @@
 //! which reads both sides' state at each pass end, where the CPU writes `PASS_END`
 //! (`FrameEngine::pass_ends`, the machine's `watch_write`; T30), and the picture at the frame's end.
 
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 
 use amiga_conform::script;
 
 use amiga_oracle::{Amiga, FrameInput, OracleConfig, PaulaWrite, kickstart_path};
-use fd_core::{Mem, Transplant, Var, layout_var};
+use fd_core::{GameData, Mem, Transplant, Var, layout_var};
 use fd_translated::{Control, RUN_STACK, Regs68k, Start, TranslatedGame};
 use pcode_machine::{Disks, Input, Picture, custom, irq};
 use pcode_rt::Stop;
@@ -244,9 +245,17 @@ pub struct TranslatedEngine {
     /// made by the last frame's end.
     writes_at: Vec<WriteAt>,
     writes_at_pending: usize,
+    /// Level 1's data when its hand engine is mounted (`--mount level-1`, T36).
+    level_1: Option<Arc<GameData>>,
 }
 
 impl TranslatedEngine {
+    /// Run level 1's hand engine through the seam (`TranslatedGame::mount_level_1`), from the
+    /// first pass on.
+    pub fn mount_level_1(&mut self, data: Arc<GameData>) {
+        self.level_1 = Some(data);
+    }
+
     pub fn new(start: CaseStart) -> TranslatedEngine {
         TranslatedEngine {
             pass: start.pass,
@@ -262,6 +271,7 @@ impl TranslatedEngine {
             loads: (0, false),
             writes_at: Vec::new(),
             writes_at_pending: 0,
+            level_1: None,
         }
     }
 
@@ -288,6 +298,7 @@ impl TranslatedEngine {
             loads: (0, false),
             writes_at: Vec::new(),
             writes_at_pending: 0,
+            level_1: None,
         })
     }
 
@@ -306,7 +317,12 @@ impl TranslatedEngine {
         &self.mem
     }
 
-    fn spawn(start: Begin, first: Input, writes_at: Vec<WriteAt>) -> Link {
+    fn spawn(
+        start: Begin,
+        first: Input,
+        writes_at: Vec<WriteAt>,
+        level_1: Option<Arc<GameData>>,
+    ) -> Link {
         let (to, inputs) = channel::<Input>();
         let (frames, from) = channel::<Frame>();
         let thread = thread::Builder::new()
@@ -343,6 +359,9 @@ impl TranslatedEngine {
                         g
                     }
                 };
+                if let Some(data) = level_1 {
+                    g.mount_level_1(data);
+                }
                 for (at, addr, bytes) in &writes_at {
                     g.write_at(*at, *addr, bytes);
                 }
@@ -474,7 +493,7 @@ impl TranslatedEngine {
         match self.start.take() {
             Some(start) => {
                 let writes = std::mem::take(&mut self.writes_at);
-                self.link = Some(Self::spawn(start, input, writes));
+                self.link = Some(Self::spawn(start, input, writes, self.level_1.clone()));
             }
             None => {
                 let link = self.link.as_ref().expect("started");
@@ -592,20 +611,30 @@ pub fn frame_bar(case: &Case) -> Case {
     }
 }
 
-/// `case` on the translated program, judged on the frame bar ([`frame_bar`]): a level case from
+/// `case` on the translated program, judged on the frame bar ([`frame_bar`]), level 1's hand engine
+/// mounted when `opts.mount_level_1` (T36): a level case from
 /// its pass end, a title case from its sync frame, a power-on case (`start = "entry"`, T32) from
 /// the program's entry with its loads lined up, a case lined up by loads from a snapshot at its
 /// sync frame (T33).
 pub fn run_translated(case: &Case, opts: &Options) -> Result<Verdict, String> {
     let bar = frame_bar(case);
+    let mount = |e: &mut TranslatedEngine| -> Result<(), String> {
+        if opts.mount_level_1 {
+            e.mount_level_1(crate::game_data()?);
+        }
+        Ok(())
+    };
     if case.is_entry() {
         let mut e = TranslatedEngine::power_on(&disks::load()?)?;
+        mount(&mut e)?;
         return crate::frames::run_entry_frames(&bar, &Inputs::load(&bar)?, &mut e, opts);
     }
     if case.by_loads() {
         let mut e = TranslatedEngine::new(case_start(&bar)?);
+        mount(&mut e)?;
         return crate::frames::run_entry_frames(&bar, &Inputs::load(&bar)?, &mut e, opts);
     }
     let mut e = TranslatedEngine::new(case_start(&bar)?);
+    mount(&mut e)?;
     run_frames(&bar, &mut e, opts)
 }

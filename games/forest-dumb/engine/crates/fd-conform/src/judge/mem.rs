@@ -9,6 +9,7 @@
 //! CIA writes are dropped. Not modelled: a read of a write-only register (the shim writes the data
 //! bus's last word into it), line mode, fill mode. It moves to the toolkit when a second game uses it.
 
+use std::any::Any;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -26,6 +27,9 @@ pub struct Mem {
     /// Custom-chip writes in order: (offset from $DFF000, word).
     pub hw_writes: Vec<(u16, u16)>,
     blt: [u16; 0x1c],
+    /// What a mounted routine reads beside memory (`pcode_rt::Bus::mount_data`): level 1's hand
+    /// engine for the frame mount (`fd_translated::seam::Level1`, T36).
+    pub mount_data: Option<Arc<dyn Any + Send + Sync>>,
 }
 
 fn is_hardware(a: u32) -> bool {
@@ -45,6 +49,7 @@ impl Mem {
             hw_reads: HashMap::new(),
             hw_writes: Vec::new(),
             blt: [0; 0x1c],
+            mount_data: None,
         };
         for (a, bytes) in pokes {
             for (i, &b) in bytes.iter().enumerate() {

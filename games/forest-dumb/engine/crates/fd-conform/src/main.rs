@@ -1,10 +1,11 @@
-//! `fd-conform run <case.toml> [--engine hand|translated]`: one case, prints the verdict and its
-//! report; exit 0 only when the case passes. Format and how to run it: `engine/conform/README.md`.
-//! `--engine translated` runs a level case on the translated program judged on the frame bar
-//! (`fd_conform::translated_engine::run_translated`, translator T29); `hand` (the default) is
-//! fd-core's engine.
+//! `fd-conform run <case.toml> [--engine hand|translated] [--mount level-1]`: one case, prints the
+//! verdict and its report; exit 0 only when the case passes. Format and how to run it:
+//! `engine/conform/README.md`. `--engine translated` runs a level case on the translated program
+//! judged on the frame bar (`fd_conform::translated_engine::run_translated`, translator T29); `hand`
+//! (the default) is fd-core's engine. `--mount level-1` runs the translated program with level 1's
+//! hand engine mounted through the seam (translator T36); it needs `--engine translated`.
 //!
-//! `fd-conform run-all [--engine hand|translated] [--cases <glob>] [--report FILE]`: every case
+//! `fd-conform run-all [--engine hand|translated] [--mount level-1] [--cases <glob>] [--report FILE]`: every case
 //! under `engine/conform/cases/` whose stem matches the glob, in parallel, one line each
 //! (`<case>: <verdict's first line>`), then a summary; `--report` also writes it as Markdown,
 //! grouped by the task that works from it and sorted by first difference (`fd_conform::reading`).
@@ -54,10 +55,10 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use fd_conform::reading::{EngineKind, run_on};
+use fd_conform::reading::{EngineKind, run_mounted};
 use fd_conform::Case;
 
-const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] | run-all [--engine hand|translated] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
+const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] [--mount level-1] | run-all [--engine hand|translated] [--mount level-1] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -120,37 +121,56 @@ fn main() -> ExitCode {
     }
 }
 
-fn run_case(path: &Path, engine: EngineKind) -> Result<bool, String> {
+fn run_case(path: &Path, (engine, mount): (EngineKind, bool)) -> Result<bool, String> {
     let case = Case::load(path)?;
-    let verdict = run_on(&case, engine)?;
+    let verdict = run_mounted(&case, engine, mount)?;
     println!("{}: {verdict}", case.name);
     Ok(verdict.passed())
 }
 
-fn engine_arg(rest: &[String]) -> Option<EngineKind> {
-    match rest {
-        [] => Some(EngineKind::Hand),
-        [flag, e] if flag == "--engine" => EngineKind::parse(e),
-        _ => None,
-    }
-}
-
-fn run_all_args(rest: &[String]) -> Option<(EngineKind, String, Option<PathBuf>)> {
-    let (mut engine, mut glob, mut report) = (EngineKind::Hand, "*".to_string(), None);
+fn engine_arg(rest: &[String]) -> Option<(EngineKind, bool)> {
+    let (mut engine, mut mount) = (EngineKind::Hand, false);
     let mut it = rest.iter();
     while let Some(flag) = it.next() {
         match flag.as_str() {
             "--engine" => engine = EngineKind::parse(it.next()?)?,
+            "--mount" => mount = mount_arg(it.next()?)?,
+            _ => return None,
+        }
+    }
+    (!mount || engine == EngineKind::Translated).then_some((engine, mount))
+}
+
+/// `--mount`'s value: `level-1`, the one mount there is.
+fn mount_arg(s: &str) -> Option<bool> {
+    (s == "level-1").then_some(true)
+}
+
+fn run_all_args(rest: &[String]) -> Option<((EngineKind, bool), String, Option<PathBuf>)> {
+    let (mut engine, mut mount, mut glob, mut report) =
+        (EngineKind::Hand, false, "*".to_string(), None);
+    let mut it = rest.iter();
+    while let Some(flag) = it.next() {
+        match flag.as_str() {
+            "--engine" => engine = EngineKind::parse(it.next()?)?,
+            "--mount" => mount = mount_arg(it.next()?)?,
             "--cases" => glob = it.next()?.clone(),
             "--report" => report = Some(PathBuf::from(it.next()?)),
             _ => return None,
         }
     }
-    Some((engine, glob, report))
+    if mount && engine != EngineKind::Translated {
+        return None;
+    }
+    Some(((engine, mount), glob, report))
 }
 
 /// Every matching case on `engine`, in parallel (each run its own oracle), printed in name order.
-fn run_all(engine: EngineKind, glob: &str, report: Option<&Path>) -> Result<bool, String> {
+fn run_all(
+    (engine, mount): (EngineKind, bool),
+    glob: &str,
+    report: Option<&Path>,
+) -> Result<bool, String> {
     use fd_conform::code_writes::glob_match;
     use fd_conform::reading::{Reading, Row};
     let dir = fd_conform::conform_dir().join("cases");
@@ -181,7 +201,7 @@ fn run_all(engine: EngineKind, glob: &str, report: Option<&Path>) -> Result<bool
                 loop {
                     let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                     let Some(case) = cases.get(i) else { break };
-                    let r = run_on(case, engine);
+                    let r = run_mounted(case, engine, mount);
                     let line = match &r {
                         Ok(v) => v.to_string().lines().next().unwrap_or("").to_string(),
                         Err(e) => format!("not run: {e}"),
@@ -198,7 +218,11 @@ fn run_all(engine: EngineKind, glob: &str, report: Option<&Path>) -> Result<bool
         .map(|(c, r)| Row::new(&c.name, r.into_inner().unwrap().expect("every case ran")))
         .collect();
     let reading = Reading {
-        engine: engine.name(),
+        engine: if mount {
+            "translated, level 1 mounted"
+        } else {
+            engine.name()
+        },
         rows,
     };
     for r in &reading.rows {

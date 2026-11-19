@@ -735,6 +735,9 @@ pub struct Options<'a> {
     /// that have not differed, recording each one's first in [`Verdict::firsts`]. The pass runner
     /// ignores it.
     pub every_channel: bool,
+    /// The translated program runs with level 1's hand engine mounted through the seam
+    /// (`--mount level-1`, translator T36). The hand engine and the pass runner ignore it.
+    pub mount_level_1: bool,
 }
 
 impl Default for Options<'_> {
@@ -744,6 +747,7 @@ impl Default for Options<'_> {
             register: PORTED,
             diff_dir: None,
             every_channel: false,
+            mount_level_1: false,
         }
     }
 }

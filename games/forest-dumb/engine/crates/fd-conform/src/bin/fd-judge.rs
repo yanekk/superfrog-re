@@ -67,7 +67,9 @@
 //! one line `{"generators":["name",..]}`: the whole-tree judge's work list, read from the build
 //! rather than from `re/translate.toml`, which predates the later generator modules. Needs no disks.
 
+use std::any::Any;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use fd_conform::generators;
 use fd_conform::judge::insn::{self, Columns, InsnRig, Site};
@@ -328,6 +330,16 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         };
         let key = rig.name(a.entry);
+        // The frame mount plays level 1's hand engine, which it reads beside memory (T36).
+        let level_1 = match fd_conform::game_data() {
+            Ok(d) => {
+                Some(Arc::new(fd_translated::seam::Level1::new(d)) as Arc<dyn Any + Send + Sync>)
+            }
+            Err(e) => {
+                eprintln!("fd-judge: {e}");
+                return ExitCode::FAILURE;
+            }
+        };
         let r = judge::seam::check(
             &rig,
             &a.gen_name,
@@ -337,6 +349,7 @@ fn main() -> ExitCode {
             fd_translated::tree::entry(&key),
             replacing,
             a.regs,
+            level_1,
         );
         println!(
             "{{\"routine\":\"{}\",\"gen\":\"{}\",\"seam\":true,\"cases\":{},\"passed\":{},\"failures\":{},\"replaced_stopped\":{},\"pass\":{},\"first_failure\":\"{}\",\"first_replaced_stop\":\"{}\"}}",
