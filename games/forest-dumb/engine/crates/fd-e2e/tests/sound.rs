@@ -21,6 +21,13 @@ struct Heard {
     writes: usize,
     /// In level 1 at the frame's end (`fd_app::in_level_1`).
     level_1: bool,
+    /// The channels a sound effect started on this frame: a DMACON write turning one channel on.
+    /// Level 1's sound driver writes no DMACON (14 writes a frame: INTREQ, AUDxLC, AUDxLEN), so
+    /// only an effect does (translator T57).
+    effects: Vec<u16>,
+    /// `Sound::Item` started this frame: AUD2LEN set to the item sample's length, which no other
+    /// channel 2 effect (the stomp, the slide) uses.
+    item: bool,
 }
 
 /// The translated program from power-on, level 1 mounted, as the app runs it, for `inputs.len()`
@@ -83,6 +90,18 @@ fn headless(inputs: Vec<FrameInput>) -> Vec<Heard> {
                 heard.push(Heard {
                     samples,
                     writes: out.paula.len(),
+                    effects: out
+                        .paula
+                        .iter()
+                        .filter(|&&(_, r, v)| {
+                            r == 0x96 && v & 0x8000 != 0 && (v & 0xf).count_ones() == 1
+                        })
+                        .map(|&(_, _, v)| v & 0xf)
+                        .collect(),
+                    item: out
+                        .paula
+                        .iter()
+                        .any(|&(_, r, v)| (r, v) == (0xc4, ITEM_LENGTH)),
                     level_1: fd_app::in_level_1(out.chip, out.slow),
                 });
                 match inputs.get(heard.len()) {
@@ -229,4 +248,64 @@ fn the_apps_sound_in_level_1_equals_the_headless_runs_frame_for_frame() {
             "step {n}: the sound driver writes every frame of play"
         );
     }
+}
+
+/// Steps run in level 1 for its effects: right from the start, down the first slope, and the leap
+/// onto the ledge at `W1-1:29..34,12`, as `scripts/collect-ledge.txt` plays it from the level's
+/// first pass, taking the oranges, apples and coins on the way (`Sound::Item`, channel 2).
+const EFFECT_STEPS: u64 = 200;
+
+/// The item sample's length in words (`fd-translated` `seam::frame`, `Sound::Item`).
+const ITEM_LENGTH: u16 = 0x7cb;
+
+#[test]
+fn a_sound_effect_in_level_1_is_heard_in_the_app_at_the_step_the_headless_run_plays_it() {
+    let mut app = App::launch_translated(LaunchOpts {
+        max_frames: EFFECT_STEPS,
+        timeout_s: 180,
+        extra_args: vec!["--capture-hashes".into(), "--level".into(), "1".into()],
+        ..Default::default()
+    });
+    let c = app.run_script_unread(
+        "1: down ArrowRight\n45: down Space\n73: up Space\n121: up ArrowRight\n",
+    );
+    assert!(c.exit.success(), "{}", c.stderr);
+    let headless_frames: u64 = c
+        .stderr
+        .lines()
+        .find_map(|l| l.strip_prefix("fd-app: level 1 reached headless after "))
+        .and_then(|l| l.split(' ').next())
+        .unwrap_or_else(|| panic!("{}", c.stderr))
+        .parse()
+        .unwrap();
+    let mut inputs: Vec<FrameInput> = (0..headless_frames).map(fd_app::to_level_1_input).collect();
+    inputs.extend(fed(&c, EFFECT_STEPS));
+    let heard = headless(inputs);
+    let play = &heard[headless_frames as usize..];
+    assert!(play.iter().all(|h| h.level_1), "in level 1 throughout");
+    let app = captured(&c);
+    assert_eq!(app.len() as u64, EFFECT_STEPS);
+    for (n, h) in (1..=EFFECT_STEPS).zip(play) {
+        assert_eq!(app[&n], h.samples, "step {n}'s samples");
+    }
+    // The first effect the headless run plays, heard in the app at its step. The item sample opens
+    // with 106 zero bytes, about 167 lines at its period: with the mount taking no time (before
+    // T55) it started at line 233 and was first heard the step after. Silent before: level 1 has
+    // no music.
+    let (first, h) = (1..=EFFECT_STEPS)
+        .zip(play)
+        .find(|(_, h)| !h.effects.is_empty())
+        .expect("the run takes an item: an effect starts in level 1");
+    // The run's first effect is the item it takes: with `Sound::Item` silent a later stomp, on the
+    // same channel, would pass the checks below alone.
+    assert!(h.item, "step {first}: the first effect is not the item's");
+    assert!(
+        (1..first).all(|n| !loud(&app[&n])),
+        "level 1 is silent before its first effect"
+    );
+    assert!(
+        loud(&app[&first]),
+        "step {first}: an effect starts (DMACON channel bits {:?}) and the app is silent",
+        h.effects
+    );
 }
