@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T51; T52, then T50 and T53; T36 to T42 after them.
 
 ## Tasks
 
@@ -65,10 +65,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
-| T51 | world-starts-pass | T33, T49; blocks T42 | ⬜ | |
+| T51 | world-starts-pass | T33, T49; blocks T42 | 🔍 | Owner's rules in fd-conform's runner, not the machine (deviation): a load's OS stretch lines up as the load's; beam_sample_unread left out; a frame-end byte passes one frame on. World starts 5, 6 pass; 2, 3, 4 unproven, failing in play mid-pass, carried by T53 (owner). next_world checked. 9 unit tests; power_on.rs stand-in case to 4000. |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ⬜ | |
+| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T51
 
 ## Blocked on the user
 
