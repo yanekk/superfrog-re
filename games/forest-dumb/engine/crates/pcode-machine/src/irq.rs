@@ -14,12 +14,23 @@ pub const INTREQ: u16 = 0x09C;
 pub const INTEN: u16 = 0x4000;
 const SETCLR: u16 = 0x8000;
 
+/// Cycles from a change of INTENA or INTREQ to the CPU seeing the new level on its IPL lines: the
+/// register takes the write a DMA cycle later, then Paula's IPL pipe passes it on three cycles
+/// after that (vAmiga `Paula::pokeINTREQ`, `checkInterrupt`, `serviceIplEvent`). The CPU samples
+/// the lines at an instruction's last bus access (Moira's `POLL_IPL`), so an interrupt is taken
+/// after the first instruction whose last access starts this long after the change (T54).
+pub const IPL_DELAY: u64 = 2 * 4;
+
 /// The 68000 cycles an interrupt takes from acknowledge to the handler's first instruction
 /// (MC68000UM table 8-14, "interrupt": 44). Counted when `poll` takes one, so the beam moves on.
 pub const IRQ_CYCLES: u32 = 44;
 
-/// Of [`IRQ_CYCLES`], those off the bus: 44(5/3), five reads and three writes (T49).
-pub const IRQ_OFF_BUS: u32 = 44 - 4 * 8;
+/// [`IRQ_CYCLES`] on the bus as Moira runs them (`execInterrupt`, the reference's): 6 idle, the
+/// PC's low word pushed, 8 idle (the autovector's acknowledge takes no bus slot), SR and the PC's
+/// high word pushed, the vector read, the first prefetch, 2 idle and the second prefetch. Seven
+/// accesses where MC68000UM's 44(5/3) counts eight: the oracle's DMA owners show seven (T54). As
+/// trail entries: (cycles, of them off the bus, of those before the accesses).
+pub const IRQ_BUS: [(u32, u32, u32); 3] = [(6 + 4, 6, 6), (8 + 5 * 4, 8, 8), (2 + 4, 2, 2)];
 
 /// The PC pushed in the exception frame: odd, so no instruction's address, and a handler that
 /// changes it is caught. `poll` is not told which block it starts, so it cannot push the real

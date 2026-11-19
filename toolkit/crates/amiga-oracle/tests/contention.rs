@@ -73,6 +73,19 @@ pub const LONG: &[u16] = &[
     0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491,
 ];
 
+/// A foreground's wait for its interrupt's count (learned on: translator T54): `move.w abs.l,d4`
+/// of a word whose low five bits are set (the handler's first, `movem.l`), `andi.l #$1f,d4`,
+/// `bne.w` taken to the next instruction, `tst.w abs.l` of a zero word (the bitplane), `bne.w`
+/// not taken, `bra.w` to the next instruction: 80 cycles, 18 bus cycles.
+pub const SPIN: &[u16] = &[
+    0x3839, (HANDLER >> 16) as u16, HANDLER as u16, // move.w HANDLER,d4
+    0x0284, 0x0000, 0x001f, //                         andi.l #$1f,d4
+    0x6600, 0x0002, //                                 bne.w (taken)
+    0x4a79, (BITPLANE >> 16) as u16, BITPLANE as u16, // tst.w BITPLANE
+    0x6600, 0x0002, //                                 bne.w (not taken)
+    0x6000, 0x0002, //                                 bra.w
+];
+
 fn words(ws: &[u16]) -> Vec<u8> {
     ws.iter().flat_map(|w| w.to_be_bytes()).collect()
 }
@@ -332,6 +345,9 @@ fn a_cpu_loop_on_the_beam() {
             (0x50, 17),
             11898,
         ),
+        // T54: the wait spin, without and with the display's fetch.
+        ("spin, 0 planes", Case { body: SPIN, ..case(0) }, (0x50, 31), 9098),
+        ("spin, 5 planes", Case { body: SPIN, ..case(5) }, (0x50, 17), 11044),
         // T52: audio channel 0 takes its slot about once a line, which a BLTPRI blit loses.
         (
             "blit ABCD 64x20 BLTPRI, audio",

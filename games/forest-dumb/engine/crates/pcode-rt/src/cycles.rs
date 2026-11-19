@@ -626,13 +626,20 @@ pub const fn dbcc_off(holds: bool) -> u32 {
 
 /// Of an instruction's cycles off the bus, those spent before its first bus access (Moira's
 /// `SYNC` ahead of the reads, translator T49): a branch, jump or call idles first, and so does the
-/// address calculation of `-(An)` and the index modes when it is the instruction's first operand.
+/// address calculation of `-(An)` and the index modes when it is the instruction's first operand
+/// (a move's index destination after a register source too).
 /// The rest of [`off_bus`] follows the accesses. Where the bus is free decides which slots the CPU
 /// asks for, which matters beside the bitplanes' even slots.
 pub const fn lead(k: Kind) -> u32 {
     let Kind { op, src, dst, .. } = k;
     match op {
         Op::Bra | Op::Bsr | Op::Jmp | Op::Jsr => off_bus(k),
+        // From a register, nothing is read before the destination's address: an index
+        // destination idles first (Moira `computeEA` mode 6, `SYNC(2)` before the index word; T54).
+        Op::Move if is_reg(src) && matches!(dst, Ea::D8AnXn) => ea_off_bus(dst),
+        // `-(Ay),-(Ax)`: the source's decrement idles before both reads (Moira `execAbcd`,
+        // `execAddxEa`: the destination's is implied, IMPL_DEC; T54).
+        Op::Addx | Op::Bcd if matches!(src, Ea::PreDec) => ea_off_bus(src),
         Op::Move | Op::Movea | Op::AluToDn | Op::Cmp | Op::Adda | Op::Cmpa | Op::Tst | Op::Clr
         | Op::Nbcd | Op::Scc | Op::Tas | Op::Lea | Op::Pea => ea_off_bus(src),
         Op::Shift(_) if matches!(dst, Ea::None) => ea_off_bus(src),
@@ -674,6 +681,12 @@ mod tests {
         assert_eq!(l(Op::Jmp, L, Ind, None), 0);
         assert_eq!(l(Op::Move, W, PreDec, Dn), 2);
         assert_eq!(l(Op::Move, W, Dn, PreDec), 0);
+        // `move.b d0,(a0,d1.l)`: the index's 2 before the extension word and the write (T54).
+        assert_eq!(l(Op::Move, B, Dn, D8AnXn), 2);
+        assert_eq!(l(Op::Move, W, Ind, D8AnXn), 0);
+        assert_eq!(l(Op::Bcd, B, PreDec, PreDec), 2);
+        assert_eq!(l(Op::Addx, W, PreDec, PreDec), 2);
+        assert_eq!(l(Op::Bcd, B, Dn, Dn), 0);
         assert_eq!(l(Op::AluToMem, W, Dn, PreDec), 2);
         // `lea (d8,An,Xn)` idles 2 before its prefetch and 2 after (off the bus 4).
         assert_eq!((l(Op::Lea, L, D8AnXn, An), off_of(Op::Lea, L, D8AnXn, An)), (2, 4));

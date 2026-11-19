@@ -60,11 +60,32 @@ impl Copper {
             .is_some_and(|r| r.bus.binary_search(&slot).is_ok())
     }
 
+    /// The writes not yet delivered: (cycle, register, value), in beam order.
+    pub(crate) fn pending(&self) -> &[(i64, u16, u16)] {
+        self.run.as_ref().map_or(&[], |r| &r.writes[r.next..])
+    }
+
     /// The cycle of the next write not yet delivered.
     pub fn next_at(&self) -> Option<i64> {
         let r = self.run.as_ref()?;
         r.writes.get(r.next).map(|w| w.0)
     }
+}
+
+/// The DMA slots (from the frame's start, ascending) the copper takes in a frame that restarts it
+/// at `pc` with chip RAM `chip` and the display `fetch`: what [`Machine::start_frame`] will find,
+/// for a frame the bus reaches before the host has started it (`dma::Slots`, T54).
+pub(crate) fn frame_bus(chip: &[u8], pc: u32, fetch: Fetch, lines: u16) -> Vec<u32> {
+    let mask = chip.len() as u32 - 1;
+    let word = |a: u32, _: u16, _: u16| {
+        let i = (a & mask & !1) as usize;
+        u16::from_be_bytes([chip[i], chip[i + 1]])
+    };
+    let mut bus = Vec::new();
+    copper::run_bus(&word, pc, fetch, lines, &mut bus);
+    let mut bus: Vec<u32> = bus.iter().map(|b| b.dma()).collect();
+    bus.sort_unstable();
+    bus
 }
 
 impl Machine {

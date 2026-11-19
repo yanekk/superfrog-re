@@ -12,9 +12,12 @@
 //! A case the engine cannot run (a title case on `translated`) is listed as not run. Exit 0 only
 //! when every case ran and passed.
 //!
-//! `fd-conform bug replay <zip> [--out DIR]`: a bug zip replayed headlessly (DESIGN §2.8,
-//! `fd_conform::bug`): `frames N`, `stopped-at`, `replay-at` and `screenshot equal` or
-//! `screenshot differs (N pixels)`, exit 0 either way; the last frame's picture as `last.png` in
+//! `fd-conform bug replay <zip> [--out DIR] [--engine hand|translated]`: a bug zip replayed
+//! headlessly (DESIGN §2.8, `fd_conform::bug`) on the engine that played it, or the one named (a
+//! power-on recording replays on the translated program only): `frames N`, `start`, `engine`,
+//! `stopped-at`, `replay-at` (`-` out of level 1), `stop` (the recording's), on the translated
+//! program `replay-stop <stop> at frame K` or `replay-stop -` (translator T39), and `screenshot
+//! equal` or `screenshot differs (N pixels)`, exit 0 either way; the last frame's picture as `last.png` in
 //! `--out` when given. A zip another build made, or that cannot be read, is refused naming why,
 //! exit 1 (DESIGN §2.12).
 //!
@@ -58,7 +61,7 @@ use std::process::ExitCode;
 use fd_conform::reading::{EngineKind, run_mounted};
 use fd_conform::Case;
 
-const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] [--mount level-1] | run-all [--engine hand|translated] [--mount level-1] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
+const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] [--mount level-1] | run-all [--engine hand|translated] [--mount level-1] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] [--engine hand|translated] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -243,29 +246,59 @@ fn run_all(
 
 fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
     use fd_conform::bug;
-    let out = match rest {
-        [] => None,
-        [flag, dir] if flag == "--out" => Some(PathBuf::from(dir)),
-        _ => return Err(USAGE.to_string()),
-    };
+    use fd_core::recording::{EngineKind as Played, StartPoint};
+    let (mut out, mut engine) = (None, None);
+    let mut it = rest.iter();
+    while let Some(flag) = it.next() {
+        match (flag.as_str(), it.next().map(String::as_str)) {
+            ("--out", Some(dir)) => out = Some(PathBuf::from(dir)),
+            ("--engine", Some("hand")) => engine = Some(Played::Hand),
+            ("--engine", Some("translated")) => engine = Some(Played::Translated),
+            _ => return Err(USAGE.to_string()),
+        }
+    }
     let bytes = std::fs::read(zip).map_err(|e| format!("{}: {e}", zip.display()))?;
     let (rec, screenshot) = bug::open_zip(&bytes, fd_tools::ENGINE_BUILD)
         .map_err(|e| format!("{}: {e}", zip.display()))?;
-    let r = bug::replay(fd_conform::game_data()?, &rec, |_, _, _| {});
-    println!("frames {}", rec.inputs.len());
-    match rec.stopped_at {
-        Some(at) => println!("stopped-at {at}"),
-        None => println!("stopped-at -"),
+    // The engine that played it, unless asked for the other (a level-1 start plays on either).
+    let engine = engine.unwrap_or(rec.engine);
+    if (engine, rec.start) == (Played::Hand, StartPoint::PowerOn) {
+        return Err(format!(
+            "{}: a power-on recording replays on the translated program only (--engine translated)",
+            zip.display()
+        ));
     }
-    println!("replay-at {}", r.location);
-    match bug::screenshot_differs(&screenshot, &r.last)? {
+    let place = |l: Option<fd_core::recording::Location>| l.map_or("-".to_string(), |l| l.to_string());
+    let (location, last, stop) = match engine {
+        Played::Hand => {
+            let r = bug::replay(fd_conform::game_data()?, &rec, |_, _, _| {});
+            (Some(r.location), r.last, None)
+        }
+        Played::Translated => {
+            let disks = fd_conform::disks::load()?;
+            let r = bug::replay_translated(&disks, fd_conform::game_data()?, &rec)?;
+            (r.location, r.last, Some(r.stop))
+        }
+    };
+    println!("frames {}", rec.inputs.len());
+    println!("start {}", rec.start.name());
+    println!("engine {}", engine.name());
+    println!("stopped-at {}", place(rec.stopped_at));
+    println!("replay-at {}", place(location));
+    println!("stop {}", rec.stop.as_deref().unwrap_or("-"));
+    match stop {
+        None => {}
+        Some(None) => println!("replay-stop -"),
+        Some(Some((frame, s))) => println!("replay-stop {s} at frame {frame}"),
+    }
+    match bug::screenshot_differs(&screenshot, &last)? {
         0 => println!("screenshot equal"),
         n => println!("screenshot differs ({n} pixels)"),
     }
     if let Some(dir) = out {
         std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         let path = dir.join("last.png");
-        std::fs::write(&path, bug::picture_png(&r.last))
+        std::fs::write(&path, bug::picture_png(&last))
             .map_err(|e| format!("{}: {e}", path.display()))?;
     }
     Ok(true)
@@ -282,6 +315,13 @@ fn bug_compare(zip: &Path, rest: &[String]) -> Result<bool, String> {
     let (rec, _) = bug::open_zip(&bytes, fd_tools::ENGINE_BUILD)
         .map_err(|e| format!("{}: {e}", zip.display()))?;
     std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
+    if rec.start == fd_core::recording::StartPoint::PowerOn {
+        return Err(format!(
+            "{}: a power-on recording starts before the level sync point bug compare starts at; \
+             replay it with `bug replay`",
+            zip.display()
+        ));
+    }
     let c = bug::compare(fd_conform::game_data()?, &rec, Some(out.clone()))?;
     print!("{}", c.report());
     let write = |name: &str, bytes: Vec<u8>| {

@@ -113,6 +113,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 
 **Bug zips** (`src/bug.rs`)
 - `open_zip(bytes, build)`, `replay(data, &rec, each) -> Replayed`, `retime(&rec) -> Retimed`.
+- `replay_translated(&disks, data, &rec) -> Result<TranslatedReplay, String>` (translator T39): a recording the translated program played, from power-on or through the title to level 1, to its end or its stop (`frames`, `stop: Option<(frame, text)>`, `location`, `last`).
 - `compare(data, &rec, diff_dir) -> Result<Compared, String>` and `compare_with(..., before_step)`.
 - `Compared::{first, left, same, report, case_text}`, `default_out(zip)`, and `screenshot_differs`, `picture_png`, `frame_png` re-exported.
 
@@ -121,7 +122,7 @@ under `engine/conform/` (`Case::load` falls back to `conform_dir()`).
 | Command | Does |
 |---|---|
 | `cargo run -p fd-conform -- run <case.toml>` | One case; exits 0 only when it passes |
-| `cargo run -p fd-conform -- bug replay <zip> [--out DIR]` | Replay a bug zip on the engine, check the screenshot |
+| `cargo run -p fd-conform -- bug replay <zip> [--out DIR] [--engine hand\|translated]` | Replay a bug zip on the engine that played it (or the one named), check the screenshot and, on the translated program, the stop |
 | `cargo run -p fd-conform -- bug compare <zip> [--out DIR]` | Retime the zip onto the original and compare it; writes `bug-case.toml` |
 | `cargo run --release -p fd-conform -- code-writes [--cases <glob>] [--max-frames N] [--all]` | Every level case on the original, each change to an executed instruction's bytes; JSON lines and a total. `--all` adds the power-on run and the world 2 to 6 starts; about 3 minutes |
 | `cargo run --release -p fd-conform -- code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6\|none] [--out FILE]` | Every instruction the original runs over the level cases, power-on and the world 2 to 6 starts, reduced to entries in `re/entries.toml`; JSON lines per run and a total; about 5 minutes |

@@ -288,10 +288,10 @@ fn a_sound_effect_in_level_1_is_heard_in_the_app_at_the_step_the_headless_run_pl
     for (n, h) in (1..=EFFECT_STEPS).zip(play) {
         assert_eq!(app[&n], h.samples, "step {n}'s samples");
     }
-    // The first effect the headless run plays, heard in the app by the step after: the item
-    // sample opens with 106 zero bytes, about 167 lines at its period, and the mount starts it at
-    // `game_frame`'s line (233), where it takes no time (T55's), so its first sound falls in the
-    // next step. Silent before: level 1 has no music.
+    // The first effect the headless run plays, heard in the app at its step. The item sample opens
+    // with 106 zero bytes, about 167 lines at its period: with the mount taking no time (before
+    // T55) it started at line 233 and was first heard the step after. Silent before: level 1 has
+    // no music.
     let (first, h) = (1..=EFFECT_STEPS)
         .zip(play)
         .find(|(_, h)| !h.effects.is_empty())
@@ -304,9 +304,8 @@ fn a_sound_effect_in_level_1_is_heard_in_the_app_at_the_step_the_headless_run_pl
         "level 1 is silent before its first effect"
     );
     assert!(
-        (first..=first + 1).any(|n| loud(&app[&n])),
-        "step {first}: an effect starts (DMACON channel bits {:?}) and the app is silent through \
-         the step after",
+        loud(&app[&first]),
+        "step {first}: an effect starts (DMACON channel bits {:?}) and the app is silent",
         h.effects
     );
 }

@@ -31,6 +31,9 @@ pub(crate) struct Audio {
     stale_from: Option<u32>,
     /// The frame's length in lines; `None` for a frame Paula's model does not run (not PAL).
     lines: Option<u32>,
+    /// The next frame's slots, if no write comes before it: for the bus reaching that frame before
+    /// the host has started it (a CPU waiting out a blit across the frame's end, T54).
+    next: Option<Vec<u32>>,
 }
 
 impl Audio {
@@ -42,6 +45,7 @@ impl Audio {
             slots: Vec::new(),
             stale_from: Some(0),
             lines: matches!(frame_lines, 312 | 313).then_some(frame_lines as u32),
+            next: None,
         }
     }
 
@@ -52,6 +56,7 @@ impl Audio {
         self.state = AudioDma::booted(0x8000 | dmacon);
         self.writes.clear();
         self.stale_from = Some(0);
+        self.next = None;
     }
 
     /// A Paula write at beam `(vpos, hpos)`.
@@ -65,6 +70,21 @@ impl Audio {
         // It changes the model's fetches on its line at the earliest.
         let from = (vpos as u32 * LINE).min(self.stale_from.unwrap_or(u32::MAX));
         self.stale_from = Some(from);
+        self.next = None;
+    }
+
+    /// Whether an audio fetch takes DMA slot `slot` of the next frame, no write coming before it.
+    pub fn takes_next(&mut self, slot: u32) -> bool {
+        let (state, writes, lines) = (&self.state, &self.writes, self.lines);
+        let next = self.next.get_or_insert_with(|| match lines {
+            Some(lines) => {
+                let mut a = state.clone();
+                a.frame(writes, lines);
+                a.frame(&[], lines).iter().map(|&(slot, _)| slot).collect()
+            }
+            None => Vec::new(),
+        });
+        next.binary_search(&slot).is_ok()
     }
 
     /// Whether an audio fetch takes DMA slot `slot` from the frame's start.
@@ -82,6 +102,7 @@ impl Audio {
         }
         self.writes.clear();
         self.stale_from = Some(0);
+        self.next = None;
     }
 
     fn run(&mut self) {
@@ -106,6 +127,23 @@ mod tests {
         a.write(0xA6, 124, (0, 4)); // AUD0PER
         a.write(0x96, 0x8201, (0, 6)); // DMACON: DMAEN, AUD0EN
         a
+    }
+
+    /// The next frame's slots, looked up before it starts (T54), are those the frame has once
+    /// it does, with no write between.
+    #[test]
+    fn the_next_frames_slots_are_the_ones_it_takes() {
+        let mut a = playing();
+        let ahead: Vec<u32> = (0..313 * LINE).filter(|&s| a.takes_next(s)).collect();
+        a.end_frame();
+        let then: Vec<u32> = (0..313 * LINE).filter(|&s| a.takes(s)).collect();
+        assert!(then.len() > 250, "about one fetch a line: {}", then.len());
+        assert_eq!(ahead, then);
+        // A write drops the lookahead: the next frame starts from the channels as it leaves them.
+        let mut a = playing();
+        assert!(a.takes_next(ahead[0]));
+        a.write(0x96, 0x0001, (300, 0)); // AUD0EN off
+        assert!((0..313 * LINE).all(|s| !a.takes_next(s)), "the channel is off next frame");
     }
 
     #[test]

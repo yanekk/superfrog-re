@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T39, T54 and T55 are open.
+**Next `pir-work` will:** T56, then T40 (app-e2e).
 
 ## Tasks
 
@@ -53,7 +53,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ✅ | |
 | T38 | app-sound | T37 | ✅ | |
-| T39 | app-stop | T37 | ⬜ | |
+| T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
@@ -68,9 +68,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
-| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
-| T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
-| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | No engine change: T36's mount already made the effects. Review fix: `sound.rs` passed with `Sound::Item` silenced (a stomp stood in); now requires the item. Mutations caught: item silenced reds collect-ledge/return, `Scratch::hw` dropped reds all 11. Spring and time-bonus claims `read-only`. |
+| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | |
+| T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | No engine change: T36's mount already made the effects. Review fix: `sound.rs` passed with `Sound::Item` silenced; now requires the item. Mutations red the cases named. Remeasured on T55's merge: 20 cases match in order, spring included; 5 differ, T56's. Time-bonus claim `read-only`. |
+| T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

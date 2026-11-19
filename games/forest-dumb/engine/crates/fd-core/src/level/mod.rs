@@ -210,6 +210,16 @@ pub trait Pass {
     /// `move.w $dff006, h0+$8dfa`: the raster position stored, which nothing reads. The engine keeps
     /// no beam, so play leaves it out.
     fn raster_copy(&mut self) {}
+    /// CLXDAT as `char_hit_check`'s first instruction reads it; `handed` is [`LevelCtx::clxdat`]. A
+    /// host whose bus keeps time reads the chip here, at the read's place in the pass, since CLXDAT
+    /// gathers collisions line by line until read (translator T55).
+    fn clxdat(&mut self, handed: u16) -> u16 {
+        handed
+    }
+    /// The display once `h0+$9754` has run: the sprite copied and placed, the fade stepped. A host
+    /// whose bus keeps time writes the picture's memory here, inside the pass, as the original
+    /// does, rather than after it (translator T55).
+    fn shown(&mut self, _display: &crate::render::Display) {}
 }
 
 /// [`Pass`] in play: the object ports and the creature drawing on the play screen.
@@ -273,6 +283,7 @@ pub fn game_frame_with(
         .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
     p.call(0x9754);
     p.scroll(s.camera.x, s.camera.y);
+    p.shown(l.display);
     if l.state.paused != 0 {
         p.call(0x2104);
         Play { state: l.state }.play_keys();
@@ -330,8 +341,9 @@ pub fn game_frame_with(
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
     p.call(0x3b2a);
     let mut scratch = p.scratch();
+    let clxdat = p.clxdat(l.clxdat);
     let mut play = Play { state: l.state };
-    play.char_hit_check(l.clxdat, &mut scratch);
+    play.char_hit_check(clxdat, &mut scratch);
     p.scratch_done(scratch);
     p.call(0x20b0);
     play.countdown_step();
