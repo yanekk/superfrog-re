@@ -59,7 +59,9 @@ impl History {
             if a != off {
                 break;
             }
-            if t as i64 > at {
+            // Compared unsigned: a running blit's unwritten words are journalled at `u64::MAX`
+            // (`blit_unwritten`), which as i64 is -1 and read as long written (T54).
+            if at < 0 || t > at as u64 {
                 return old;
             }
         }
@@ -152,6 +154,18 @@ mod tests {
         assert_eq!(h.word(&chip, 2, 12), 0x0507);
         assert_eq!(h.word(&chip, 2, 30), 0x0909);
         assert_eq!(h.byte(&chip, 4, 0), 9);
+    }
+
+    /// A running blit's words not yet written (`blit_unwritten`, at `u64::MAX`) read as they were
+    /// at every cycle: a frame drawn while a blit started past its end runs shows none of it (T54).
+    #[test]
+    fn a_word_not_yet_written_reads_as_it_was() {
+        let chip = vec![9u8; 4];
+        let h = Journal::default().history_with(&[(u64::MAX, 1, 3)]);
+        assert_eq!(h.byte(&chip, 1, 0), 3);
+        assert_eq!(h.byte(&chip, 1, i64::MAX), 3);
+        assert_eq!(h.byte(&chip, 1, -5), 3);
+        assert_eq!(h.byte(&chip, 0, 0), 9);
     }
 
     #[test]

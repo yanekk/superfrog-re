@@ -33,7 +33,8 @@ pub const HITS_PER_LIFE: u16 = 3;
 
 /// The hurt sound `char_hit_check` starts on audio channel 1: its sample's hunk 4 offset, length in
 /// words, period and volume (`crate::program::h`). Sound is out of scope (DESIGN §8); the writes are
-/// kept for the rig.
+/// kept for the rig, and the translated program's frame mount makes them on the machine (translator
+/// T57).
 pub const HURT_SAMPLE: u32 = 0x00c8d0;
 pub const HURT_LENGTH: u16 = 0x15a4;
 pub const HURT_PERIOD: u16 = 0x00ff;

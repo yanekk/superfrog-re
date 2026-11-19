@@ -265,13 +265,26 @@ pub(crate) struct Slots<'a> {
     pub blit: Option<&'a mut BlitRun>,
     pub frame_lines: u16,
     /// The current frame's copper and the cycle count its frame began at: a slot it fetches in is
-    /// taken. Slots past the frame's end are not looked up (that frame's copper has not run).
+    /// taken; a slot in the next frame is that frame's copper's (`next_copper`).
     pub copper: Option<(&'a crate::copper::Copper, i64)>,
     pub sprites: &'a mut Sprites,
     /// The audio channels' slots (T52), looked up as slots from the copper's frame start.
     pub(crate) audio: &'a mut crate::audio::Audio,
     pub chip: &'a [u8],
     pub custom: &'a [u16; 256],
+    /// The current frame's copper writes not yet delivered, and how many of them the slots run
+    /// so far have passed: one to BPLCON0, DIWSTRT/DIWSTOP, DDFSTRT/DDFSTOP or DMACON changes
+    /// who takes the slots after it. The CPU's fitted work can run many lines past such a write
+    /// before `Machine::advance` delivers it (a wait under a BLTPRI blit, T54).
+    pub(crate) pending: &'a [(i64, u16, u16)],
+    pub(crate) passed: usize,
+    /// The next frame's copper slots, run once the bus first reaches that frame: a CPU waiting
+    /// out a blit across the frame's end meets the vertical blank's restart before the host has
+    /// started the frame (T54).
+    pub(crate) next_copper: Option<Vec<u32>>,
+    /// The start of the last CPU access, before its wait for the bus: where the 68000 samples
+    /// its IPL lines (Moira's `POLL_IPL`, before the access's bus check; T54).
+    pub(crate) sampled_at: &'a mut u64,
 }
 
 impl Slots<'_> {
@@ -287,8 +300,14 @@ impl Slots<'_> {
             Some((c, start)) => {
                 let slot = (at as i64 - start).div_euclid(2);
                 let frame = self.frame_lines as i64 * amiga_clock::LINE_SLOTS as i64;
-                (0..frame).contains(&slot)
-                    && (c.takes(slot as u32) || self.audio.takes(slot as u32))
+                if (0..frame).contains(&slot) {
+                    c.takes(slot as u32) || self.audio.takes(slot as u32)
+                } else if (frame..2 * frame).contains(&slot) {
+                    let next = (slot - frame) as u32;
+                    self.next_copper_takes(next) || self.audio.takes_next(next)
+                } else {
+                    false
+                }
             }
             None => false,
         }
@@ -297,6 +316,7 @@ impl Slots<'_> {
     /// Agnus runs the slot starting at cycle count `at`, at beam `(line, h)`, the CPU asking for
     /// the bus with BLS `bls`. Returns whether a chip has it.
     fn step(&mut self, at: u64, (line, h): (u16, u16), bls: bool) -> bool {
+        self.pass_writes(at);
         let line = line % self.frame_lines;
         if self.sprites.line != Some(line) {
             self.sprites.enter(line, self.chip, self.custom);
@@ -311,6 +331,42 @@ impl Slots<'_> {
             _ => false,
         };
         fixed || blit
+    }
+
+    /// Whether the next frame's copper takes its slot `slot`: restarted at COP1LC if copper DMA
+    /// is on, from chip RAM as it is (the CPU is waiting, so nothing writes the list meanwhile).
+    fn next_copper_takes(&mut self, slot: u32) -> bool {
+        if self.dmacon & crate::copper::COPPER_DMA != crate::copper::COPPER_DMA {
+            return false;
+        }
+        let bus = self.next_copper.get_or_insert_with(|| {
+            let lc = crate::copper::COP1LC as usize >> 1;
+            let pc = (self.custom[lc] as u32) << 16 | self.custom[lc + 1] as u32;
+            crate::copper::frame_bus(self.chip, pc, self.fetch, self.frame_lines)
+        });
+        bus.binary_search(&slot).is_ok()
+    }
+
+    /// Apply the copper's writes made by the slot starting at cycle count `at`.
+    fn pass_writes(&mut self, at: u64) {
+        use amiga_chips::copper::reg;
+        while let Some(&(t, r, v)) = self.pending.get(self.passed) {
+            if t > at as i64 {
+                break;
+            }
+            self.passed += 1;
+            match r {
+                reg::BPLCON0 => self.fetch.bplcon0 = v,
+                reg::DIWSTRT => self.fetch.diwstrt = v,
+                reg::DIWSTOP => self.fetch.diwstop = v,
+                reg::DDFSTRT => self.fetch.ddfstrt = v,
+                reg::DDFSTOP => self.fetch.ddfstop = v,
+                crate::custom::DMACON => {
+                    self.dmacon = crate::irq::set_clear(self.dmacon, v) & 0x07FF
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Run the slots from `from` up to `to` (cycle counts) with no CPU access: the chips alone.
@@ -334,6 +390,7 @@ impl Slots<'_> {
             return;
         }
         while t < to {
+            self.pass_writes(t);
             let (line, h) = beam(t);
             let line = line % self.frame_lines;
             if self.sprites.line != Some(line) {
@@ -369,6 +426,11 @@ impl Slots<'_> {
             t = self.accesses(t, accesses - done, beam);
             let end = t + (cycles - 4 * accesses - lead);
             t = self.cpu_idle(t, end, beam);
+            // Time a host counts with no access (every 68000 instruction prefetches): the CPU is
+            // taken to sample its IPL lines at its end.
+            if accesses == 0 {
+                *self.sampled_at = t;
+            }
         }
         t
     }
@@ -386,6 +448,7 @@ impl Slots<'_> {
             // Moira's `sync(2)` runs Agnus a slot, the access checks that slot (waiting a slot at
             // a time while a chip has it; vAmiga raises BLS once the CPU has waited two slots, so
             // the third is the first the blitter yields), then `sync(2)` runs one more.
+            *self.sampled_at = t;
             let mut waited = 0;
             while self.step(t, beam(t), waited >= 3) {
                 waited += 1;

@@ -12,9 +12,9 @@
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use fd_conform::Case;
 use fd_conform::reading::{EngineKind, run_mounted};
 use fd_conform::translated_engine::{case_start, frame_bar};
+use fd_conform::{Case, Outcome};
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
 use pcode_machine::{Disks, Input};
 use pcode_rt::{Image, Regs, Stop};
@@ -80,6 +80,46 @@ const T56: [&str; 11] = [
     "power-on-level-1",
     "route-W1-1",
     "route-both-W1-1",
+];
+
+/// The level 1 cases that hear a sound effect on the original whose Paula writes are the
+/// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
+/// again on T55's mount time): the mount makes each effect's writes as the hand engine starts it
+/// (`seam::frame`, `Sound`, the character's `Scratch::hw`). `run_with`, which the hand engine's case
+/// tests use, refuses a case comparing writes, so `writes` is turned on here, not in the case files.
+const HEARS: [(&str, &str); 20] = [
+    ("camera-bottom-right", "item, stomp, hurt"),
+    ("camera-right-left", "stomp, hurt"),
+    ("character-edge-pit", "stomp, hurt"),
+    ("character-edge-slope", "slide, hurt"),
+    ("character-edge-wall", "slide"),
+    ("character-run-landing", "slide"),
+    ("collect-ledge", "item, stomp"),
+    ("collect-return", "item, stomp"),
+    ("death-pit", "hurt"),
+    ("death-spikes", "hurt"),
+    ("edge-latch-route", "item, stomp, hurt"),
+    ("enemy-hop", "stomp, hurt"),
+    ("enemy-kind4", "item, stomp, slide, hurt"),
+    ("enemy-route", "item, stomp, hurt"),
+    ("mechanic-spring", "item, spring, stomp, hurt"),
+    ("mechanic-vanish", "item, stomp"),
+    ("stretch-jump", "slide"),
+    ("stretch-pit", "hurt"),
+    ("stretch-slope", "slide, hurt"),
+    ("stretch-wall", "slide"),
+];
+
+/// The cases that hear an effect whose Paula writes differ mounted, T56's: the mount's time still
+/// misses a routine's varying cost, so a pass ends a frame apart and an effect falls in the next
+/// pass (`contact-route`, `enemy-contact` at pass 151). Every one fails mounted on its state as well
+/// (`T56` above). Named, not run.
+const HEARS_T56: [(&str, &str); 5] = [
+    ("contact-route", "item, stomp, hurt"),
+    ("death-water", "item, stomp, slide, hurt"),
+    ("enemy-contact", "item, stomp, hurt"),
+    ("route-W1-1", "item, stomp, slide"),
+    ("route-both-W1-1", "item, stomp, slide"),
 ];
 
 fn cases_dir() -> std::path::PathBuf {
@@ -337,4 +377,63 @@ fn the_mounts_clxdat_read_lands_on_the_translated_programs_line() {
         mounted.1,
         translated.1
     );
+}
+
+#[test]
+fn the_cases_that_hear_an_effect_are_cases_and_the_t56_ones_fail_mounted() {
+    let on_disk = |n: &str| cases_dir().join(format!("{n}.toml")).exists();
+    for (n, _) in HEARS.iter().chain(&HEARS_T56) {
+        assert!(on_disk(n), "{n}: no such case");
+    }
+    for (n, _) in &HEARS_T56 {
+        assert!(
+            T56.contains(n),
+            "{n}: hears an effect late mounted but passes on its state"
+        );
+    }
+}
+
+#[test]
+#[ignore = "full: the disks, Kickstart and the generated tree; 20 cases, about 2 min"]
+fn the_effects_each_case_hears_are_the_originals_paula_writes_in_order_mounted() {
+    generated();
+    let cases: Vec<Case> = HEARS
+        .iter()
+        .map(|(n, _)| {
+            let mut c = Case::load(&cases_dir().join(format!("{n}.toml"))).unwrap();
+            c.compare.writes = true;
+            c
+        })
+        .collect();
+    let next = AtomicUsize::new(0);
+    let failed = Mutex::new(Vec::new());
+    let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
+    std::thread::scope(|s| {
+        for _ in 0..workers.min(cases.len()) {
+            s.spawn(|| {
+                while let Some(c) = cases.get(next.fetch_add(1, Ordering::Relaxed)) {
+                    // Paula's channel alone: camera-bottom-right, death-spikes, enemy-kind4,
+                    // mechanic-spring and mechanic-vanish differ on their state (T56's) while every
+                    // effect they hear is in order.
+                    let line = match run_mounted(c, EngineKind::Translated, true) {
+                        Ok(v) => v
+                            .firsts
+                            .iter()
+                            .find(|o| matches!(o, Outcome::WritesDiffer { .. }))
+                            .map(|o| format!("{}: {o}", c.name))
+                            .or_else(|| {
+                                (v.writes == 0)
+                                    .then(|| format!("{}: no Paula write compared", c.name))
+                            }),
+                        Err(e) => Some(format!("{}: not run: {e}", c.name)),
+                    };
+                    if let Some(l) = line {
+                        failed.lock().unwrap().push(l);
+                    }
+                }
+            });
+        }
+    });
+    let failed = failed.into_inner().unwrap();
+    assert!(failed.is_empty(), "{}", failed.join("\n"));
 }

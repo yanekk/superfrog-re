@@ -47,7 +47,11 @@ workspace = "engine"
 ]
 # Translator T36: level 1 mounted. Keeping every case in one of the two lists takes no disks and
 # under a second; the 32 cases mounted (about 10 min) and the mount in play need the disks and tree.
-"crates/fd-conform/tests/mount_level_1.rs" = ["every_case_is_in_one_list"]
+# T57: the cases hearing an effect named, under a second; their Paula writes mounted (about 2 min) full.
+"crates/fd-conform/tests/mount_level_1.rs" = [
+    "every_case_is_in_one_list",
+    "the_cases_that_hear_an_effect_are_cases_and_the_t56_ones_fail_mounted",
+]
 # Translator T56: the timing rules. Keeping every ruled routine checked takes no disks; each rule on
 # 2 000 judge states needs the disks and the tree.
 "crates/fd-conform/tests/mount_timing.rs" = ["every_ruled_routine_is_checked"]
@@ -300,7 +304,8 @@ workspace = "engine"
 # recorder on the translated program. Five launches, about 35 s, and the generated tree.
 "crates/fd-e2e/tests/app_stop.rs" = "full"
 # Translator T38: the translated program's sound in the real app against headless, the title and
-# level 1, and two headless runs of the title alike; about 16 s warm and the generated tree.
+# level 1, and two headless runs of the title alike; T57 an item's sound heard in level 1; about 16 s
+# warm and the generated tree.
 "crates/fd-e2e/tests/sound.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about

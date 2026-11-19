@@ -22,6 +22,10 @@ impl Timing for NoFetch {
     };
 }
 
+/// How many slots ahead of the beam a VPOSR or VHPOSR read gives the position (vAmiga
+/// `Agnus::peekVHPOSR`: "five cycles ahead"; T54).
+pub const READ_AHEAD: u64 = 5;
+
 /// CPU cycles in a frame of `frame_lines` lines.
 pub fn frame_cycles(frame_lines: u16) -> u64 {
     frame_lines as u64 * LINE_CYCLES as u64
