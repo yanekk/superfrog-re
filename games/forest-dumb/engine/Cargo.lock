@@ -985,6 +985,7 @@ dependencies = [
  "fd-conform",
  "fd-core",
  "fd-tools",
+ "fd-translated",
  "libc",
 ]
 
