@@ -141,7 +141,10 @@ mod tests {
         assert!(!loud(&out[..line(5)]), "nothing before the writes");
         // Off, a channel holds its last level (Paula's DAC keeps it): the wave stops, flat.
         let after = &out[line(240)..];
-        assert!(after.iter().all(|s| *s == after[0]), "the wave stops when channel 0 is off");
+        assert!(
+            after.iter().all(|s| *s == after[0]),
+            "the wave stops when channel 0 is off"
+        );
     }
 
     #[test]

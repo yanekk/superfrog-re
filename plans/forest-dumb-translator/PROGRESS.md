@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T38 (app-sound); T57 (hand-engine-sound-effects) follows it.
 
 ## Tasks
 
@@ -52,7 +52,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ✅ | |
-| T38 | app-sound | T37 | ⬜ | |
+| T38 | app-sound | T37 | 🔍 | Sound mixed per frame (`fd_app::audio::Sound`), device-paced as sf-app; 3 unit, 3 e2e (`sound.rs`, full). Deviations: FrameOut gains `paula_beam`; `audio.rs` in the library, for tests; no mute option. Level 1 silent and equal to headless, its effect check waiting on T57. Device output unexercised: scripted runs open none. |
 | T39 | app-stop | T37 | ⬜ | |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
@@ -70,8 +70,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T38
 
 ## Blocked on the user
 

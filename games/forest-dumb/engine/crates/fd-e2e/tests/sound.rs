@@ -49,7 +49,12 @@ fn headless(inputs: Vec<FrameInput>) -> Vec<Heard> {
             };
             g.set_input(Input::from(first));
             g.run(&mut |out| {
-                assert!(out.stop.is_none(), "stopped at frame {}: {:?}", heard.len() + 1, out.stop);
+                assert!(
+                    out.stop.is_none(),
+                    "stopped at frame {}: {:?}",
+                    heard.len() + 1,
+                    out.stop
+                );
                 let mut samples = Vec::new();
                 sound.frame_out(out, &mut samples);
                 heard.push(Heard {
@@ -74,10 +79,17 @@ fn captured(c: &Captured) -> BTreeMap<u64, Vec<[i16; 2]>> {
     let wav = std::fs::read(&c.audio_wav).expect("audio.wav");
     // The capture's WAV is the canonical 44-byte header (amiga_app::capture::wav), then the data.
     assert_eq!(&wav[..4], b"RIFF");
-    assert_eq!(u32::from_le_bytes(wav[24..28].try_into().unwrap()), SILENT_RATE, "its rate");
-    let mut samples = wav[44..]
-        .chunks_exact(4)
-        .map(|s| [i16::from_le_bytes([s[0], s[1]]), i16::from_le_bytes([s[2], s[3]])]);
+    assert_eq!(
+        u32::from_le_bytes(wav[24..28].try_into().unwrap()),
+        SILENT_RATE,
+        "its rate"
+    );
+    let mut samples = wav[44..].chunks_exact(4).map(|s| {
+        [
+            i16::from_le_bytes([s[0], s[1]]),
+            i16::from_le_bytes([s[2], s[3]]),
+        ]
+    });
     let frames = std::fs::read_to_string(c.dir.join("audio-frames.txt")).expect("audio-frames.txt");
     let by_step = frames
         .lines()
@@ -88,7 +100,11 @@ fn captured(c: &Captured) -> BTreeMap<u64, Vec<[i16; 2]>> {
             (n, samples.by_ref().take(count as usize).collect::<Vec<_>>())
         })
         .collect();
-    assert_eq!(samples.next(), None, "audio-frames.txt accounts for every sample");
+    assert_eq!(
+        samples.next(),
+        None,
+        "audio-frames.txt accounts for every sample"
+    );
     by_step
 }
 
@@ -105,7 +121,9 @@ const TITLE: u64 = 400;
 /// The app's inputs by step `1..=to`, as the capture says it fed them.
 fn fed(c: &Captured, to: u64) -> Vec<FrameInput> {
     let i = common::inputs(c);
-    (1..=to).map(|n| i.get(&n).copied().unwrap_or_default()).collect()
+    (1..=to)
+        .map(|n| i.get(&n).copied().unwrap_or_default())
+        .collect()
 }
 
 #[test]
@@ -120,7 +138,10 @@ fn the_titles_first_300_frames_of_sound_are_the_same_on_two_headless_runs() {
     for (n, (a, b)) in a.iter().zip(&b).enumerate() {
         assert_eq!(a.samples, b.samples, "frame {}", n + 1);
     }
-    assert!(a.iter().any(|h| loud(&h.samples)), "the title is not silent");
+    assert!(
+        a.iter().any(|h| loud(&h.samples)),
+        "the title is not silent"
+    );
 }
 
 #[test]
@@ -172,11 +193,17 @@ fn the_apps_sound_in_level_1_equals_the_headless_runs_frame_for_frame() {
     inputs.extend(fed(&c, LEVEL_1_STEPS));
     let heard = headless(inputs);
     let (to_1, play) = heard.split_at(headless_frames as usize);
-    assert!(to_1.last().unwrap().level_1 && play.iter().all(|h| h.level_1), "in level 1 throughout");
+    assert!(
+        to_1.last().unwrap().level_1 && play.iter().all(|h| h.level_1),
+        "in level 1 throughout"
+    );
     let app = captured(&c);
     assert_eq!(app.len() as u64, LEVEL_1_STEPS);
     for (n, h) in (1..=LEVEL_1_STEPS).zip(play) {
         assert_eq!(app[&n], h.samples, "step {n}'s samples");
-        assert!(h.writes > 0, "step {n}: the sound driver writes every frame of play");
+        assert!(
+            h.writes > 0,
+            "step {n}: the sound driver writes every frame of play"
+        );
     }
 }
