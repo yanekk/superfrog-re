@@ -6,11 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 📌 | **T39, open:** a stop during `--level 1`'s headless run through the title (`Translated::to_level_1`) still ends the app with exit 1 and no zip; only a stop after the window opens freezes and saves one. |
 | 2026-11-19 | 🔄 | **T57 added** (coordinator, T38; blocks T40, T42): level 1 is silent in the app, its effects being `game_frame`'s, which the mount replaces; the hand engine drops `Io::sound`. No overlap with T56 except `power-on-level-1`. |
 | 2026-11-19 | 📌 | **T38:** a fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch buildscripts/fd_translated.rs`: the build had cached the stub and ignored the new tree. |
 | 2026-11-19 | 🐞 | **T37 review:** Game ▸ Start Level… on the translated program skipped about a second of level 1: the pacer was reset before the headless run to level 1. Reproduced in release, fixed; `start_level_restarts_…` locks it, in release only. |
 | 2026-11-19 | 🐞 | **T37 review, open:** under load 30 to 100, `translated_app.rs` `start_by_its_key…` fails at `c.exit.success()`: fd-app's `--timeout 180 s` reached (debug, 1 220 captured frames). Idle, the file passes in 65 s. Left alone. |
-| 2026-11-19 | 📌 | **For T39** (coordinator, T37): on the translated program Start Level… restarts as `--level 1` does; a ticked recorder says `Recording a translated run is not available yet` and starts without it. T39 makes the recorder work there. |
 | 2026-11-19 | 🐞 | **T36 review:** `fd-judge --seam 'h0+$1fec'` would print `pass` if the frame mount fell through to the translated routine (translated against itself). `seam.rs` now asserts `Level1::passes()`; the CLI's JSON carries no such count, left alone. |
 | 2026-11-19 | 🔄 | **T55 added** (owner, T36; blocks T40, T42): the frame mount spends the original's time; carries T36's cases-pass-mounted check and amends DESIGN §2.9's no-cycles line. Whole-frame mount kept, collisions judged as before. |
 | 2026-11-19 | 📌 | **T36 measured:** one routine mounted, `game_frame` as the frame (`seam::frame`); `--seam` 2 000 of 2 000; 32 of 50 cases pass mounted. Mounted, CLXDAT is read at the pass start: 11 cases differ at pass 2 on `clxdat_copy`. |
@@ -49,7 +49,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | `insn_check.py` `aggregate`: one encoding reporting cycles `not-counted` makes the whole kind's cycles column `not-counted`, dropping other encodings' cycle failures from that column (still counted in `fail`). Not hit on today's census; open, found reviewing T11. |
 | 2026-11-11 | 🐞 | Ghidra 12.0 sinc: `packflags` ORs T, S and the mask into a one-byte temporary; CCR ops and `rtr` write all of SR; `rte` is `return [0]`; `movem.w -(An)` steps 4. Corrected by pattern in `pcode_fix/move_control.py` (T10). |
 | 2026-11-11 | 📌 | **T14 caps measured:** longest trial run 3 968 blocks (`h0+$b20`), `game_frame` 737; call graph 8 deep from `h0+$0`, no recursion. `STEP_CAP_GLOBAL` 10 000 000; fd-translated resets `Regs::steps` each frame (T28). |
-| 2026-11-11 | 📌 | The trial builds `fd-judge` unoptimised: one translated frame takes up to 49 KB of stack (`h0+$9b06`), 66 KB at `game_frame`'s depth 6. Hence `RUN_STACK` 64 MB; at 1 MB the judge's recursion test aborts (SIGABRT). |
 | 2026-11-11 | 📌 | Under load 6 to 7, one `fd-judge` binary's CPU over 85 routines varied 139 to 174 s: compare run times by alternating several runs of each build. |
 | 2026-11-11 | 📌 | 68000 `clr` reads first, so `clr.w` of a write-only register (T06's COPJMP1 row, the music player's `clr.w AUDxVOL` `h4+$184e2`..) writes too; Moira's `clr.l` writes low word first. `pcode_fix.arith` emits both. |
 | 2026-11-11 | 🐞 | Not in the census, so uncorrected (T08): the sinc's subx V ignores X; negx's C and V come from the wrapped `src + X` (`CF = 0 s< tmp`). A program using them needs a correction. |

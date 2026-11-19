@@ -174,7 +174,7 @@ fn a_recording_runs_through_game_over_and_the_restart_and_replays_alike() {
     }
     assert_eq!(events, [Event::GameOver, Event::Restart]);
     let rec = r
-        .finish(g.location(), "through game over".into())
+        .finish(Some(g.location()), "through game over".into())
         .expect("recording");
     let a = fd_conform::bug::replay(data.clone(), &rec, |_, _, _| {});
     let b = fd_conform::bug::replay(data.clone(), &rec, |_, _, _| {});

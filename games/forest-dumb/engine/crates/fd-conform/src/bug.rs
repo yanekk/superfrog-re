@@ -5,6 +5,10 @@
 //! mismatch is a result, not an error: on a fixed engine it is the point. `fd-conform bug replay`
 //! (main.rs) is the CLI.
 //!
+//! A recording the translated program played (`engine translated`, translator T39) is replayed on
+//! it by [`replay_translated`]: from power-on, through the title on `to_level_1_input` first for a
+//! `level-1` start, then its inputs one frame each, to its end or its stop.
+//!
 //! [`compare`] plays the recording on the original from the level sync point, its inputs retimed
 //! onto the original's frames ([`retime`]), and judges the owner's game against it with the level
 //! case runner (`run_inputs`). `fd-conform bug compare` is its CLI; the procedure is
@@ -29,7 +33,10 @@ use amiga_conform::bug_compare::{Left, verdict_line};
 use amiga_conform::script::InputScript;
 use amiga_oracle::{FrameInput, Rgb12Frame};
 use fd_core::level::EdgesCut;
-use fd_core::recording::{ForestDumb, Location, Recording, ZIP_SCREENSHOT, check_build};
+use fd_core::recording::{
+    ForestDumb, Location, Recording, StartPoint, TO_LEVEL_1_FRAMES, ZIP_SCREENSHOT, canvas,
+    check_build, in_level_1, is_test_stop, location_in_ram, to_level_1_input,
+};
 use fd_core::{Event, Game, GameData, Mem, Start, Transplant, Var, layout_var};
 
 use crate::case::{Case, Compare, Exclusion};
@@ -74,6 +81,95 @@ pub fn replay(
         game,
         last,
     }
+}
+
+/// A recording played on the translated program.
+pub struct TranslatedReplay {
+    /// The frames played: the recording's, or fewer when the program stopped before its end.
+    pub frames: usize,
+    /// How the program stopped and on which frame (1 the first input's); `None` when it played to
+    /// the end. A recording's test stop (`fd-app --stop-after`) is raised again at its end, as the
+    /// app raised it, when the program has not stopped by itself first.
+    pub stop: Option<(usize, String)>,
+    /// Where play was after the last frame: the character's cell in level 1, else `None`.
+    pub location: Option<Location>,
+    /// The last frame's picture through the app's window (`fd_core::recording::CANVAS`): what the
+    /// app showed, and saved as the screenshot.
+    pub last: Picture,
+}
+
+/// Chip RAM's size: where slow RAM starts in [`TranslatedEngine::mem`].
+const CHIP: usize = 512 << 10;
+
+/// `rec` played on the translated program as `fd-app` played it (translator T39): `disks` (1 and
+/// 2) loaded at power-on, level 1's hand engine mounted from `data`, run through the title on
+/// `to_level_1_input` until level 1 for a `level-1` start, then one frame an input. `Err` when the
+/// level-1 start does not reach level 1, which the app would have refused too.
+pub fn replay_translated(
+    disks: &[Vec<u8>],
+    data: Arc<GameData>,
+    rec: &Recording,
+) -> Result<TranslatedReplay, String> {
+    use crate::FrameEngine;
+    use crate::translated_engine::TranslatedEngine;
+    let mut e = TranslatedEngine::power_on(disks)?;
+    e.mount_level_1(data);
+    let ram = |e: &TranslatedEngine| {
+        let m = e.mem();
+        (m[..CHIP.min(m.len())].to_vec(), m[CHIP.min(m.len())..].to_vec())
+    };
+    if rec.start == StartPoint::Level1 {
+        let mut reached = false;
+        for n in 0..TO_LEVEL_1_FRAMES {
+            e.frame(to_level_1_input(n));
+            if let Some(s) = FrameEngine::stopped(&e) {
+                return Err(format!(
+                    "the translated program stopped on its way to level 1, frame {}: {s}",
+                    n + 1
+                ));
+            }
+            let (chip, slow) = ram(&e);
+            if in_level_1(&chip, &slow) {
+                reached = true;
+                break;
+            }
+        }
+        if !reached {
+            return Err(format!(
+                "the translated program did not reach level 1 in {TO_LEVEL_1_FRAMES} frames"
+            ));
+        }
+    }
+    let mut stop = None;
+    let mut frames = 0;
+    for &input in &rec.inputs {
+        e.frame(input);
+        frames += 1;
+        if let Some(s) = FrameEngine::stopped(&e) {
+            stop = Some((frames, s));
+            break;
+        }
+    }
+    if stop.is_none()
+        && let Some(s) = rec.stop.as_ref().filter(|s| is_test_stop(s))
+    {
+        stop = Some((frames, s.clone()));
+    }
+    let (l, t, w, h) = fd_core::recording::CANVAS;
+    let last = FrameEngine::picture(&e)
+        .map(|p| canvas(&p))
+        .unwrap_or_else(|| Picture::blank(l, t, w, h));
+    let (chip, slow) = ram(&e);
+    let location = match e.mem().is_empty() {
+        true => None,
+        false => location_in_ram(&chip, &slow),
+    };
+    Ok(TranslatedReplay {
+        frames,
+        stop,
+        location,
+        last,
+    })
 }
 
 /// `irq_count` in a new game: the sync point has run pass 1, so the recording's step `k` is pass
@@ -696,11 +792,11 @@ mod tests {
     fn zip(build: &str, png: &[u8]) -> Vec<u8> {
         let rec = recorder(LevelId::W1_1, build)
             .finish(
-                Location {
+                Some(Location {
                     level: LevelId::W1_1,
                     col: 7,
                     row: 7,
-                },
+                }),
                 String::new(),
             )
             .unwrap();

@@ -292,6 +292,10 @@ workspace = "engine"
 # Translator T37: the translated program in the real app against headless from power-on: the title,
 # Start by key and 600 frames of play, `--level 1`, the drill sizes; about 46 s and the generated tree.
 "crates/fd-e2e/tests/translated_app.rs" = "full"
+# Translator T39: a stop in the app (`--stop-after`): frozen picture, its band at 1×, the zip saved and
+# replayed by `fd-conform bug replay` on the translated program; Esc and ⌘Q after it; Start Level…'s
+# recorder on the translated program. Five launches, about 35 s, and the generated tree.
+"crates/fd-e2e/tests/app_stop.rs" = "full"
 # Translator T38: the translated program's sound in the real app against headless, the title and
 # level 1, and two headless runs of the title alike; about 16 s warm and the generated tree.
 "crates/fd-e2e/tests/sound.rs" = "full"

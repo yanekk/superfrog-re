@@ -19,7 +19,7 @@ use amiga_app::save_window::{Outcome, SaveAction, SaveForm};
 use amiga_app::start_level_window::{
     FieldAction, FieldKind, Form, LevelField, StartLevelSpec, Value, Values,
 };
-use fd_core::recording::{ForestDumb, LevelId, Location, Recording};
+use fd_core::recording::{ForestDumb, LevelId, Recording, StartPoint};
 use winit::window::Window;
 
 /// Whether a recording is running, and the recording.
@@ -128,11 +128,21 @@ fn main_checkout(dir: &Path) -> Option<PathBuf> {
     None
 }
 
-/// The zip's path in `dir`: `bug-<level>-<YYYY-MM-DD-HHMM>.zip`, with `-2`, `-3`, … before `.zip`
-/// when that name is taken. `now` is the local time, `(year, month, day, hour, minute)`.
-pub fn zip_name(dir: &Path, level: LevelId, now: (i32, u8, u8, u8, u8)) -> PathBuf {
+/// What a zip's name says play started at: the level, or `power-on` for a recording from the
+/// translated program's first frame (translator T39).
+pub fn zip_start(rec: &Recording) -> String {
+    match rec.start {
+        StartPoint::Level1 => rec.level.to_string(),
+        StartPoint::PowerOn => StartPoint::PowerOn.name().to_string(),
+    }
+}
+
+/// The zip's path in `dir`: `bug-<start>-<YYYY-MM-DD-HHMM>.zip` (`start` a level, or
+/// [`zip_start`]'s `power-on`), with `-2`, `-3`, … before `.zip` when that name is taken. `now` is
+/// the local time, `(year, month, day, hour, minute)`.
+pub fn zip_name(dir: &Path, start: impl std::fmt::Display, now: (i32, u8, u8, u8, u8)) -> PathBuf {
     let (y, mo, d, h, mi) = now;
-    let stem = format!("bug-{level}-{y:04}-{mo:02}-{d:02}-{h:02}{mi:02}");
+    let stem = format!("bug-{start}-{y:04}-{mo:02}-{d:02}-{h:02}{mi:02}");
     let mut path = dir.join(format!("{stem}.zip"));
     let mut n = 2;
     while path.exists() {
@@ -180,7 +190,7 @@ pub trait Ui {
     fn save_recording(
         &mut self,
         shot: &[u8],
-        at: &Location,
+        at: &str,
         name: &str,
         save: &mut dyn FnMut(&str) -> Result<(), String>,
     ) -> bool;
@@ -235,7 +245,7 @@ impl Ui for NativeUi {
     fn save_recording(
         &mut self,
         shot: &[u8],
-        at: &Location,
+        at: &str,
         name: &str,
         save: &mut dyn FnMut(&str) -> Result<(), String>,
     ) -> bool {
@@ -335,7 +345,7 @@ impl Ui for ScriptedUi {
     fn save_recording(
         &mut self,
         _shot: &[u8],
-        at: &Location,
+        at: &str,
         name: &str,
         save: &mut dyn FnMut(&str) -> Result<(), String>,
     ) -> bool {
@@ -366,7 +376,7 @@ impl Ui for ScriptedUi {
 mod tests {
     use super::*;
     use amiga_input::{FrameInput, Joy};
-    use fd_core::recording::{ZIP_RECORDING, ZIP_SCREENSHOT, recorder};
+    use fd_core::recording::{Location, ZIP_RECORDING, ZIP_SCREENSHOT, recorder};
 
     fn temp(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("fd-app-recorder-{name}-{}", std::process::id()));
@@ -388,7 +398,7 @@ mod tests {
                 Joy::NONE
             }));
         }
-        r.finish(at(), "a note".into()).unwrap()
+        r.finish(Some(at()), "a note".into()).unwrap()
     }
 
     #[test]
@@ -435,9 +445,9 @@ mod tests {
             saved.push(n.to_string());
             Ok(())
         };
-        assert!(ui.save_recording(b"", &at(), "x.zip", &mut save));
+        assert!(ui.save_recording(b"", &at().to_string(), "x.zip", &mut save));
         assert!(
-            !ui.save_recording(b"", &at(), "x.zip", &mut save),
+            !ui.save_recording(b"", &at().to_string(), "x.zip", &mut save),
             "none left: discard"
         );
         assert_eq!(saved, ["two lines"]);
@@ -461,7 +471,7 @@ mod tests {
                 Ok(())
             }
         };
-        assert!(ui.save_recording(b"", &at(), "x.zip", &mut save));
+        assert!(ui.save_recording(b"", &at().to_string(), "x.zip", &mut save));
         assert_eq!(tries, ["a", "b"]);
     }
 

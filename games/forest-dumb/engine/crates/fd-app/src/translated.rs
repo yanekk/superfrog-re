@@ -30,6 +30,8 @@ pub struct Frame {
     pub level_1: bool,
     /// How the program stopped, on its last frame.
     pub stop: Option<String>,
+    /// Where play is ([`fd_app::location_in_ram`]): the character's cell in level 1, else `None`.
+    pub place: Option<fd_core::recording::Location>,
     /// The frame's sound at the run's rate, stereo; none for the start.
     pub samples: Vec<[i16; 2]>,
 }
@@ -80,6 +82,7 @@ impl Translated {
                     mem: hashes.then(|| (chip.into(), slow.into())),
                     level_1: fd_app::in_level_1(chip, slow),
                     stop: None,
+                    place: fd_app::location_in_ram(chip, slow),
                     samples: Vec::new(),
                 };
                 if frames.send(start).is_err() {
@@ -95,6 +98,7 @@ impl Translated {
                         mem: hashes.then(|| (out.chip.into(), out.slow.into())),
                         level_1: fd_app::in_level_1(out.chip, out.slow),
                         stop: out.stop.as_ref().map(|s| s.to_string()),
+                        place: fd_app::location_in_ram(out.chip, out.slow),
                         samples,
                     };
                     let stopped = frame.stop.is_some();
@@ -131,6 +135,12 @@ impl Translated {
         let _ = self.to.as_ref().expect("open").send(Input::from(input));
         self.frame = self.receive();
         &self.frame
+    }
+
+    /// `--stop-after`'s stop (translator T39): from here on the program is stopped with `why`, as
+    /// it would be by a stop of its own on this frame. Nothing when it has stopped already.
+    pub fn raise(&mut self, why: String) {
+        self.frame.stop.get_or_insert(why);
     }
 
     pub fn frame(&self) -> &Frame {

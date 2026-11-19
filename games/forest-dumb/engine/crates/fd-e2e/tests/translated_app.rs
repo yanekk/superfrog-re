@@ -225,11 +225,10 @@ fn clock(c: &Captured) -> std::collections::BTreeMap<u64, u64> {
 }
 
 /// Game ▸ Start Level… under the translated program (coordinator's answer to T37): it starts as
-/// `--level 1` does, says the recorder is not available yet and starts without it, and play then
-/// goes on at the game's pace from level 1's first frame, not in a burst making up the seconds the
-/// run through the title took.
+/// `--level 1` does, with the recorder on since T39, and play then goes on at the game's pace from
+/// level 1's first frame, not in a burst making up the seconds the run through the title took.
 #[test]
-fn start_level_restarts_as_level_1_does_without_the_recorder_and_at_the_games_pace() {
+fn start_level_restarts_as_level_1_does_recording_and_at_the_games_pace() {
     require_tree();
     let mut app = App::launch_translated(LaunchOpts {
         max_frames: 120,
@@ -240,14 +239,16 @@ fn start_level_restarts_as_level_1_does_without_the_recorder_and_at_the_games_pa
         "20: menu start-level\nform level W1-1\nform record on\nform start\n",
     );
     assert!(c.exit.success(), "{}", c.stderr);
-    assert!(c.stderr.contains("not available yet; starting without it"), "{}", c.stderr);
+    assert!(!c.stderr.contains("not available yet"), "{}", c.stderr);
     let after: u64 = c
         .stderr
         .lines()
         .find_map(|l| l.strip_prefix("fd-app: started W1-1 after step "))
         .unwrap_or_else(|| panic!("never restarted: {}", c.stderr))
+        .strip_suffix(", recording")
+        .unwrap_or_else(|| panic!("not recording: {}", c.stderr))
         .parse()
-        .unwrap_or_else(|_| panic!("recording after all: {}", c.stderr));
+        .unwrap();
     let frames: u64 = c
         .stderr
         .lines()
