@@ -152,11 +152,13 @@ pub struct Regs {
     trail: [(u32, u32); TRAIL],
     /// Of each trail entry's cycles off the bus, those before its bus accesses ([`Regs::idle_first`]).
     lead: [u32; TRAIL],
-    trail_len: u8,
+    trail_len: u16,
 }
 
-/// Instructions a block's trail holds one by one ([`Regs::trail`]).
-pub const TRAIL: usize = 48;
+/// Instructions a block's trail holds one by one ([`Regs::trail`]). The program's longest block is
+/// 198 instructions (`h0+$5500`); at 48 its tail was one lump, whose accesses the machine packed
+/// into every free slot under the display's fetch and ran a line ahead of the original (T52).
+pub const TRAIL: usize = 256;
 
 impl Default for Regs {
     fn default() -> Self {

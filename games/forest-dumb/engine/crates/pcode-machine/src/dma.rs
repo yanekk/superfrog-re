@@ -20,7 +20,9 @@
 //!   inside the window). Odd slots, but the CPU runs on odd slots after an instruction's two
 //!   internal cycles, so they cost it time (a line or more a pass in a scrolling stretch, T49).
 //!
-//! Not taken: disk and audio slots (odd, and few: the oracle's audio took about 180 a frame).
+//! - The audio channels take their slots (`$0D` to `$13`, `audio`, T52).
+//!
+//! Not taken: disk slots (the program loads no file in play).
 
 use amiga_chips::copper::Fetch;
 use amiga_clock::is_refresh;
@@ -170,6 +172,9 @@ pub(crate) struct BlitRun {
     pub(crate) free_at: Option<u64>,
     /// Set when BLTDONE runs: the interrupt follows a slot later.
     pub(crate) done_at: Option<u64>,
+    /// The slot of each D write the bus has run, word by word (T52: the picture sees each word
+    /// from there).
+    pub(crate) d_at: Vec<u64>,
 }
 
 impl BlitRun {
@@ -186,6 +191,7 @@ impl BlitRun {
             from,
             free_at: None,
             done_at: None,
+            d_at: Vec::new(),
         }
     }
 
@@ -228,6 +234,9 @@ impl BlitRun {
         if (bus || idle) && !free {
             return false;
         }
+        if op.write_d && bus {
+            self.d_at.push(at);
+        }
         self.pc += 1;
         if op.repeat {
             self.lock_d = false;
@@ -259,6 +268,8 @@ pub(crate) struct Slots<'a> {
     /// taken. Slots past the frame's end are not looked up (that frame's copper has not run).
     pub copper: Option<(&'a crate::copper::Copper, i64)>,
     pub sprites: &'a mut Sprites,
+    /// The audio channels' slots (T52), looked up as slots from the copper's frame start.
+    pub(crate) audio: &'a mut crate::audio::Audio,
     pub chip: &'a [u8],
     pub custom: &'a [u16; 256],
 }
@@ -266,7 +277,7 @@ pub(crate) struct Slots<'a> {
 impl Slots<'_> {
     /// Whether refresh, a bitplane or the copper takes the slot starting at cycle count `at`,
     /// slot `h` of `line`.
-    fn fixed(&self, at: u64, line: u16, h: u16) -> bool {
+    fn fixed(&mut self, at: u64, line: u16, h: u16) -> bool {
         if is_refresh(h as u32)
             || (self.dmacon & (DMAEN | BPLEN) == (DMAEN | BPLEN) && self.fetch.takes(line, h))
         {
@@ -276,7 +287,8 @@ impl Slots<'_> {
             Some((c, start)) => {
                 let slot = (at as i64 - start).div_euclid(2);
                 let frame = self.frame_lines as i64 * amiga_clock::LINE_SLOTS as i64;
-                (0..frame).contains(&slot) && c.takes(slot as u32)
+                (0..frame).contains(&slot)
+                    && (c.takes(slot as u32) || self.audio.takes(slot as u32))
             }
             None => false,
         }
