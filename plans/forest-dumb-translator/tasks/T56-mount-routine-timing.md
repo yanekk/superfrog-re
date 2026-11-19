@@ -35,6 +35,15 @@ DESIGN §2.9 (the seam; the mount's time, T55's paragraph).
 - `crates/fd-conform/examples/game_frame_costs.rs` (the measure), a routine-judge check per rule.
 - `crates/fd-conform/tests/mount_level_1.rs`: cases move from `T56` to `PASS_MOUNTED`; `CLX_LINES_OFF` to 0.
 
+## Interface
+
+```
+cargo run --release -p fd-conform --example game_frame_costs -- [--passes [--mounted]] CASE ..   # the measure
+cargo test --release -p fd-conform --test mount_level_1 -- --ignored
+```
+
+`frame.rs`'s `COSTS` gives way to a rule per varying routine, fed the typed state through `Pass` where it needs it.
+
 ## Tests
 
 - [ ] Full: each timing rule equals the translated routine's counted cycles (contention out) on the routine judge's states for that routine.
