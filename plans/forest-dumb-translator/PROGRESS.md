@@ -50,7 +50,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T33 | later-world-cases | T32 | ✅ | |
 | T34 | generated-purity | T28 | ✅ | |
 | T35 | seam | T00, T28 | ✅ | |
-| T36 | mount-level-1 | T30, T31, T35 | ⬜ | |
+| T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ⬜ | |
 | T38 | app-sound | T37 | ⬜ | |
 | T39 | app-stop | T37 | ⬜ | |
