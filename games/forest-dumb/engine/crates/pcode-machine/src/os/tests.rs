@@ -476,6 +476,8 @@ fn an_interrupt_on_the_os_handler_stops_naming_it() {
     let mut r = Regs::new();
     r.set(pcode_rt::SR, 2, 0x2000);
     r.set_a(7, STACK);
+    // The CPU sees the request once through Paula's IPL pipe (`irq::IPL_DELAY`, T54).
+    r.tick(irq_delay());
     let e = m.poll(&mut r, &img(&[0x100, 0x100], &[])).unwrap_err();
     assert_eq!(
         e,
@@ -536,4 +538,8 @@ fn adkconr_reads_what_adkcon_set_and_cleared() {
     // A CPU write to ADKCONR itself, read-only, changes nothing.
     m.ww(0xDF_F010, 0xFFFF);
     assert_eq!(m.rw(0xDF_F010), 0x1000);
+}
+
+fn irq_delay() -> u32 {
+    crate::irq::IPL_DELAY as u32
 }

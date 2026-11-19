@@ -1,4 +1,5 @@
-//! Interrupts taken at block starts (translator T23, DESIGN §2.8) and at instruction boundaries
+//! Interrupts taken at block starts (translator T23, DESIGN §2.8) and at instruction boundaries,
+//! once through Paula's IPL pipe (T54),
 //! inside a block (T50), on a made-up program: its P-code
 //! written by hand (`fixtures/irq.json`) and translated by `tools/pcode_rust.py` (`fixtures/irq.rs`,
 //! committed, kept current by `tools/test_pcode_rust.py`), so its `rte` is the translator's own.
@@ -58,6 +59,13 @@ fn regs() -> Regs {
     r
 }
 
+/// [`regs`] after [`one_insn`].
+fn ran() -> Regs {
+    let mut r = regs();
+    one_insn(&mut r);
+    r
+}
+
 /// Calls `f` as a subroutine, as the judge does: `RETURN_TO` pushed, then checked on return.
 fn call(m: &mut Machine, r: &mut Regs, f: prog::Routine) -> Result<(), Stop> {
     let sp = r.a(7) - 4;
@@ -70,6 +78,12 @@ fn call(m: &mut Machine, r: &mut Regs, f: prog::Routine) -> Result<(), Stop> {
 
 fn word(m: &mut Machine, a: u32) -> u16 {
     m.rw(a)
+}
+
+/// One `move.w (a1),(a2)`, 12 cycles: its last access starts [`irq::IPL_DELAY`] after a request
+/// made at its start, so a request is through Paula's IPL pipe when the CPU samples it (T54).
+fn one_insn(r: &mut Regs) {
+    r.tick(12);
 }
 
 #[test]
@@ -127,9 +141,10 @@ fn masked_by_sr_until_the_mask_drops_then_the_frame_is_the_68000s() {
     assert_eq!(word(&mut m, 0x100), 0, "mask 3 holds level 3 off");
     assert_eq!((r.a(7), r.cycles()), (STACK, 0));
     ops::sr_set(&mut r, 0x2215);
+    one_insn(&mut r);
     m.poll(&mut r, &img()).unwrap();
     assert_eq!(word(&mut m, 0x100), 1, "taken once the mask is below 3");
-    assert_eq!(r.cycles(), one_irq());
+    assert_eq!(r.cycles(), 12 + one_irq());
     assert_eq!(
         ops::sr_get(&r),
         0x2215,
@@ -153,6 +168,7 @@ fn disabled_in_intena_or_with_the_master_off_is_not_taken() {
         assert_eq!(m.rw(0xDF_F01C), intena, "INTENAR");
         // Enabling it lets the waiting request through.
         m.ww(0xDF_F09A, 0x8000 | irq::INTEN | 1 << VERTB);
+        one_insn(&mut r);
         m.poll(&mut r, &img()).unwrap();
         assert_eq!(word(&mut m, 0x100), 1);
     }
@@ -175,11 +191,10 @@ fn level_3_is_taken_inside_a_level_2_handler() {
     let mut r = regs();
     r.set_d(2, 1);
     call(&mut m, &mut r, prog::h0_0).unwrap();
-    assert_eq!(
-        r.d(3),
-        1,
-        "level 3 ran before the level 2 handler read the count"
-    );
+    // The handler reads the count one instruction after its request, inside the IPL pipe's
+    // delay (T54): level 3 comes after the read, still inside level 2 (mask 2).
+    assert_eq!(r.d(3), 0, "the read came before level 3 was seen");
+    assert_eq!(word(&mut m, 0x100), 1, "level 3 ran");
     assert_eq!(m.intreq(), 0);
     assert_eq!((r.a(7), ops::sr_get(&r) & 0xFF00), (STACK, 0x2000));
 }
@@ -204,6 +219,7 @@ fn a_request_left_pending_by_an_rte_is_taken_in_the_same_poll() {
     m.raise(VERTB, 0);
     m.raise(PORTS, 0);
     let mut r = regs();
+    one_insn(&mut r);
     m.poll(&mut r, &img()).unwrap();
     assert_eq!((word(&mut m, 0x100), word(&mut m, 0x102)), (1, 1));
     assert_eq!(m.intreq(), 0);
@@ -217,6 +233,7 @@ fn from_user_mode_the_frame_goes_on_the_system_stack() {
     r.set_a(7, 0x7000);
     r.set(ops::ISP, 4, 0x9000);
     m.raise(VERTB, 0);
+    one_insn(&mut r);
     m.poll(&mut r, &img()).unwrap();
     assert_eq!(word(&mut m, 0x100), 1);
     assert_eq!(
@@ -232,13 +249,13 @@ fn from_user_mode_the_frame_goes_on_the_system_stack() {
 fn a_vector_with_no_translation_stops_naming_it() {
     let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x42);
     m.raise(VERTB, 0);
-    let e = m.poll(&mut regs(), &img()).unwrap_err();
+    let e = m.poll(&mut ran(), &img()).unwrap_err();
     assert_eq!(e, Stop::Untranslated("h0+$42".into()));
 
     let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x40);
     m.wl(L3, 0xFC_0D14);
     m.raise(VERTB, 0);
-    let e = m.poll(&mut regs(), &img()).unwrap_err();
+    let e = m.poll(&mut ran(), &img()).unwrap_err();
     assert_eq!(
         e,
         Stop::Untranslated("$fc0d14".into()),
@@ -251,7 +268,7 @@ fn a_vector_with_no_translation_stops_naming_it() {
     m.wl(L3, BASE + 0x40);
     m.ww(0xDF_F09A, 0x8000 | irq::INTEN | 1 << VERTB);
     m.raise(VERTB, 0);
-    let e = m.poll(&mut regs(), &img()).unwrap_err();
+    let e = m.poll(&mut ran(), &img()).unwrap_err();
     assert_eq!(
         e,
         Stop::Untranslated("h0+$40".into()),
@@ -264,7 +281,7 @@ fn a_handler_leaving_by_rts_stops_the_run() {
     // h0+$0 with d2 = 0 returns at once by rts, popping the frame's SR and half its PC.
     let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x0);
     m.raise(VERTB, 0);
-    let e = m.poll(&mut regs(), &img()).unwrap_err();
+    let e = m.poll(&mut ran(), &img()).unwrap_err();
     assert!(
         matches!(&e, Stop::Unsupported { op, at } if op.contains("not by rte") && at == "h0+$0"),
         "{e:?}"
@@ -282,7 +299,7 @@ fn snapshot_intenar_and_intreqr_are_the_starting_state() {
     m.set_entry(prog::entry);
     m.wl(L3, BASE + 0x40);
     assert_eq!(m.intena(), irq::INTEN | 1 << VERTB);
-    m.poll(&mut regs(), &img()).unwrap();
+    m.poll(&mut ran(), &img()).unwrap();
     assert_eq!(
         word(&mut m, 0x100),
         1,
@@ -291,16 +308,18 @@ fn snapshot_intenar_and_intreqr_are_the_starting_state() {
 }
 
 #[test]
-fn a_request_the_cpu_makes_inside_a_block_is_taken_before_the_next_instruction() {
-    // Taken at the block's end, the read before it would see 0 and the rts return first.
+fn a_request_the_cpu_makes_inside_a_block_is_taken_once_through_the_ipl_pipe() {
+    // The CPU sees its own INTREQ write `irq::IPL_DELAY` later, at an instruction's last access
+    // (T54). The fixture counts no cycles, so inside the call no time passes: the read right after
+    // the write comes first, and the request is taken once an instruction's time has passed.
     let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x40);
     let mut r = regs();
     call(&mut m, &mut r, prog::h0_c0).unwrap();
-    assert_eq!(
-        r.d(5) & 0xFFFF,
-        1,
-        "the handler ran between the INTREQ write and the read"
-    );
+    assert_eq!(r.d(5) & 0xFFFF, 0, "the read came before the request was seen");
+    assert_eq!(word(&mut m, 0x100), 0, "not seen yet");
+    one_insn(&mut r);
+    m.poll(&mut r, &img()).unwrap();
+    assert_eq!(word(&mut m, 0x100), 1, "the handler ran");
     assert_eq!(m.intreq(), 0);
     assert_eq!((r.a(7), ops::sr_get(&r) & 0xFF00), (STACK, 0x2000));
 }

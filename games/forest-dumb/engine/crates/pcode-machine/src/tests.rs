@@ -196,26 +196,51 @@ fn an_access_outside_memory_is_a_stop_naming_it_at_the_next_block() {
 fn vhposr_after_n_cycles_is_the_313_line_frames_beam() {
     let mut m = machine();
     let frame = 313 * 454;
-    for (n, line, h) in [
-        (0u64, 0u16, 0u16),
-        (453, 0, 226),
-        (454, 1, 0),
-        (454 * 0x2C + 2 * 0x40 + 1, 0x2C, 0x40),
-        (454 * 256 + 20, 256, 10),
-        (frame - 2, 312, 226),
-        (frame, 0, 0),
-        (3 * frame + 454 * 100 + 2 * 0xE2, 100, 0xE2),
+    // The beam after `n` cycles, and the position a read then gives: five slots ahead (T54).
+    for (n, (line, h), (rl, rh)) in [
+        (0u64, (0u16, 0u16), (0u16, 5u16)),
+        (453, (0, 226), (1, 4)),
+        (454, (1, 0), (1, 5)),
+        (454 * 0x2C + 2 * 0x40 + 1, (0x2C, 0x40), (0x2C, 0x45)),
+        (454 * 256 + 20, (256, 10), (256, 15)),
+        (frame - 2, (312, 226), (0, 4)),
+        (frame, (0, 0), (0, 5)),
+        (3 * frame + 454 * 100 + 2 * 0xE2, (100, 0xE2), (101, 4)),
     ] {
         at_cycles(&mut m, n);
         assert_eq!(m.beam(n), (line, h), "{n}");
         let v = m.rw(0xDF_F004);
         let vh = m.rw(0xDF_F006);
-        assert_eq!(vh, (line & 0xFF) << 8 | h, "VHPOSR after {n}");
-        assert_eq!(v, 0x8000 | line >> 8, "VPOSR after {n}");
+        assert_eq!(vh, (rl & 0xFF) << 8 | rh, "VHPOSR after {n}");
+        assert_eq!(v, 0x8000 | rl >> 8, "VPOSR after {n}");
         // The byte reads: VHPOSR's high byte is V7-V0, its low byte the position.
-        assert_eq!(m.rb(0xDF_F006), (line & 0xFF) as u8);
-        assert_eq!(m.rb(0xDF_F007), h as u8);
+        assert_eq!(m.rb(0xDF_F006), (rl & 0xFF) as u8);
+        assert_eq!(m.rb(0xDF_F007), rh as u8);
     }
+}
+
+/// A VPOSR or VHPOSR read gives the beam five slots on, but where that lands in a line's slots 0
+/// and 1 the line is still the old one (vAmiga `Agnus::peekVHPOSR`; T54: `main_loop`'s raster
+/// waits leave a line on the reference's slot only so).
+#[test]
+fn a_beam_read_is_five_slots_ahead_with_the_old_line_in_slots_0_and_1() {
+    let mut m = machine();
+    for ((line, h), read) in [
+        ((0x50u16, 221u16), 0x50E2u16),
+        ((0x50, 222), 0x5000),
+        ((0x50, 223), 0x5001),
+        ((0x50, 224), 0x5102),
+        ((0xFF, 224), 0x0002),
+        ((312, 224), 0x0002),
+    ] {
+        at_cycles(&mut m, beam::offset(line, h));
+        assert_eq!(m.rw(0xDF_F006), read, "({line}, {h})");
+    }
+    // VPOSR's V8 follows the same rule: line 255's last slots still read line 255.
+    at_cycles(&mut m, beam::offset(255, 223));
+    assert_eq!(m.rw(0xDF_F004) & 1, 0);
+    at_cycles(&mut m, beam::offset(255, 224));
+    assert_eq!(m.rw(0xDF_F004) & 1, 1);
 }
 
 #[test]
@@ -239,7 +264,8 @@ fn a_snapshot_starts_the_beam_where_its_registers_say() {
         0x0FFF,
         "a readable register reads the snapshot's value"
     );
-    assert_eq!(m.rw(0xDF_F006), 0x0510);
+    // Read five slots on (T54).
+    assert_eq!(m.rw(0xDF_F006), 0x0515);
     m.sync_beam(1000, 0, 0);
     assert_eq!(m.beam(1000), (0, 0));
     assert_eq!(m.beam(1000 + 454 * 2 + 4), (2, 2));
@@ -314,7 +340,7 @@ fn a_read_only_register_write_changes_nothing_but_the_bus() {
     );
     assert_eq!(m.custom()[0x1C / 2], 0);
     assert_eq!(m.custom()[0x06 / 2], 0);
-    assert_eq!(m.rw(0xDF_F006), 0x0003, "the beam is untouched");
+    assert_eq!(m.rw(0xDF_F006), 0x0008, "the beam is untouched (read five slots on)");
     // A readable register reads its device, at the access's cycle count (ADKCONR; INTENAR and
     // INTREQR are the machine's own since T23).
     assert_eq!(m.rw(0xDF_F010), 0x1010);
