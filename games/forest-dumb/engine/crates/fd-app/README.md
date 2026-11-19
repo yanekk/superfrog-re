@@ -23,7 +23,7 @@ From `games/forest-dumb/engine/`:
 
 ## Flags (`src/args.rs`)
 
-`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1]`
+`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] [--stop-after N]`
 
 - `--home DIR`: app-data folder; else `FOREST_DUMB_HOME`, else `~/Library/Application Support/Forest-Dumb-RE`. One copy runs per home (a second is refused, "already running").
 - `--disks DIR`: the folder of both zips; else `fd_tools::disk_dir()` (`FOREST_DUMB_DISKS`, then the main checkout). Missing disks: a plain message and exit 1.
@@ -35,9 +35,23 @@ From `games/forest-dumb/engine/`:
 - `--bugs-dir DIR`: where bug zips go; else `<home>/bugs` for a scripted run, else `games/forest-dumb/bugs/` of the main checkout, else `~/Documents/Forest Dumb Bugs/`. Zips are `bug-<level>-<YYYY-MM-DD-HHMM>.zip`, `-2`, `-3` on a clash.
 
 - `--engine translated|hand`: the translated program (default) or level 1's hand engine alone, as before the translator plan. Tests that run without a generated tree pass `hand` (`fd_e2e::App::launch` does).
-- `--level 1`: the translated program run headless from power-on through the title with fire pressed ten frames in twenty (`to_level_1_input`, at most `TO_LEVEL_1_FRAMES`), so the window opens on level 1's first frame (about 500 frames). Game ▸ Start Level… starts the same way; its recorder is not yet available on the translated program (T39).
+- `--level 1`: the translated program run headless from power-on through the title with fire pressed ten frames in twenty (`to_level_1_input`, at most `TO_LEVEL_1_FRAMES`), so the window opens on level 1's first frame (about 500 frames). Game ▸ Start Level… starts the same way, its recorder on the translated program too (translator T39).
+- `--stop-after N`: a test's hook (translator T39): the translated program stops at step N with `test-stop: --stop-after N`, so the stop path runs with no defect behind it. Refused with `--engine hand` and for 0.
 
 Bad arguments: exit 2 with the usage.
+
+## A stop (translator DESIGN §2.4, §2.10; T39)
+
+On the translated program a recording of the play from where it started (power-on, `--level 1`, the
+last Start Level…) always runs unseen. When the program stops (`untranslated`, `write-into-code`,
+`unsupported`, `hang`, …) the picture freezes on its last frame, a band over its foot (`src/stop.rs`,
+a 5×7 font drawn into the frame, so captures hold it) says `Stopped: <stop>`, `Bug zip saved:
+<name>` and `Esc or Cmd-Q quits`, and the zip is written at once into the bugs folder, no window
+asked: its recording has `start power-on|level-1`, `engine translated` and `stop <stop>`, its
+screenshot the frame without the band. A recording the owner started ends in it. The app keeps
+ticking frozen, so the script, the capture and quitting go on; nothing more is stepped or recorded.
+`fd-conform bug replay <zip>` replays it on the translated program. Zips from power-on are named
+`bug-power-on-<date>.zip`.
 
 ## Script format (`src/script.rs`)
 
@@ -84,7 +98,7 @@ never reaches the game; ⌘ plus a key is the app's.
 
 `--capture` writes the files `amiga_app::capture` lists (`frame-NNNNN.png`, `inputs.txt`,
 `window-NNNNN.png`, `prompts.txt`, …) plus `hashes.txt`: `N hash` in hex a frame, frame 0 the start.
-stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `menu <id> after step N`, `controls: <status>`,
+stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`,
 `game over`, `level 1 complete`, `quit after step N`).
 
 ## Library API (`src/lib.rs`)

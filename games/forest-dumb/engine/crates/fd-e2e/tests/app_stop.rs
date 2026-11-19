@@ -57,7 +57,9 @@ fn the_zip(bugs: &Path) -> (PathBuf, Recording, Image) {
     assert_eq!(zips.len(), 1, "{zips:?}");
     let (rec, png) =
         amiga_record::read_zip::<ForestDumb>(&std::fs::read(&zips[0]).unwrap()).unwrap();
-    let (width, height, rgba) = amiga_conform::screenshot::decode_png(&png).unwrap();
+    let (width, height, rgb) = amiga_conform::screenshot::decode_png(&png).unwrap();
+    assert_eq!(rgb.len(), (width * height * 3) as usize, "the screenshot is RGB");
+    let rgba = rgb.chunks_exact(3).flat_map(|p| [p[0], p[1], p[2], 255]).collect();
     (zips[0].clone(), rec, Image { width, height, rgba })
 }
 
@@ -101,15 +103,25 @@ fn differ(a: &Image, b: &Image) -> Option<(u32, u32, u32)> {
     out
 }
 
-/// White pixels in rows `top..bottom` of `img`: the band's text.
-fn white(img: &Image, top: u32, bottom: u32) -> usize {
-    (top..bottom)
-        .flat_map(|y| (0..img.width).map(move |x| (x, y)))
-        .filter(|&(x, y)| {
-            let i = ((y * img.width + x) * 4) as usize;
-            img.rgba[i..i + 3] == [255, 255, 255]
+/// The rows of the band's text: runs of rows where `shown` has white pixels `shot` lacks, each
+/// as (first, last).
+fn text_lines(shown: &Image, shot: &Image) -> Vec<(u32, u32)> {
+    let text = |y: u32| {
+        (0..shown.width).any(|x| {
+            let i = ((y * shown.width + x) * 4) as usize;
+            shown.rgba[i..i + 3] == [255, 255, 255] && shot.rgba[i..i + 3] != [255, 255, 255]
         })
-        .count()
+    };
+    let mut out: Vec<(u32, u32)> = Vec::new();
+    for y in 0..shown.height {
+        if text(y) {
+            match out.last_mut() {
+                Some((_, last)) if *last + 1 == y => *last = y,
+                _ => out.push((y, y)),
+            }
+        }
+    }
+    out
 }
 
 /// Fire, the default keys' Left Option, pressed at the disk 2 prompt: the title follows.
@@ -156,13 +168,10 @@ fn a_stop_freezes_the_picture_names_it_saves_a_zip_and_the_zip_replays_to_the_sa
     // The band: what the frame shown has and the screenshot does not, at the picture's foot,
     // inside it, with text on each of its three lines (stop, saved, how to quit).
     let (top, bottom, right) = differ(at_stop, &shot).expect("the band");
-    assert!(bottom == H - 1 && top >= H / 2 && right < W, "{top}..{bottom}, {right}");
-    let lines = (bottom + 1 - top) / 9;
-    assert!(lines >= 3, "{top}..{bottom}");
-    for l in 0..3 {
-        let y = top + 4 + l * 9;
-        assert!(white(at_stop, y, y + 7) > 20, "line {l} has text");
-    }
+    assert!(top >= H / 2 && bottom < H && right < W - 4, "{top}..{bottom}, {right}");
+    let groups = text_lines(at_stop, &shot);
+    assert!(groups.len() >= 3, "{groups:?}");
+    assert!(groups.iter().all(|&(a, b)| b - a <= 7), "a line is one glyph tall: {groups:?}");
     // The window at its smallest shows the whole picture, band included: nothing is cut off.
     let (shown_at, window) = common::shown(&c, stop + 10, W, H);
     assert!(shown_at >= stop);
@@ -202,13 +211,14 @@ fn a_stop_in_level_1_saves_a_level_1_zip_that_replays_through_the_title_to_its_p
     assert!(out.contains("screenshot equal\n"), "{out}");
 }
 
-/// A run stopped at step 30 that `quit` ends at step 60.
+/// A run stopped at step 30 that `quit` ends before step 60 (a script's line `N` lands after step
+/// N - 1).
 fn quits(quit: &str) -> Captured {
     let (mut app, bugs) = launch(200, &["--stop-after", "30"]);
     let c = app.run_script_unread(&format!("60: {quit}\n"));
     assert!(c.exit.success(), "{quit}: {}", c.stderr);
     assert!(c.stderr.contains("stopped at step 30"), "{}", c.stderr);
-    assert!(c.stderr.contains("fd-app: quit after step 60\n"), "{quit}: {}", c.stderr);
+    assert!(c.stderr.contains("fd-app: quit after step 59\n"), "{quit}: {}", c.stderr);
     the_zip(&bugs);
     c
 }

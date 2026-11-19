@@ -52,7 +52,7 @@ Every launch passes `--home`, `--max-frames` and `--timeout` and runs in its own
 ## Tests
 
 `smoke.rs` frames and hashes; `controls.rs` rebinding and settings; `disks.rs` missing disks;
-`window.rs` scale, quitting, the watchdog, the lock; `recorder_app.rs`, `recorder_replay.rs` bug zips;
+`window.rs` scale, quitting, the watchdog, the lock; `recorder_app.rs`, `recorder_replay.rs` bug zips (a version 1 zip included); `app_stop.rs` (full, translator T39) a stop: `--stop-after`, the band, the zip replayed on the translated program, Esc and ⌘Q after it;
 `game_over.rs`, `level_end.rs`; `finish_level.rs` (full) the one route from launch to "Level 1 complete", `finish_short.rs` (smoke) its first 600 steps; `drill.rs` (smoke) and `drill_sizes.rs` (full) the script-layer drill;
 `drill_os.rs` the OS layer (full, writes window captures to `$TMPDIR/fd-drill-os`); `level_drill.rs` (T29)
 the level's drill: case stretches and the route played as keys with the recorder on, each zip judged on

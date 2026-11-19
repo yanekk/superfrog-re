@@ -188,7 +188,7 @@ c ..... ..... .###. #.... #.... #...# .###.
 d ....# ....# .##.# #..## #...# #...# .####
 e ..... ..... .###. #...# ##### #.... .###.
 f ..##. .#..# .#... ###.. .#... .#... .#...
-g ..... .#### #...# #...# .#### ....# .###.
+g ..... ..... .#### #...# .#### ....# .###.
 h #.... #.... #.##. ##..# #...# #...# #...#
 i ..#.. ..... .##.. ..#.. ..#.. ..#.. .###.
 j ...#. ..... ..##. ...#. ...#. #..#. .##..
@@ -242,7 +242,7 @@ mod tests {
             format!("os: {long_op} at h0+$10"),
             "hang (steps)".into(),
         ] {
-            let ls = lines(&stop, "Bug recording saved as bug-power-on-2026-11-19-1430-12.zip");
+            let ls = lines(&stop, "Bug zip saved: bug-power-on-2026-11-19-1430-12.zip");
             assert!(ls.iter().all(|l| l.chars().count() <= COLS), "{ls:#?}");
             assert!(ls[0].starts_with("Stopped: "));
             assert!(ls.last().unwrap().contains("Esc"));
@@ -250,6 +250,12 @@ mod tests {
             let (top, h) = band(256, ls.len());
             assert!(top + h <= 256 && h >= ls.len() * CELL_H, "{} lines", ls.len());
         }
+        // A usual stop takes a line each: the stop, the zip's name, how to quit.
+        let usual = lines(
+            "untranslated: h0+$1a2b4",
+            "Bug zip saved: bug-power-on-2026-11-19-1430-12.zip",
+        );
+        assert_eq!(usual.len(), 3, "{usual:#?}");
         assert_eq!(wrap("ab cd ef", 5), ["ab cd", "ef"]);
         assert_eq!(wrap("abcdefg", 3), ["abc", "def", "g"]);
         assert_eq!(wrap("", 3), [""]);

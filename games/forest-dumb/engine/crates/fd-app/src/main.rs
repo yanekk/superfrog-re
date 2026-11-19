@@ -814,7 +814,7 @@ impl App {
                             rec.inputs.len(),
                             rec.start.name()
                         );
-                        format!("Bug recording saved as {name}")
+                        format!("Bug zip saved: {name}")
                     }
                     Err(e) => {
                         eprintln!("fd-app: the stop recording could not be saved as {}: {e}", path.display());

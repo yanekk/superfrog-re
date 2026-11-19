@@ -71,7 +71,8 @@ prints what is there; the pictures are in `build/renders/`.
 silent: the disk 2 prompt (fire), the title (fire is Start), the menus, the levels, level 1 on its hand
 engine through the seam. `-- --level 1` opens on level 1's first frame, reached by running the program
 headless through the title; `-- --engine hand` opens straight in `W1-1` on the hand engine, as before,
-for comparison. The translation is generated on this machine (`python3 -I
+for comparison. A stop of the translated program freezes the picture, names the stop over it and
+saves a bug zip of the play from its start (`docs/BUG-FIX.md`, "A stop zip"). The translation is generated on this machine (`python3 -I
 games/forest-dumb/tools/translate.py --build`); without it the app says so and exits 1.
 Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
 Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in

@@ -292,6 +292,10 @@ workspace = "engine"
 # Translator T37: the translated program in the real app against headless from power-on: the title,
 # Start by key and 600 frames of play, `--level 1`, the drill sizes; about 46 s and the generated tree.
 "crates/fd-e2e/tests/translated_app.rs" = "full"
+# Translator T39: a stop in the app (`--stop-after`): frozen picture, its band at 1×, the zip saved and
+# replayed by `fd-conform bug replay` on the translated program; Esc and ⌘Q after it; Start Level…'s
+# recorder on the translated program. Five launches, about 35 s, and the generated tree.
+"crates/fd-e2e/tests/app_stop.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
