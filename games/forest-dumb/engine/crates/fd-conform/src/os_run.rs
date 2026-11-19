@@ -56,6 +56,9 @@ impl Bus for UntilTitle {
         }
         self.m.poll(r, img)
     }
+    fn insn(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
+        self.m.insn(r, img)
+    }
     fn call_outside(&mut self, a: u32, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.m.call_outside(a, r, img)
     }

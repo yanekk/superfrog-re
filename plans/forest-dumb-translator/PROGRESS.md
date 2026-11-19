@@ -68,6 +68,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
+| T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

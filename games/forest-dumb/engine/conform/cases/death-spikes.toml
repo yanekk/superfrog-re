@@ -8,10 +8,6 @@
 # Creatures live on both sides since T46, nothing frozen.
 # The fifteen creature slot variables are compared since T81: the run scrolls a creature in on the
 # original (enemy_cases.rs, no_level_case_runs_creatures_live_without_naming_their_slots).
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference the picture at pass 1343 (oracle frame 7744), 159 pixels from (82, 226), the status
-# bar's lives: the original's pass cuts main_loop's redraw before it reads lives (the note above), the
-# machine, with no DMA contention, finishes it. State and writes equal on all 4 315 passes.
 sync = { script = "boot-to-level1", frame = 6400 }
 input = "death-spikes"
 frames = 4400

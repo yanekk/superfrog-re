@@ -6,10 +6,6 @@
 # Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
 # a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
 # Creatures cost six lives and three are stomped; the route no longer reaches the pool.
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 116 (oracle frame 6418), char_x $229 on the engine, $221 in the original, input
-# U L from step 116; the script turns the stick on the step before, and the original's JOY1DAT read
-# falls past the frame's end where the machine's does not (T46's measurement, not repeated here).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "contact-route"
 frames = 1300

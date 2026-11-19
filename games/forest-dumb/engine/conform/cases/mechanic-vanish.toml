@@ -13,10 +13,6 @@
 # Nothing is excluded since T81: the play area is compared on every frame.
 # All fifteen creature slot variables are compared since T81: pass 331 cuts the row redraw in its
 # shapes, before its scan, and the creature at $429,$482 starts after that pass (docs/10).
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 118 (oracle frame 6420), char_x $231 on the engine, $22d in the original, input
-# D from step 118; the script turns the stick on the step before, and the original's JOY1DAT read falls
-# past the frame's end where the machine's does not (T46's measurement, not repeated here).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "mechanic-vanish"
 frames = 1480

@@ -1,6 +1,6 @@
 // Part 1 of the tree generated from shared_call.json. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 #[allow(unused_imports)]
 use super::{by_addr, enter};
 
@@ -42,6 +42,7 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x24 {
+                    insn_start(bus, r, img)?;
                     // h0+$24 addq.l #2,d3
                     {
                         let v = int_add(r.get(0xc, 4), 0x2u64, 4);
@@ -49,6 +50,7 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x26 {
+                    insn_start(bus, r, img)?;
                     // h0+$26 rts
                     {
                         bus.sync(r);
@@ -99,6 +101,7 @@ pub fn h0_30_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
                     }
                 }
                 if entered <= 0x32 {
+                    insn_start(bus, r, img)?;
                     // h0+$32 rts
                     {
                         bus.sync(r);

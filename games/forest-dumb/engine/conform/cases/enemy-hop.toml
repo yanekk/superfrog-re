@@ -5,12 +5,6 @@
 # hopper at x $1a8, y $20. At irq_count 93 a redraw the late pass cut starts the next creature a pass
 # later in the original: the runner hands the cut and the engine starts it then too (T75). It runs
 # T43's whole run right and back, four lives lost to contact.
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 93 (oracle frame 6395), creature_slots+$20 $01cb0050 on the engine, $01cc0050 in
-# the original (+$24 a step on); the machine starts the creature in frame 6393 at line 213, the
-# original's pass cuts its scan there and it starts it in frame 6394 at line 141; the machine's
-# edge-redraw scan starts a creature (h0_681c) before the pass at line 233 that cuts the original's scan
-# (docs/10, "A creature start the next pass cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "enemy-hop"
 frames = 780

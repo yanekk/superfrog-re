@@ -1,7 +1,7 @@
 // Generated from bcd.json; never committed when made from a game.
 // By pcode_rust.py. Do not edit: regenerate.
 #[allow(unused_imports)]
-use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, fn_entry, PC, cycles as cy};
+use pcode_rt::{Bus, Image, Regs, Stop, ops::*, load, store, block_start, insn_start, fn_entry, PC, cycles as cy};
 
 /// The bytes of every translated instruction, (hunk, start, end exclusive), sorted.
 pub const CODE: &[(u32, u32, u32)] = &[
@@ -95,6 +95,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x4 {
+                    insn_start(bus, r, img)?;
                     // h0+$4 abcd d1b,d0b (corrected: pcode_fix.bcd)
                     {
                         let (v, x, o) = pcode_rt::bcd::bcd_add(r.get(0x7, 1), r.get(0x3, 1), r.get(0x43, 1));
@@ -103,6 +104,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x6 {
+                    insn_start(bus, r, img)?;
                     // h0+$6 abcd -(a1),-(a0) (corrected: pcode_fix.bcd)
                     {
                         bus.sync(r);
@@ -118,6 +120,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0x8 {
+                    insn_start(bus, r, img)?;
                     // h0+$8 abcd -(a1),-(a0) (corrected: pcode_fix.bcd)
                     {
                         bus.sync(r);
@@ -133,6 +136,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xa {
+                    insn_start(bus, r, img)?;
                     // h0+$a sbcd d2b,d4b (corrected: pcode_fix.bcd)
                     {
                         let (v, x, o) = pcode_rt::bcd::bcd_sub(r.get(0xb, 1), r.get(0x13, 1), r.get(0x43, 1));
@@ -141,6 +145,7 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
                     }
                 }
                 if entered <= 0xc {
+                    insn_start(bus, r, img)?;
                     // h0+$c rts
                     {
                         bus.sync(r);

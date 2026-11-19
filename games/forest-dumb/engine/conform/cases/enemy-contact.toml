@@ -5,10 +5,6 @@
 # and status, and the picture. Goal: score $500 and lives $30 (frame 6852). At irq_count 641 a redraw
 # the late pass cut starts a creature a pass later in the original: the runner hands the cut and the
 # engine starts it then too (T75). Six lives are lost to contact over the whole route.
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 116 (oracle frame 6418), char_x $229 on the engine, $221 in the original, input
-# U L from step 116; the script turns the stick on the step before, and the original's JOY1DAT read
-# falls past the frame's end where the machine's does not (T46's measurement, not repeated here).
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "enemy-contact"
 frames = 1300

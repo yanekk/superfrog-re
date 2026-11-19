@@ -12,11 +12,6 @@
 # A creature the original cuts after the beam has passed its lines is missing from that frame, whole
 # or from its top: the runner measures the cuts' beam positions and the engine draws those frames so
 # (T80, 47 frames here, a run of them from pass 475 with five creatures in view).
-# T48 (2026-11-12), --engine translated, unproven until T49 (DMA contention) lands, carried to T50:
-# first difference pass 93 (oracle frame 6395), creature_slots+$20 $01cb0050 on the engine, $01cc0050 in
-# the original, the same start as enemy-hop's (frame 6393 line 213 against frame 6394 line 141); the
-# machine's edge-redraw scan starts a creature (h0_681c) before the pass at line 233 that cuts the
-# original's scan (docs/10, "A creature start the next pass cuts"), so it runs a pass ahead.
 sync = { script = "boot-to-level1", frame = 6301 }
 input = "mechanic-spring"
 frames = 3619

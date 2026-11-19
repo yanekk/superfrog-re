@@ -1,4 +1,5 @@
-//! Interrupts taken at block starts (translator T23, DESIGN §2.8), on a made-up program: its P-code
+//! Interrupts taken at block starts (translator T23, DESIGN §2.8) and at instruction boundaries
+//! inside a block (T50), on a made-up program: its P-code
 //! written by hand (`fixtures/irq.json`) and translated by `tools/pcode_rust.py` (`fixtures/irq.rs`,
 //! committed, kept current by `tools/test_pcode_rust.py`), so its `rte` is the translator's own.
 //!
@@ -7,6 +8,10 @@
 //! clears VERTB; `h0+$60` (level 2) requests level 3, reads `$100` into d3 a block later, clears
 //! PORTS; `h0+$80` (level 3) requests level 2, reads `$102` into d4 a block later, counts at `$100`,
 //! clears VERTB; `h0+$a0` (level 2) counts at `$102` and clears PORTS.
+//!
+//! Inside one block (T50): `h0+$c0` requests level 3 and reads `$100` into d5 in the same block;
+//! `h0+$d0` is six `addq.l #1,d1` and `rts`, one block; `h0+$e0` (level 3) keeps d1 at `$104` and
+//! clears VERTB.
 
 use pcode_machine::{Config, Machine, irq};
 use pcode_rt::{Bus, Image, PC, Regs, SR, Stop, cycles as cy, ops};
@@ -283,4 +288,41 @@ fn snapshot_intenar_and_intreqr_are_the_starting_state() {
         1,
         "the snapshot's pending VERTB is taken"
     );
+}
+
+#[test]
+fn a_request_the_cpu_makes_inside_a_block_is_taken_before_the_next_instruction() {
+    // Taken at the block's end, the read before it would see 0 and the rts return first.
+    let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0x40);
+    let mut r = regs();
+    call(&mut m, &mut r, prog::h0_c0).unwrap();
+    assert_eq!(
+        r.d(5) & 0xFFFF,
+        1,
+        "the handler ran between the INTREQ write and the read"
+    );
+    assert_eq!(m.intreq(), 0);
+    assert_eq!((r.a(7), ops::sr_get(&r) & 0xFF00), (STACK, 0x2000));
+}
+
+#[test]
+fn a_request_a_device_raises_inside_a_block_is_taken_at_the_next_instruction_boundary() {
+    // Each addq.l is 8 cycles: raised at 20, it is due inside the block, after its start.
+    let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0xE0);
+    let mut r = regs();
+    m.raise(VERTB, 20);
+    call(&mut m, &mut r, prog::h0_d0).unwrap();
+    let kept = m.rl(0x104);
+    assert!(
+        (1..6).contains(&kept),
+        "taken inside the block, not at its start or end: d1 was {kept}"
+    );
+    assert_eq!(r.d(1), 6, "the block ran on after the handler");
+    assert_eq!(m.intreq(), 0);
+
+    // Never raised: the block runs through with no handler.
+    let mut m = machine(irq::INTEN | 1 << VERTB, 0, 0xE0);
+    let mut r = regs();
+    call(&mut m, &mut r, prog::h0_d0).unwrap();
+    assert_eq!((m.rl(0x104), r.d(1)), (0, 6));
 }
