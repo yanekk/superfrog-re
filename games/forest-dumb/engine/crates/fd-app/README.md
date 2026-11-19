@@ -2,7 +2,9 @@
 
 The macOS app the owner plays (plan `forest-dumb-level-1`, DESIGN §2.7; translator DESIGN §2.10): it
 reads the two zips and runs the translated program (`fd-translated`) from power-on, the disk 2 prompt,
-title and menus included, level 1's hand engine mounted through the seam, silent; `--engine hand`
+title and menus included, level 1's hand engine mounted through the seam, with its sound (`src/audio.rs`: each frame's Paula
+writes through `amiga-paula` to the audio device, whose clock paces the game; a scripted run plays
+nothing aloud and captures it; level 1 is silent until T57); `--engine hand`
 instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Either is stepped once a
 313-line PAL frame on the wall clock. Built with no generated translation it prints `NOT_GENERATED`
 (run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level… and the bug recorder.
@@ -93,10 +95,11 @@ stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program f
 stable within one build only); `hash_line(n: u64, g: &Game) -> String`. For the translated program (its `hashes.txt` is
 `memory_hash` of chip then slow RAM): `NOT_GENERATED`, `CANVAS` and `canvas(&Picture)` (the fixed window
 every screen is shown through), `memory_hash`, `memory_hash_line`, `to_level_1_input(n)`,
-`TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`.
+`TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
+`frame_out(&FrameOut, &mut out)`; `audio::SILENT_RATE` (48 000, a scripted run's and the capture's rate).
 
 ## Where the details are
 
-- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`; `translated.rs` the translated program on its own thread, one frame a step over channels.
+- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`; `translated.rs` the translated program on its own thread, one frame a step over channels, its sound mixed there; `audio.rs` (library) the mixer, which tests use for the headless samples.
 - `toolkit/crates/amiga-app/src/` (`script_core.rs`, `keys.rs`, `settings.rs`, `capture.rs`).
 - `plans/forest-dumb-level-1/DESIGN.md` §2.7, §2.8, §5.2; `games/forest-dumb/CLAUDE.md` "Playing it"; `games/forest-dumb/docs/BUG-FIX.md`, `frame-length.md`.

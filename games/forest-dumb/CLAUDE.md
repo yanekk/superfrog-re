@@ -68,7 +68,7 @@ prints what is there; the pictures are in `build/renders/`.
 ## Playing it
 
 `cd games/forest-dumb/engine && cargo run --release -p fd-app` runs the translated program from power-on,
-silent: the disk 2 prompt (fire), the title (fire is Start), the menus, the levels, level 1 on its hand
+with sound (level 1's effects wait on translator T57): the disk 2 prompt (fire), the title (fire is Start), the menus, the levels, level 1 on its hand
 engine through the seam. `-- --level 1` opens on level 1's first frame, reached by running the program
 headless through the title; `-- --engine hand` opens straight in `W1-1` on the hand engine, as before,
 for comparison. The translation is generated on this machine (`python3 -I

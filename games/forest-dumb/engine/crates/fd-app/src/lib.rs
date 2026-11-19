@@ -3,6 +3,8 @@
 //! program (translator T37) the window its frames are shown through, its state hash, and
 //! `--level 1`'s way through the title, so a test drives a headless run the same way.
 
+pub mod audio;
+
 use std::hash::{Hash, Hasher};
 
 use amiga_input::{FrameInput, Joy};
