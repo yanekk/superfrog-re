@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** T58, T59 and T60, each on T56; T59 closes T56's lists and docs.
 
 ## Tasks
 
@@ -71,12 +71,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
-| T56 | mount-routine-timing | T55; blocks T40, T42 | 🔍 | Split at pir's context warning. Kept: translator shape tables, `seam::walk`, 18 rules, `Pass::enter`, `mount_timing.rs` (18 rules equal on 2 000 states). Measured 47 of 50 mounted. Lists, docs, COSTS trim go to T59; walker smoke tests to T60; T58 added (owner) for char routines. |
+| T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | Review clean, no fix commit. `mount_timing.rs` 18 of 18 on 2 000 states; play_keys mutation caught (276 states); a dropped `bus.sync` survives it (contention out, T60 locks). Probed: three cases pass mounted, frame seam 2 000 of 2 000, every dbcc is dbf. 47 of 50 `read-only` beyond those three. |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
 
-**Review queue:** T56
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 

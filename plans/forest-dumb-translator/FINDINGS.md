@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
 | 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). Measured before: 47 of 50 pass mounted; routes (4161, 4969) left for T58, power-on-level-1 fails alone. |
 | 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
 | 2026-11-19 | 📌 | **T57 measured** (again after T55's merge): mounted, level 1's effects are the original's in order in 20 cases (`mount_level_1.rs` `HEARS`): item, stomp, slide, hurt, spring. No time bonus in W1-1. 5 differ, `HEARS_T56`. |
@@ -13,9 +14,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 🐞 | **T54 review, open:** `IPL_DELAY` (8) also delays chip-raised requests (`Machine::settle`); vAmiga's `serviceIrqEvent` calls `setINTREQ` directly, skipping the register's DMA cycle, so 6. Routes pass; unmeasured, left alone. |
 | 2026-11-19 | 📌 | **T54 review:** DESIGN §2.8 says a pending interrupt is taken at the next instruction boundary; since T54 the CPU sees it `IPL_DELAY` later, at an instruction's last access (vAmiga's IPL pipe). DESIGN left alone. |
 | 2026-11-19 | 📌 | **T54:** both W1-1 routes pass translated to the level's end; every other case passes but power-on-level-1, as at T51; gate 89 of 100, `MACHINE_PINNED` unchanged. For T36: a route difference with level 1 mounted is the seam's. |
-| 2026-11-19 | 🔄 | **T56 added** (owner, T55; blocks T40, T42): times `camera_update`, `h0_2fae`, `h0_2dd6`, creature restore and cut, `h0_62b6`, `char_sprite_copy`, `char_update` from their state, checked on routine judge states; carries the 11 cases still differing mounted. |
 | 2026-11-19 | 📌 | **T55 costs** (`examples/game_frame_costs.rs`, contention out): `char_update` 15 968 typical, 4 374 to 17 160; `h0_94ba` 72, fading 13 550; `h0_2c7e` 608 + 306 a blit; `h0_2d4c` 716 + 840. The rest in `frame.rs` `COSTS`. |
-| 2026-11-19 | 📌 | **T55:** 39 of 50 pass mounted. The rule's time misses: camera-bottom-right, enemy-kind4, mechanic-spring (pass 474), contact-route, enemy-contact (116), pictures of death-spikes (1343, was passing), death-water, mechanic-vanish, both routes. power-on-level-1 fails alone too. |
 | 2026-11-19 | 📌 | **T39, open:** a stop during `--level 1`'s headless run through the title (`Translated::to_level_1`) still ends the app with exit 1 and no zip; only a stop after the window opens freezes and saves one. |
 | 2026-11-19 | 📌 | **T38:** a fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch buildscripts/fd_translated.rs`: the build had cached the stub and ignored the new tree. |
 | 2026-11-19 | 🐞 | **T37 review:** Game ▸ Start Level… on the translated program skipped about a second of level 1: the pacer was reset before the headless run to level 1. Reproduced in release, fixed; `start_level_restarts_…` locks it, in release only. |
