@@ -17,6 +17,7 @@ use pcode_rt::{Bus, Image, PC, Regs, Stop, ops};
 use blitter::Blitter;
 use journal::{Journal, Watch};
 
+pub(crate) mod audio;
 pub mod beam;
 pub mod blitter;
 pub mod cia;
@@ -187,6 +188,8 @@ pub struct Machine {
     synced: (usize, u64, u64, (u64, bool)),
     /// The sprite channels' DMA as the bus has run it (`dma::Sprites`).
     sprites: dma::Sprites,
+    /// The audio channels' DMA slots (`audio`, T52).
+    audio: audio::Audio,
     /// The last word on the data bus (vAmiga `Memory::dataBus`).
     bus: u16,
     fault: Option<Stop>,
@@ -232,6 +235,7 @@ pub struct Machine {
 
 impl Machine {
     fn empty(cfg: Config) -> Machine {
+        let lines = cfg.frame_lines;
         Machine {
             chip: vec![0; cfg.chip as usize],
             slow: vec![0; cfg.slow as usize],
@@ -250,6 +254,7 @@ impl Machine {
             cpu_mark: None,
             synced: (0, 0, 0, (0, false)),
             sprites: dma::Sprites::default(),
+            audio: audio::Audio::new(lines),
             bus: 0,
             fault: None,
             os: os::Os::new(),
@@ -565,6 +570,7 @@ impl Machine {
         let cpu_writes = std::mem::take(&mut self.cpu_log);
         let cpu_leftover = std::mem::take(&mut self.cpu_leftover);
         let watched = std::mem::take(&mut self.watched);
+        self.audio.end_frame();
         self.start_frame(end as i64, end as i64);
         Frame {
             picture,
@@ -579,7 +585,7 @@ impl Machine {
     /// gathered from `clx_from`.
     fn draw(&self, upto: u16) -> Result<video::Drawn, &'static str> {
         let c = self.copper.as_ref().expect("started");
-        let history = self.journal.history();
+        let history = self.journal.history_with(&self.blit_unwritten());
         video::draw(&video::FrameIn {
             chip: &self.chip,
             history: &history,
@@ -617,6 +623,7 @@ impl Machine {
     /// no record of them), so their collisions are not gathered.
     fn ensure_frame(&mut self) {
         if self.copper.is_none() {
+            self.audio.start(self.dmacon);
             let into = self.phase.wrapping_add(self.now) % beam::frame_cycles(self.cfg.frame_lines);
             self.start_frame(self.now as i64 - into as i64, self.now as i64);
             self.clx_from = (into / amiga_clock::LINE_CYCLES as u64) as u16;
@@ -775,6 +782,7 @@ impl Machine {
             frame_lines: lines,
             copper: self.copper.as_ref().map(|c| (c, c.frame_start)),
             sprites: &mut self.sprites,
+            audio: &mut self.audio,
             chip: &self.chip,
             custom: &self.custom,
         };
@@ -783,6 +791,7 @@ impl Machine {
 
     /// A blit whose BLTDONE the bus has run: its interrupt a slot later, and the blitter free.
     fn blit_settle(&mut self) {
+        self.blit_journal(None);
         if let Some(done) = self.blitter.run.as_ref().and_then(|b| b.done_at) {
             self.blitter.run = None;
             self.raise(blitter::INT_BLIT.trailing_zeros() as u16, done + 2);
@@ -957,6 +966,9 @@ impl Machine {
             return;
         }
         self.paula.note(reg, v, self.now, self.beam(self.now));
+        if paula::is_paula(reg) {
+            self.audio.write(reg, v, self.beam(self.now));
+        }
         if self.leftover && cpu && paula::is_paula(reg) {
             self.paula.mark_last();
         }

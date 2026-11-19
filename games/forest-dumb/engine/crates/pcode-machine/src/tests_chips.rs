@@ -705,3 +705,46 @@ fn sprite_against_sprite_counts_from_the_fetch_start_and_past_the_window() {
         assert_eq!(get(&mut m, collide::CLXDAT), want, "pos {pos:#06x} DDFSTRT {ddf:#x}");
     }
 }
+
+/// A blit's D words reach the view of chip RAM the picture is drawn from one by one, each at the
+/// slot the bus writes it in (T52), so a blit racing the beam is drawn part done, as on the
+/// original. An A-to-D copy writes a word every second slot once its pipeline is full; chip RAM
+/// itself holds the whole result from the BLTSIZE write.
+#[test]
+fn a_blits_words_are_seen_from_the_slot_the_bus_writes_each() {
+    use blitter::*;
+    const SRC: u32 = 0x1000;
+    const DST: u32 = 0x2000;
+    let words: Vec<u16> = (1..=8).collect();
+    let mut m = machine(DMAEN | BLTEN, 0, &[(SRC, &words)]);
+    at(&mut m, 1000).unwrap();
+    put(&mut m, BLTCON0, 0x09F0);
+    put(&mut m, BLTCON1, 0);
+    put(&mut m, BLTAFWM, 0xFFFF);
+    put(&mut m, BLTALWM, 0xFFFF);
+    put(&mut m, BLTAMOD, 0);
+    put(&mut m, BLTDMOD, 0);
+    put_ptr(&mut m, BLTAPT, SRC);
+    put_ptr(&mut m, BLTDPT, DST);
+    put(&mut m, BLTSIZE, 1 << 6 | 8);
+    assert_eq!(get(&mut m, 0x02) & 0x4000, 0x4000, "busy");
+    let whole: Vec<u16> = (0..8).map(|k| m.rw(DST + 2 * k)).collect();
+    assert_eq!(whole, words, "chip RAM holds the result at once");
+    at(&mut m, 2000).unwrap();
+    assert_eq!(get(&mut m, 0x02) & 0x4000, 0, "done");
+    let h = m.journal.history();
+    let seen = |k: u32, t: i64| h.word(&m.chip, DST + 2 * k, t);
+    let lands: Vec<i64> = (0..8)
+        .map(|k| {
+            let t = (1000..2000).find(|&t| seen(k, t) != 0).expect("written");
+            assert_eq!(seen(k, t), k as u16 + 1);
+            assert_eq!(seen(k, t - 1), 0, "word {k} before its slot");
+            t
+        })
+        .collect();
+    // The write at 1000, the start-up's two slots, A0, then D0 a slot after A1.
+    assert_eq!(lands[0], 1014, "{lands:?}");
+    for w in lands.windows(2) {
+        assert_eq!(w[1] - w[0], 4, "a word every second slot: {lands:?}");
+    }
+}

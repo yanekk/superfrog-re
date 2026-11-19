@@ -31,6 +31,18 @@ type Body = &'static [(u32, u32, u32)];
 const MOVES: Body = &[(12, 0, 0); 8];
 /// Four `lsl.l #8,d4` (24, one bus cycle) and a `move.w (a1),(a2)`.
 const SHIFTS: Body = &[(24, 20, 0), (24, 20, 0), (24, 20, 0), (24, 20, 0), (12, 0, 0)];
+/// `lsl.l #8,d4` and `move.w (a1),(a2)` in turn, 30 times: 61 instructions with the `dbf`.
+const LONG: Body = &[
+    (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0),
+    (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0),
+    (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0),
+    (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0),
+    (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0),
+    (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0),
+    (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0),
+    (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0),
+    (24, 20, 0), (12, 0, 0), (24, 20, 0), (12, 0, 0),
+];
 
 struct Case {
     planes: u16,
@@ -39,6 +51,12 @@ struct Case {
     body: Body,
     /// All eight sprite channels fetching over the loop.
     sprites: bool,
+    /// Audio channel 0 playing (period 124) from the frame's start (T52).
+    audio: bool,
+    /// The loop's iterations.
+    count: u16,
+    /// How many slots the machine may be off the oracle's reading.
+    within: u64,
     /// The oracle's reading: VHPOSR's (line, h) before the loop, and slots to the read after.
     start: (u16, u16),
     slots: u64,
@@ -90,12 +108,24 @@ fn run(c: &Case) -> ((u16, u16), u64) {
         Some(_) => (c.start.0, c.start.1 - 6),
         None => c.start,
     };
-    // Sprite DMA learns its pointers on line 25: the machine starts above it and runs to `at`.
-    let from = if c.sprites { (20, 0) } else { at };
+    // Sprite DMA learns its pointers on line 25, and the oracle's audio channel started near the
+    // frame's start: the machine starts above and runs to `at`.
+    let from = if c.sprites || c.audio { (20, 0) } else { at };
     let mut m = machine(c.planes, dma, from);
     let mut r = Regs::new();
-    if c.sprites {
-        r.tick(((at.0 - from.0) as u64 * 454 + 2 * at.1 as u64) as u32);
+    if c.audio {
+        // The frame starts at the first poll; then AUD0LC, AUD0LEN 64, AUD0PER 124, AUD0VOL 0
+        // and DMACON's AUD0EN.
+        m.poll(&mut r, &img()).unwrap();
+        for (reg, v) in [(0xA0, 5), (0xA2, 0), (0xA4, 64), (0xA6, 124), (0xA8, 0), (0x96, 0x8001)] {
+            m.ww(0xDF_F000 + reg, v);
+        }
+    }
+    if c.sprites || c.audio {
+        // Idle: the lead-in's own bus waits would move the start.
+        let lead = ((at.0 - from.0) as u64 * 454 + 2 * at.1 as u64) as u32;
+        r.tick(lead);
+        r.off_bus(lead);
     }
     m.poll(&mut r, &img()).unwrap();
     if let Some((con0, size, pri)) = c.blit {
@@ -113,9 +143,9 @@ fn run(c: &Case) -> ((u16, u16), u64) {
     let first = m.beam(t0);
     // The read's prefetch, `move.w #n,d0`, two `lea abs.l`.
     block(&mut m, &mut r, &[(4, 0, 0), (8, 0, 0), (12, 0, 0), (12, 0, 0)]);
-    for k in 0..200 {
+    for k in 0..c.count {
         // `dbf`: 10 taken, the last falling through 14; 2 off the bus either way, before its reads.
-        let dbf = if k == 199 { (14, 2, 2) } else { (10, 2, 2) };
+        let dbf = if k == c.count - 1 { (14, 2, 2) } else { (10, 2, 2) };
         let insns: Vec<(u32, u32, u32)> = c.body.iter().copied().chain([dbf]).collect();
         block(&mut m, &mut r, &insns);
     }
@@ -130,6 +160,9 @@ fn case(planes: u16, body: Body, start: (u16, u16), slots: u64) -> Case {
         blit: None,
         body,
         sprites: false,
+        audio: false,
+        count: 200,
+        within: 6,
         start,
         slots,
     }
@@ -142,6 +175,9 @@ fn readings() -> Vec<(&'static str, Case)> {
         blit: Some((con0, 64 << 6 | 20, pri)),
         body: MOVES,
         sprites: false,
+        audio: false,
+        count: 200,
+        within: 6,
         start,
         slots,
     };
@@ -162,10 +198,22 @@ fn readings() -> Vec<(&'static str, Case)> {
         ("blit AD", blit(0, 0x09F0, false, (0x50, 155), 12611)),
         ("blit D", blit(0, 0x0100, false, (0x50, 151), 10754)),
         ("blit ABCD, 5 planes", blit(5, 0x0FCA, false, (0x50, 165), 21322)),
+        // T52: a block longer than 48 instructions, each placed on the bus in turn (with a trail
+        // of 48 the rest was one lump: 12 022). Within 14: 600 `lsl.l #8` run 13 slots over, the
+        // shifts' small excess the 0-plane reading shows too (FINDINGS, 2026-11-18).
+        (
+            "long block, 5 planes",
+            Case { count: 20, within: 14, ..case(5, LONG, (0x50, 17), 11898) },
+        ),
+        // T52: the audio channel's slots, which a BLTPRI blit loses (15 slots more than without).
+        (
+            "blit ABCD BLTPRI, audio",
+            Case { audio: true, ..blit(0, 0x0FCA, true, (0x50, 157), 10686) },
+        ),
     ]
 }
 
-/// Every reading within 6 slots of the oracle's (of 10 000 to 21 000): the block's accesses are
+/// Every reading within 6 slots of the oracle's (of 10 000 to 21 000; the long block 14): the block's accesses are
 /// timed per instruction, an instruction idling before its accesses (`dbf`) as it does, and the
 /// blit's start is placed at the write from the plain case's read.
 #[test]
@@ -173,7 +221,7 @@ fn a_cpu_loop_takes_on_the_machine_what_it_took_on_the_oracle() {
     for (name, c) in readings() {
         let (first, slots) = run(&c);
         assert!(
-            slots.abs_diff(c.slots) <= 6,
+            slots.abs_diff(c.slots) <= c.within,
             "{name}: machine {slots} slots from {first:?}, oracle {} from {:?}",
             c.slots,
             c.start
@@ -189,6 +237,11 @@ fn with_bltpri_the_cpu_waits_for_the_blits_end() {
     let (first, _) = run(&c);
     assert_eq!(first.0, 103);
     assert!(first.1.abs_diff(148) <= 6, "{first:?}");
+    // With audio channel 0 playing the blit ends 21 slots later, at slot 169 (T52).
+    let (_, c) = readings().into_iter().find(|(n, _)| *n == "blit ABCD BLTPRI, audio").unwrap();
+    let (first, _) = run(&c);
+    let at = first.0 as u64 * 227 + first.1 as u64;
+    assert!(at.abs_diff(103 * 227 + 169) <= 6, "{first:?}");
 }
 
 /// The copper's fetches take their slots: the oracle's loop beside a list writing four colours on
@@ -263,3 +316,4 @@ fn leading_idle_cycles_come_before_the_access() {
     // Access first: it takes the free slot, the idle cycles overlap the fetch.
     assert_eq!(end(0), 4 + 2);
 }
+

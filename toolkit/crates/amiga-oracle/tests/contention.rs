@@ -34,6 +34,7 @@ const BPLEN: u16 = 0x0100;
 const COPEN: u16 = 0x0080;
 const BLTEN: u16 = 0x0040;
 const SPREN: u16 = 0x0020;
+const AUD0EN: u16 = 0x0001;
 
 /// One measurement's set-up.
 #[derive(Clone, Copy)]
@@ -46,6 +47,11 @@ pub struct Case {
     pub blit: Option<(u16, u16, bool)>,
     /// All eight sprite channels fetching on every line the loop runs (`sprite`).
     pub sprites: bool,
+    /// Audio channel 0 playing (period 124, about a word a line) from the handler's start.
+    pub audio: bool,
+    /// The loop's time hangs on where against the fetch it starts: frames whose wait for line
+    /// `$50` ends on another slot are not held to frame 1's reading.
+    pub phase_bound: bool,
     /// The loop's body (before its `dbf`), and its count.
     pub body: &'static [u16],
     pub count: u16,
@@ -56,6 +62,16 @@ pub const MOVES: &[u16] = &[0x3491; 8];
 /// `lsl.l #8,d4` four times then one `move.w (a1),(a2)`: 24 cycles each, one read and 20
 /// cycles off the bus.
 pub const SHIFTS: &[u16] = &[0xE18C, 0xE18C, 0xE18C, 0xE18C, 0x3491];
+/// `lsl.l #8,d4` and `move.w (a1),(a2)` in turn, 30 times: a block of 61 instructions with its
+/// `dbf`, longer than a machine that times a block's instructions one by one may keep apart.
+pub const LONG: &[u16] = &[
+    0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C,
+    0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491,
+    0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C,
+    0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491,
+    0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491, 0xE18C,
+    0x3491, 0xE18C, 0x3491, 0xE18C, 0x3491,
+];
 
 fn words(ws: &[u16]) -> Vec<u8> {
     ws.iter().flat_map(|w| w.to_be_bytes()).collect()
@@ -72,13 +88,18 @@ fn lo(a: u32) -> u16 {
 /// The handler: set the display and DMA up, wait for line `$50`, maybe start the blit, read VHPOSR,
 /// run the loop, read VPOSR and VHPOSR, keep them, count the frame, return.
 fn handler(c: &Case) -> Vec<u8> {
-    let dma = SET | DMAEN | COPEN | if c.planes > 0 { BPLEN } else { 0 } | BLTEN | if c.sprites { SPREN } else { 0 };
+    let dma = SET | DMAEN | COPEN | if c.planes > 0 { BPLEN } else { 0 } | BLTEN | if c.sprites { SPREN } else { 0 }
+        | if c.audio { AUD0EN } else { 0 };
     let mut h = vec![
         0x48e7, 0xfffe, //                       movem.l d0-d7/a0-a6,-(sp)
         0x41f9, 0x00df, 0xf000, //               lea $dff000,a0
         0x317c, 0x7fff, 0x009a, //               move.w #$7fff,$9a(a0)   INTENA: all off
         0x317c, 0xc020, 0x009a, //               move.w #$c020,$9a(a0)   INTEN VERTB
         0x317c, 0x7fff, 0x0096, //               move.w #$7fff,$96(a0)   DMACON: all off
+        0x217c, hi(DATA), lo(DATA), 0x00a0, //   move.l #DATA,$a0(a0)    AUD0LC
+        0x317c, 0x0040, 0x00a4, //               move.w #64,$a4(a0)      AUD0LEN
+        0x317c, 0x007c, 0x00a6, //               move.w #124,$a6(a0)     AUD0PER
+        0x317c, 0x0000, 0x00a8, //               move.w #0,$a8(a0)       AUD0VOL
         0x217c, hi(COPPER), lo(COPPER), 0x0080, // move.l #COPPER,$80(a0) COP1LC
         0x3140, 0x0088, //                       move.w d0,$88(a0)       COPJMP1
         0x317c, dma, 0x0096, //                  move.w #dma,$96(a0)
@@ -205,7 +226,8 @@ pub fn measure(c: &Case) -> ((u16, u16), u32) {
     // against the fetch by as much: frame 1's reading is the one kept, the others within 2 slots.
     let (start, slots, _) = seen[1];
     for s in &seen[2..] {
-        assert!(s.1.abs_diff(slots) <= 2, "frames disagree: {seen:?}");
+        let held = !c.phase_bound || s.0 == start;
+        assert!(!held || s.1.abs_diff(slots) <= 2, "frames disagree: {seen:?}");
     }
     (start, slots)
 }
@@ -225,6 +247,8 @@ fn case(planes: u16) -> Case {
         busy_copper: false,
         blit: None,
         sprites: false,
+        audio: false,
+        phase_bound: false,
         body: MOVES,
         count: 200,
     }
@@ -288,6 +312,30 @@ fn a_cpu_loop_on_the_beam() {
         ("blit AD 64x20", blit(0, 0x09f0, false), (0x50, 155), 12611),
         ("blit D 64x20", blit(0, 0x0100, false), (0x50, 151), 10754),
         ("blit ABCD 64x20, 5 planes", blit(5, 0x0fca, false), (0x50, 165), 21322),
+        // T52: a block of 61 instructions, its internal cycles spread through it under the
+        // display's fetch; the first frame and the third start at slot 17 and agree, the second
+        // starts at 29 and takes 20 slots more.
+        (
+            "long block, 5 planes",
+            Case {
+                body: LONG,
+                count: 20,
+                phase_bound: true,
+                ..case(5)
+            },
+            (0x50, 17),
+            11898,
+        ),
+        // T52: audio channel 0 takes its slot about once a line, which a BLTPRI blit loses.
+        (
+            "blit ABCD 64x20 BLTPRI, audio",
+            Case {
+                audio: true,
+                ..blit(0, 0x0fca, true)
+            },
+            (103, 169),
+            10686,
+        ),
     ];
     for (name, c, start, slots) in &all {
         assert_eq!(measure(c), (*start, *slots), "{name}");

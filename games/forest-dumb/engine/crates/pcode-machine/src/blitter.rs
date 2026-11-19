@@ -2,14 +2,16 @@
 //! RAM at once, from the registers as last written; its time is the bus's (`dma`, T49): the
 //! blitter's micro-program runs slot by slot against the display's fetches and the CPU, DMACONR's
 //! BBUSY clears at the last word's end and INTREQ's BLIT bit is set a slot after the last D write.
-//! The memory effect is whole at the write: a program reading the destination before the busy bit
-//! clears would see it early. It waits on BBUSY first, as the hardware asks.
+//! Chip RAM holds the whole result from the write on: a program reading the destination before
+//! the busy bit clears would see it early (it waits on BBUSY first, as the hardware asks). The
+//! picture and the copper see each D word from the slot the bus writes it in (T52): a blit racing
+//! the beam is drawn part done, as on the original.
 
 use amiga_chips::{Blit, BlitMem, bltsize_words};
 
 use crate::Machine;
 use crate::dma::BlitRun;
-use crate::journal::{Journal, Watch};
+use crate::journal::Watch;
 
 pub const BLTCON0: u16 = 0x040;
 pub const BLTCON1: u16 = 0x042;
@@ -42,15 +44,20 @@ pub struct Blitter {
     pub(crate) run: Option<BlitRun>,
     /// DMACONR's BZERO: every D result of the last blit was zero.
     pub zero: bool,
+    /// The running blit's changed bytes not yet journalled, (chip offset, byte replaced, D word
+    /// number), in word order: each is journalled at the slot its word's D write runs in.
+    pub(crate) pending: Vec<(u32, u8, u32)>,
 }
 
 /// Chip RAM as the blit sees it: pointers are chip offsets (the blit masks them to `$7FFFE`),
-/// mirrored into a smaller chip RAM; every changed byte is journalled at the blit's start.
+/// mirrored into a smaller chip RAM; every changed byte is kept with its D word's number, to be
+/// journalled when the bus writes that word.
 struct View<'a> {
     chip: &'a mut [u8],
-    journal: &'a mut Journal,
+    pending: &'a mut Vec<(u32, u8, u32)>,
     watch: &'a mut Watch,
     at: u64,
+    word: u32,
 }
 
 impl BlitMem for View<'_> {
@@ -64,11 +71,12 @@ impl BlitMem for View<'_> {
         for (k, b) in v.to_be_bytes().into_iter().enumerate() {
             let old = self.chip[i + k];
             if old != b {
-                self.journal.record(self.at, (i + k) as u32, old);
+                self.pending.push(((i + k) as u32, old, self.word));
                 self.watch.written((i + k) as u32, self.at);
                 self.chip[i + k] = b;
             }
         }
+        self.word += 1;
     }
 }
 
@@ -100,13 +108,17 @@ impl Machine {
         };
         let dat = [r(BLTADAT), r(BLTBDAT), r(BLTCDAT)];
         let at = self.now;
+        // A blit cut short by this one: what it had not written yet lands now.
+        self.blit_journal(Some(at));
+        let mut pending = Vec::new();
         let end = blit.run_with(
             dat,
             &mut View {
                 chip: &mut self.chip,
-                journal: &mut self.journal,
+                pending: &mut pending,
                 watch: &mut self.watch,
                 at,
+                word: 0,
             },
         );
         // The pointers carry on from where the blit left them: a following BLTSIZE write alone
@@ -122,7 +134,38 @@ impl Machine {
         self.blitter = Blitter {
             run: Some(BlitRun::new(con0, rows as u16, words as u16, at + 4)),
             zero: end.zero,
+            pending,
         };
+    }
+
+    /// Journal the running blit's changed bytes whose D word the bus has written, at that word's
+    /// slot; with `rest` also the others, at `rest`.
+    pub(crate) fn blit_journal(&mut self, rest: Option<u64>) {
+        let b = &mut self.blitter;
+        let written = b.run.as_ref().map_or(&[][..], |r| &r.d_at[..]);
+        let mut n = 0;
+        for &(off, old, word) in &b.pending {
+            let at = match written.get(word as usize) {
+                Some(&at) => at,
+                None => match rest {
+                    Some(at) => at,
+                    None => break,
+                },
+            };
+            self.journal.record(at, off, old);
+            n += 1;
+        }
+        b.pending.drain(..n);
+    }
+
+    /// The running blit's bytes not yet written by the bus, as journal entries for a view of the
+    /// frame: not written within it.
+    pub(crate) fn blit_unwritten(&self) -> Vec<(u64, u32, u8)> {
+        self.blitter
+            .pending
+            .iter()
+            .map(|&(off, old, _)| (u64::MAX, off, old))
+            .collect()
     }
 
     /// DMACONR's BBUSY at the access time.

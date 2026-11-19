@@ -24,13 +24,21 @@ impl Journal {
 
     /// The journal indexed by address, for reads as of a cycle.
     pub fn history(&self) -> History {
+        self.history_with(&[])
+    }
+
+    /// [`Journal::history`] with `extra` entries as if journalled too (a running blit's words the
+    /// bus has not written yet, at `u64::MAX`).
+    pub fn history_with(&self, extra: &[(u64, u32, u8)]) -> History {
         let mut by_addr: Vec<(u32, u64, u8)> = self
             .log
             .iter()
+            .chain(extra)
             .map(|&(at, off, old)| (off, at, old))
             .collect();
-        // Stable: one address's writes stay in the order made, which is cycle order.
-        by_addr.sort_by_key(|e| e.0);
+        // One address's writes by cycle: a blit's word is journalled when the bus writes it,
+        // which can be after a later-made CPU write was journalled.
+        by_addr.sort_by_key(|e| (e.0, e.1));
         History { by_addr }
     }
 }
