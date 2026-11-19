@@ -71,10 +71,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
-| T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | |
+| T56 | mount-routine-timing | T55; blocks T40, T42 | 🔍 | Split at pir's context warning. Kept: translator shape tables, `seam::walk`, 18 rules, `Pass::enter`, `mount_timing.rs` (18 rules equal on 2 000 states). Measured 47 of 50 mounted. Lists, docs, COSTS trim go to T59; walker smoke tests to T60; T58 added (owner) for char routines. |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
+| T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
+| T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T56
 
 ## Blocked on the user
 

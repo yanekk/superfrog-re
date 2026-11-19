@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). Measured before: 47 of 50 pass mounted; routes (4161, 4969) left for T58, power-on-level-1 fails alone. |
 | 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
 | 2026-11-19 | 📌 | **T57 measured** (again after T55's merge): mounted, level 1's effects are the original's in order in 20 cases (`mount_level_1.rs` `HEARS`): item, stomp, slide, hurt, spring. No time bonus in W1-1. 5 differ, `HEARS_T56`. |
 | 2026-11-19 | 🐞 | **T57:** the premise was wrong: T36's mount already made every effect, T38's app script took none. The item sample opens with 106 zero bytes: heard the step after with the instant mount, at its step since T55. |

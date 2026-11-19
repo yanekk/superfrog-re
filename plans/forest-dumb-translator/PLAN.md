@@ -114,6 +114,8 @@ At the end translated routines are judged on the machine with real hardware effe
 | [T55](tasks/T55-mount-timing.md) | mount-timing | T36; blocks T40, T42 |
 | [T56](tasks/T56-mount-routine-timing.md) | mount-routine-timing | T55; blocks T40, T42 |
 | [T58](tasks/T58-mount-character-timing.md) | mount-character-timing | T56; blocks T40, T42 |
+| [T59](tasks/T59-mount-walk-close.md) | mount-walk-close | T56; blocks T40, T42 |
+| [T60](tasks/T60-walk-unit-tests.md) | walk-unit-tests | T56; blocks T40, T42 |
 
 T30 to T33 may outgrow a session, as level 1's frame-matching tasks did; a worker that finds more failure kinds than fit asks to add a task (CLAUDE.md, adding a task mid-run).
 
