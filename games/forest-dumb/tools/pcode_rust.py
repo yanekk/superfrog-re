@@ -532,6 +532,8 @@ class Emit:
         ticks = pcode_fix.cycles(ins)
         branch = pcode_fix.branch_cycles(ins)
         self.taken_tick, untaken = branch if branch else (None, None)
+        # What shape_row needs of it (the instruction's time apart from its lines, translator T56).
+        self.shaped = {'ins': ins, 'ticks': ticks, 'branch': branch, 'mem': False}
         tail = [untaken] if untaken else []
         whole, family = pcode_fix.emit(ins)
         if whole is not None:
@@ -547,6 +549,7 @@ class Emit:
                 return [head, stop], True
             uniques = sorted({v[1] for l in whole if isinstance(l, dict)
                               for v in (l.get('in', []) + [l.get('out')]) if v and v[0] == 'unique'})
+            self.shaped['mem'] = bool(sync(body))
             ticks = ticks + sync(body)
             return ([head + f' (corrected: pcode_fix.{family})', '{']
                     + [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
@@ -560,6 +563,7 @@ class Emit:
             return [head, stop], True
         uniques = sorted({v[1] for op in ins['ops'] for v in (op.get('in', []) + [op.get('out')])
                           if v and v[0] == 'unique'})
+        self.shaped['mem'] = bool(sync([l for b in bodies for l in b]))
         lines = [head, '{'] + ['    ' + l for l in ticks + sync([l for b in bodies for l in b])]
         lines += [f'    let mut u_{u:x}: u64 = 0;' for u in uniques]
         if any(is_relative(op) for op in ins['ops']):
@@ -592,6 +596,7 @@ class Emit:
                  '        block_start(bus, r, img)?;',
                  '        match pc {']
         unsupported = 0
+        shapes = []
         for l in sorted(blocks):
             run = blocks[l]
             # Every instruction of the block is an arm's address, so a run resumed at any of them
@@ -600,8 +605,10 @@ class Emit:
             if len(run) > 1:
                 lines.append('                let entered = pc.1;')
             for i, a in enumerate(run):
+                self.shaped = None
                 body, stop = self.instruction(a, self.insns[a])
                 unsupported += stop
+                shapes.append(shape_row(a, self.insns[a], self.shaped, i == 0, stop))
                 if len(run) == 1:
                     lines += ['                ' + x for x in body]
                 else:
@@ -618,8 +625,79 @@ class Emit:
         # counted until that one returns.
         lines += ['            k => {', '                let res = enter(k, r, bus, img);',
                   '                r.depth -= 1;', '                return res;', '            }',
-                  '        }', '    }', '}']
+                  '        }', '    }', '}', '']
+        # Its instructions' time apart from their lines, by offset (pcode_rt::shape, translator T56).
+        lines += ['#[allow(non_upper_case_globals)]', f'pub static SHAPES_{name}: &[pcode_rt::shape::Shape] = &[']
+        lines += ['    ' + row for _, row in sorted(shapes)] + ['];']
         return lines, unsupported
+
+
+ABS_L = re.compile(r'\(0x([0-9a-f]{8})\)\.l$')
+# The Amiga's custom chip registers, $dff000 to $dff1fe: hardware, not the game's.
+CHIPS = 0xdff << 12
+# Mnemonics that only read their destination operand.
+READS_DST = {'btst', 'cmp', 'cmpi', 'cmpa', 'cmpm', 'tst'}
+
+
+def shape_row(a, raw_ins, shaped, first, stop):
+    """One `pcode_rt::shape::Shape` (translator T56): the instruction's tick lines, whether it syncs,
+    how control leaves it and the custom register it names, as one Rust struct literal. The tick
+    lines are the generated instruction's own, so a walk spends exactly its time. Sorts by offset."""
+    # The flow, operands and bytes are the export's: a correction (pcode_fix) keeps only what its
+    # lines need.
+    ins = raw_ins
+    ticks, branch, mem = shaped['ticks'], shaped['branch'], shaped['mem']
+    uncounted = stop or any(t.startswith('return') for t in ticks)
+    tick_lines = [] if uncounted else ticks
+    if branch:
+        tick_lines = [branch[1]]
+    tick = '|r: &mut Regs| { ' + ' '.join(tick_lines) + ' }' if tick_lines else '|_: &mut Regs| {}'
+    # How control leaves it, from its P-code as `succ` reads it: a non-relative CBRANCH, BRANCH or
+    # CALL names its target; CALLIND and BRANCHIND are computed.
+    m = pcode_fix.base_mnemonic(ins)
+    raw = ins.get('bytes') or '0000'
+    # The corrected P-code (a `bra.w` Ghidra marks a call is a branch, pcode_fix).
+    ops = shaped['ins']['ops']
+    names = {op['op'] for op in ops if not is_relative(op)}
+    def target(kind):
+        # The last: `dbcc`'s first CBRANCH leaves to the next instruction when its condition holds.
+        found = None
+        for op in ops:
+            if op['op'] == kind and not is_relative(op):
+                found = ram_target(op) or found
+        return found
+    if 'RETURN' in names:
+        f = 'pcode_rt::shape::Flow::Ret'
+    elif 'CALL' in names and target('CALL') and target('CALL')[0] == a[0]:
+        f = f'pcode_rt::shape::Flow::Call {{ to: {hex_lit(target("CALL")[1])} }}'
+    elif 'CALL' in names or 'CALLIND' in names:
+        f = 'pcode_rt::shape::Flow::CallInd'
+    elif 'CBRANCH' in names and target('CBRANCH') and m.startswith('db'):
+        f = f'pcode_rt::shape::Flow::Dbcc {{ to: {hex_lit(target("CBRANCH")[1])}, reg: {int(raw[:4], 16) & 7} }}'
+    elif 'CBRANCH' in names and target('CBRANCH') and branch:
+        f = (f'pcode_rt::shape::Flow::Bcc {{ taken: |r: &mut Regs| {{ {branch[0]} }}, '
+             f'to: {hex_lit(target("CBRANCH")[1])} }}')
+    elif 'BRANCH' in names and target('BRANCH'):
+        f = f'pcode_rt::shape::Flow::Jump {{ to: {hex_lit(target("BRANCH")[1])} }}'
+    elif 'BRANCHIND' in names or 'BRANCH' in names:
+        f = 'pcode_rt::shape::Flow::JumpInd'
+    else:
+        f = 'pcode_rt::shape::Flow::Next'
+    custom = 'None'
+    text = ins.get('operands') or []
+    for i, o in enumerate(text):
+        c = ABS_L.match(str(o))
+        if c and int(c.group(1), 16) & ~0x1ff == CHIPS:
+            write = i == len(text) - 1 and m not in READS_DST and not (len(text) > 1 and i == 0)
+            sfx = ins['mnem'].split(' ')[0].split('.')
+            size = {'b': 1, 'w': 2, 'l': 4}.get(sfx[1] if len(sfx) > 1 else '', 1 if m == 'btst' else 2)
+            custom = f'Some((0x{int(c.group(1), 16) & 0x1ff:x}, {size}, {str(write).lower()}))'
+    # A tick reading a register or the flags at run time (`tick_rt`), but dbcc's, whose counter the
+    # walk is handed as such.
+    dynamic = not m.startswith('db') and any('r.d(' in t or 'cc_holds' in t for t in tick_lines)
+    return (a[1], f'pcode_rt::shape::Shape {{ h: {a[0]}, at: {hex_lit(a[1])}, len: {ins["len"]}, '
+                  f'first: {str(first).lower()}, mem: {str(mem).lower()}, dynamic: {str(dynamic).lower()}, '
+                  f'uncounted: {str(bool(uncounted)).lower()}, custom: {custom}, tick: {tick}, flow: {f} }},')
 
 
 ALLOW = ('#[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, '
@@ -682,6 +760,12 @@ def head(export, funcs, source_name, path=lambda e: fn_name(e)):
             '        None => Err(Stop::Untranslated(format!("h{}+${:x}", k.0, k.1))),',
             '    }', '}']
     out += resume_table(funcs, path)
+    shapes = lambda e: path(e)[:-len(fn_name(e))] + 'SHAPES_' + fn_name(e)
+    out += ['', '/// The shapes of the instructions of the function entered at `k`, by offset (translator T56).',
+            '#[allow(dead_code)]', 'pub fn shapes(k: (u32, u32)) -> Option<&\'static [pcode_rt::shape::Shape]> {',
+            '    match k {']
+    out += [f'        {key(e)} => Some({shapes(e)}),' for e in sorted(funcs)]
+    out += ['        _ => None,', '    }', '}']
     return out
 
 

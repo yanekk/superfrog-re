@@ -18,7 +18,8 @@ pub const HUNK_SIZES: &[u32] = &[];\n\
 pub type Routine = fn(&mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;\n\
 pub type Resume = fn((u32, u32), &mut Regs, &mut dyn Bus, &Image) -> Result<(), Stop>;\n\
 pub fn entry(_addr: &str) -> Option<Routine> {\n    None\n}\n\
-pub fn resume(_k: (u32, u32)) -> Option<Resume> {\n    None\n}\n";
+pub fn resume(_k: (u32, u32)) -> Option<Resume> {\n    None\n}\n\
+pub fn shapes(_k: (u32, u32)) -> Option<&'static [pcode_rt::shape::Shape]> {\n    None\n}\n";
 
 fn main() {
     let out = Path::new(&env::var("OUT_DIR").unwrap()).join("tree.rs");

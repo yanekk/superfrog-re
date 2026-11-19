@@ -46,9 +46,12 @@ use pcode_rt::cycles::{self as cy, Ea, Op, Size};
 use pcode_rt::{Bus, Image, Regs, Stop, block_start, insn_start, rts};
 
 use super::BusMem;
+use super::rules;
+use super::walk::{Decision, Event, Until, Walk};
 
 /// `game_frame`'s entry.
 pub const GAME_FRAME: (u8, u32) = (0, 0x1fec);
+const GAME_FRAME_AT: (u32, u32) = (GAME_FRAME.0 as u32, GAME_FRAME.1);
 
 /// `world_index` (`h0+$6dfe`, a long): 0 in world 1, where the hand engine plays.
 const WORLD_INDEX: u32 = 0x6dfe;
@@ -131,6 +134,8 @@ pub fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), St
             at: 0,
             r: &mut *r,
             owed: 0,
+            walk: Walk::new(GAME_FRAME_AT, crate::tree::shapes),
+            walked: false,
             stop: None,
         };
         // CLXDAT is read at `char_hit_check`, through `Pass::clxdat`.
@@ -143,6 +148,41 @@ pub fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), St
     }
     store(&mut mem, &before, &g);
     rts(r, mem.bus());
+    Ok(())
+}
+
+/// The routine at hunk 0 `offset` timed alone by its rule (translator T56): the level transplanted
+/// from memory as the frame mount does, the rule's path walked with every custom write writing 0,
+/// and the routine left as its `rts` leaves. What the rules' check holds to the translated routine's
+/// counted cycles (`fd-conform/tests/mount_timing.rs`); it changes no memory.
+pub fn time_alone(offset: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
+    let at = || img.describe(img.h(0, offset));
+    let Some(level) = bus.mount_data().and_then(|d| d.downcast_ref::<Level1>()) else {
+        return Err(Stop::Unsupported {
+            op: "seam: a timing rule run with no level 1 engine".into(),
+            at: at(),
+        });
+    };
+    let mut g = level.base.clone();
+    g.transplant(&NoPicture(&BusMem::new(bus, img)));
+    let Some(path) = g.level(|l| rules::path(offset, l)) else {
+        return Err(Stop::Unsupported {
+            op: "seam: no timing rule".into(),
+            at: at(),
+        });
+    };
+    let mut w = Walk::new((0, offset), crate::tree::shapes);
+    w.decide(path);
+    w.free_writes();
+    w.run(bus, r, img, Until::End)?;
+    let (d, _) = w.left();
+    if d > 0 {
+        return Err(Stop::Unsupported {
+            op: format!("seam: the rule left {d} decisions the walk did not take"),
+            at: at(),
+        });
+    }
+    rts(r, bus);
     Ok(())
 }
 
@@ -168,6 +208,11 @@ struct BusPass<'m, 'a, 'b> {
     r: &'m mut Regs,
     /// Of the routine running, the cycles of its [`COSTS`] not yet ticked.
     owed: u32,
+    /// `game_frame` through the original's instructions (T56): its own, and those of each routine
+    /// with a timing rule ([`rules`]); a routine with none is a lump of its [`COSTS`].
+    walk: Walk,
+    /// The routine running is walked.
+    walked: bool,
     /// What stopped the run inside the pass (a hang, a fault the bus reported): the pass ticks
     /// nothing more and the mount returns it.
     stop: Option<Stop>,
@@ -300,10 +345,6 @@ const COSTS: [Cost; 20] = [
 const FADE_ON: u32 = 13550;
 const FADE_FLAG: u32 = 0x94b4;
 
-/// `bsr.w`, and `game_frame`'s `rts`.
-const BSR: u32 = 18;
-const RTS: u32 = 16;
-
 /// A lump is ticked this many cycles at a time, a block start before each, so the frame's end and
 /// an interrupt are taken within a few accesses of where the translated code takes them.
 const LUMP: u32 = 40;
@@ -378,10 +419,60 @@ impl BusPass<'_, '_, '_> {
         self.spend(n);
     }
 
-    /// The pass's end: the last routine's rest and `game_frame`'s `rts`.
+    /// The pass's end: the last routine's rest and `game_frame`'s own instructions to its `rts`.
     fn finish(&mut self) {
-        self.settle();
-        self.spend(RTS);
+        if !self.walked {
+            self.settle();
+        }
+        if let Some(e) = self.walk_to(Until::End)
+            && e != Event::Done
+        {
+            self.stop = Some(self.walk_stop("the walk ended before game_frame's return"));
+        }
+    }
+
+    /// The walk on to `until`; `None` once the pass has stopped.
+    fn walk_to(&mut self, until: Until) -> Option<Event> {
+        if self.stop.is_some() {
+            return None;
+        }
+        match self.walk.run(self.mem.bus(), self.r, self.img, until) {
+            Ok(e) => Some(e),
+            Err(e) => {
+                self.stop = Some(e);
+                None
+            }
+        }
+    }
+
+    fn walk_stop(&self, why: &str) -> Stop {
+        Stop::Unsupported {
+            op: format!("seam: {why}"),
+            at: self.img.describe(self.img.h(0, self.at)),
+        }
+    }
+
+    /// The custom writes of a walked routine's blit or sound, made by the original's instructions
+    /// as the walk meets them: on to the next write the engine has not made yet, or the routine's
+    /// return.
+    fn walk_writes(&mut self, writes: &[(u32, u32, bool)]) {
+        for &(a, v, long) in writes {
+            self.walk.write(a as u16, v, if long { 4 } else { 2 });
+        }
+        self.walk_to(Until::Write);
+    }
+
+    /// A custom register read by a walked routine's instruction: its value.
+    fn walk_read(&mut self, reg: u16) -> u16 {
+        match self.walk_to(Until::Read(reg)) {
+            Some(Event::Read(_, v)) => v,
+            Some(_) => {
+                self.stop =
+                    Some(self.walk_stop(&format!("the walk made no read of $dff{reg:03x}")));
+                0
+            }
+            None => 0,
+        }
     }
 
     /// `n` of the routine's cycles, before an access the pass makes.
@@ -405,6 +496,9 @@ impl BusPass<'_, '_, '_> {
     /// A blit: the routine's work towards it, the wait on BBUSY (`btst #6, $dff002` then `bne`,
     /// every blit site's), then its registers in order.
     fn blit(&mut self, writes: &[(u32, u32, bool)]) {
+        if self.walked {
+            return self.walk_writes(writes);
+        }
         let per = cost(self.at).map_or(0, |c| c.per_blit);
         let btst = (
             cy::of(Op::Btst, Size::B, Ea::Imm, Ea::AbsL),
@@ -476,6 +570,26 @@ impl BusPass<'_, '_, '_> {
     /// Writes as `(register, word)`; a DMACON write clearing a channel starts the wait, three lines
     /// for channel 1, four for channels 2 and 3 (each routine's `moveq`).
     fn sound_writes(&mut self, hw: &[(u16, u16)]) {
+        if self.walked {
+            let mut writes = Vec::new();
+            let mut i = 0;
+            while i < hw.len() {
+                let (reg, v) = hw[i];
+                let a = 0xdf_f000 + reg as u32;
+                if let Some(&(next, lo)) = hw.get(i + 1)
+                    && next == reg + 2
+                    && matches!(reg & 0xf, 0x0)
+                    && (0xa0..0xe0).contains(&reg)
+                {
+                    writes.push((a, (v as u32) << 16 | lo as u32, true));
+                    i += 2;
+                } else {
+                    writes.push((a, v as u32, false));
+                    i += 1;
+                }
+            }
+            return self.walk_writes(&writes);
+        }
         let mut i = 0;
         while i < hw.len() {
             let (reg, v) = hw[i];
@@ -661,34 +775,47 @@ impl DrawIo for DrawBus<'_, '_, '_, '_> {
 }
 
 impl Pass for BusPass<'_, '_, '_> {
-    fn call(&mut self, offset: u32) {
-        self.settle();
-        // `game_frame`'s own instructions before the `bsr`: past `play_keys`'s test of `paused`
-        // (`tst.w`, `beq.w`), the `nop` and the four moves of `creature_active`'s flags before
-        // `h0_2c7e`; the `nop` before `h0_2d4c`; the two flag moves after the raster copy.
-        let tst = cy::of(Op::Tst, Size::W, Ea::AbsL, Ea::None);
-        let own = match (self.at, offset) {
-            (0x9754, 0x2104) => tst + cy::bcc(false, Size::W),
-            (0x9754, 0x2c7e) => {
-                tst + cy::bcc(true, Size::W)
-                    + 4
-                    + 2 * cy::of(Op::Move, Size::L, Ea::AbsL, Ea::AbsL)
-                    + 2 * cy::of(Op::Move, Size::W, Ea::AbsL, Ea::AbsL)
+    fn enter(&mut self, offset: u32, l: &LevelCtx) {
+        if !self.walked {
+            self.settle();
+        }
+        // `game_frame`'s one branch of its own: `tst.w paused; beq` past `play_keys`.
+        if self.at == 0x9754 {
+            self.walk.decide([Decision::Branch(l.state.paused == 0)]);
+        }
+        // The routine before's rest and `game_frame`'s instructions up to the `bsr`.
+        match self.walk_to(Until::Call(offset)) {
+            Some(Event::Call) => {}
+            Some(_) => {
+                self.stop = Some(
+                    self.walk_stop(&format!("game_frame makes no call of h0+${offset:x} here")),
+                );
             }
-            (0x3698, 0x2d4c) => 4,
-            (0x2d4c, 0x8dfc) => {
-                cy::of(Op::Move, Size::L, Ea::AbsL, Ea::AbsL)
-                    + cy::of(Op::Move, Size::W, Ea::AbsL, Ea::AbsL)
-            }
-            _ => 0,
-        };
-        self.spend(own + BSR);
+            None => {}
+        }
         self.at = offset;
-        self.owed = match cost(offset) {
-            Some(_) if offset == 0x94ba && self.mem.read_at(self.h0(FADE_FLAG)) != 0 => FADE_ON,
-            Some(c) => c.base,
-            None => 0,
-        };
+        match rules::path(offset, l) {
+            Some(d) => {
+                self.walk.decide(d);
+                self.walked = true;
+                self.owed = 0;
+            }
+            None => {
+                if self.stop.is_none()
+                    && let Err(e) = self.walk.skip_call(self.mem.bus(), self.r, self.img)
+                {
+                    self.stop = Some(e);
+                }
+                self.walked = false;
+                self.owed = match cost(offset) {
+                    Some(_) if offset == 0x94ba && self.mem.read_at(self.h0(FADE_FLAG)) != 0 => {
+                        FADE_ON
+                    }
+                    Some(c) => c.base,
+                    None => 0,
+                };
+            }
+        }
     }
     fn objects(&mut self, l: &mut LevelCtx, f: &mut dyn FnMut(&mut MapObjects)) {
         let mut io = ObjIo {
@@ -725,6 +852,9 @@ impl Pass for BusPass<'_, '_, '_> {
         });
     }
     fn joy1dat(&mut self, _: &FrameInput) -> u16 {
+        if self.walked {
+            return self.walk_read(0x00c);
+        }
         // `read_joystick` clears its four words (`move.w #0, abs.l`), then reads JOY1DAT.
         self.pay(4 * cy::of(Op::Move, Size::W, Ea::Imm, Ea::AbsL));
         self.insn(
@@ -738,6 +868,9 @@ impl Pass for BusPass<'_, '_, '_> {
         self.bus().rw(JOY1DAT)
     }
     fn clxdat(&mut self, _: u16) -> u16 {
+        if self.walked {
+            return self.walk_read(0x00e);
+        }
         // `char_hit_check`'s first instruction, `move.w $dff00e, clxdat_copy`.
         self.insn(
             (
@@ -766,20 +899,13 @@ impl Pass for BusPass<'_, '_, '_> {
         }
     }
     fn raster_copy(&mut self) {
-        // After `h0_2d4c`'s `rts`: `move.w $dff006, h0+$8dfa`.
-        self.settle();
-        self.insn(
-            (
-                cy::of(Op::Move, Size::W, Ea::AbsL, Ea::AbsL),
-                cy::off_of(Op::Move, Size::W, Ea::AbsL, Ea::AbsL),
-            ),
-            0,
-            false,
-        );
+        // After `h0_2d4c`'s `rts`: `game_frame`'s `move.w $dff006, h0+$8dfa`, walked.
+        if !self.walked {
+            self.settle();
+        }
+        let v = self.walk_read(0x006);
         let a = self.h0(0x8dfa);
-        let m = self.mem.bus();
-        let v = m.rw(VHPOSR);
-        m.ww(a, v);
+        self.mem.bus().ww(a, v);
     }
     fn shown(&mut self, d: &Display) {
         // The fade and the sprites as they stand (the original writes them every pass), before the

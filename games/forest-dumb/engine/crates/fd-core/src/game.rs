@@ -280,6 +280,23 @@ impl Game {
         );
     }
 
+    /// The level as [`Game::game_frame_on`] hands it to `game_frame`'s routines, for a host that
+    /// reads what a routine finds on entry (translator T56's timing rules).
+    pub fn level<R>(&mut self, f: impl FnOnce(&level::LevelCtx) -> R) -> R {
+        let ctx = LevelCtx {
+            state: &mut self.state,
+            level: &self.data.level,
+            program: &self.data.program,
+            anim: &self.data.anim,
+            plane: &mut self.plane,
+            image: &self.image,
+            display: &mut self.display,
+            display_data: &self.data.display,
+            clxdat: 0,
+        };
+        f(&ctx)
+    }
+
     /// Whether the level's end has been reached: `next_world` has run and "Level 1 complete" shows
     /// or is about to, until fire restarts the level.
     pub fn finished(&self) -> bool {

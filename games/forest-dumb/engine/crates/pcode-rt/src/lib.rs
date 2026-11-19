@@ -10,6 +10,7 @@ use std::fmt;
 pub mod bcd;
 pub mod cycles;
 pub mod ops;
+pub mod shape;
 
 /// Blocks a translated run may enter, counted in `Regs::steps` across every call, before it stops as
 /// `Stop::Hang { why: Steps }` (DESIGN §2.4, §5.2). A per-call count let endless recursion run until

@@ -186,6 +186,12 @@ pub fn register(d: &mut Dispatch, value: u8, k: &'static dyn ObjectKind) {
 pub trait Pass {
     /// `game_frame` calls the routine at hunk 0 `offset` next: its `bsr`s in the listing's order.
     fn call(&mut self, _offset: u32) {}
+    /// [`Pass::call`], with the level as the routine finds it on entry (and as the routine before it
+    /// left it): a host that spends the original's time takes each routine's path from it
+    /// (translator T56).
+    fn enter(&mut self, offset: u32, _level: &LevelCtx) {
+        self.call(offset);
+    }
     /// The object ports (`objects::MapObjects`) run as the routine last [`Pass::call`]ed.
     fn objects(&mut self, l: &mut LevelCtx, f: &mut dyn FnMut(&mut crate::objects::MapObjects));
     /// The creature drawing (`render::objects::Creatures`) run as the routine last called.
@@ -266,26 +272,29 @@ pub fn game_frame_with(
     p: &mut dyn Pass,
 ) {
     // char_sprite_copy, h0+$94ba (T10).
-    p.call(0x9b06);
+    p.enter(0x9b06, l);
     let s = &mut *l.state;
     l.display.sprite.copy(&mut s.motion.unhurt_t, s.anim.ptr);
-    p.call(0x94ba);
+    p.enter(0x94ba, l);
     l.display.fade.step(&l.display_data.palette(), l.program);
     // `camera_update`, then `h0+$513c` (T09).
-    p.call(0x4d7e);
+    p.enter(0x4d7e, l);
+    let s = &mut *l.state;
     s.camera.update((s.char_x, s.char_y), &mut s.frame_flag);
-    p.call(0x513c);
-    s.camera.clamp();
+    p.enter(0x513c, l);
+    l.state.camera.clamp();
     // char_sprite_position, h0+$9754 (T10).
-    p.call(0x5462);
+    p.enter(0x5462, l);
+    let s = &mut *l.state;
     l.display
         .sprite
         .position(s.char_x, s.char_y, s.camera.x, s.camera.y);
-    p.call(0x9754);
+    p.enter(0x9754, l);
+    let s = &*l.state;
     p.scroll(s.camera.x, s.camera.y);
     p.shown(l.display);
     if l.state.paused != 0 {
-        p.call(0x2104);
+        p.enter(0x2104, l);
         Play { state: l.state }.play_keys();
         return;
     }
@@ -294,12 +303,12 @@ pub fn game_frame_with(
     let s = &mut *l.state;
     s.creature_draw.saved = s.edges.creatures.active;
     s.edges.creatures.active = s.creature_draw.drawn;
-    p.call(0x2c7e);
+    p.enter(0x2c7e, l);
     p.creatures(l, &mut |c| c.restore_all());
     let s = &mut *l.state;
     s.edges.creatures.active = s.creature_draw.saved;
     // h0+$2fae: the creatures moved (T24).
-    p.call(0x2fae);
+    p.enter(0x2fae, l);
     Creatures {
         state: l.state,
         ground: &PlayGround {
@@ -311,15 +320,15 @@ pub fn game_frame_with(
     // Until they are ported, the dispatch's kinds run here.
     update_objects(l, objects, dispatch, events);
     // h0+$21c0: the spring's picture; h0+$62b6: the animated cells (T25).
-    p.call(0x21c0);
+    p.enter(0x21c0, l);
     p.objects(l, &mut |o| o.spring_redraw());
-    p.call(0x62b6);
+    p.enter(0x62b6, l);
     p.objects(l, &mut |o| o.animate());
     // h0+$2dd6: creatures out of view written back into the object map (T22).
-    p.call(0x2dd6);
+    p.enter(0x2dd6, l);
     p.objects(l, &mut |o| o.write_back());
     // h0+$3698: the slots sorted by y for drawing (T24).
-    p.call(0x3698);
+    p.enter(0x3698, l);
     Creatures {
         state: l.state,
         ground: &PlayGround {
@@ -330,27 +339,28 @@ pub fn game_frame_with(
     .sort();
     // h0+$2d4c: the active creatures cut onto the screen, and their flags kept for the next pass's
     // restore (T52).
-    p.call(0x2d4c);
+    p.enter(0x2d4c, l);
     p.creatures(l, &mut |c| c.cut_all());
     p.raster_copy();
     let s = &mut *l.state;
     s.creature_draw.drawn = s.edges.creatures.active;
-    p.call(0x8dfc);
+    p.enter(0x8dfc, l);
     let dat = p.joy1dat(&input);
+    let s = &mut *l.state;
     s.joy.read_joy1dat(&mut s.input_log, dat);
     // The registers and custom-chip writes the original leaves are the rig's; play drops them.
-    p.call(0x3b2a);
+    p.enter(0x3b2a, l);
     let mut scratch = p.scratch();
     let clxdat = p.clxdat(l.clxdat);
     let mut play = Play { state: l.state };
     play.char_hit_check(clxdat, &mut scratch);
     p.scratch_done(scratch);
-    p.call(0x20b0);
-    play.countdown_step();
+    p.enter(0x20b0, l);
+    Play { state: l.state }.countdown_step();
     // h0+$24ce: a spring under the feet (T25).
-    p.call(0x24ce);
+    p.enter(0x24ce, l);
     p.objects(l, &mut |o| o.spring_trigger());
-    p.call(0x3e0c);
+    p.enter(0x3e0c, l);
     let mut scratch = p.scratch();
     Character {
         state: l.state,
@@ -362,10 +372,10 @@ pub fn game_frame_with(
     .update();
     p.scratch_done(scratch);
     // char_object_cells (T22).
-    p.call(0x2698);
+    p.enter(0x2698, l);
     p.objects(l, &mut |o| o.object_cells());
     // play_keys (T23).
-    p.call(0x2104);
+    p.enter(0x2104, l);
     Play { state: l.state }.play_keys();
 }
 

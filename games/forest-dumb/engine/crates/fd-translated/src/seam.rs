@@ -29,6 +29,8 @@ use pcode_rt::{Bus, Image, Regs, Stop, rts};
 pub use pcode_rt::Mounted;
 
 pub mod frame;
+pub mod rules;
+pub mod walk;
 pub use frame::Level1;
 
 /// What is mounted where: hunk, offset to the routine run instead of the translated one.
