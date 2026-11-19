@@ -7,10 +7,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | Date | | Finding |
 |---|---|---|
 | 2026-11-19 | 📌 | **T52 cause:** the pass-477 creature was the picture: the machine showed a blit whole from BLTSIZE; D words now reach the picture at their bus slot. Speed: `TRAIL` 48 lumped `h0+$5500`'s 198 instructions; audio slots were untaken. |
-| 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24. Changing either rule is the owner's. |
+| 2026-11-19 | 📌 | **T52 slack reading:** with `PASS_LAG` 0, 7 of 24 translated level cases fail on a pass ending a frame apart, both ways; `custom_carried` allowed no pass passes all 24; same after the review fix. Owner's rule. |
 | 2026-11-19 | 📌 | **T52, for T50:** on T52's machine enemy-kind4, mechanic-spring, death-water and mechanic-vanish pass; route-W1-1 and route-both-W1-1 differ near pass 1980, `creature_active+$0` 255 against 0. |
-| 2026-11-19 | 🐞 | Toolkit `AudioDma` places each audio fetch a line before the oracle's bus owners (frame 6777: 231 of 232 lines equal shifted). `pcode-machine` shifts it (`AUDIO_LAG`); the first game's timing is fitted unshifted. Left alone. |
-| 2026-11-19 | 📌 | `Amiga::line_samples`' `owners` are the line before the sample's `vpos` (copper `WAIT $28` burst at vpos 41, the last plane line 296 at 297); `blit_events` and `irqs` give true lines. |
+| 2026-11-19 | 🐞 | **T52 review:** `AUDIO_LAG` (a line) was falsified: `line_samples` `owners` are the line before `vpos`, and so read the oracle's AUD0 slots equal `AudioDma`'s exactly. Shift removed; `contention.rs` `audio_dma_takes_the_oracles_audio_slots` holds both. |
+| 2026-11-19 | 🐞 | Sweep, left alone: toolkit `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) does not say its owners are the line before `vpos`; the T52 slip came from that. |
+| 2026-11-19 | 🐞 | Sweep, left alone: Superfrog `sf-conform/examples/vbl_audio.rs` counts audio owners at `s.vpos` unshifted, a line late; `slot_audio.rs` and `story_draws.rs` subtract one. |
 | 2026-11-19 | 📌 | Block-boundary interrupts (DESIGN §2.8) took frame 6776's line-233 level 3 122 slots late, mid `h0_7cc`; taking it at the next access fixed that, but the case passes without it, so left as designed. |
 | 2026-11-18 | 🔄 | **Owner, T49 review:** T52 blocks T50 too. DESIGN §2.7 and §8 now say DMA contention is modelled; the pass-end bar, a pass's one frame of slack and a non-Paula write's one pass unchanged. |
 | 2026-11-18 | 🐞 | **T49 review, open:** the shift loop (`lsl.l #8` four times, `move.w`) with refresh alone on the bus takes 11 873 slots on `pcode-machine`, 11 866 on the oracle, not held in `tests_dma.rs`. Moira's order (prefetch, then SYNC) checked. |
