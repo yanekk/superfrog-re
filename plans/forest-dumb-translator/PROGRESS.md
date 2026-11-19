@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-19
+**Next `pir-work` will:** review T53; T50 (then T36) is the head of the critical path.
 
 ## Tasks
 
@@ -67,9 +67,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
 | T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | |
-| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
+| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | 🔍 | Memory in play judged at pass ends by `irq_count` (`FrameEngine::pass_end_ram`); worlds 2 to 6 pass; 2 stand-in tests. Deviation: custom writes in play also cut into passes with `custom_carried` (DESIGN §2.7's write slack, not in the task doc), as world 3's `BLTCON0=$cfca` fell a pass early; `world_starts.rs` memory count assertion widened to include pass ends. |
 
-**Review queue:** *(empty)*
+**Review queue:** T53
 
 ## Blocked on the user
 

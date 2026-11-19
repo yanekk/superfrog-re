@@ -392,9 +392,9 @@ fn translated(w: u32) -> Verdict {
     run_translated(&case(w), &Options::default()).unwrap_or_else(|e| panic!("{e}"))
 }
 
-// The finish line (T33's, then T51's Done when): each world's case passes on the translated
-// program. Measured 2026-11-19 (T51): worlds 5 and 6 pass; 2, 3 and 4 fail in play on a frame's
-// end inside game_frame, carried by T53 (docs/14-translator.md, "Worlds 2 to 6").
+// The finish line (T33's, T51's, then T53's Done when): each world's case passes on the translated
+// program. Measured 2026-11-19 (T53): all five, play judged at pass ends (docs/14-translator.md,
+// "Worlds 2 to 6").
 #[test]
 #[ignore = "full: the disks, Kickstart and the generated tree; world 2 from the title"]
 fn world_2_start_passes_on_the_translated_program() {
