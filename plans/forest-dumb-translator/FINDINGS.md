@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
 | 2026-11-19 | 🔄 | **T56 added** (owner, T55; blocks T40, T42): times `camera_update`, `h0_2fae`, `h0_2dd6`, creature restore and cut, `h0_62b6`, `char_sprite_copy`, `char_update` from their state, checked on routine judge states; carries the 11 cases still differing mounted. |
 | 2026-11-19 | 📌 | **T55 costs** (`examples/game_frame_costs.rs`, contention out): `char_update` 15 968 typical, 4 374 to 17 160; `h0_94ba` 72, fading 13 550; `h0_2c7e` 608 + 306 a blit; `h0_2d4c` 716 + 840. The rest in `frame.rs` `COSTS`. |
 | 2026-11-19 | 📌 | **T55:** 39 of 50 pass mounted. The rule's time misses: camera-bottom-right, enemy-kind4, mechanic-spring (pass 474), contact-route, enemy-contact (116), pictures of death-spikes (1343, was passing), death-water, mechanic-vanish, both routes. power-on-level-1 fails alone too. |
