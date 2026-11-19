@@ -70,7 +70,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ✅ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
-| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ⬜ | |
 
 **Review queue:** *(empty)*
