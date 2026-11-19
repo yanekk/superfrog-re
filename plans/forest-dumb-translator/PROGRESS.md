@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** T50 and T51; T36 once T50 is done.
+**Next `pir-work` will:** T50 and T53; T36 once T50 is done.
 
 ## Tasks
 
@@ -65,8 +65,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T47 | machine-power-on | T32; blocks T33 | ✅ | |
 | T49 | machine-dma-contention | T46; blocks T36 | ✅ | |
 | T50 | level1-cases-b-rest | T48, T49; blocks T36 | ⬜ | |
-| T51 | world-starts-pass | T33, T49; blocks T42 | ⬜ | |
+| T51 | world-starts-pass | T33, T49; blocks T42 | ✅ | |
 | T52 | camera-bottom-right-pass-477 | T49; blocks T36, T50 | ✅ | Passes all 24 level cases translated, gate 89/100 pins unchanged. Review fix: `AUDIO_LAG` falsified (owners read a line late), removed, oracle contract test added. Ran all 24 plus T50's four, gate, both slack readings; mutated audio, `TRAIL`, blit-word timing, all caught. Long-block 14-slot deviation held. |
+| T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

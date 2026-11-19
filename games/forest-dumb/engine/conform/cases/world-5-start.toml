@@ -5,11 +5,13 @@
 # made on both sides as load_world is entered (the oracle's poke_at, fd-translated's write_at). The
 # loads are instant on the translated side, so the frames are lined up at each load's return.
 # Translated engine only. Reading: docs/14-translator.md, "Worlds 2 to 6".
-# Fails today, measured 2026-11-18, as power-on-level-1 does in world 1: all 13 loads line up and
-# world_index is 4 on both sides, then the processor is faster while the SCENA screen is built:
-# memory from 5843 (h0+$7a9d 24 in the engine, 0 in the original), the copper list's start 5899 and the
-# picture 5901, two to three frames early; and in play, from fire at 6010, Paula from 6043, as in world
-# 1 (fire at 6300, Paula 6333). No stop: the translated program plays 300 passes (world_starts.rs).
+# Measured 2026-11-19 (T51), owner's rules: the OS's stretch after a load, to system_off, is lined
+# up as part of the load (230 engine frames; on the original the OS's interrupts take ~5% of the
+# CPU there, world 2: system_off at 6026 with them stubbed, not 6029); beam_sample_unread
+# (h0+$8dfa) is left out of memory, its hpos mostly 3 colour clocks apart; a frame-end byte passes
+# when one frame on (6 frames in view_tiles, the engine 0 to 2 tile rows of ~1100 a frame ahead).
+# Passes on the translated program: every compared frame's memory, picture, custom writes and
+# Paula's writes equal (448 frames), the goal met by 6310.
 sync = { script = "boot-to-level1", frame = 4990 }
 input = "world-5-start"
 align = "loads"

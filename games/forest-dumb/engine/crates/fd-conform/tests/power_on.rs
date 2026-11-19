@@ -5,7 +5,9 @@
 //! original from power-on, started at the same entry step, that runs each of its loads 50 frames
 //! short (it steps its own copy 50 frames on inside the load, in one engine frame). The runner's
 //! original then has 50 frames more inside the load, which it must skip and line up at the
-//! load's return; a byte changed in the frame after the return must fail there.
+//! load's return. The OS keeps the machine after it until the entry installs the program's
+//! handlers (frame 3968), a stretch lined up as part of the load (owner, T51); a byte changed in
+//! the first frame after that must fail there.
 
 mod common;
 
@@ -19,12 +21,12 @@ use fd_core::{Mem, Transplant, Var};
 use fd_translated::TranslatedGame;
 
 /// boot-to-title from power-on to just past `read_marker`'s load (its return at frame 3889 on the
-/// original), so one load is lined up.
+/// original) and the program taking the machine (3968), so one load is lined up.
 fn first_load() -> Case {
     Case::parse(
         "power-on-made-up",
         "sync = { script = \"boot-to-title\", frame = 0 }\nstart = \"entry\"\nalign = \"loads\"\n\
-         swap = { frame = 3600, disk = 2 }\nframes = 3900\n\
+         swap = { frame = 3600, disk = 2 }\nframes = 4000\n\
          compare = [\"memory\", \"picture\", \"writes\"]\n",
     )
     .unwrap_or_else(|e| panic!("{e}"))
@@ -49,7 +51,7 @@ struct StandIn {
     paula: Vec<PaulaWrite>,
     custom: Vec<(u16, u16)>,
     /// Change one byte of `h0+$7cde` in the reported memory on the first frame after this many
-    /// loads returned.
+    /// loads returned that ends with the program's handler in the level 3 vector.
     meddle_after: Option<u32>,
     meddled: bool,
 }
@@ -67,7 +69,10 @@ impl StandIn {
         let inputs = Inputs::load(case).unwrap();
         let (entries, returns) = pcs();
         let watch: Vec<u32> = entries.iter().chain(&returns).copied().collect();
-        let (am, _) = sync::reach_entry(case, &inputs, &watch).unwrap_or_else(|e| panic!("{e}"));
+        // Its loads end `SHORT` frames early, so it runs that far past the case's last frame.
+        let mut longer = case.clone();
+        longer.frames += SHORT;
+        let (am, _) = sync::reach_entry(&longer, &inputs, &watch).unwrap_or_else(|e| panic!("{e}"));
         let mut s = StandIn {
             am,
             inputs,
@@ -156,6 +161,8 @@ impl FrameEngine for StandIn {
             && self.returned >= n
             && !self.loads.1
             && returned == 0
+            && self.am.peek(sync::LEVEL3_VECTOR, 4)
+                == (HUNK_BASES[0] + sync::LEVEL3_HANDLER.1).to_be_bytes()
         {
             self.meddled = true;
             let a = (HUNK_BASES[0] + 0x7cde - amiga_oracle::SLOW_BASE) as usize + 512 * 1024;
@@ -205,19 +212,21 @@ fn a_load_fifty_frames_longer_on_the_original_aligns_and_passes() {
     assert_eq!(v.load_frames, SHORT, "the original's extra frames skipped: {v}");
     assert_eq!(v.entry.map(|e| e.0), Some(3461), "{v}");
     // Every frame outside the load: the prompt's 240 up to fire at 3700, then those after the
-    // return at 3889 (252 measured). The OS has the machine throughout, so no write is compared.
-    assert!(v.aligned_frames >= 250 && v.memory_frames == v.aligned_frames, "{v}");
-    assert_eq!(v.os_frames, v.aligned_frames, "{v}");
+    // program takes the machine at 3968 (260 measured): the OS's stretch from the return at
+    // 3889 is the load's (owner, T51).
+    assert!(v.aligned_frames >= 255 && v.memory_frames == v.aligned_frames, "{v}");
+    assert!(v.tail_frames > 0, "the OS's stretch after the load: {v}");
+    assert!(v.os_frames < v.aligned_frames, "the program's own frames' writes compared: {v}");
 }
 
 #[test]
 #[ignore = "full: the disks and Kickstart; the original from power-on twice"]
-fn a_difference_just_after_the_load_fails_there() {
+fn a_difference_just_after_the_program_takes_the_machine_fails_there() {
     let v = run_stand_in(Some(1));
     match &v.outcome {
         Outcome::Differs { var, frame, .. } => {
             assert!(var.starts_with("h0+$7cde (1 bytes"), "{v}");
-            assert_eq!(*frame, 3890, "the first frame after the return at 3889: {v}");
+            assert_eq!(*frame, 3968, "the first frame the program has the machine: {v}");
         }
         other => panic!("expected a memory difference, got {other}"),
     }
@@ -237,13 +246,13 @@ fn every_channel_goes_on_past_the_first_difference() {
         },
     );
     assert!(
-        matches!(&v.outcome, Outcome::Differs { frame: 3890, .. }),
+        matches!(&v.outcome, Outcome::Differs { frame: 3968, .. }),
         "the memory difference first: {v}"
     );
     assert_eq!(v.firsts.len(), 1, "only memory differs: {v}");
     assert_eq!(v.loads, 1, "{v}");
-    assert!(v.aligned_frames >= 250, "every frame outside the load compared: {v}");
-    assert!(v.pictures >= 250, "the picture judged on to the end: {v}");
+    assert!(v.aligned_frames >= 255, "every frame outside the load compared: {v}");
+    assert!(v.pictures >= 255, "the picture judged on to the end: {v}");
 }
 
 fn generated() {

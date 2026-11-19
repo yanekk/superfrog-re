@@ -136,6 +136,12 @@ pub const OS_VALUES: [(u8, u32, u32); 8] = [
     (0, 0x909e, 4),
 ];
 
+/// Bytes of the program's hunks that hold a beam position nothing reads, (hunk, offset, length):
+/// `beam_sample_unread`, VHPOSR as `game_frame` passed it. Left out of the memory comparison
+/// (owner, T51): its line agrees, its horizontal position is the machine's own, mostly 3 colour
+/// clocks apart in worlds 2 to 6's play, as the frame bar ignores the beam positions of writes.
+pub const BEAM_VALUES: [(u8, u32, u32); 1] = [(0, 0x8dfa, 2)];
+
 /// The level 3 autovector and the program's handler there (`level3_handler`): while it is
 /// installed the program has the machine, and every custom write is its own (T32; docs/07). The
 /// OS's interrupts write INTREQ and the rest while it runs, which the machine does not model.
