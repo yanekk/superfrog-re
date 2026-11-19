@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Building since 2026-11-11; phase 7 (the app) under way.
 **Last updated:** 2026-11-19
-**Next `pir-work` will:** T38, T54 and T55 are being built; T40 follows T38 and T55.
+**Next `pir-work` will:** T54, T55 and T57 are being built; T40 follows T55 and T57.
 
 ## Tasks
 
@@ -52,7 +52,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T35 | seam | T00, T28 | ✅ | |
 | T36 | mount-level-1 | T30, T31, T35 | ✅ | |
 | T37 | app-translated | T18, T32, T36 | ✅ | |
-| T38 | app-sound | T37 | ⬜ | |
+| T38 | app-sound | T37 | ✅ | |
 | T39 | app-stop | T37 | ✅ | Review clean, no fix commit. Drill at 1× in power-on and level 1: band readable, fits. Probed: edited zip stop line replays `replay-stop -`; power-on zip refused by compare and hand. Mutation skipping the title run caught. app_stop 5/5 green. Real-stop replay path read-only; purity's collide.rs:96 failure predates (row 28). |
 | T40 | app-e2e | T33, T38, T39 | ⬜ | |
 | T41 | app-drill | T40 | ⬜ | |
@@ -70,6 +70,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T53 | world-starts-play-at-pass-ends | T51, T52; blocks T42 | ✅ | |
 | T54 | main-loop-spin-slot-exact | T50; blocks T42 | ⬜ | |
 | T55 | mount-timing | T36; blocks T40, T42 | ⬜ | |
+| T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ⬜ | |
 
 **Review queue:** *(empty)*
 

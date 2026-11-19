@@ -296,6 +296,9 @@ workspace = "engine"
 # replayed by `fd-conform bug replay` on the translated program; Esc and ⌘Q after it; Start Level…'s
 # recorder on the translated program. Five launches, about 35 s, and the generated tree.
 "crates/fd-e2e/tests/app_stop.rs" = "full"
+# Translator T38: the translated program's sound in the real app against headless, the title and
+# level 1, and two headless runs of the title alike; about 16 s warm and the generated tree.
+"crates/fd-e2e/tests/sound.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at

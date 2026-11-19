@@ -153,6 +153,21 @@ fn a_stop_freezes_the_picture_names_it_saves_a_zip_and_the_zip_replays_to_the_sa
         assert!(&c.frames[n as usize] == at_stop, "frame {n} moved after the stop");
     }
     assert!(c.frames[stop as usize - 1] != *at_stop, "the band is drawn at the stop");
+    // Frozen is silent: the stop's frame is not played again each tick (translator T38's sound).
+    let frames = std::fs::read_to_string(c.dir.join("audio-frames.txt")).expect("audio-frames.txt");
+    let heard = |n: u64| -> u64 {
+        frames
+            .lines()
+            .find_map(|l| {
+                let mut w = l.split(' ').map(|v| v.parse::<u64>().unwrap());
+                (w.next() == Some(n)).then(|| w.sum())
+            })
+            .unwrap_or_else(|| panic!("no audio line for step {n}"))
+    };
+    assert!(heard(stop) > 0, "the stop's own frame is heard");
+    for n in stop + 1..=end {
+        assert_eq!(heard(n), 0, "step {n}, frozen, made sound");
+    }
 
     let (zip, rec, shot) = the_zip(&bugs);
     let name = zip.file_name().unwrap().to_string_lossy().into_owned();

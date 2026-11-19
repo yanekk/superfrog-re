@@ -927,6 +927,7 @@ dependencies = [
  "amiga-app",
  "amiga-disk",
  "amiga-input",
+ "amiga-paula",
  "amiga-record",
  "fd-assets",
  "fd-core",
@@ -987,6 +988,7 @@ dependencies = [
  "fd-tools",
  "fd-translated",
  "libc",
+ "pcode-machine",
 ]
 
 [[package]]

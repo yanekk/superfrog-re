@@ -4,13 +4,15 @@
 //! `TranslatedGame::run` drives and calls back at each frame's end; the app pulls one frame a
 //! step. So the game runs on a thread of its own ([`RUN_STACK`] of stack, for the translated
 //! frames' depth) and each step hands one input across a channel and takes one frame back, in
-//! lockstep, so the app's run is the same as a headless run on the same inputs.
+//! lockstep, so the app's run is the same as a headless run on the same inputs. Each frame's
+//! sound is mixed there too (`fd_app::audio::Sound`, T38), where the frame's chip RAM is at hand.
 
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 
 use amiga_input::FrameInput;
+use fd_app::audio::Sound;
 use fd_core::GameData;
 use pcode_machine::Picture;
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
@@ -30,6 +32,8 @@ pub struct Frame {
     pub stop: Option<String>,
     /// Where play is ([`fd_app::location_in_ram`]): the character's cell in level 1, else `None`.
     pub place: Option<fd_core::recording::Location>,
+    /// The frame's sound at the run's rate, stereo; none for the start.
+    pub samples: Vec<[i16; 2]>,
 }
 
 impl Frame {
@@ -50,12 +54,14 @@ pub struct Translated {
 
 impl Translated {
     /// The program file loaded as Kickstart would and entered at `h0+$0`, disk 2 in df0, level
-    /// 1's hand engine mounted from `data`; `hashes` asks for each frame's state hash.
+    /// 1's hand engine mounted from `data`; `hashes` asks for each frame's state hash; the sound
+    /// is mixed at `rate` samples a second.
     pub fn power_on(
         program: Vec<u8>,
         disk2: Vec<u8>,
         data: Arc<GameData>,
         hashes: bool,
+        rate: u32,
     ) -> Translated {
         let (to, inputs) = channel::<Input>();
         let (frames, from) = channel::<Frame>();
@@ -68,6 +74,7 @@ impl Translated {
                     disks: Disks { df0: disk2 },
                 });
                 g.mount_level_1(data);
+                let mut sound = Sound::new(rate, g.machine().dmacon());
                 let (chip, slow) = (g.machine().chip(), g.machine().slow());
                 let (l, t, w, h) = fd_app::CANVAS;
                 let start = Frame {
@@ -76,6 +83,7 @@ impl Translated {
                     level_1: fd_app::in_level_1(chip, slow),
                     stop: None,
                     place: fd_app::location_in_ram(chip, slow),
+                    samples: Vec::new(),
                 };
                 if frames.send(start).is_err() {
                     return;
@@ -83,12 +91,15 @@ impl Translated {
                 let Ok(first) = inputs.recv() else { return };
                 g.set_input(first);
                 g.run(&mut |out| {
+                    let mut samples = Vec::new();
+                    sound.frame_out(out, &mut samples);
                     let frame = Frame {
                         picture: fd_app::canvas(&out.picture),
                         mem: hashes.then(|| (out.chip.into(), out.slow.into())),
                         level_1: fd_app::in_level_1(out.chip, out.slow),
                         stop: out.stop.as_ref().map(|s| s.to_string()),
                         place: fd_app::location_in_ram(out.chip, out.slow),
+                        samples,
                     };
                     let stopped = frame.stop.is_some();
                     // The app dropped, or the program stopped: nobody sends the next input.
@@ -113,9 +124,11 @@ impl Translated {
         }
     }
 
-    /// One frame on `input`. After a stop nothing runs and the stop's frame stays.
+    /// One frame on `input`. After a stop nothing runs and the stop's frame stays, silent.
     pub fn step(&mut self, input: FrameInput) -> &Frame {
         if self.frame.stop.is_some() {
+            // Frozen: the stop's frame was heard at its own step; nothing plays after.
+            self.frame.samples.clear();
             return &self.frame;
         }
         // A send fails only when the thread has ended, which `receive` reports.
