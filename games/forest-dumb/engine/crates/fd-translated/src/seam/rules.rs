@@ -36,15 +36,16 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
         0x2d4c => creatures_cut(l, &mut d),
         0x3698 => creatures_sort(l, &mut d),
         0x24ce => spring_trigger(l, peek, &mut d),
+        0x2dd6 => creatures_write_back(l, peek, &mut d),
         _ => return None,
     }
     Some(d)
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 14] = [
-    0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104, 0x21c0,
-    0x2c7e, 0x2d4c,
+pub const RULED: [u32; 15] = [
+    0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754, 0x8dfc, 0x20b0, 0x2104,
+    0x21c0, 0x2c7e, 0x2d4c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -453,5 +454,64 @@ fn spring_trigger(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
         if v == k {
             return;
         }
+    }
+}
+
+/// `h0_2dd6`: for each of the five slots (`bne` on), when its flag is set, `h0_2e0e` tests the
+/// creature against the view's four sides in turn (`bpl`/`bmi`) and, outside one, writes its kind
+/// plus one into the object map at its cell, or the cell beside it the side's way when that holds
+/// something, or the one past (`beq` each), and clears its flag. The cells written are seen by the
+/// slots after.
+fn creatures_write_back(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let s = &*l.state;
+    let (cx, cy) = (s.camera.x, s.camera.y);
+    let mut written: Vec<(u32, u8)> = Vec::new();
+    let map = |w: &Vec<(u32, u8)>, at: u32| {
+        w.iter().rev().find(|e| e.0 == at).map_or_else(
+            || peek(fd_core::level::redraw::OBJECT_MAP.wrapping_add(at)),
+            |e| e.1,
+        )
+    };
+    let neg = |v: u16| v & 0x8000 != 0;
+    for i in 0..5 {
+        let on = s.edges.creatures.active[i] != 0;
+        d.push(Branch(!on));
+        if on {
+            let v = s.edges.creatures.slots[i];
+            let (x, y) = (v.x, v.y);
+            let left = cx.wrapping_sub(0x10);
+            let right = left.wrapping_add(0x140);
+            let up = cy.wrapping_sub(0x20);
+            let down = up.wrapping_add(0xe5);
+            // (the side's test taken, then the first cell and the two steps from it)
+            let sides: [(bool, u16, i32, i32); 4] = [
+                (!neg(left.wrapping_sub(x)), y, 0, -0x60),
+                (neg(right.wrapping_sub(x)), y, 0x60, 0x60),
+                (!neg(up.wrapping_sub(y)), y.wrapping_add(1), 0, 0x60),
+                (neg(down.wrapping_sub(y)), y.wrapping_add(1), 0, 0x60),
+            ];
+            let backs = [0xc0i32, -0xc0, -0x60, -0xc0];
+            for (k, &(out, row, first, step)) in sides.iter().enumerate() {
+                d.push(Branch(out));
+                if !out {
+                    continue;
+                }
+                let base = (x as u32 >> 4) * 0x60 + (row as u32 >> 4);
+                let mut at = base.wrapping_add(first as u32);
+                let empty = map(&written, at) == 0;
+                d.push(Branch(empty));
+                if !empty {
+                    at = at.wrapping_add(step as u32);
+                    let empty = map(&written, at) == 0;
+                    d.push(Branch(empty));
+                    if !empty {
+                        at = at.wrapping_add(backs[k] as u32);
+                    }
+                }
+                written.push((at, v.kind.wrapping_add(1) as u8));
+                break;
+            }
+        }
+        d.push(Branch(i != 4));
     }
 }
