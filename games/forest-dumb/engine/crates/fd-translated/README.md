@@ -70,8 +70,9 @@ with the transplant in and what it changed written back, run in world 1 (`world_
 translated routine elsewhere. It reads level 1's engine (`seam::Level1`, built once from `data`)
 through `Bus::mount_data`, and stops without it; `g.level_1().unwrap().passes()` counts the passes
 it played. `g.mount((hunk, offset), f)` mounts by hand (tests). An adapter reads `LAYOUT` and the values beside it through `seam::BusMem`, runs the
-port, writes back what differs (`fd_core::WriteBack`) and leaves by `pcode_rt::rts`. It counts no
-cycles, so the frame mount's pass takes no machine time (T55 gives it the original's). Judge one before mounting it: `cargo run -p fd-conform --bin fd-judge -- 'h0+$4d7e' --seam`.
+port, writes back what differs (`fd_core::WriteBack`) and leaves by `pcode_rt::rts`. The frame mount
+spends the original's time (T55, `seam/frame.rs`'s `COSTS`): each chip access by the original's
+instruction at its place, the rest of each callee a measured lump; the routine adapters count none. Judge one before mounting it: `cargo run -p fd-conform --bin fd-judge -- 'h0+$4d7e' --seam`.
 
 ## Shells
 
