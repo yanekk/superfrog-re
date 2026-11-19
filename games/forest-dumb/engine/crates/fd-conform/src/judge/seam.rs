@@ -283,3 +283,76 @@ fn differences(rig: &Rig, old: &Ran, new: &Ran, regs: RegsCompared) -> Vec<Strin
     }
     out
 }
+
+/// Like [`check`], but holding `replacing`'s counted cycles to the translated routine's
+/// (translator T56: a timing rule, `fd_translated::seam::frame::time_alone`), state by state, on
+/// the rig's flat memory with no DMA: the cycles the instructions take, contention out. Nothing
+/// else is compared; a stop of either side fails the state.
+#[allow(clippy::too_many_arguments)]
+pub fn cycles(
+    rig: &Rig,
+    name: &str,
+    cases: usize,
+    entry: u32,
+    generator: &Generator,
+    replaced: Entry,
+    replacing: &(dyn Fn(&mut Regs, &mut Mem, &Image) -> Result<(), pcode_rt::Stop> + Sync),
+    mount_data: Option<Arc<dyn Any + Send + Sync>>,
+) -> SeamReport {
+    let base = rig.memory_for(generator);
+    let sizes = rig.hunk_sizes();
+    let at = rig.name(entry);
+    let img = Image {
+        bases: &HUNK_BASES,
+        sizes: &sizes,
+        code: &[],
+    };
+    let mut rep = SeamReport {
+        cases,
+        ..SeamReport::default()
+    };
+    let mut g = Gen::new(seed(name));
+    for case in 0..cases {
+        let s = (generator.case)(&mut g);
+        let mut before = Mem::new(base.clone(), &s.pokes);
+        before.mount_data = mount_data.clone();
+        before.beam.set(s.beam as u16);
+        before.hw_reads = s.hw_reads.iter().copied().collect();
+        let sp = STACK - 4;
+        before.wl(sp, RETURN_SENTINEL);
+        let mut r = Regs::new();
+        for n in 0..8 {
+            r.set_d(n, s.d[n]);
+            r.set_a(n, s.a[n]);
+        }
+        r.set_a(7, sp);
+        let old = run(|r, m, img| replaced(r, m, img), r.clone(), &before, &img);
+        if let Some(stop) = &old.stop {
+            rep.replaced_stopped += 1;
+            if rep.first_replaced_stop.is_empty() {
+                rep.first_replaced_stop = format!("state {case}: {stop}");
+            }
+            continue;
+        }
+        let new = run(|r, m, img| replacing(r, m, img), r, &before, &img);
+        let diff = match &new.stop {
+            Some(s) => Some(format!("the rule stopped: {s}")),
+            None if new.regs.cycles() != old.regs.cycles() => Some(format!(
+                "cycles: translated {}, rule {}",
+                old.regs.cycles(),
+                new.regs.cycles()
+            )),
+            None => None,
+        };
+        match diff {
+            None => rep.passed += 1,
+            Some(d) => {
+                rep.failures += 1;
+                if rep.first.is_empty() {
+                    rep.first = format!("state {case} of {name} at {at}: {d}");
+                }
+            }
+        }
+    }
+    rep
+}

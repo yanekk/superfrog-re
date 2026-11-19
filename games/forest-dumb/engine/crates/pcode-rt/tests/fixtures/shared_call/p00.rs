@@ -87,6 +87,13 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Call { to: 0x10 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x4, len: 4, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Call { to: 0x20 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x8, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_10(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -157,3 +164,10 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_10: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x10, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Call { to: 0x30 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x14, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x16, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];

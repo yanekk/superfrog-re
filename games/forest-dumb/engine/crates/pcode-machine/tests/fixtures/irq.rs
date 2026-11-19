@@ -114,6 +114,23 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
     }
 }
 
+/// The shapes of the instructions of the function entered at `k`, by offset (translator T56).
+#[allow(dead_code)]
+pub fn shapes(k: (u32, u32)) -> Option<&'static [pcode_rt::shape::Shape]> {
+    match k {
+        (0, 0x0) => Some(SHAPES_h0_0),
+        (0, 0x10) => Some(SHAPES_h0_10),
+        (0, 0x40) => Some(SHAPES_h0_40),
+        (0, 0x60) => Some(SHAPES_h0_60),
+        (0, 0x80) => Some(SHAPES_h0_80),
+        (0, 0xa0) => Some(SHAPES_h0_a0),
+        (0, 0xc0) => Some(SHAPES_h0_c0),
+        (0, 0xd0) => Some(SHAPES_h0_d0),
+        (0, 0xe0) => Some(SHAPES_h0_e0),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -184,6 +201,14 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x4, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x6, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) }); }, flow: pcode_rt::shape::Flow::Bcc { taken: |r: &mut Regs| { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); }, to: 0x0 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x8, len: 2, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
@@ -303,6 +328,19 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_10: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x4, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x6, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) }); }, flow: pcode_rt::shape::Flow::Bcc { taken: |r: &mut Regs| { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); }, to: 0x0 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x8, len: 2, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+    pcode_rt::shape::Shape { h: 0, at: 0x10, len: 8, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x18, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x1a, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x1c, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::bcc(false, cy::Size::B) }); r.off_bus(const { cy::bcc_off(false) }); r.idle_first(const { cy::bcc_off(false) }); }, flow: pcode_rt::shape::Flow::Bcc { taken: |r: &mut Regs| { r.tick(const { cy::bcc(true, cy::Size::B) }); r.off_bus(const { cy::bcc_off(true) }); r.idle_first(const { cy::bcc_off(true) }); }, to: 0x10 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x1e, len: 2, first: true, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Jump { to: 0x0 } },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_40(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -376,6 +414,13 @@ pub fn h0_40_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_40: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x40, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x44, len: 8, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x4c, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Ret },
+];
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
@@ -463,6 +508,15 @@ pub fn h0_60_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_60: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x60, len: 8, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x68, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Jump { to: 0x6a } },
+    pcode_rt::shape::Shape { h: 0, at: 0x6a, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x6e, len: 8, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x76, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Ret },
+];
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
@@ -566,6 +620,16 @@ pub fn h0_80_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_80: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x80, len: 8, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x88, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Jump { to: 0x8a } },
+    pcode_rt::shape::Shape { h: 0, at: 0x8a, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x8e, len: 4, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x92, len: 8, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x9a, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Ret },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_a0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -640,6 +704,13 @@ pub fn h0_a0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_a0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0xa0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xa4, len: 8, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xac, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Ret },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_c0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -700,6 +771,13 @@ pub fn h0_c0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_c0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0xc0, len: 8, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xc8, len: 4, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xcc, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
@@ -798,6 +876,17 @@ pub fn h0_d0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_d0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0xd0, len: 2, first: true, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xd2, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xd4, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xd6, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xd8, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xda, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Quick, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xdc, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_e0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -865,3 +954,10 @@ pub fn h0_e0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_e0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0xe0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xe4, len: 8, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0xec, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |r: &mut Regs| { r.tick(const { cy::of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); r.off_bus(const { cy::off_of(cy::Op::Rte, cy::Size::L, cy::Ea::None, cy::Ea::None) }); }, flow: pcode_rt::shape::Flow::Ret },
+];

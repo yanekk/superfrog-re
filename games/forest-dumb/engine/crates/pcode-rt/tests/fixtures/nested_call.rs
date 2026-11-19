@@ -65,6 +65,17 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
     }
 }
 
+/// The shapes of the instructions of the function entered at `k`, by offset (translator T56).
+#[allow(dead_code)]
+pub fn shapes(k: (u32, u32)) -> Option<&'static [pcode_rt::shape::Shape]> {
+    match k {
+        (0, 0x0) => Some(SHAPES_h0_0),
+        (0, 0x10) => Some(SHAPES_h0_10),
+        (0, 0x20) => Some(SHAPES_h0_20),
+        _ => None,
+    }
+}
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_0(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -135,6 +146,13 @@ pub fn h0_0_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Image
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_0: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x0, len: 4, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Call { to: 0x10 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x4, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x6, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
 
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
@@ -207,6 +225,13 @@ pub fn h0_10_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
     }
 }
 
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_10: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x10, len: 2, first: true, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Call { to: 0x20 } },
+    pcode_rt::shape::Shape { h: 0, at: 0x12, len: 2, first: false, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x14, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];
+
 #[allow(unused_mut, unused_variables, unused_assignments, unreachable_code, unused_braces, unused_parens, unused_labels, non_snake_case, clippy::all)]
 #[inline]
 pub fn h0_20(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
@@ -257,3 +282,9 @@ pub fn h0_20_from(start: (u32, u32), r: &mut Regs, bus: &mut dyn Bus, img: &Imag
         }
     }
 }
+
+#[allow(non_upper_case_globals)]
+pub static SHAPES_h0_20: &[pcode_rt::shape::Shape] = &[
+    pcode_rt::shape::Shape { h: 0, at: 0x20, len: 2, first: true, mem: false, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Next },
+    pcode_rt::shape::Shape { h: 0, at: 0x22, len: 2, first: false, mem: true, dynamic: false, uncounted: false, custom: None, tick: |_: &mut Regs| {}, flow: pcode_rt::shape::Flow::Ret },
+];

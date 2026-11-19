@@ -52,6 +52,9 @@ workspace = "engine"
     "every_case_is_in_one_list",
     "the_cases_that_hear_an_effect_are_cases_and_the_t56_ones_fail_mounted",
 ]
+# Translator T56: the timing rules. Keeping every ruled routine checked takes no disks; each rule on
+# 2 000 judge states needs the disks and the tree.
+"crates/fd-conform/tests/mount_timing.rs" = ["every_ruled_routine_is_checked"]
 # 60 s for the title on every pass, which the area needs; the three missing-file tests take under a second.
 # a_start_one_frame_early_is_caught_and_named (16 s) stays in full.
 "crates/fd-conform/tests/first_case.rs" = [

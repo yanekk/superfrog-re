@@ -75,3 +75,15 @@ pub fn resume(k: (u32, u32)) -> Option<Resume> {
         _ => None,
     }
 }
+
+/// The shapes of the instructions of the function entered at `k`, by offset (translator T56).
+#[allow(dead_code)]
+pub fn shapes(k: (u32, u32)) -> Option<&'static [pcode_rt::shape::Shape]> {
+    match k {
+        (0, 0x0) => Some(p00::SHAPES_h0_0),
+        (0, 0x10) => Some(p00::SHAPES_h0_10),
+        (0, 0x20) => Some(p01::SHAPES_h0_20),
+        (0, 0x30) => Some(p01::SHAPES_h0_30),
+        _ => None,
+    }
+}

@@ -8,13 +8,15 @@
 //! return and runs the translated routine. Inside `game_frame` the bus is wrapped too, so the
 //! reads of DMACONR (the blitter waits), VHPOSR (the raster waits), CLXDAT and JOY1DAT and the
 //! writes of BLTSIZE are noted with the cycle of the instruction making them. One TSV row a callee
-//! a pass: `case pass callee from dur dmaconr vhposr bltsize blit_wait beam_wait dma_wait clx joy`, `dma_wait` the
-//! cycles the machine's poll ticked (the CPU's waits for slots the chips held), `from` and the reads'
-//! cycles counted from `game_frame`'s entry, `clx`/`joy` `-` when not read.
+//! a pass: `case pass callee from dur dmaconr vhposr bltsize blit_wait beam_wait dma_wait clx joy
+//! blit_at off_bus`, `dma_wait` the cycles the machine's poll ticked (the CPU's waits for slots the
+//! chips held), `from` and the reads' cycles counted from `game_frame`'s entry, `clx`/`joy` `-` when
+//! not read, `blit_at` the callee's own cycles (waits out) before each BLTSIZE write, comma-separated,
+//! `off_bus` its cycles off the bus (T56).
 //!
 //! `--passes` (first argument) prints a row a pass instead, `case pass entry dur clx_at clx joy_at
-//! joy`: the cycle count at `game_frame`'s entry, its length, and when (from the entry) CLXDAT and
-//! JOY1DAT were read and what they read. `--passes --mounted` runs level 1's frame mount in place
+//! joy waited`: the cycle count at `game_frame`'s entry, its length, when (from the entry) CLXDAT and
+//! JOY1DAT were read and what they read, and the cycles the pass waited for bus slots (T56). `--passes --mounted` runs level 1's frame mount in place
 //! of the translated `game_frame`, so the two can be laid side by side.
 
 use std::sync::Mutex;
@@ -39,7 +41,7 @@ struct Log {
     pass: Option<(u64, u32)>,
     passes: u32,
     /// The callee running (offset, entry cycle, counts so far).
-    open: Vec<(u32, u64, [u64; 6], Option<u64>, Option<u64>)>,
+    open: Vec<(u32, u64, [u64; 6], Option<u64>, Option<u64>, Vec<u64>, u64)>,
     rows: Vec<String>,
     case: String,
     last: u64,
@@ -59,6 +61,9 @@ static READS: Mutex<[Option<(u64, u16)>; 2]> = Mutex::new([None, None]);
 /// `--blits`: this pass's BLTSIZE writes, (cycle from the entry, size).
 static BLITS: Mutex<Vec<(u64, u16)>> = Mutex::new(Vec::new());
 static SHOW_BLITS: AtomicBool = AtomicBool::new(false);
+
+/// `--passes`: the cycles this pass's polls ticked, the waits for slots the chips held.
+static WAITED: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 fn with<R>(f: impl FnOnce(&mut Log) -> R) -> R {
     f(LOG.lock().unwrap().as_mut().unwrap())
@@ -81,14 +86,15 @@ impl Watch<'_> {
             let Some(o) = l.open.last_mut() else { return };
             // A read of the same register again with no access between is its wait loop: the
             // cycles since the last read were spent waiting.
-            let mut wait = |k: u8, o: &mut (u32, u64, [u64; 6], Option<u64>, Option<u64>)| {
-                if let Some((pk, pt)) = prev
-                    && pk == k
-                {
-                    o.2[3 + k as usize] += at - pt;
-                }
-                l.prev = Some((k, at));
-            };
+            let mut wait =
+                |k: u8, o: &mut (u32, u64, [u64; 6], Option<u64>, Option<u64>, Vec<u64>, u64)| {
+                    if let Some((pk, pt)) = prev
+                        && pk == k
+                    {
+                        o.2[3 + k as usize] += at - pt;
+                    }
+                    l.prev = Some((k, at));
+                };
             match (a, write) {
                 (0x002, false) => {
                     o.2[0] += 1;
@@ -98,7 +104,12 @@ impl Watch<'_> {
                     o.2[1] += 1;
                     wait(1, o);
                 }
-                (0x058, true) => o.2[2] += 1,
+                (0x058, true) => {
+                    o.2[2] += 1;
+                    // The cycles of the callee's own work before this blit starts.
+                    let net = at - o.1 - o.2[3] - o.2[4] - o.2[5];
+                    o.5.push(net);
+                }
                 (0x00e, false) => o.3 = Some(at - p0),
                 (0x00c, false) => o.4 = Some(at - p0),
                 _ => {}
@@ -107,6 +118,7 @@ impl Watch<'_> {
     }
     /// What the machine's poll ticked: the CPU's waits for bus slots the chips held.
     fn waited(c0: u64, r: &Regs) {
+        WAITED.fetch_add(r.cycles() - c0, Ordering::Relaxed);
         with(|l| {
             l.last = r.cycles();
             if let Some(o) = l.open.last_mut() {
@@ -201,6 +213,7 @@ fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
     });
     *READS.lock().unwrap() = [None, None];
     BLITS.lock().unwrap().clear();
+    WAITED.store(0, Ordering::Relaxed);
     let res = if MOUNTED.load(Ordering::Relaxed) {
         fd_translated::seam::frame::game_frame(r, &mut Watch(bus), img)
     } else {
@@ -214,10 +227,11 @@ fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
                 |v: Option<(u64, u16)>| v.map_or("-\t-".into(), |(at, v)| format!("{at}\t{v:04x}"));
             let [clx, joy] = *READS.lock().unwrap();
             let mut row = format!(
-                "{case}\t{n}\t{p0}\t{}\t{}\t{}",
+                "{case}\t{n}\t{p0}\t{}\t{}\t{}\t{}",
                 r.cycles() - p0,
                 s(clx),
-                s(joy)
+                s(joy),
+                WAITED.load(Ordering::Relaxed)
             );
             if SHOW_BLITS.load(Ordering::Relaxed) {
                 for (at, v) in BLITS.lock().unwrap().iter() {
@@ -227,7 +241,7 @@ fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
             l.rows.push(row);
         } else {
             l.rows.push(format!(
-                "{case}\t{n}\t{GAME_FRAME:x}\t0\t{}\t-\t-\t-\t-\t-\t-\t-\t-",
+                "{case}\t{n}\t{GAME_FRAME:x}\t0\t{}\t-\t-\t-\t-\t-\t-\t-\t-\t-\t-",
                 r.cycles() - p0
             ));
         }
@@ -238,7 +252,15 @@ fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> 
 fn callee(off: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     let inside = with(|l| {
         if l.pass.is_some() && !PASSES.load(Ordering::Relaxed) {
-            l.open.push((off, r.cycles(), [0; 6], None, None));
+            l.open.push((
+                off,
+                r.cycles(),
+                [0; 6],
+                None,
+                None,
+                Vec::new(),
+                r.off_bus_cycles(),
+            ));
             true
         } else {
             false
@@ -247,11 +269,11 @@ fn callee(off: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), 
     let res = translated(off, r, bus, img);
     if inside {
         with(|l| {
-            let (o, t0, c, clx, joy) = l.open.pop().unwrap();
+            let (o, t0, c, clx, joy, blits, off0) = l.open.pop().unwrap();
             let (p0, n) = l.pass.unwrap();
             let s = |v: Option<u64>| v.map_or("-".into(), |v| v.to_string());
             let row = format!(
-                "{}\t{n}\t{o:x}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
+                "{}\t{n}\t{o:x}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}",
                 l.case,
                 t0 - p0,
                 r.cycles() - t0,
@@ -262,11 +284,23 @@ fn callee(off: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), 
                 c[4],
                 c[5],
                 s(clx),
-                s(joy)
+                s(joy),
+                if blits.is_empty() {
+                    "-".to_string()
+                } else {
+                    blits
+                        .iter()
+                        .map(|b| b.to_string())
+                        .collect::<Vec<_>>()
+                        .join(",")
+                },
+                r.off_bus_cycles() - off0
             );
             l.rows.push(row);
             // A nested callee's reads belong to its caller too.
             if let Some(up) = l.open.last_mut() {
+                let lead = t0 - up.1 - up.2[3] - up.2[4] - up.2[5];
+                up.5.extend(blits.iter().map(|b| lead + b));
                 for i in 0..6 {
                     up.2[i] += c[i];
                 }
@@ -379,10 +413,10 @@ fn main() {
         }
     }
     if PASSES.load(Ordering::Relaxed) {
-        println!("case\tpass\tentry\tdur\tclx_at\tclx\tjoy_at\tjoy");
+        println!("case\tpass\tentry\tdur\tclx_at\tclx\tjoy_at\tjoy\twaited");
     } else {
         println!(
-            "case\tpass\tcallee\tfrom\tdur\tdmaconr\tvhposr\tbltsize\tblit_wait\tbeam_wait\tdma_wait\tclx\tjoy"
+            "case\tpass\tcallee\tfrom\tdur\tdmaconr\tvhposr\tbltsize\tblit_wait\tbeam_wait\tdma_wait\tclx\tjoy\tblit_at\toff_bus"
         );
     }
     for name in args {
