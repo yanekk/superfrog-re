@@ -6,6 +6,9 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-19 | 🔄 | **T55 added** (owner, T36; blocks T40, T42): the frame mount spends the original's time; carries T36's cases-pass-mounted check and amends DESIGN §2.9's no-cycles line. Whole-frame mount kept, collisions judged as before. |
+| 2026-11-19 | 📌 | **T36 measured:** one routine mounted, `game_frame` as the frame (`seam::frame`); `--seam` 2 000 of 2 000; 32 of 50 cases pass mounted. Mounted, CLXDAT is read at the pass start: 11 cases differ at pass 2 on `clxdat_copy`. |
+| 2026-11-19 | 🐞 | T36, left alone: `watch_returns` counts a mounted routine's entry and return (`Host::mounted` sets `entered` before the seam answers), though `fd-translated/README.md` and its doc say a mount hides it. |
 | 2026-11-19 | 🔄 | **Owner, T50:** interrupts are taken at instruction boundaries (DESIGN §2.8, `Bus::insn`, `Machine::quiet`); block starts took line 233's after `h0_6852`'s creature start. T52's and T53's readings ran on block-start interrupts. |
 | 2026-11-19 | 🔄 | **T54 added** (owner, T50; blocks T42, not T36): route-W1-1 and route-both-W1-1 pass translated to pass 4160. For T36: with level 1 mounted, a difference before pass 4161 is the seam's, from it on T54's. |
 | 2026-11-19 | 📌 | **T50 measured:** 40 of 42 level cases pass translated; whole tree on the machine 89 of 100, `MACHINE_PINNED` unchanged; the check costs about 7% (death-spikes 46.2 s against 43.3 s, oracle included). |
@@ -29,9 +32,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-12 | 🔄 | **T50 added** (owner, T48): carries T48's 14 failing cases, after T49's DMA contention, blocks T36; finish line all 18 pass. T48 hands in measurements only, no fix: nothing non-timing found. |
 | 2026-11-12 | 🔄 | **T32 closed unproven, T47 added** (owner, T32 review): power-on-title and power-on-level-1 fail from frame 3462. T47 (blocks T33) carries Kickstart's DMA at the disk 2 prompt (frames 3463 to 3967) and `clr`'s bus value (frame 5001). |
 | 2026-11-12 | 📌 | **T32 line-up:** 18 loads to level 1, 1 794 original frames skipped; the title and world 1's loads equal every compared frame; first-case passes translated, 15 078 frames. The entry runs at frame 3461, line 179. |
-| 2026-11-12 | 📌 | **T35 review probe:** `camera_update` and `char_sprite_position` mounted in `TranslatedEngine`, w1-idle 150 frames from the sync point: memory equal but `h0+$8dfa`, the beam `h0+$2070` stores after the frame's work, earlier since mounts count no cycles. |
 | 2026-11-12 | 📌 | **T35 review, for T36:** a mount runs only through a function's entry; `resume(k)` from a snapshot inside the routine runs it translated. A mount takes no interrupt inside itself, having no block start. Left alone. |
-| 2026-11-12 | 📌 | **T35 seam:** `fd-judge --seam` passes `camera_update` and `char_sprite_position` 2 000/2 000 against the generated tree. A mounted routine counts no cycles or `Regs::depth`; T36 should measure whether `game_frame`'s missing cycles show at a frame boundary. |
 | 2026-11-12 | 🐞 | `toolkit-checks/tests/purity.rs:162` and `sf-conform/tests/purity.rs:183` lex a hex literal ending in `f32`/`f64` (`0x18f32`) as a float literal: a false purity violation. Fixed in fd-conform's copy (T34 review sweep); both left alone. |
 | 2026-11-12 | 🔄 | **Owner exempted `CODE` from the table bar** (T34), a deliberate exception to DESIGN §3.1: only in `pcode_rust.py` output, only `const CODE: &[(u32, u32, u32)]` of (hunk, start, end) triples. It is the translator's index, not game data. |
 | 2026-11-12 | 📌 | **T28 snapshot starts:** at every step's end the original is inside `level3_handler`, so translated code resumes mid-function: `pcode_rust.py` emits `NAME_from(start)` and `resume(k)`. T08's 15 routines still pass; whole gate not rerun. |

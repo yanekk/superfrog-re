@@ -107,7 +107,7 @@ fn every_case_is_in_one_list() {
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 32 cases, about 6 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 32 cases, about 10 min"]
 fn every_case_that_passes_mounted_still_does() {
     generated();
     let cases: Vec<Case> = PASS_MOUNTED
