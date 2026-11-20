@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T01 awaiting review.
+**Status:** Building; T01 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T06 and T07 can run beside it; T02 waits on T00.
 
 ## Tasks
 
@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | items-needed-source | — | ⬜ | |
-| T01 | objects-all-worlds | — | 🔍 | `re/objects-more.toml` holds `$34` flame; `object_claims.rs` flame claim on the oracle (body and feet, state equal to a plain slide); `object_tables.rs`, 6 tests, smoke. Deviation: test in `fd-conform/tests/`, not `fd-assets/tests/`, because `purity.rs` forbids `std::fs` in a pure crate's tests. |
+| T01 | objects-all-worlds | — | ✅ | `objects-more.toml` holds `$34` flame, oracle claim, `object_tables.rs` smoke. Review fixed the tautological table-discovery test (hard-coded names passed), now a scratch dir with a per-world table. Probed: independent Python recount of `$34` and seen cells; purity fails with the test in `fd-assets`; placed `$28` turns the flame claim red. Frame by `anim_tick` read-only. |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ⬜ | |
 | T04 | page-map-only | T03 | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T01
+**Review queue:** empty
 
 ## Blocked on the user
 
