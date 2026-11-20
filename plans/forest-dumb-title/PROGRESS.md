@@ -7,7 +7,7 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Status:** planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T02 and
+**Next `pir-work` will:** review T09; T01 title-read, because every case and app test names what it finds; T02 and
 T08 can run beside it.
 
 ## Tasks
@@ -25,11 +25,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | game-over-cases | T01, T02 | ⬜ | |
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
 | T08 | world-start-recording | — | ✅ | |
-| T09 | start-level-worlds | T08 | ⬜ | |
+| T09 | start-level-worlds | T08 | 🔍 | Start Level… W1-1 to W6-1 with Cheat on, `--level 1-6 [--cheat]`, `Translated::to_world`; 4 unit, 7 e2e tests (one OS layer, three sizes). Deviations: `spec`, `chosen`, `script::parse` take the engine, since the hand window differs; W1-1 cheat-off records `level-1`, no write (`fd_app::world_start`), as `--level 1` did; `to_level_1` removed. |
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T09
 
 ## Blocked on the user
 
