@@ -2,7 +2,7 @@
 //! world, the character's spot, BCD items left, the active creature slots, the cells that differ
 //! from the level file, and the ranges that cover every byte the reader takes.
 
-use fd_core::live::{Live, live_from_ram, live_ranges};
+use fd_core::live::{Live, Prev, live_from_ram, live_ranges};
 use fd_core::{HUNK_BASES, layout_var};
 
 const SLOW_BASE: usize = 0xC0_0000;
@@ -49,8 +49,9 @@ impl Ram {
         }
     }
 
+    /// A sample after one whose `irq_count` was `prev`, any world.
     fn live(&self, prev: Option<u16>, start: &dyn Fn(u8) -> Option<Vec<u8>>) -> Live {
-        live_from_ram(&self.chip, &self.slow, prev, start)
+        live_from_ram(&self.chip, &self.slow, prev.map(Prev::irq), start)
     }
 }
 
@@ -96,6 +97,7 @@ fn nothing_is_played_before_irq_count_moves() {
         first,
         Live {
             irq: 41,
+            world_index: 2,
             ..Live::default()
         },
         "the first sample is not play"
@@ -131,6 +133,7 @@ fn world_3_in_play_reads_whole() {
             creatures: vec![(200, 336, 4), (-16, 48, 7)],
             changed: vec![(3, 4, 0), (10, 20, 0), (11, 20, 5)],
             irq: 41,
+            world_index: 2,
         }
     );
     // `irq_count` wrapped past `$ffff` still moved.
@@ -195,4 +198,26 @@ fn the_ranges_cover_every_byte_read() {
     );
     let bytes: u32 = ranges.iter().map(|(a, b)| b - a).sum();
     assert!(bytes < 40_000, "{bytes} bytes: the map and a few variables");
+}
+
+/// The step a level ends sets the next world's `world_index` while `irq_count` has still moved
+/// since the last sample, and the character and items left are the ended level's: not play, so
+/// the page never draws the old spot on the next level's map (map page T12's drill: "W2-1" with
+/// W1-1's exit spot 208,92 and 0 items left). Once the next world counts again, it is play.
+#[test]
+fn the_sample_where_the_world_changes_is_not_play() {
+    let none = |_: u8| None;
+    let mut r = world_3();
+    let before = Live { irq: 30, world_index: 1, ..Live::default() }.prev();
+    let ended = live_from_ram(&r.chip, &r.slow, Some(before), &none);
+    assert!(!ended.playing && ended.world.is_none() && ended.char_xy.is_none(), "{ended:?}");
+    assert_eq!((ended.irq, ended.world_index), (41, 2));
+    // The next world's load: `irq_count` stands; then its play: it moves, the world the same.
+    let load = live_from_ram(&r.chip, &r.slow, Some(ended.prev()), &none);
+    assert!(!load.playing);
+    r.put("irq_count", 42);
+    let play = live_from_ram(&r.chip, &r.slow, Some(load.prev()), &none);
+    assert!(play.playing && play.world == Some(3), "{play:?}");
+    // `Prev::irq` leaves the world out: the same RAM reads as play.
+    assert!(live_from_ram(&r.chip, &r.slow, Some(Prev::irq(30)), &none).playing);
 }

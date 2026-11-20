@@ -103,7 +103,7 @@ fn the_route_s_opening_reads_the_character_items_and_taken_cells() {
         frame(&mut e, input, "the route");
         let (chip, slow) = ram(&e);
         let l = live_from_ram(chip, slow, prev, &start);
-        prev = Some(l.irq);
+        prev = Some(l.prev());
         if !l.playing {
             // A frame no pass ended in: `irq_count` stood.
             continue;
@@ -168,14 +168,14 @@ fn the_hand_engine_reads_as_the_translated_run_at_matched_passes() {
     to_level_1(&mut e);
     let start = |w: u8| level_map(w);
     let mut g = Game::new(data.clone(), Start::Level1);
-    let (mut prev, mut matched) = (None::<u16>, 0);
+    let (mut prev, mut matched) = (None::<fd_core::live::Prev>, 0);
     let mut last = None;
     for &input in &steps {
         frame(&mut e, input, "the route");
         for ram in e.pass_end_ram().to_vec() {
             let (chip, slow) = ram.split_at(CHIP);
             let l = live_from_ram(chip, slow, prev, &start);
-            prev = Some(l.irq);
+            prev = Some(l.prev());
             if !l.playing {
                 continue;
             }
@@ -230,14 +230,14 @@ fn world_2_through_its_way_in_reads_world_2_from_its_first_pass() {
         frame(&mut e, to_level_1_input(n), "to world 2");
         let (chip, slow) = ram(&e);
         let l = live_from_ram(chip, slow, prev, &start);
-        if prev.is_some_and(|p| p != l.irq) {
+        if prev.is_some_and(|p: fd_core::live::Prev| p.irq != l.irq) {
             // The first pass of play: `irq_count` counts from 0, the title takes no interrupt.
             assert!(l.playing && l.world == Some(2), "frame {n}: {l:?}");
             assert!(l.char_xy.is_some() && l.items_left.is_some(), "{l:?}");
             return;
         }
         assert!(!l.playing, "frame {n}");
-        prev = Some(l.irq);
+        prev = Some(l.prev());
     }
     panic!("no play in world 2 in {} frames", TO_LEVEL_1_FRAMES * 3);
 }
@@ -269,7 +269,7 @@ fn esc_to_the_game_over_screen_is_not_playing_within_two_samples() {
         if n % EVERY == EVERY - 1 {
             let (chip, slow) = ram(&e);
             let l = live_from_ram(chip, slow, prev, &start);
-            prev = Some(l.irq);
+            prev = Some(l.prev());
             samples.push((n, l));
         }
     }
