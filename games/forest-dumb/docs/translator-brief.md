@@ -3,6 +3,9 @@
 Written 2026-11-06 for the planner; rewritten 2026-11-11 after the trial (stage 0) passed and level 1
 merged. Slug: `forest-dumb-translator`. The sequence around this plan is in [ROADMAP.md](ROADMAP.md).
 
+**Built, 2026-11-20:** the result against this brief is in [14-translator.md](14-translator.md), "The
+plan's result".
+
 Read first: `games/forest-dumb/CLAUDE.md`, [13-translator-trial.md](13-translator-trial.md) (what the
 trial built and measured, and its notes for stages 1 to 6), `plans/forest-dumb-translator-trial/DESIGN.md`
 and its `FINDINGS.md`, [11-translation.md](11-translation.md) (the Muse procedure this plan replaces as
