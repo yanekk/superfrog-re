@@ -9,6 +9,7 @@
 mod error;
 mod level;
 mod program;
+mod secrets;
 mod sprites;
 
 pub use error::{AssetError, Why};
@@ -17,6 +18,7 @@ pub use level::{
     level_file_names, read_level,
 };
 pub use program::loaded_hunk;
+pub use secrets::{Secret, SecretKind, WALL_MIN, secrets};
 pub use sprites::{Sheet, Sprites, read_sprites, sprite_file_names};
 
 /// A closure handing over one of the game's files, unpacked, by its name: a level file of disk 2,

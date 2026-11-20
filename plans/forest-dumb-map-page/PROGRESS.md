@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T07, T08 and T10 can start (T05 ✅).
+**Next `pir-work` will:** T08 and T10 can start (T05 and T07 ✅).
 
 ## Tasks
 
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | page-map-only | T03 | ✅ | |
 | T05 | page-live | T04 | ✅ | Reviewed: one fix. Follow clicked on a map-only live page with nothing playing threw on the empty track; reproduced in Chrome, fixed, `follow_with_nothing_playing_on_a_map_only_level` locks it. Mutations caught: write_live without rename, stale check dropped. Smoke live test 1.4 s. Wheel stopping Follow only in live mode: non-live half read-only. |
 | T06 | live-reader | — | ✅ | |
-| T07 | secrets-research | — | ⬜ | |
+| T07 | secrets-research | — | ✅ | |
 | T08 | map-command | T02, T05 | ⬜ | |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
 | T10 | app-live | T02, T05, T06 | ⬜ | |
