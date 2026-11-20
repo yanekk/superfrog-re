@@ -1,5 +1,6 @@
-//! The bug recorder (DESIGN §2.7, §2.8), as Superfrog's: Game ▸ Start Level… starts W1-1 afresh
-//! with "Enable recorder?" among its fields; with it on, a recording is held in memory from the
+//! The bug recorder (DESIGN §2.7, §2.8), as Superfrog's: Game ▸ Start Level… starts a level afresh
+//! (worlds 1 to 6 and a cheat box on the translated program, title plan T09; W1-1 on the hand
+//! engine) with "Enable recorder?" among its fields; with it on, a recording is held in memory from the
 //! level's first frame, one input a stepped frame, until Stop Recording (⌘. or the bar's STOP) opens
 //! the save window and writes one zip into the bugs folder. Start Level and Quit during one ask
 //! "Recording in progress" first: Save…, Discard or Cancel. What ends a recording is `main.rs`'s
