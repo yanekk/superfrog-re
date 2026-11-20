@@ -344,3 +344,22 @@ fn live_play_at_three_sizes() {
         drive(&site(&format!("routeview-live-{}x{}", size.0, size.1), true), size);
     }
 }
+
+/// Follow pressed on a map-only level while nothing is playing: no dot to go to and no error, and
+/// the first dot is followed (a review find: the click once read the empty track).
+#[test]
+fn follow_with_nothing_playing_on_a_map_only_level() {
+    let root = site("routeview-live-follow-idle", true);
+    write_live(&root, &LiveFrame { t_ms: now_ms(), playing: false, ..LiveFrame::default() }).unwrap();
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    b.open(&root.join("index.html")).unwrap();
+    wait_level(&mut b, "Map L1");
+    wait_status(&mut b, "Not playing", Duration::from_secs(3));
+    click(&mut b, "document.getElementById('zfollow')");
+    assert!(!follow(&mut b), "Follow turned off by the click");
+    click(&mut b, "document.getElementById('zfollow')");
+    assert!(follow(&mut b), "Follow back on by a click");
+    write_live(&root, &at("L1", 210)).unwrap();
+    wait_rgb(&mut b, cell_mid(210, 5), Some(GREEN), "Follow went to the first dot");
+    assert_eq!(errors(&mut b), Vec::<String>::new());
+}

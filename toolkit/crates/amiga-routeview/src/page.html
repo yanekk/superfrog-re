@@ -396,7 +396,8 @@ document.getElementById('zout').onclick = () => zoomAt(1/1.4, box.clientWidth/2,
 document.getElementById('zfit').onclick = () => { setFollow(false); fit(); };
 const fb = document.getElementById('zfollow');
 function setFollow(v) { follow = v; fb.setAttribute('aria-pressed', v); fb.style.borderColor = v ? 'var(--accent)' : ''; }
-fb.onclick = () => { setFollow(!follow); if (follow) { if (scale < 1.5) scale = 2; const [x,y] = liveDot() || fp(frame); centerOn(x,y); draw(); } };
+// A map-only level in live mode has no track: with no live dot yet, Follow waits for the next one.
+fb.onclick = () => { setFollow(!follow); if (!follow) return; const p = liveDot() || (ROUTED ? fp(frame) : null); if (!p) { followZoom = true; return; } if (scale < 1.5) scale = 2; centerOn(p[0], p[1]); draw(); };
 
 const tip = document.getElementById('tip');
 const toLevel = e => { const r = box.getBoundingClientRect(); return [(e.clientX - r.left - ox)/scale, (e.clientY - r.top - oy)/scale, e.clientX - r.left, e.clientY - r.top]; };
