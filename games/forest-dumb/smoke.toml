@@ -326,6 +326,12 @@ workspace = "engine"
 # level 1's load with resizes and a lost focus, the stop band at 2× and 1000×700 with its zip
 # replayed. Four launches, about 34 s, and the generated tree.
 "crates/fd-e2e/tests/translated_drill.rs" = "full"
+# Title plan T10: the title's paths in the app by key presses, equal to headless every step. Short:
+# the rows (pictures every step) and 2424 to world 3's play, about 13 s; the rest: codes 0556, 7531,
+# 1234, the cheat with HELP, Esc bound to F11, game over back to the title, about 25 s. Both need the
+# generated tree, so full, with no area (owner, 2026-11-20).
+"crates/fd-e2e/tests/title_paths_short.rs" = "full"
+"crates/fd-e2e/tests/title_paths.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at

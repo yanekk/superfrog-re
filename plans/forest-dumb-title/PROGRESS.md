@@ -7,8 +7,7 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Status:** planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T02 and
-T08 can run beside it.
+**Next `pir-work` will:** review T10; T02 and T03 to T06 as their dependencies allow.
 
 ## Tasks
 
@@ -26,10 +25,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
 | T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ⬜ | |
-| T10 | title-app-paths | T01 | ⬜ | |
+| T10 | title-app-paths | T01 | 🔍 | Two fd-e2e files, 7 tests: rows (pictures every step), codes 0556/2424/7531/2400/1234, cheat+HELP, Esc on F11, game over to title and START again; headless-planned inputs fed as keys. Deviations: both full, no area (owner); game over in world 3 by 2424 (world 2 has no code); HELP tapped 2 steps, aimed (FINDINGS). |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T10
 
 ## Blocked on the user
 
