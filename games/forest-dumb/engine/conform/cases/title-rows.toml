@@ -1,0 +1,16 @@
+# The title's rows (forest-dumb-title T03, DESIGN §2.2): from the idle title at frame 4990, as
+# world-2-start, Down and Up through START, KODY and KONIEC and back (scripts/title-rows.txt, T01's
+# measured script): a row moves on the stick's release, title_cursor 1 at 5020, 2 at 5060, 0 at 5072
+# (Down wraps), 2 at 5100 (Up wraps), 1 at 5120, 0 at 5140 (docs/16-title.md, "The rows").
+# Lined up by loads, the only title runner that takes a goal; no load runs, so every frame is
+# compared. Translated engine only.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-rows"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 180
+compare = ["memory", "picture", "writes", "vars"]
+vars = ["title_cursor", "title_selected"]
+# title_cursor is 0 at the snapshot too: `after` takes it only once Up has been let go the last time,
+# at 5130 (the release is seen in step 5140).
+goal = { all = [{ var = "title_cursor", value = 0 }], after = 5130, by_frame = 5170 }

@@ -182,6 +182,7 @@ fn the_routes_first_600_steps_agree_with_the_original() {
             ("lives".into(), LIVES as u32),
         ],
         by_frame: c.sync_frame + c.frames,
+        after: None,
     });
     let mut g = Watched::new(Shapes::Measured);
     let v = run_with(&c, &mut g, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
@@ -207,6 +208,7 @@ fn opening(frames: u32) -> Case {
     c.goal = Some(Goal::All {
         all: vec![("lives".into(), LIVES as u32)],
         by_frame: c.sync_frame + frames,
+        after: None,
     });
     c
 }
@@ -396,6 +398,7 @@ fn the_one_routes_first_600_steps_agree_with_the_original() {
             ("lives".into(), LIVES as u32),
         ],
         by_frame: c.sync_frame + c.frames,
+        after: None,
     });
     let mut g = Watched::new(Shapes::Measured);
     let v = run_with(&c, &mut g, &Options::default()).unwrap_or_else(|e| panic!("{e}"));
@@ -488,6 +491,7 @@ fn a_row_cut_before_its_shapes_keeps_the_band_for_the_pass() {
     c.goal = Some(Goal::All {
         all: vec![("lives".into(), LIVES as u32)],
         by_frame: c.sync_frame + c.frames,
+        after: None,
     });
     let mut g = Watched::new(Shapes::Measured);
     let v = run_with(&c, &mut g, &Options::default()).unwrap_or_else(|e| panic!("{e}"));

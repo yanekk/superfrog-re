@@ -1754,12 +1754,12 @@ pub fn run_inputs(
                         }
                         verdict.passes += 1;
                     }
-                    if let Some(Goal::All { by_frame, .. }) = &case.goal {
+                    if let Some(g @ Goal::All { .. }) = &case.goal {
                         let reached = |v: &Var, value: u32| {
                             engine.probe(v) == value && theirs.value(v) == value
                         };
                         if verdict.goal_met.is_none()
-                            && frame <= *by_frame
+                            && g.all_counts_at(frame)
                             && goal.iter().all(|(v, value)| reached(v, *value))
                         {
                             verdict.goal_met = Some(frame);
@@ -1971,12 +1971,13 @@ pub fn run_inputs(
         nothing("no frame's picture was compared")
     } else {
         match &case.goal {
-            Some(Goal::All { all, by_frame }) if verdict.goal_met.is_none() => {
-                let want: Vec<String> = all.iter().map(|(v, n)| format!("{v} = {n}")).collect();
-                Some(Outcome::GoalMissed {
-                    goal: format!("{} by oracle frame {by_frame}", want.join(", ")),
-                })
-            }
+            Some(Goal::All {
+                all,
+                by_frame,
+                after,
+            }) if verdict.goal_met.is_none() => Some(Outcome::GoalMissed {
+                goal: Goal::all_wanted(all, *after, *by_frame),
+            }),
             Some(Goal::GameOver { by_frame }) => match verdict.game_over {
                 Some((_, Some(left))) if left <= *by_frame => {
                     verdict.goal_met = Some(left);

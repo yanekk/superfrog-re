@@ -19,6 +19,7 @@ fn case() -> Case {
         goal: Some(Goal::All {
             all: vec![("char_x".into(), 0x70)],
             by_frame: 6341,
+            after: None,
         }),
         ..stub
     }

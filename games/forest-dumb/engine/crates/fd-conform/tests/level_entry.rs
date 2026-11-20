@@ -98,6 +98,7 @@ fn an_unported_object_fails_a_case_whatever_its_goal() {
         goal: Some(Goal::All {
             all: vec![("lives".into(), 0x32)],
             by_frame: short.sync_frame + 20,
+            after: None,
         }),
         ..short.clone()
     };
