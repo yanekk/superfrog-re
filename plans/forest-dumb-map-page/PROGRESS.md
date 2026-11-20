@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Planned 2026-11-20; nothing built.
+**Status:** Building; T00 awaiting review.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** review T00; T03 (chrome-rig) heads the critical path, T01, T06 and T07 beside it.
 
 ## Tasks
 
@@ -16,7 +16,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | items-needed-source | — | ⬜ | |
+| T00 | items-needed-source | — | 🔍 | Found: every load list sets items_left to BCD(coins in the whole 38400-byte object map - 50), a pure function of `_MapaBobowN`. Read on the oracle for all six worlds, equal to the file count; docs/10 Items and a FINDINGS row. Spike deleted, README kept with rerun steps (code in 34b06ade). No tests: research task. No deviations. |
 | T01 | objects-all-worlds | — | ⬜ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** (empty)
+**Review queue:** T00
 
 ## Blocked on the user
 
