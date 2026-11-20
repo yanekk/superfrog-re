@@ -19,8 +19,9 @@ use pcode_machine::{Disks, Input};
 use pcode_rt::{Image, Regs, Stop};
 
 /// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19; the eight
-/// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20).
-const PASS_MOUNTED: [&str; 49] = [
+/// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20; the two
+/// title cases, which never reach play, title T03, 2026-11-20).
+const PASS_MOUNTED: [&str; 51] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -70,6 +71,8 @@ const PASS_MOUNTED: [&str; 49] = [
     "mechanic-vanish",
     "route-W1-1",
     "route-both-W1-1",
+    "title-idle-loop",
+    "title-rows",
 ];
 
 /// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated

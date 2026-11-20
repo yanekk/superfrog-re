@@ -71,6 +71,7 @@ frames = 130                 # oracle frames run after the sync point
 compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
+# goal = { all = [{ var = "title_cursor", value = 0 }], after = 5130, by_frame = 5170 }  # met only after 5130
 # goal = { enters = "title_screen", by_frame = 9000 }   # lined up by loads: both enter the routine
 # goal = { exited = true, by_frame = 5100 }             # lined up by loads: both quit to AmigaDOS
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
@@ -93,7 +94,9 @@ align = "loads"              # power-on cases: frames lined up at each load's re
   pass that bar with half of it off.
 - **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
   alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
-  compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
+  compared pass ending at or before oracle frame `by_frame`, on both sides; with `after = F` (title
+  T03), only at one ending after oracle frame `F`, for a path that comes back to where it started
+  (`title-rows`, `title-idle-loop`), which would otherwise meet its goal on its first frame. `idle = true`, for stretches
   where only state is expected to stay in step: the run reaches its last frame with no engine event and
   every listed variable compared on every pass; a pass whose end the original hides (below) fails it.
   `game_over = true` (T23): both sides show the game over screen and leave it in the same step.

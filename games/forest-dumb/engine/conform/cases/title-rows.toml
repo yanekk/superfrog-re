@@ -4,6 +4,8 @@
 # (Down wraps), 2 at 5100 (Up wraps), 1 at 5120, 0 at 5140 (docs/16-title.md, "The rows").
 # Lined up by loads, the only title runner that takes a goal; no load runs, so every frame is
 # compared. Translated engine only.
+# Passes on the translated program, measured 2026-11-20 (T03), and with level 1 mounted: all 180
+# frames equal in memory, picture and Paula's writes, the goal met at oracle frame 5141.
 sync = { script = "boot-to-level1", frame = 4990 }
 input = "title-rows"
 align = "loads"

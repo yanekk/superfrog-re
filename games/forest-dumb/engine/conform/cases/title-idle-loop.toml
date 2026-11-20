@@ -3,6 +3,9 @@
 # idles while mt_music plays positions 0 to 26; mt_songpos is first back at 0 in step 15013, 10091
 # frames after mt_init's frame 4922 (T01, docs/16-title.md, "The song's loop"). Lined up by loads,
 # the only title runner that takes a goal. Translated engine only.
+# Passes on the translated program, measured 2026-11-20 (T03), and with level 1 mounted: 10 440
+# frames compared outside the five loads, every channel equal within the bar (one frame's bytes one
+# frame on, one picture a few pixels off, two glitch frames), the goal met at oracle frame 15014.
 sync = { script = "boot-to-title", frame = 0 }
 start = "entry"
 align = "loads"

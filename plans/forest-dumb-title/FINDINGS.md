@@ -8,6 +8,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | Every new case file must be listed in `mount_level_1.rs` (`PASS_MOUNTED` or `DIFFER`) or `every_case_is_in_one_list` fails in smoke; T04 to T06 each grow the same array, a merge to resolve (T03). |
+| 2026-11-20 | 📌 | **An `all` goal true at the start is met on frame one**: `title_cursor` 0, `mt_songpos` 0, `world_index` 0 for world 1. `after = F` (T03, owner's choice) counts it only after oracle frame F. |
 | 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
 | 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
 | 2026-11-20 | 📌 | **Codes reach worlds 1, 3 and 5 only** (0556, 2424, 7531) plus 2400, world 1 with `cheat_flag`; worlds 2, 4 and 6 have none, so `title-code-wN` exists for N 1, 3, 5 (T01, docs/16). |
