@@ -63,6 +63,14 @@ fn translated(name: &str) -> Verdict {
 /// way back: every routine of `WAY_BACK` entered, the name entry only when `named`.
 fn reads_as_recorded(name: &str, named: bool) {
     let v = translated(name);
+    // The loop below proves nothing over an empty or shortened register: every routine of the
+    // way back must be in the report before its count is read.
+    let listed: Vec<&str> = v.coverage.hits.iter().map(|&(r, _)| r).collect();
+    let way_back: Vec<&str> = WAY_BACK.iter().map(|p| p.name).collect();
+    assert!(
+        !way_back.is_empty() && listed == way_back,
+        "{name}: coverage lists {listed:?}, not the way back {way_back:?}"
+    );
     for &(routine, hits) in &v.coverage.hits {
         let entered = hits > 0;
         let expected = routine != "hiscore_name_entry" || named;
