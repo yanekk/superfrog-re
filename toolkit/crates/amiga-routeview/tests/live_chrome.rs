@@ -70,6 +70,7 @@ fn spec(live: bool) -> PageSpec {
             Category::new("gems", "Gems", "#ff00ff", true, &["coin"]),
             Category::new("foes", "Foes", "#ffff00", true, &["enemy"]),
             Category::new("rest", "Everything else", "#00ffff", true, &[]),
+            Category::new("secrets", "Secrets", "#c792ff", false, &["secret"]),
         ],
         actor: "hero".into(),
         anchor: (0, 0),
@@ -437,6 +438,7 @@ fn a_secret_keeps_its_mark_when_the_object_on_its_cell_is_taken() {
     let root = site_with("routeview-live-secret", true, r#",[12,5,0,"secret","hidden passage"]"#, "");
     let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
     open_playing(&mut b, &root, (1280, 800));
+    click(&mut b, "[...document.querySelectorAll('#legend .chip')].find(b => b.textContent === 'Secrets')");
     const SECRET: (u8, u8, u8) = (0xc7, 0x92, 0xff);
     let cell = (12 * CELL, 5 * CELL, 13 * CELL, 6 * CELL);
     let before = count_rgb(&mut b, cell, SECRET);
@@ -489,4 +491,25 @@ fn a_torn_read_of_the_live_file_keeps_the_last_frame_until_it_is_stale() {
     assert_ne!(rgb(&mut b, cell_mid(10, 5)), Some(GREEN), "an old position drawn as current");
     let errs = errors(&mut b);
     assert!(errs.iter().all(|e| e == "\"Script error.\""), "{errs:?}");
+}
+
+/// With the Secrets layer off (as at load) the heading's object count and the Level summary leave
+/// the secrets out, so they give nothing away; switching the layer on counts them (owner, map page
+/// T12's drill, 2026-11-20).
+#[test]
+fn secrets_are_left_out_of_the_counts_while_their_layer_is_off() {
+    let root = site_with("routeview-secret-count", true, r#",[12,5,0,"secret","hidden passage"]"#, "");
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    open_playing(&mut b, &root, (1280, 800));
+    let sub = |b: &mut Browser| eval_str(b, "document.getElementById('sub').textContent");
+    let stats = |b: &mut Browser| eval_str(b, "document.getElementById('stats').textContent");
+    assert_eq!(sub(&mut b), "map only · 3 objects", "Secrets off at load");
+    assert!(!stats(&mut b).contains("Secrets"), "{}", stats(&mut b));
+    let chip = "[...document.querySelectorAll('#legend .chip')].find(b => b.textContent === 'Secrets')";
+    click(&mut b, chip);
+    assert_eq!(sub(&mut b), "map only · 4 objects", "Secrets on");
+    assert!(stats(&mut b).contains("Secrets1"), "{}", stats(&mut b));
+    click(&mut b, chip);
+    assert_eq!(sub(&mut b), "map only · 3 objects", "Secrets off again");
+    assert_eq!(errors(&mut b), Vec::<String>::new());
 }

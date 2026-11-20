@@ -467,7 +467,7 @@ const ROUTE_LAYERS = ['route', 'guide', 'heat', 'live', 'events'];
 for (const [key, l] of Object.entries(LAYERS)) {
   const b = document.createElement('button'); layerChips[key] = b; b.className = 'chip'; b.setAttribute('aria-pressed', l.on);
   b.innerHTML = `<i style="background:${l.color}"></i>${l.name}`;
-  b.onclick = () => { l.on = !l.on; b.setAttribute('aria-pressed', l.on); draw(); };
+  b.onclick = () => { l.on = !l.on; b.setAttribute('aria-pressed', l.on); if (D && !ROUTED) { mapSub(); mapStats(); } draw(); };
   legend.appendChild(b);
 }
 
@@ -502,8 +502,11 @@ function markRow() {
   if (marked && marked !== cur) marked.classList.remove('now');
   if (cur) cur.classList.add('now'); marked = cur;
 }
+// Secrets are counted only while their layer is on, so a count gives none away (owner, 2026-11-20).
+const counted = () => D.objects.filter(o => o[3] !== 'secret' || shown('secret'));
+function mapSub() { document.getElementById('sub').textContent = `map only · ${counted().length} objects`; }
 function mapStats() {
-  const S = SPEC.layers.map(l => [l.name, D.objects.filter(o => layerOf(o[3]) === l.key).length]);
+  const S = SPEC.layers.filter(l => !l.cats.includes('secret') || LAYERS[l.key].on).map(l => [l.name, counted().filter(o => layerOf(o[3]) === l.key).length]);
   if (D.coins_needed != null) S.unshift(['Coins the exit needs', D.coins_needed]);
   document.getElementById('stats').innerHTML = S.map(([a,b]) => `<dt>${esc(a)}</dt><dd>${b}</dd>`).join('');
   document.getElementById('notes').textContent = D.notes.join('\n');
@@ -604,7 +607,8 @@ async function select(id) {
   buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
   document.getElementById('sub').textContent = ROUTED
     ? `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '')
-    : `map only · ${D.objects.length} objects`;
+    : '';
+  if (!ROUTED) mapSub();
   resize(); fit();
   // Open on the last frame, so the whole route and every event read at full strength at rest.
   if (ROUTED) setFrame(END, true);
