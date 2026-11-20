@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** review T59; T58 and T60 to build.
+**Next `pir-work` will:** T58 and T60 to build.
 
 ## Tasks
 
@@ -73,10 +73,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
-| T59 | mount-walk-close | T56; blocks T40, T42 | 🔍 | Eight cases moved to `PASS_MOUNTED`, 47 pass (full run 2026-11-20); `T56` list now `T58` (3); `HEARS` 23, `HEARS_T58` 2; `CLX_LINES_OFF` 0 holds; `COSTS` two rows, `FADE_ON` and unwalked blit removed (a stop now); DESIGN §2.9 paragraph. No new test file. FINDINGS compacted: three superseded rows dropped (T50's is DESIGN §2.8). |
+| T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | Review clean, no fix commit. Ran mount_level_1 full (47 pass, 1139 s), HEARS 23, CLX at 0, seam 2 000, mount_timing. Probed: routes fail mounted at 4161 and 4969 as noted, route-W1-1 passes translated alone. Mutation: no lump cost for char_update fails mechanic-spring and two more at pass 474; seam.rs and CLX miss it. |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
 
-**Review queue:** T59
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
