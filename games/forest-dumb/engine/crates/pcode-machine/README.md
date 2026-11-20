@@ -57,9 +57,11 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   bits, without clears them; a read returns the flags (bit 7 if the line is driven) and clears them.
   Only that read releases the line: masking a raised interrupt and unmasking it gives no new edge. The line falling is PORTS (`$0008`) from
   `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard (`amiga-input`
-  `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag, and
-  the next waits for the handshake (CRA bit 6 set then cleared) plus `KEY_BYTE_CYCLES` (3 405, the
-  manual's 8 bits at 60 µs, unmeasured). A keyboard never acknowledged waits for ever; the real one
+  `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag
+  `KEY_BYTE_CYCLES` (3 405, the manual's 8 bits at 60 µs) after an idle keyboard saw the change, and
+  the next waits for the handshake (CRA bit 6 set then cleared) plus the same. On the oracle a key
+  pressed at a frame's start raises level 2 on line 7 (title plan T07); the machine's first
+  byte once landed at the press, which ran a handler's raster wait across the title's. A keyboard never acknowledged waits for ever; the real one
   resyncs. `keys_held` tells it which keys a snapshot's keyboard had already sent, so the first
   `set_input` sends only what changed (T31). Reset state: all masked, all inputs; at a snapshot set the mask (`cia_a_mut`), since the
   oracle's snapshot holds no CIA state. TOD registers keep their byte.

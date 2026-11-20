@@ -15,18 +15,14 @@ use fd_translated::TranslatedGame;
 
 /// Cases equal to the original on the translated program, and the oracle frame their goal is met.
 /// KONIEC: fire released at the script's frame 70 (oracle 5060), `title_selected` in step 5060;
-/// `quit_to_dos` returns in the step ending at 5063 (measured 2026-11-20, T05).
-const PASSING: &[(&str, u32)] = &[("title-koniec", 5063)];
+/// `quit_to_dos` returns in the step ending at 5063 (measured 2026-11-20, T05). Esc: the return
+/// in the step ending at 5012 on both sides (2026-11-20, T07; T05 read the translated program a
+/// frame late, its key byte landing at the frame's start, `pcode-machine` `cia.rs`).
+const PASSING: &[(&str, u32)] = &[("title-koniec", 5063), ("title-esc", 5012)];
 
-/// Cases that differ on the translated program, and the start of their first difference
-/// (measured 2026-11-20, T05). Esc: the original runs `quit_to_dos` in step 5010, its sound
-/// shut down at 5011 and its return at 5012; the translated program does each a frame later, its
-/// return at 5013. Left for T07 (DESIGN §2.4).
-const DIFFER: &[(&str, &str)] = &[(
-    "title-esc",
-    "Paula writes differ at pass 21 (oracle frame 5011): write #1: original AUD0PER = $01ac, \
-     engine nothing",
-)];
+/// Cases that differ on the translated program, and the start of their first difference. None
+/// today.
+const DIFFER: &[(&str, &str)] = &[];
 
 /// What the original does in each case, read from the verdict whichever side differs: the
 /// oracle frame it returned from the program's entry.

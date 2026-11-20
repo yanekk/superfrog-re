@@ -129,6 +129,22 @@ loops. Measured (from 4990 with nothing pressed): position 1 from step 5305, eac
 after, position 26 from 14905 for 108 frames only, and `mt_songpos` first back at 0 in step
 15013, 10091 frames after `mt_init`'s frame 4922.
 
+## On the translated program
+
+Fix, 2026-11-20 (plan `forest-dumb-title`, T07): every title case passes on `--engine translated`.
+Six differed before (`title-esc` a frame late, the five KODY cases from 5051), all from one defect in
+`pcode-machine`'s keyboard: a key's byte landed in CIA-A's SDR at the press, at the frame's start,
+where the oracle raises level 2 on line 7, the time a keyboard takes to clock out 8 bits
+(`title-esc`, step 5010: oracle line 7, machine line 0). `level2_handler` acknowledges by waiting
+for VPOSR's low byte to change twice, about two lines, so on the machine it ran from line 0 to 2
+across `title_pass`'s `wait_line_1`, which then waited a whole frame. An idle keyboard now takes
+`KEY_BYTE_CYCLES` to send its first byte, as it already did after a handshake (`cia.rs`, tests
+`an_idle_keyboard_takes_a_bytes_time_to_send_its_first` and the machine's
+`a_key_arrives_through_sdr_with_its_interrupt_and_waits_for_the_handshake`).
+`run-all --engine translated` after the fix: 60 of 61, the 50 earlier cases as before (49 pass,
+`power-on-level-1` from 6301 at `h0+$1fe6`). With level 1 mounted, `title-code-w1`, `-cheat` and
+`-wrong` differ at play's first frame, 6429 (`h0+$1e65`, the camera), the mount's and left open.
+
 ## Unreferenced title code
 
 Nothing in the program reaches these; the cases do not test them.

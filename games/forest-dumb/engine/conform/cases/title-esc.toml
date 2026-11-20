@@ -10,6 +10,6 @@ swap = { frame = 3600, disk = 2 }
 frames = 60
 compare = ["memory", "picture", "writes"]
 goal = { exited = true, by_frame = 5050 }
-# Fails on the translated program, measured 2026-11-20 (T05), left for T07: it quits a frame late.
-# The original shuts its sound down at 5011 (AUD0PER first) and returns at 5012, the translated
-# program at 5013; first difference Paula's writes at 5011 (tests/title_quit_cases.rs).
+# Passes on the translated program, both returning at oracle frame 5012 (T07, 2026-11-20). T05
+# read it a frame late: the machine landed Esc's key byte at the frame's start, so level2_handler's
+# two-line wait ran across title_pass's wait_line_1 (tests/title_quit_cases.rs).
