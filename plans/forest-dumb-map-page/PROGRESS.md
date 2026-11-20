@@ -6,7 +6,7 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Planned 2026-11-20; nothing built.
+**Status:** Building; T01 awaiting review.
 **Last updated:** 2026-11-20
 **Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01, T06 and T07 can run beside it.
 
@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | items-needed-source | — | ⬜ | |
-| T01 | objects-all-worlds | — | ⬜ | |
+| T01 | objects-all-worlds | — | 🔍 | `re/objects-more.toml` holds `$34` flame; `object_claims.rs` flame claim on the oracle (body and feet, state equal to a plain slide); `object_tables.rs`, 6 tests, smoke. Deviation: test in `fd-conform/tests/`, not `fd-assets/tests/`, because `purity.rs` forbids `std::fs` in a pure crate's tests. |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ⬜ | |
 | T04 | page-map-only | T03 | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** (empty)
+**Review queue:** T01
 
 ## Blocked on the user
 
