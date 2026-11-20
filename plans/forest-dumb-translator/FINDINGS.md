@@ -6,12 +6,12 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25, `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. `char_probe` past the kept plane reads memory (two judge states). |
+| 2026-11-20 | 📌 | **T58 review, open:** `game_frame_costs --passes --mounted enemy-contact`: CLXDAT, JOY1DAT and pass entries on the translated cycles; 422 of 1 299 passes run 2 to 8 cycles longer, all bus waits. Unlocated. |
+| 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25 (item, stomp, slide, hurt, spring; no time bonus in W1-1), `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. |
 | 2026-11-20 | 🐞 | **Machine crash, from T54:** `engine.rs`'s mounted handler never polled, so after T54's `IPL_DELAY` its `rte` retook VERTB forever and the frame's writes grew to 25 GB (panic 2026-11-20). `Machine::stuck_interrupt` stops such a loop. |
 | 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
-| 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). Measured before: 47 of 50 pass mounted; routes (4161, 4969) left for T58, power-on-level-1 fails alone. |
+| 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). |
 | 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
-| 2026-11-19 | 📌 | **T57 measured** (again after T55's merge): mounted, level 1's effects are the original's in order in 20 cases (`mount_level_1.rs` `HEARS`): item, stomp, slide, hurt, spring. No time bonus in W1-1. 5 differ, `HEARS_T56`. |
 | 2026-11-19 | 🐞 | **T57:** the premise was wrong: T36's mount already made every effect, T38's app script took none. The item sample opens with 106 zero bytes: heard the step after with the instant mount, at its step since T55. |
 | 2026-11-19 | 🐞 | **T54 review, open:** `IPL_DELAY` (8) also delays chip-raised requests (`Machine::settle`); vAmiga's `serviceIrqEvent` calls `setINTREQ` directly, skipping the register's DMA cycle, so 6. Routes pass; unmeasured, left alone. |
 | 2026-11-19 | 📌 | **T54 review:** DESIGN §2.8 says a pending interrupt is taken at the next instruction boundary; since T54 the CPU sees it `IPL_DELAY` later, at an instruction's last access (vAmiga's IPL pipe). DESIGN left alone. |
