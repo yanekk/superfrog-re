@@ -56,7 +56,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ✅ | |
 | T41 | app-drill | T40 | ✅ | |
-| T42 | close | T21, T33, T34, T41 | ⬜ | |
+| T42 | close | T21, T33, T34, T41 | ✅ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
