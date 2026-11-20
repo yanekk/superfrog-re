@@ -6,8 +6,9 @@
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
-use amiga_routeview::LevelDump;
 use amiga_routeview::json::{Json, esc, list};
+use amiga_routeview::site::{self, Category, Entry, PageSpec};
+use amiga_routeview::{LevelDump, LiveSpec};
 
 mod level;
 
@@ -75,7 +76,8 @@ impl MapLevel {
     }
 }
 
-/// A map-only entry (T04 draws it): the default switcher row, no route file.
+/// A map-only entry (T04 draws it): no route file and no verdict, so the page says "Map only"
+/// (DESIGN §2.3); grouped by world as `fd-routeview`'s W1-1 route is.
 impl LevelDump for MapLevel {
     fn level_id(&self) -> &str {
         level::level_id_str(self.world)
@@ -84,6 +86,117 @@ impl LevelDump for MapLevel {
     fn write_js(&self, out: &mut dyn Write) -> io::Result<()> {
         out.write_all(self.to_json().as_bytes())
     }
+
+    fn entry(&self) -> Entry {
+        let id = self.level_id().to_string();
+        Entry {
+            label: id.clone(),
+            group: format!("W{}", self.world),
+            id,
+            route_file: None,
+            verdict: None,
+            wall_s: None,
+            ref_frames: None,
+        }
+    }
+}
+
+/// The character's offset to the point that names its cell (`char_x + $e`, `char_y + 9`, as
+/// fd-core's `Location::of_character` takes it); the page draws the character there too.
+const SPOT: (i32, i32) = (0xe, 9);
+
+/// What Forest Dumb's page knows of the game: 16-pixel cells, the character drawn and placed at its
+/// spot, an object in play boxed over the cell it stands on, a layer per object group of
+/// `re/objects-*.toml` ([`object_name`]), and live mode on with the items left (DESIGN §2.5).
+pub fn spec() -> PageSpec {
+    PageSpec {
+        title: "Forest Dumb Forever".into(),
+        cell_size: (16, 16),
+        categories: vec![
+            Category::new("coins", "Coins", "--accent", true, &["coin"]),
+            Category::new("creatures", "Creatures", "--enemy", true, &["enemy"]),
+            Category::new("bonuses", "Bonuses", "--pickup", true, &["pickup"]),
+            Category::new("water", "Water", "--hazard", true, &["hazard"]),
+            Category::new(
+                "misc",
+                "Springs, vanishing blocks, flames, the exit",
+                "#ffffff",
+                true,
+                &[],
+            ),
+        ],
+        actor: "character".into(),
+        anchor: SPOT,
+        cell_origin: SPOT,
+        live_box: (0, 0, 16, 16),
+        live: Some(LiveSpec::new(&[("items_left", "Items left")])),
+    }
+}
+
+/// The toolkit page as Forest Dumb needs it. It loads a web font; the page opens from disk and
+/// makes no request outside it, so the line is dropped and the page falls back to the system's
+/// fonts. And a route the toolkit can only call clean, faults or failed is shown as the page's own
+/// `unknown` ("No verdict"): a clean route there reads "reaches the exit", which nothing here knows.
+pub fn offline(page: &str) -> String {
+    let page = page.replace(
+        r#""status":"clean","faults":[""#,
+        r#""status":"unknown","faults":[""#,
+    );
+    page.lines()
+        .filter(|l| !(l.starts_with("<link") && l.contains("://")))
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
+}
+
+/// The six levels' page under `out` ([`write_levels`] over [`WORLDS`]).
+pub fn write_site(
+    out: &Path,
+    files: &fd_assets::Files,
+    program: &[u8],
+    route: Option<&dyn LevelDump>,
+) -> Result<PathBuf, String> {
+    write_levels(out, files, program, &WORLDS, route)
+}
+
+/// The page under `out` for `worlds`, in order: `index.html` (with [`spec`], live mode on) and
+/// `data/W?-1.js` per world, each map only, read from `files` (disk 2's, unpacked) and `program`
+/// (disk 1's `FOREST_DUMB_FOREVER`). `route`, when given, takes the place of its level's map-only
+/// entry (W1-1's route from `fd-routeview --script`); a route for a level not listed is an error.
+/// Every level is read before anything is written, so a missing file leaves the old page whole.
+pub fn write_levels(
+    out: &Path,
+    files: &fd_assets::Files,
+    program: &[u8],
+    worlds: &[u8],
+    route: Option<&dyn LevelDump>,
+) -> Result<PathBuf, String> {
+    let mut maps = Vec::new();
+    for &w in worlds {
+        let level = fd_assets::read_level(w, files).map_err(|e| e.to_string())?;
+        maps.push(map_level(w, &level, program)?);
+    }
+    let mut levels: Vec<&dyn LevelDump> = Vec::new();
+    for m in &maps {
+        match route {
+            Some(r) if r.level_id() == m.level_id() => levels.push(r),
+            _ => levels.push(m),
+        }
+    }
+    if let Some(r) = route
+        && !maps.iter().any(|m| m.level_id() == r.level_id())
+    {
+        return Err(format!(
+            "a route on {} but no such level written",
+            r.level_id()
+        ));
+    }
+    let fail = |e: io::Error| format!("{}: {e}", out.display());
+    site::write_site(out, &spec(), &levels).map_err(fail)?;
+    let page = out.join("index.html");
+    let html = std::fs::read_to_string(&page).map_err(fail)?;
+    std::fs::write(&page, offline(&html)).map_err(fail)?;
+    Ok(page)
 }
 
 /// `games/forest-dumb/build/map` of the main checkout this crate was built in, so a build in any

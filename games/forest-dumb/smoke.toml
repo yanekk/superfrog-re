@@ -419,6 +419,13 @@ workspace = "engine"
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
 "crates/fd-routeview/tests/page.rs" = "smoke"
+# Map page T08: fd-routeview --all's six data files against the disks' object files and its bad
+# arguments, about 2 s; --level and --script --all (~2 s) and the page in Chrome at three sizes
+# (~25 s) are full.
+"crates/fd-routeview/tests/levels_chrome.rs" = [
+    "all_writes_six_levels_matching_their_files",
+    "bad_arguments_exit_2_naming_what",
+]
 # T20, the planner: its facts, a 100-round search to the exit's cells replayed and drawn on the page,
 # the same route on 1 to 4 threads, the budget's stop through the command, and the route played on the
 # original (~2 s), two agreeing prefixes on it (~3 s): about 7 s warm. The 400-round search through
@@ -783,3 +790,7 @@ covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_th
 [[area]]
 name = "the map page's levels: every world's objects, exit and items needed read from its files"
 covers = ["crates/fd-map/tests/levels.rs::each_real_world_matches_its_object_file"]
+
+[[area]]
+name = "the six-level map page: fd-routeview --all writes W1-1 to W6-1 map only, live mode on"
+covers = ["crates/fd-routeview/tests/levels_chrome.rs::all_writes_six_levels_matching_their_files"]
