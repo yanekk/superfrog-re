@@ -9,7 +9,9 @@ use std::sync::{Arc, Condvar, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use amiga_disk::ofs::OfsImage;
 use amiga_routeview::live::{LIVE_FILE, LiveFrame, write_live};
+use fd_assets::{AssetError, Files};
 use fd_core::live::{Live, live_from_ram, live_ranges};
 
 /// Steps between two samples: about four a second at 50 a second (DESIGN §2.5).
@@ -119,6 +121,81 @@ impl RamSampler {
     }
 }
 
+/// Where Show Map looks for Chrome: the page opens in Chrome whatever the default browser is
+/// (DESIGN §2.8).
+pub const CHROME: &str = "/Applications/Google Chrome.app";
+
+/// What Game ▸ Show Map did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+// The names the task's interface gives (map page T11).
+#[allow(clippy::enum_variant_names)]
+pub enum Opened {
+    /// The page was written and Chrome asked to open it.
+    Opened(PathBuf),
+    /// A scripted run: the page was written, nothing opened.
+    WouldOpen(PathBuf),
+    /// What went wrong, in words for the owner.
+    Failed(String),
+}
+
+/// Game ▸ Show Map (DESIGN §2.8): the six levels' page written fresh into `dir` from `files`
+/// (disk 2's, unpacked) and `program`, then opened in Chrome; a scripted run opens nothing. Off
+/// the game loop: it reads six levels and writes a few megabytes.
+pub fn show_map(dir: &Path, files: &Files, program: &[u8], scripted: bool) -> Opened {
+    show_map_in(dir, files, program, scripted, Path::new(CHROME))
+}
+
+fn show_map_in(dir: &Path, files: &Files, program: &[u8], scripted: bool, chrome: &Path) -> Opened {
+    let page = match fd_map::write_site(dir, files, program, None) {
+        Ok(p) => p,
+        Err(e) => {
+            return Opened::Failed(format!(
+                "The map page could not be written to {}: {e}",
+                dir.display()
+            ));
+        }
+    };
+    if scripted {
+        return Opened::WouldOpen(page);
+    }
+    // Written first, so the owner can still open it by hand when Chrome is missing.
+    if !chrome.exists() {
+        return Opened::Failed(format!(
+            "Google Chrome is not installed (no {}), and the map opens in Chrome. The page is at {}.",
+            chrome.display(),
+            page.display()
+        ));
+    }
+    match std::process::Command::new("open")
+        .arg("-a")
+        .arg(chrome)
+        .arg(&page)
+        .status()
+    {
+        Ok(s) if s.success() => Opened::Opened(page),
+        Ok(s) => Opened::Failed(format!(
+            "Chrome did not open the map page {} (`open` exited {s}).",
+            page.display()
+        )),
+        Err(e) => Opened::Failed(format!(
+            "Chrome could not be started for the map page {}: {e}",
+            page.display()
+        )),
+    }
+}
+
+/// Disk 2's files out of its ADF, unpacked, as the page reads them (`fd_routeview::write_map`'s
+/// `disk2/` files, from the app's own copy of the disk rather than the zip again).
+pub fn disk2_files(adf: &[u8]) -> Result<Box<Files<'_>>, String> {
+    let image = OfsImage::parse(adf).map_err(|e| format!("disk 2's ADF: {e}"))?;
+    Ok(Box::new(move |name: &str| {
+        let packed = image
+            .read_file(name)
+            .map_err(|e| AssetError::missing(name, format!("disk 2: {e}")))?;
+        fd_tools::unpack(&packed).map_err(|e| AssetError::missing(name, format!("disk 2: {e}")))
+    }))
+}
+
 /// The hand-over between the program thread and the writer.
 #[derive(Default)]
 struct Slot {
@@ -215,6 +292,46 @@ mod tests {
             "{}",
             owner.display()
         );
+    }
+
+    #[test]
+    fn show_map_says_what_stopped_it() {
+        let dir = std::env::temp_dir().join(format!("fd-app-show-map-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let none = |name: &str| -> Result<Vec<u8>, AssetError> { Err(AssetError::missing(name, "made up")) };
+        match show_map_in(&dir, &none, &[], true, Path::new("/nowhere")) {
+            Opened::Failed(why) => assert!(
+                why.contains(&dir.display().to_string()) && why.contains("_Gen1-1: made up"),
+                "{why}"
+            ),
+            o => panic!("{o:?}"),
+        }
+        assert!(!dir.join("index.html").exists(), "nothing written");
+    }
+
+    /// On the owner's disks with no Chrome where it is looked for: the page is written all the
+    /// same and the message names the missing app and the page.
+    #[test]
+    fn without_chrome_the_page_is_written_and_the_message_names_both() {
+        let d = crate::disks::folder(None)
+            .and_then(|d| crate::disks::read(&d))
+            .unwrap_or_else(|e| panic!("{e}"));
+        let files = disk2_files(&d.disk2).unwrap();
+        let dir = std::env::temp_dir().join(format!("fd-app-no-chrome-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let opened = show_map_in(&dir, &*files, &d.program, false, Path::new("/nowhere/Chrome.app"));
+        let page = dir.join("index.html");
+        match opened {
+            Opened::Failed(why) => assert!(
+                why.contains("/nowhere/Chrome.app") && why.contains(&page.display().to_string()),
+                "{why}"
+            ),
+            o => panic!("{o:?}"),
+        }
+        assert!(page.exists());
+        let data: Vec<_> = std::fs::read_dir(dir.join("data")).unwrap().collect();
+        assert_eq!(data.len(), 6, "six levels");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

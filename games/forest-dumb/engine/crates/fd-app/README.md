@@ -7,7 +7,7 @@ writes through `amiga-paula` to the audio device, whose clock paces the game; a 
 nothing aloud and captures it; level 1 has no music, only its effects, which the mount starts as the original does, T57); `--engine hand`
 instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Either is stepped once a
 313-line PAL frame on the wall clock. Built with no generated translation it prints `NOT_GENERATED`
-(run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level…, the bug recorder and View ▸ Scale, Fullscreen and Filter (the toolkit's `amiga_app::view_menu`; no Widescreen, as the original has no wider view).
+(run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level…, Game ▸ Show Map, the bug recorder and View ▸ Scale, Fullscreen and Filter (the toolkit's `amiga_app::view_menu`; no Widescreen, as the original has no wider view).
 Its game-free parts (pacing, pads, video, capture, lock, keys, settings, windows, a script's
 game-free lines) are `toolkit/crates/amiga-app`. It never links an emulator or test tooling (`tests/deps.rs`). Tests drive it
 through `fd-e2e`, not by calling its code; the library exports the state hashes, the translated program's window (`CANVAS`) and `--level 1`'s way through the title.
@@ -78,7 +78,7 @@ seed 1 2                  fast-until 11183
 
 This game's lines:
 
-- `N: menu <id>`: `start-level`, `stop-recording`, `controls`, `quit`, and View's `scale-1` … `scale-16`, `scale-auto`, `fullscreen`, `filter-none|basic|lottes|geom|easymode` (`menu::Command::id`, `amiga_app::view_menu::ViewCommand::id`). A View choice applies at once and is saved.
+- `N: menu <id>`: `start-level`, `stop-recording`, `show-map`, `controls`, `quit`, and View's `scale-1` … `scale-16`, `scale-auto`, `fullscreen`, `filter-none|basic|lottes|geom|easymode` (`menu::Command::id`, `amiga_app::view_menu::ViewCommand::id`). A View choice applies at once and is saved.
 - `N: controls <input> keys|pad`, `controls defaults`, `controls close`: a click in the Controls window (`up keys` starts rebinding Up; the next key pressed binds it).
 - `N: shot`: the window as presented, into the capture as `window-NNNNN.png`.
 - `N: resize W H`: the inner size in points.
@@ -91,6 +91,14 @@ left a window is cancelled, or the save window discarded:
 - `form level W1-1`, `form record on|off`, then `form start` or `form cancel` (every `form` run must close).
 - `answer-recording save|discard|cancel`: "Recording in progress".
 - `note <text>`: the save window's note and Save; `note` alone an empty note; `note discard` Discard.
+
+## Game ▸ Show Map (`src/live.rs`, plan forest-dumb-map-page DESIGN §2.8)
+
+Writes the six-level map page (`fd_map::write_site`) fresh into the live file's folder (`live::live_dir`:
+`games/forest-dumb/build/map/` of the main checkout, else `<home>/map`; a scripted run's `<home>/map`) on a
+thread, then opens it with `open -a "Google Chrome"`. A page that cannot be written, or no
+`/Applications/Google Chrome.app`, is said on stderr (`fd-app: show-map: …; the game carries on`) and in a
+plain message; play goes on. A scripted run opens nothing and logs `fd-app: show-map: would open <path>`.
 
 ## Keys and settings (`src/settings.rs`)
 
