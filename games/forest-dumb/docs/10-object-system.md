@@ -107,8 +107,14 @@ drops cells whose map value is gone or that left the view, and draws `_ELEMENTY`
 `(value - $20 + tick) & 7`, the tick at `h0+$62b2` stepping every fourth pass. `char_object_cells` reads
 the cells at `char_y + $19` and `char_y + 9`, column `char_x + $e`: `h0_26ec` takes an item, clears the
 cell, redraws its tile (`h0_29ca`), adds 100 and takes one from `items_left`. W1-1 holds 332 items;
-`items_left` starts at 282 (set by `load_list_world_1`), so 50 are spare. `h0+$7a9e` counts `$20`-`$27`
-over the whole map but is not what sets `items_left`.
+`items_left` starts at 282, so 50 are spare. **Its start value is computed from the map**: every
+`load_list_world_N` (hunk 4; the store is `h4+$1a884` in world 2's, `h4+$1c8c0` in world 1's) calls `h0+$7a9e`,
+which counts the bytes `$20`-`$27` over all 38400 bytes of the object map at `h0+$cb38` (unused columns
+included) into `h0+$7a9c`, subtracts `$32` and packs the result as three BCD digits (`h4+$1c910`) into
+`items_left`. No world has a coin in its unused columns (counted 2026-11-20, 96 bytes a column), so the
+used-column count is the same. So items needed = coins in `_MapaBobowN` - 50, in every world. Read 2026-11-20 on the
+oracle after `load_world` returns and at `main_loop`'s first run, equal to the count from the files
+(map-page T00, `spikes/items-needed/`): W1-1 282, W2-1 549, W3-1 676, W4-1 396, W5-1 547, W6-1 751.
 
 **Water (`$28`) and the other animated cells.** `$28` draws `_ELEMENTY` frames 8 and 9, or 8 to 11 when
 `h0+$6342` is set; `$2a` frames 10 and 11. `h0_26ec` ignores `$28` to `$3f`, so water changes no state

@@ -267,7 +267,18 @@ workspace = "engine"
 # smoke; the four oracle claims (W1-1 from the sync cache, W3-1 and W4-1 by level 1's cheat end,
 # about 6 s together warm) are #[ignore]d for the nightly set (DESIGN §5: oracle tests are full).
 "crates/fd-conform/tests/secret_claims.rs" = ["the_rule_lists_the_counts_docs_17_gives"]
+# Map page T02: fd-map on made-up level bytes and on each real world's object file (counts, exit,
+# items needed); reads both disks, about 2 s warm.
+"crates/fd-map/tests/levels.rs" = "smoke"
+# Map page T02: each world's items needed and exit against the original after level_init, six runs
+# from power-on, about 76 s: full.
+"crates/fd-conform/tests/map_oracle.rs" = "full"
 "crates/fd-core/src" = "smoke"
+# Map page T06: the live reader on made-up RAM, under a second.
+"crates/fd-core/tests/live.rs" = "smoke"
+# Map page T06: the live reader on headless runs from power-on (W1-1's route opening, beside the hand
+# engine, world 2, Esc to game over), about 20 s each warm; the disks and the tree's build put it in full.
+"crates/fd-conform/tests/live_reader.rs" = "full"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 # T65: a new game's collision_map, play screen and creature tables against the original at the cached
 # sync point, under a second warm (a machine with no sync cache boots to W1-1 once first).
@@ -768,3 +779,7 @@ covers = ["crates/fd-conform/tests/seam.rs::one_byte_written_differently_fails_n
 [[area]]
 name = "the app built with no translation says how to generate it"
 covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_the_app_names_the_command_and_exits_1"]
+
+[[area]]
+name = "the map page's levels: every world's objects, exit and items needed read from its files"
+covers = ["crates/fd-map/tests/levels.rs::each_real_world_matches_its_object_file"]

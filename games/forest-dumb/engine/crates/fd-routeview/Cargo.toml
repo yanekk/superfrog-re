@@ -17,6 +17,8 @@ amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The engine the script is played on, and the level files' layout.
 fd-core = { path = "../fd-core" }
 fd-assets = { path = "../fd-assets" }
+# The object tables' reader the map page and the app share (`object_name`).
+fd-map = { path = "../fd-map" }
 # The game's data from the owner's disks (`game_data`).
 fd-conform = { path = "../fd-conform" }
 

@@ -7,6 +7,10 @@ publish.workspace = true
 # The route viewer's game-free half: a web page drawing a game's routes over its level maps, with a
 # switcher over the routes and their verdicts. A game replays its routes and hands each level's data
 # over as a `LevelDump`; this crate writes the page around them. Shell: it writes files. No
-# dependencies: the page's JSON is written by hand.
+# dependencies: the page's JSON is written by hand. Its Chrome test drives the page with the
+# toolkit's browser rig.
 
 [dependencies]
+
+[dev-dependencies]
+amiga-browser = { path = "../amiga-browser" }
