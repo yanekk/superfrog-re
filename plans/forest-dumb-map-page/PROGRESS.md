@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T11; T09 then T12 (map-drill).
+**Next `pir-work` will:** T09 (secrets-layer), then T12 (map-drill).
 
 ## Tasks
 
@@ -27,10 +27,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | map-command | T02, T05 | ✅ | |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
 | T10 | app-live | T02, T05, T06 | ✅ | |
-| T11 | app-show-map | T08, T10 | 🔍 | Game ▸ Show Map: page written on a thread, opened in Chrome; 3 unit, 3 e2e tests (one OS layer), owner saw Chrome open. Deviations: `would open` goes to stderr, the harness drops stdout; page written before the Chrome check so its path is named; owner ran `--engine hand`, no generated tree here. |
+| T11 | app-show-map | T08, T10 | ✅ | Review: clean code, one test added, a click one step before the frame cap still said (dropping the quit-time wait survived the suite). Mutated six levels to five, caught. Probed: the app's page byte-identical to `fd-routeview --all`'s, `live.js` kept. OS-layer menu test run green. Owner's Chrome check in FINDINGS. |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T11
+**Review queue:** (empty)
 
 ## Blocked on the user
 
