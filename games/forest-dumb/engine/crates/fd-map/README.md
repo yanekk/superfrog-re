@@ -33,6 +33,11 @@ only. `src/level.rs` is pure (`fd-conform/tests/purity.rs` scans it); `src/lib.r
   38 400 bytes less 50, as every `load_list_world_N` computes it (T00, docs/10, "Items"). It is a pure
   function of the object map: no run of the program is needed.
 - `palette(program) -> Result<Vec<[u8; 3]>, String>`: hunk 1's level colours at `$384`, registers checked.
+- `spec() -> PageSpec`: the game's page, live mode on (`live.js`, "Items left"); `offline(html)` drops the toolkit's
+  web-font line and shows a clean route as "No verdict".
+- `write_site(out, files, program, route) -> Result<PathBuf, String>`: the six levels' page (`index.html`,
+  `data/W?-1.js`); `write_levels(out, files, program, worlds, route)` for some. `route` (a `LevelDump`) takes its
+  level's place; every level is read before anything is written. `MapLevel`'s switcher row has no verdict ("Map only").
 - `default_out() -> PathBuf`: `games/forest-dumb/build/map` of the main checkout (from any worktree,
   read from git's files, git not run); `out_in(dir) -> Option<PathBuf>` the same for a given folder,
   `None` outside a checkout (the app then uses `<home>/map`, DESIGN §2.9).

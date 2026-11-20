@@ -96,6 +96,11 @@ elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `-
 
 ## Seeing a run on the map
 
+`cargo run --release -p fd-routeview -- --all` in `engine/` writes the six-level map page, W1-1 to W6-1, every
+object, the exit and the items it needs, to `games/forest-dumb/build/map/index.html` of the main checkout (from any
+worktree; `--out DIR` elsewhere, `--level W3-1` for one). Open it in Chrome beside `fd-app`; it shows "App not
+running" until the app writes `live.js` there. `--script FILE --all` draws a route on W1-1 in that page.
+
 `cargo run --release -p fd-routeview -- --script FILE` in `engine/` plays an input script
 (`engine/conform/scripts/*.txt`) from W1-1's start and writes level 1's map with the character's path
 to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
