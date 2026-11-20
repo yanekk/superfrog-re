@@ -183,12 +183,14 @@ class KnownDefects(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             r = rust([DEFECTS, '--out', os.path.join(d, 'tree.rs')])
             self.assertEqual(r.returncode, 0, r.stderr)
-            start = read(os.path.join(d, 'tree.rs')).split('pub fn h0_0(')[1].split('\n}\n')[0]
+            # The body is `h0_0_from`; `h0_0` is only the seam's entry (translator T28, T35).
+            start = read(os.path.join(d, 'tree.rs')).split('pub fn h0_0_from(')[1].split('\n}\n')[0]
         bra = start[start.index('// h0+$4a bra.w'):]
         # Line 2 counts its cycles (translator T11); the jump follows.
         self.assertTrue(bra.split('\n')[2].strip().startswith('r.tick(const { cy::of(cy::Op::Bra,'), bra[:200])
         self.assertTrue(bra.split('\n')[3].strip().startswith("pc = (0, 0x52); continue 'b;"), bra[:200])
-        self.assertIn('(0, 0x52) => {', start)
+        # The block's arm names each of its instructions, to resume at any (translator T28).
+        self.assertRegex(start, r'\n {12}\(0, 0x52\)( \| \(0, 0x[0-9a-f]+\))* => \{')
         self.assertNotIn('h0_52(r, bus, img)', start)
 
     def test_the_relocated_operand_comes_from_the_files_reloc32(self):

@@ -192,7 +192,10 @@ class Translate(unittest.TestCase):
         # Routine first, then its callees depth first in the order called; each once.
         order = [text.index(f'pub fn h0_{x}(') for x in ('0', '10', '30', '20')]
         self.assertEqual(order, sorted(order))
-        self.assertEqual(text.count('pub fn '), 4)
+        # Each routine is its seam entry and its `NAME_from`, the body (translator T28, T35): 4 routines, 8 fns.
+        for x in ('0', '10', '30', '20'):
+            self.assertEqual((text.count(f'pub fn h0_{x}('), text.count(f'pub fn h0_{x}_from(')), (1, 1), x)
+        self.assertEqual(text.count('pub fn '), 8)
         self.assertNotIn('super::p', text)
         self.assertNotIn('#[allow', text)
         self.assertTrue(text.startswith('// h0+$0 `first_routine`'))

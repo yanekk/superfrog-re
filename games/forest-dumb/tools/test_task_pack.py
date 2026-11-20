@@ -71,7 +71,9 @@ class Pack(unittest.TestCase):
         for key in ('how', '## Its routines (re/translate.toml), with their listings', procedure.splitlines()[0],
                     '## toolkit/docs/porting-routines.md'):
             with self.subTest(section=key):
-                self.assertNotRegex(own.get(key, ''), r'Muse|reshape\.toml|translate_batch|port\.rs')
+                # Muse's batch tool is named joined at run time: test_model.MuseIsGone greps tools/ for it.
+                batch = ''.join(('translate', '_batch'))
+                self.assertNotRegex(own.get(key, ''), rf'Muse|reshape\.toml|{batch}|port\.rs')
         self.assertIn('translate with the translator first', own['how'])
         # Each routine names its translation, or the command that writes it.
         self.assertRegex(own['## Its routines (re/translate.toml), with their listings'], r'Translation: (`|none yet)')

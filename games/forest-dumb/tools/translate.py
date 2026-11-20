@@ -252,7 +252,8 @@ CALL_RE = re.compile(r'(?:super::p\d+::)?\bh(\d+)_([0-9a-f]+)\(r, bus, img\)')
 
 def tree_functions(tree):
     """(hunk, off) -> the function's text, from its `pub fn` to the next, from every part of the tree.
-    The lint attribute above each function is dropped: noise when reading."""
+    The text holds the seam's entry and its `NAME_from` body (translator T28, T35). The attributes
+    above each (`#[allow(..)]`, `#[inline]`) are dropped: noise when reading."""
     fns = {}
     for p in sorted(glob.glob(os.path.join(tree, '*.rs'))):
         with open(p, encoding='utf-8') as f:
@@ -260,7 +261,7 @@ def tree_functions(tree):
         found = list(FN_RE.finditer(text))
         for i, m in enumerate(found):
             end = found[i + 1].start() if i + 1 < len(found) else len(text)
-            body = re.sub(r'(?:\n#\[allow\([^\n]*\)\]\s*)+\Z', '\n', text[m.start():end])
+            body = re.sub(r'(?m)^#\[(?:allow\([^\n]*\)|inline)\]\n', '', text[m.start():end])
             fns[(int(m.group(1)), int(m.group(2), 16))] = body.rstrip() + '\n'
     return fns
 

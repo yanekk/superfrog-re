@@ -35,7 +35,8 @@ from `self.scratch` as the original leaves them (set them as the example does), 
 writes pushed on `self.scratch.hw`."""
 units = [
   { fn = "step", routines = [["char_step", 0x3e30]], helpers = ["dying_fall", "rise"] },
-  { fn = "idle", routines = [["h0_3ea8", 0x3ea8]], helpers = ["slide", "slide_sound"] },
+  # No helpers since T58 (translator plan): `slide` is reached through the public `idle_landed`, which the seam's rules call.
+  { fn = "idle", routines = [["h0_3ea8", 0x3ea8]] },
   { fn = "land_or_fall", routines = [["h0_410c", 0x410c]] },
   { fn = "fall_step", routines = [["h0_416c", 0x416c]] },
   { fn = "rise_step", routines = [["h0_4274", 0x4274]] },
