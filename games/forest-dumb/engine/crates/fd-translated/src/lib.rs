@@ -154,6 +154,9 @@ pub struct FrameOut<'a> {
     pub paula_beam: Vec<(u16, u16)>,
     /// Set on the last frame of a run the program stopped: how it stopped.
     pub stop: Option<Stop>,
+    /// Set on the last frame of a run the program ended itself: it returned from its power-on
+    /// entry ([`TranslatedGame::exited`]). Not a stop: `stop` is `None`.
+    pub exited: bool,
     /// Chip RAM then slow RAM at each CPU write of the frame that [`TranslatedGame::watch_write`]
     /// names, in order: where the program marks its own work's end (translator T30).
     pub watched: Vec<Vec<u8>>,
@@ -189,6 +192,12 @@ pub struct TranslatedGame {
     at: Option<u32>,
     /// Why the game cannot start (a program file the machine could not load), or how it stopped.
     stopped: Option<Stop>,
+    /// Where the program goes when it returns from its power-on entry, and its stack pointer
+    /// then: the return address the start left at [`POWER_ON_STACK`] and the word above it.
+    /// `None` from a snapshot, whose entry is not known.
+    exit_to: Option<(u32, u32)>,
+    /// The program returned to [`TranslatedGame::exit_to`]: it ended itself.
+    exited: bool,
     input: Input,
     picture: Picture,
     /// The hand-written routines run in place of translated ones (DESIGN §2.9).
@@ -231,6 +240,14 @@ impl TranslatedGame {
         self.level_1 = Some(Arc::new(Level1::new(data)));
     }
 
+    /// Whether the program ended itself: it returned from its power-on entry to the address the
+    /// start left under its stack, in user mode, the stack pointer just above it, as the original
+    /// returns to AmigaDOS on KONIEC (`quit_to_dos`). The run that saw it ended without a stop
+    /// (`run` returns `None`); any other arrival at that address is still `untranslated`.
+    pub fn exited(&self) -> bool {
+        self.exited
+    }
+
     /// Whether a tree is built in (false on the stub).
     pub fn generated() -> bool {
         !tree::CODE.is_empty()
@@ -241,6 +258,7 @@ impl TranslatedGame {
         let cfg = Config::a500(bases.to_vec());
         let mut r = Regs::new();
         let mut stopped = None;
+        let mut exit_to = None;
         let (mut m, at, sizes) = match start {
             Start::PowerOn { program, disks } => {
                 let m = match Machine::new(cfg.clone(), program) {
@@ -259,6 +277,14 @@ impl TranslatedGame {
                 };
                 r.set_a(7, POWER_ON_STACK);
                 r.set(ops::ISP, 4, POWER_ON_SUPERVISOR_STACK as u64);
+                // Kickstart's DOS would have pushed its return address here; the machine starts
+                // with none, so the long found there (0) is where the program's own exit goes
+                // (KONIEC's `quit_to_dos`, translator T41).
+                let i = (POWER_ON_STACK - SLOW_BASE) as usize;
+                let back = m.slow().get(i..i + 4).map_or(0, |b| {
+                    u32::from_be_bytes([b[0], b[1], b[2], b[3]])
+                });
+                exit_to = Some((back & 0xFF_FFFF, POWER_ON_STACK + 4));
                 let sizes = if m.hunk_sizes().is_empty() {
                     prog.hunk_sizes.to_vec()
                 } else {
@@ -300,6 +326,8 @@ impl TranslatedGame {
             sizes,
             at: Some(at),
             stopped,
+            exit_to,
+            exited: false,
             input: Input::default(),
             picture: Picture::blank(0, 0, 0, 0),
             seam: Seam::new(),
@@ -399,6 +427,7 @@ impl TranslatedGame {
             each,
             picture: &mut self.picture,
             host_stop: false,
+            exited: false,
             watched: &self.watched,
             writes_at: &mut self.writes_at,
             write_due: Cell::new(None),
@@ -406,6 +435,7 @@ impl TranslatedGame {
             inside: Vec::new(),
             returns: Vec::new(),
         };
+        let exit_to = self.exit_to;
         let stop = match self.stopped.clone() {
             Some(s) => s,
             None => loop {
@@ -421,7 +451,14 @@ impl TranslatedGame {
                 match res {
                     // Returned with no Rust caller: a frame the start was inside. Go on where its
                     // `rts` or `rte` went.
-                    Ok(()) => at = self.r.get(PC, 4) as u32 & 0xFF_FFFF,
+                    Ok(()) => {
+                        at = self.r.get(PC, 4) as u32 & 0xFF_FFFF;
+                        let user = ops::sr_get(&self.r) & 0x2000 == 0;
+                        if exit_to == Some((at, self.r.a(7))) && user {
+                            host.exited = true;
+                            break Stop::Untranslated(img.describe(at));
+                        }
+                    }
                     Err(s) => break s,
                 }
             },
@@ -445,7 +482,8 @@ impl TranslatedGame {
             paula,
             paula_leftover,
             paula_beam,
-            stop: Some(stop.clone()),
+            stop: (!host.exited).then(|| stop.clone()),
+            exited: host.exited,
             watched: host.m.take_watched(),
             chip: host.m.chip(),
             slow: host.m.slow(),
@@ -454,6 +492,10 @@ impl TranslatedGame {
             writes_at_pending: host.writes_at.len(),
         };
         (host.each)(&out);
+        if host.exited {
+            self.exited = true;
+            return None;
+        }
         self.stopped = Some(stop.clone());
         Some(stop)
     }
@@ -470,6 +512,8 @@ struct Host<'a, 'b> {
     picture: &'a mut Picture,
     /// `each` said stop: the stop unwinding the run is the host's, not the program's.
     host_stop: bool,
+    /// The program returned from its power-on entry ([`TranslatedGame::exited`]).
+    exited: bool,
     /// Routines whose returns are reported, (hunk, offset).
     watched: &'a [(u32, u32)],
     /// Writes waiting for their routine's entry.
@@ -540,6 +584,7 @@ impl Host<'_, '_> {
             paula_leftover,
             paula_beam,
             stop: None,
+            exited: false,
             watched: frame.watched,
             chip: self.m.chip(),
             slow: self.m.slow(),

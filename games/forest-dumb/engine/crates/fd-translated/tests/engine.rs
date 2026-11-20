@@ -494,3 +494,105 @@ fn power_on_has_a_supervisor_stack() {
         fd_translated::POWER_ON_SUPERVISOR_STACK
     );
 }
+
+/// `shared_call` (`bsr $10; bsr $20; rts`, each callee `bsr $30` then an add) as a one-hunk
+/// program file, assembled by hand from its listing.
+fn shared_call_file() -> Vec<u8> {
+    let mut code = [0u8; 0x40];
+    for (at, bytes) in [
+        (0x00, &[0x61, 0x00, 0x00, 0x0E][..]), // bsr.w $10
+        (0x04, &[0x61, 0x00, 0x00, 0x1A]),      // bsr.w $20
+        (0x08, &[0x4E, 0x75]),                  // rts
+        (0x10, &[0x61, 0x00, 0x00, 0x1E]),      // bsr.w $30
+        (0x14, &[0x52, 0x82]),                  // addq.l #1,d2
+        (0x16, &[0x4E, 0x75]),
+        (0x20, &[0x61, 0x00, 0x00, 0x0E]),      // bsr.w $30
+        (0x24, &[0x54, 0x83]),                  // addq.l #2,d3
+        (0x26, &[0x4E, 0x75]),
+        (0x30, &[0x52, 0x81]),                  // addq.l #1,d1
+        (0x32, &[0x4E, 0x75]),
+    ] {
+        code[at..at + bytes.len()].copy_from_slice(bytes);
+    }
+    let longs = (code.len() / 4) as u32;
+    let mut f = Vec::new();
+    // HUNK_HEADER, no names, one hunk (0 to 0) of `longs`; HUNK_CODE; HUNK_END.
+    for l in [0x3F3, 0, 1, 0, 0, longs, 0x3E9, longs] {
+        f.extend_from_slice(&u32::to_be_bytes(l));
+    }
+    f.extend_from_slice(&code);
+    f.extend_from_slice(&u32::to_be_bytes(0x3F2));
+    f
+}
+
+fn shared_call_prog() -> Program {
+    Program {
+        code: shared_call::CODE,
+        hunk_sizes: shared_call::HUNK_SIZES,
+        entry: shared_call::entry,
+        resume: shared_call::resume,
+    }
+}
+
+/// The program returning from its power-on entry, as the original's KONIEC returns to AmigaDOS
+/// (translator T41): the run ends with no stop, its last frame marked `exited`.
+#[test]
+fn a_return_from_the_power_on_entry_ends_the_run_with_no_stop() {
+    let file = shared_call_file();
+    let mut g = TranslatedGame::with_program(
+        shared_call_prog(),
+        &[BASE],
+        Start::PowerOn {
+            program: &file,
+            disks: Disks::default(),
+        },
+    );
+    let mut last = Vec::new();
+    let stop = g.run(&mut |out| {
+        last.push((out.stop.clone(), out.exited));
+        Control::Next(Input::default())
+    });
+    assert_eq!(stop, None, "no stop");
+    assert!(g.exited());
+    assert_eq!(last, [(None, true)], "one last frame, exited and not stopped");
+    assert_eq!(
+        (g.regs().d(1), g.regs().d(2), g.regs().d(3)),
+        (2, 1, 2),
+        "the program ran whole"
+    );
+    assert_eq!(g.regs().a(7), fd_translated::POWER_ON_STACK + 4);
+    assert_eq!(g.run(&mut |_| Control::Stop), None, "an exited game stays ended");
+}
+
+/// The same return to address 0 with the same stack, from a snapshot rather than the power-on
+/// entry, is not the program's exit: it stops `untranslated` as before.
+#[test]
+fn a_return_to_zero_not_from_the_power_on_entry_still_stops_untranslated() {
+    let (mem, _) = memory();
+    let sp = fd_translated::POWER_ON_STACK;
+    let mut g = TranslatedGame::with_program(
+        shared_call_prog(),
+        &[BASE],
+        Start::Snapshot {
+            mem: &mem,
+            regs: Regs68k {
+                pc: BASE,
+                sr: 0,
+                usp: sp,
+                ssp: STACK,
+                a: [0, 0, 0, 0, 0, 0, 0, sp],
+                ..Regs68k::default()
+            },
+            custom: &[0; 256],
+            disks: Disks::default(),
+        },
+    );
+    let mut exited = Vec::new();
+    let stop = g.run(&mut |out| {
+        exited.push(out.exited);
+        Control::Next(Input::default())
+    });
+    assert_eq!(stop, Some(Stop::Untranslated("$000000".into())));
+    assert!(!g.exited());
+    assert_eq!(exited, [false]);
+}

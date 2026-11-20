@@ -55,6 +55,10 @@ ticking frozen, so the script, the capture and quitting go on; nothing more is s
 `fd-conform bug replay <zip>` replays it on the translated program. Zips from power-on are named
 `bug-power-on-<date>.zip`.
 
+KONIEC on the title is no stop (translator T41): the original returns from its entry to AmigaDOS,
+which the app does not run, so the app quits as Esc does (`the program quit to AmigaDOS at step N`,
+then `menu quit`), with no band and no zip (`TranslatedGame::exited`).
+
 ## Script format (`src/script.rs`)
 
 One directive a line, `#` comments. `N:` is the frame an event lands before: step N (from 1) sees it.
@@ -100,7 +104,7 @@ never reaches the game; ⌘ plus a key is the app's.
 
 `--capture` writes the files `amiga_app::capture` lists (`frame-NNNNN.png`, `inputs.txt`,
 `window-NNNNN.png`, `prompts.txt`, …) plus `hashes.txt`: `N hash` in hex a frame, frame 0 the start.
-stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`,
+stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`,
 `game over`, `level 1 complete`, `quit after step N`).
 
 ## Library API (`src/lib.rs`)

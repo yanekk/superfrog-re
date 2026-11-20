@@ -786,6 +786,7 @@ impl App {
                     t.raise(test_stop(n));
                 }
                 let f = t.frame();
+                let exited = f.exited;
                 if f.level_1 && !was_level_1 {
                     eprintln!("fd-app: level 1 begins at step {n}");
                 }
@@ -793,7 +794,14 @@ impl App {
                     eprintln!("fd-app: the translated program stopped at step {n}: {s}");
                     self.on_stop(&s);
                 }
-                return self.stepped(event_loop, n, input, true);
+                self.stepped(event_loop, n, input, true);
+                // KONIEC: the original returns to AmigaDOS, which the app does not run, so it
+                // quits as Esc does (owner, translator T41): no stop, no bug zip.
+                if exited && !event_loop.exiting() {
+                    eprintln!("fd-app: the program quit to AmigaDOS at step {n}");
+                    self.on_command(event_loop, Command::Quit);
+                }
+                return;
             }
         };
         let finished = game.finished();

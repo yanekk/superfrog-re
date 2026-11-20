@@ -30,6 +30,9 @@ pub struct Frame {
     pub level_1: bool,
     /// How the program stopped, on its last frame.
     pub stop: Option<String>,
+    /// The program ended itself on this frame, its last: KONIEC's return to AmigaDOS
+    /// (`TranslatedGame::exited`, translator T41). Not a stop.
+    pub exited: bool,
     /// Where play is ([`fd_app::location_in_ram`]): the character's cell in level 1, else `None`.
     pub place: Option<fd_core::recording::Location>,
     /// The frame's sound at the run's rate, stereo; none for the start.
@@ -82,6 +85,7 @@ impl Translated {
                     mem: hashes.then(|| (chip.into(), slow.into())),
                     level_1: fd_app::in_level_1(chip, slow),
                     stop: None,
+                    exited: false,
                     place: fd_app::location_in_ram(chip, slow),
                     samples: Vec::new(),
                 };
@@ -98,11 +102,12 @@ impl Translated {
                         mem: hashes.then(|| (out.chip.into(), out.slow.into())),
                         level_1: fd_app::in_level_1(out.chip, out.slow),
                         stop: out.stop.as_ref().map(|s| s.to_string()),
+                        exited: out.exited,
                         place: fd_app::location_in_ram(out.chip, out.slow),
                         samples,
                     };
-                    let stopped = frame.stop.is_some();
-                    // The app dropped, or the program stopped: nobody sends the next input.
+                    let stopped = frame.stop.is_some() || frame.exited;
+                    // The app dropped, or the program stopped or ended: nobody sends the next input.
                     if frames.send(frame).is_err() || stopped {
                         return Control::Stop;
                     }
@@ -124,9 +129,10 @@ impl Translated {
         }
     }
 
-    /// One frame on `input`. After a stop nothing runs and the stop's frame stays, silent.
+    /// One frame on `input`. After a stop or the program's exit nothing runs and the last frame
+    /// stays, silent.
     pub fn step(&mut self, input: FrameInput) -> &Frame {
-        if self.frame.stop.is_some() {
+        if self.frame.stop.is_some() || self.frame.exited {
             // Frozen: the stop's frame was heard at its own step; nothing plays after.
             self.frame.samples.clear();
             return &self.frame;
