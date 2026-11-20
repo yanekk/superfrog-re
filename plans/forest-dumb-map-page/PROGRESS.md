@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building since 2026-11-20; T00 to T07 done, T08 in review.
+**Status:** Building since 2026-11-20; T00 to T08 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T08; then T09 (secrets-layer) and, with T10 done, T11 (app-show-map).
+**Next `pir-work` will:** T09 (secrets-layer) and, with T10 done, T11 (app-show-map).
 
 ## Tasks
 
@@ -24,13 +24,13 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | page-live | T04 | ✅ | |
 | T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ✅ | |
-| T08 | map-command | T02, T05 | 🔍 | Built `--all`/`--level` via `fd_map::write_site`/`write_levels`, live on; 4 tests in levels_chrome.rs (2 smoke). Deviations: fd-tools a normal dep (raw program bytes); MapLevel's entry has no verdict (default read Clean); misc layer names flames; `--level W2-1 --script` exits 2 until level-2 merges; route page keeps live off via fd-routeview::spec. |
+| T08 | map-command | T02, T05 | ✅ | Review clean, no fix commit. Probed `--level W1-1 --script`, lowercase id, `--level W2-1 --script` (exit 2), write failure (exit 1), `--script` alone live null; mutated live spec and route swap, both caught; Chrome test 5 runs green, screens judged. Missing-disk exit 1 `read-only`. |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
 | T10 | app-live | T02, T05, T06 | ⬜ | |
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T08
+**Review queue:** (empty)
 
 ## Blocked on the user
 

@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T08 review, worker-driven: the map-only page's heading reads "Forest Dumb Forever route · W3-1" and the summary counts "0 clean 0 with faults"; toolkit `page.html` wording, left for T12. |
 | 2026-11-20 | 📌 | T08 drill, worker-driven at three sizes: at the fitted view each of the six `$ff` cells draws its own EXIT label, so they overlap into one smudge. One label per block is `page.html`'s drawing; left for T12. |
 | 2026-11-20 | 🐞 | `cargo clippy` on any crate linking fd-conform fails today: `while_immutable_condition` at `fd-conform/src/bug.rs:292`, untouched by T08. |
 | 2026-11-20 | 🐞 | T05 drill, worker-driven at three sizes: after the page switched level by itself the last hover's tip still named a cell of the old level; hidden on a live switch, asserted in `live_chrome.rs`. |
