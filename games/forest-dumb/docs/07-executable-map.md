@@ -73,7 +73,7 @@ accesses are not.
 
 ## dos.library and the file table
 
-Four routines open files, and each opens `dos.library` itself by `OpenLibrary` and closes it after:
+Four routines open files, and each opens `dos.library` itself by `OldOpenLibrary` (-408) and closes it after:
 
 | Routine | Opens | Does |
 |---|---|---|
@@ -159,12 +159,16 @@ Whether the original called it needs an uncracked image.
 3. Repeats `title_pass` (`h0+$6e6e`): `wait_line_1`, `title_read_joy`, `h0+$71e6` (the menu and the
    code digits), `title_fire`, `h0+$6fb4` and `h0+$6eea` (draw the rows and digits), then `mt_music`.
 4. Leaves on `title_start_flag` (START) or on `title_quit_flag` or last key byte `$75` (KONIEC or Esc),
-   with `mt_end` and `game_running` set. The OS's keyboard handler is the one in place here, so the Esc
-   route looks dead; not run. `title_cursor` is the row, 0 START, 1 KODY, 2 KONIEC.
+   with `mt_end` and `game_running` set. Both quits return to AmigaDOS (measured, T01 of
+   `forest-dumb-title`). `title_cursor` is the row, 0 START, 1 KODY, 2 KONIEC.
 
-The OS's own interrupts are on through the title, because `system_on` ran for the load and nothing
-took the machine back. So `irq_count` stands still (oracle) and the pace comes from the raster wait alone. One
-pass takes one frame (oracle: see the counter below).
+The rows, the codes, Esc, KONIEC and the way back from game over, measured: [16-title.md](16-title.md).
+
+`load_list_title` ends in `system_off`, so autovectors 2 and 3 are the program's through the title
+([15-os-surface.md](15-os-surface.md)): `level2_handler` takes the keys, and since INTENA `$c018`
+leaves the vertical blank off and the title's copper list raises no copper interrupt, `irq_count`
+stands still (oracle). The pace comes from the raster wait alone. One pass takes one frame (oracle: see
+the counter below).
 
 ## The first case's variable: `mt_counter`, `h4+$195c9`
 

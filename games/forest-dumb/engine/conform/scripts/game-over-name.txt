@@ -1,0 +1,24 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. As game-over-title with score set to BCD 30000 at
+# load_world: high_scores asks for a name. A, B, Backspace, C, Return types "ac" into the eighth entry.
+0: -
+10: F        # fire on START (frame 5000): world_index set at load_world by the case or test
+21: -
+1160: F      # fire on SCENA 2 (frame 6150); play's first frame is 6151
+1171: -
+1260: K45    # Esc in play, released at 1263: give_up; game_over_screen from step 6278
+1263: -
+1400: F      # fire on the game over screen, released at 1410: high_scores from step 6400
+1410: -
+1500: K20    # A, typed on release at 1506
+1506: -
+1512: K35    # B
+1518: -
+1524: K41    # Backspace: B gone
+1530: -
+1536: K33    # C
+1542: -
+1548: K44    # Return: the name entry ends, the table is shown
+1554: -
+1600: F      # fire on the high scores, released at 1610: session_loop in step 6600, title_screen 7548
+1610: -
