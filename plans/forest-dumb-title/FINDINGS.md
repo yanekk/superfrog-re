@@ -8,6 +8,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | `scripts/title-esc.txt` (T01) says the return is in 5011; the exit goal measures the original's return at 5012, its sound shut down at 5011 (T05 review). Comment left alone. |
+| 2026-11-20 | 🐞 | **title-esc fails translated**: the program quits a frame after the original (original returns at 5012, translated 5013; first difference Paula's AUD0PER at 5011). KONIEC passes. Mounted the same (T05, for T07). |
 | 2026-11-20 | 📌 | All five KODY cases first differ translated at 5051, a frame after the first digit key goes down: the original writes AUD0PER..AUD3PER, the translated program not; memory h4+$195c9 from 5056 (T04, `title_code_cases.rs`). |
 | 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
 | 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
