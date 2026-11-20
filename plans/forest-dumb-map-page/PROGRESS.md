@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | items-needed-source | — | ⬜ | |
-| T01 | objects-all-worlds | — | ⬜ | |
+| T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ⬜ | |
 | T04 | page-map-only | T03 | ⬜ | |
