@@ -91,32 +91,45 @@ that stretch goes to the owner (DESIGN §2.11).
 
 ## The planner's route
 
-Planned 2026-11-10 (T27, DESIGN §2.11). The planner needed no guide and no stretch played by the
-owner. `engine/crates/fd-plan/tests/routes/W1-1-planned.txt`:
+Planned 2026-11-10 (T27, DESIGN §2.11), planned again 2026-11-12 (below).
+The planner needed no guide and no stretch played by the owner.
+`engine/crates/fd-plan/tests/routes/W1-1-planned.txt`:
 
-- 22 528 steps, about 7.5 minutes of play. The last step raises `Event::LevelEnd`.
-- All 282 needed items taken (`items_left` 0), ending in the exit at `W1-1:208,92`.
-- 32 lives throughout, never dying. Score `$59310`, the countdown at 642.
-- Contact is met on 106 passes in 99 runs, 7 of them two passes long, never the three in a row
+- 21 632 steps, about 7.2 minutes of play. The last step raises `Event::LevelEnd`.
+- All 282 needed items taken (`items_left` 0). The character's cell on the last step is
+  `W1-1:207,90` (`char_x` 3304, `char_y` 1435): its body reaches the exit (`207,91` to `208,93`)
+  from the row above. T27's route ended at `208,92`.
+- 32 lives throughout, never dying. Score `$58120`, the countdown at 656.
+- Contact is met on 103 passes in 96 runs, 7 of them two passes long, never the three in a row
   that cost a life (`char_hit_check`, docs/10 "Contact damage"; measured as `hits_taken` after each
   step). The planner keeps no margin from contact.
+
+T27's route (22 528 steps, exit in round 2 095, 20 216 839 engine frames, score `$59310`) still
+finishes on the engine alone, but the search no longer finds it: 2 100 rounds stall at
+`W1-1:215,75` with 16 items left, 46 222 cells tried, 20 255 392 engine frames (nightly full run,
+2026-11-12). Measured 2026-11-12, the same stall, cell for cell, at 1ea2e0e8^ (before T80), at
+53638b37 (T27's merge, code identical to T27's 7cb4da0a) and at 59483ed2 (T48), on 10 threads, with
+the zips' SHA-1s as in docs/04 and the pinned toolchain. So no commit after T27 moved it; T27's
+round 2 095, which its review also measured, could not be reproduced from T27's code. The cause is
+outside the committed code and not found. The search now finds its exit in round 2 589.
 
 ### Planning it again
 
 From `engine/`:
 
 ```
-cargo run --release -p fd-plan -- level W1-1 --rounds 2100 --no-confirm --out ../build/routes/W1-1.txt
+cargo run --release -p fd-plan -- level W1-1 --rounds 2600 --no-confirm --out ../build/routes/W1-1.txt
 ```
 
-Seed 1, the walk compass. The exit comes in round 2 095 after 20 216 839 engine frames: 232 s on 10
-threads of a loaded machine, 146 s in the test. Rounds end the search, so the route is the same on
+Seed 1, the walk compass. The exit comes in round 2 589 after 25 082 955 engine frames, 50 803 cells:
+189 s on 10 threads of a loaded machine, about 500 s for the whole test file in debug beside other
+runs (2026-11-12). The search stops at the exit, so a larger `--rounds` finds the same route. Rounds end the search, so the route is the same on
 any machine and thread count; `--budget-mins 30` finds the same route when the machine gets there in
 time. Shorter searches stall: 100 rounds at `W1-1:66,90` with 188 items left, 400 rounds at
 `W1-1:184,92` with 128. An engine step costs about 50 microseconds in release.
 
 `engine/crates/fd-plan/tests/full_route.rs` guards it: in smoke it replays on the engine alone to
-the level's end with no life lost; in full the planner finds the same route again in 2 100 rounds.
+the level's end with no life lost; in full the planner finds the same route again in 2 600 rounds.
 After an engine change that moves it, plan again with the command above, replace the file keeping
 its header, set `PLANNED_FRAMES` and `ROUNDS`, then find the one route again (above).
 

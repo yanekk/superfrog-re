@@ -4,7 +4,8 @@ cd "$(dirname "$0")" || exit 1
 # tools/full.sh sets this; a plain run leaves the #[ignore]d tests out (smoke-tests DESIGN §2.1).
 set --
 if [ "${PIR_TEST_INCLUDE_IGNORED:-}" = 1 ]; then
-    set -- -- --include-ignored
+    # --no-fail-fast: cargo otherwise stops at the first failing test binary and the rest never run.
+    set -- --no-fail-fast -- --include-ignored
     # The screen tests panic without SF_E2E_OS=1 and post real input to the screen with it, so a run
     # without it leaves them out. The zips tool panics without SF_T14_ZIPS and checks nothing, so a run
     # without that leaves it out (owner, T04 review). Found from the #[ignore] reason, so no list.

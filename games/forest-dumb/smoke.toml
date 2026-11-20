@@ -432,7 +432,7 @@ workspace = "engine"
 # The whole level. T84: the one route (tests/routes/W1-1.txt, the inputs route-both-W1-1 plays on
 # the original) replayed on the engine alone to the level's end with no life lost, past its
 # milestones; T27: the planner's route (W1-1-planned.txt) replayed likewise. About 2.5 s debug.
-# The planner finding its route again (2 095 rounds, 2.5 to 4 minutes release on 10 threads) is full.
+# The planner finding its route again (2 589 rounds, 3 to 5 minutes on 10 threads) is full.
 "crates/fd-plan/tests/full_route.rs" = [
     "the_route_reaches_the_levels_end_with_no_life_lost",
     "the_engine_alone_meets_every_milestone_within_tolerance",

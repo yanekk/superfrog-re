@@ -174,7 +174,11 @@ class Scratch(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        p = mock.patch.object(r, 'SCRATCH', self.tmp.name)
+        # As deep as the real build/reshape/scratch: scratch() links `toolkit` two folders above it
+        # (build/toolkit), which must land inside this temp folder, not beside it.
+        self.scratch = os.path.join(self.tmp.name, 'build', 'reshape', 'scratch')
+        os.makedirs(self.scratch)
+        p = mock.patch.object(r, 'SCRATCH', self.scratch)
         p.start()
         self.addCleanup(p.stop)
 
@@ -193,7 +197,8 @@ class Scratch(unittest.TestCase):
         core = r.read(os.path.join(eng, 'crates', 'fd-core', 'Cargo.toml'))
         self.assertIn(f'path = "{os.path.normpath(os.path.join(r.ENGINE, "..", "..", "..", "toolkit"))}', core)
         self.assertIn('path = "../fd-assets"', core)
-        self.assertTrue(os.path.isdir(os.path.join(self.tmp.name, 're')))
+        self.assertTrue(os.path.isdir(os.path.join(self.scratch, 're')))
+        self.assertTrue(os.path.isdir(os.path.join(self.tmp.name, 'build', 'toolkit')))
         self.assertFalse(os.path.exists(os.path.join(eng, 'target')))
 
 

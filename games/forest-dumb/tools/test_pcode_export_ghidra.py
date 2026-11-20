@@ -13,6 +13,7 @@ import pcode_export as P  # noqa: E402
 from test_pcode_export import (ENTRIES, DEFECTS_FUNCS, DEFECTS_TAIL, MOVES_FUNCS, NORETURN_CALLS,  # noqa: E402
                                NORETURN_FUNCS, NORETURN_LOADER, defects_program, moves_program, noreturn_program,
                                two_hunk_program, whole_program)
+from test_unpack import extracted  # noqa: E402
 import ghidra_headless as G  # noqa: E402
 
 GAME = os.path.dirname(HERE)
@@ -305,6 +306,9 @@ class GameExport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
+        # A fresh checkout has no build/: extract on first need, as the other real-disk tests do, so
+        # the result does not hang on which test ran first. Missing zips still fail naming the path.
+        extracted()
         P.check_inputs(P.EXE, P.SYMBOLS, P.TRANSLATE)   # names the program's path when it is missing
         with redirect_stdout(io.StringIO()):
             cls.doc = P.export(P.EXE, P.load_symbols(P.SYMBOLS), P.routine_seeds(P.TRANSLATE),
@@ -332,6 +336,7 @@ class GameWholeExport(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
+        extracted()   # as GameExport: a fresh checkout has no build/ yet
         P.check_inputs(P.EXE, P.SYMBOLS, P.ENTRIES)
         syms = P.load_symbols(P.SYMBOLS)
         with redirect_stdout(io.StringIO()):

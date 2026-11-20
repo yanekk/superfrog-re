@@ -93,3 +93,4 @@ Besides the numbered `docs/` chapters, one topic a file:
 - [docs/next-plan-difficulty-modes.md](docs/next-plan-difficulty-modes.md): backlog, conformance on easy (and the question of hard).
 - [docs/video-ghost-trial.md](docs/video-ghost-trial.md): the YouTube trail trial and its unpushed branch.
 - [docs/planner-stall-ask-owner.md](docs/planner-stall-ask-owner.md): why a stalled planner goes to the owner, and the order.
+- [docs/movement-map-tests.md](docs/movement-map-tests.md): the map's two whole-level tests never passed (eleven levels short since T04), not a regression; the shortfall is pinned as measured (owner, 2026-11-12).

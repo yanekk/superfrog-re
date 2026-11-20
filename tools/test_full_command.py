@@ -85,19 +85,20 @@ class FullCommand(unittest.TestCase):
     def seed_superfrog(self):
         self.write('games/superfrog/engine/crates/x/tests/a.rs', SOURCE)
 
-    def test_full_gives_every_project_include_ignored(self):
+    def test_full_gives_every_project_include_ignored_and_no_fail_fast(self):
+        # --no-fail-fast: cargo otherwise stops at the first failing binary (first nightly, 2026-11-12).
         self.seed_superfrog()
         status, calls = self.run_it('tools/full.sh')
         self.assertEqual(status, 0)
         self.assertEqual(sorted(calls), sorted(ENGINES))
         for project, args in calls.items():
-            self.assertEqual(args[:5], ['test', '-q', '--workspace', '--', '--include-ignored'], project)
+            self.assertEqual(args[:6], ['test', '-q', '--workspace', '--no-fail-fast', '--', '--include-ignored'], project)
 
     def test_only_superfrog_has_anything_left_out(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh')
-        self.assertEqual(len(calls['toolkit']), 5)
-        self.assertEqual(len(calls['forest-dumb']), 5)
+        self.assertEqual(len(calls['toolkit']), 6)
+        self.assertEqual(len(calls['forest-dumb']), 6)
 
     def test_the_everything_run_without_the_variable_gives_no_flag(self):
         self.seed_superfrog()
@@ -111,22 +112,22 @@ class FullCommand(unittest.TestCase):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh')
         # --exact, so a skip cannot also take a test whose name merely contains this one.
-        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_screen_test', '--skip', 'a_tool'])
+        self.assertEqual(calls['superfrog'][6:], ['--exact', '--skip', 'a_screen_test', '--skip', 'a_tool'])
 
     def test_with_the_screen_variable_only_the_tool_is_skipped(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh', SF_E2E_OS='1')
-        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_tool'])
+        self.assertEqual(calls['superfrog'][6:], ['--exact', '--skip', 'a_tool'])
 
     def test_with_the_tool_variable_only_the_screen_test_is_skipped(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh', SF_T14_ZIPS='/tmp/somewhere')
-        self.assertEqual(calls['superfrog'][5:], ['--exact', '--skip', 'a_screen_test'])
+        self.assertEqual(calls['superfrog'][6:], ['--exact', '--skip', 'a_screen_test'])
 
     def test_with_both_variables_superfrog_skips_nothing(self):
         self.seed_superfrog()
         _, calls = self.run_it('tools/full.sh', SF_E2E_OS='1', SF_T14_ZIPS='/tmp/somewhere')
-        self.assertEqual(calls['superfrog'], ['test', '-q', '--workspace', '--', '--include-ignored'])
+        self.assertEqual(calls['superfrog'], ['test', '-q', '--workspace', '--no-fail-fast', '--', '--include-ignored'])
 
     def test_a_screen_variable_other_than_1_still_skips(self):
         # The tests themselves panic on anything but 1.
