@@ -72,7 +72,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
-| T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
+| T58 | mount-character-timing | T56; blocks T40, T42 | ✅ | |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
