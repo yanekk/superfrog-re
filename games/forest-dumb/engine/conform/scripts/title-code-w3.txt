@@ -1,0 +1,19 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. KODY with 2424, then START: world 3 (world_index 2).
+0: -
+20: D        # Down released at 30: title_cursor 1, KODY
+30: -
+40: F        # fire on KODY, released at 50: the digit entry starts
+50: -
+60: K02      # key 2 held, released at 66: digit 1 is 2
+66: -
+72: K04      # key 4 held, released at 78: digit 2 is 4
+78: -
+84: K02      # key 2 held, released at 90: digit 3 is 2
+90: -
+96: K04      # key 4 held, released at 102: digit 4 is 4
+102: -
+118: U       # Up released at 128: title_cursor 0, START
+128: -
+138: F       # fire on START: title_code_world and load_world in this step (frame 5128)
+148: -

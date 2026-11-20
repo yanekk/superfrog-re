@@ -76,6 +76,128 @@ pub struct State {
     /// The object map as play has it (`h0+$cb38`): the level's, less the creature cells the redraws
     /// started. Filled from the level by `Game::new`.
     pub object_map: Vec<u8>,
+    /// The title's variables (forest-dumb-title T01, docs/16-title.md), carried and never changed:
+    /// the level engine runs no title, and nothing in play writes them.
+    pub title: TitleVars,
+}
+
+/// The title's `LAYOUT` variables as the level engine holds them: what the title left, unchanged.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TitleVars {
+    pub title_cursor: u32,
+    pub title_start_flag: u32,
+    pub title_quit_flag: u16,
+    pub quit_flag: u16,
+    pub title_selected: u32,
+    pub code_digits: u32,
+    pub code_digit_index: u32,
+    pub mt_songpos: u8,
+    /// `hiscore_score_1` to `hiscore_score_8`, BCD.
+    pub hiscore_scores: [u32; 8],
+    /// `hiscore_name_1` to `hiscore_name_8`, 12 ASCII bytes each as three big-endian longs
+    /// (`hiscore_name_N+$0`, `+$4`, `+$8`).
+    pub hiscore_names: [[u32; 3]; 8],
+}
+
+impl TitleVars {
+    /// After boot-to-level1's START at frame 5000 with no code typed: the row START, its flag still
+    /// set, world 1's code (its load list stores it), the song stopped at position 0 and the
+    /// high-score table as the program file holds it (measured, docs/16-title.md).
+    pub const fn level_1() -> TitleVars {
+        TitleVars {
+            title_cursor: 0,
+            title_start_flag: 1,
+            title_quit_flag: 0,
+            quit_flag: 0,
+            title_selected: 0,
+            code_digits: 0x0005_0506,
+            code_digit_index: 0,
+            mt_songpos: 0,
+            hiscore_scores: [
+                0x0020_0000,
+                0x0017_5000,
+                0x0015_0000,
+                0x0012_5000,
+                0x0010_0000,
+                0x0007_5000,
+                0x0005_0000,
+                0x0002_5000,
+            ],
+            hiscore_names: [
+                [0x6561676c, 0x6520736f, 0x66742020], // eagle soft
+                [0x68696a6f, 0x20202020, 0x20202020], // hijo
+                [0x6178656c, 0x20642e20, 0x20202020], // axel d.
+                [0x62616c64, 0x20686f72, 0x73202020], // bald hors
+                [0x64616e20, 0x20202020, 0x20202020], // dan
+                [0x6b2e6d2e, 0x20202020, 0x20202020], // k.m.
+                [0x636f6d61, 0x6e636865, 0x20202020], // comanche
+                [0x64727569, 0x64202020, 0x20202020], // druid
+            ],
+        }
+    }
+
+    fn get(&self, name: &str) -> Option<u32> {
+        if let Some(i) = hiscore_index(name) {
+            return Some(self.hiscore_scores[i]);
+        }
+        if let Some((i, j)) = hiscore_name_index(name) {
+            return Some(self.hiscore_names[i][j]);
+        }
+        Some(match name {
+            "title_cursor" => self.title_cursor,
+            "title_start_flag" => self.title_start_flag,
+            "title_quit_flag" => self.title_quit_flag.into(),
+            "quit_flag" => self.quit_flag.into(),
+            "title_selected" => self.title_selected,
+            "code_digits" => self.code_digits,
+            "code_digit_index" => self.code_digit_index,
+            "mt_songpos" => self.mt_songpos.into(),
+            _ => return None,
+        })
+    }
+
+    fn set(&mut self, name: &str, value: u32) -> bool {
+        if let Some(i) = hiscore_index(name) {
+            self.hiscore_scores[i] = value;
+            return true;
+        }
+        if let Some((i, j)) = hiscore_name_index(name) {
+            self.hiscore_names[i][j] = value;
+            return true;
+        }
+        let (b, w) = (value as u8, value as u16);
+        match name {
+            "title_cursor" => self.title_cursor = value,
+            "title_start_flag" => self.title_start_flag = value,
+            "title_quit_flag" => self.title_quit_flag = w,
+            "quit_flag" => self.quit_flag = w,
+            "title_selected" => self.title_selected = value,
+            "code_digits" => self.code_digits = value,
+            "code_digit_index" => self.code_digit_index = value,
+            "mt_songpos" => self.mt_songpos = b,
+            _ => return false,
+        }
+        true
+    }
+}
+
+/// `hiscore_score_N`'s index, N 1 to 8.
+fn hiscore_index(name: &str) -> Option<usize> {
+    let n: usize = name.strip_prefix("hiscore_score_")?.parse().ok()?;
+    (1..=8).contains(&n).then(|| n - 1)
+}
+
+/// `hiscore_name_N+$O`'s entry and long, N 1 to 8, O 0, 4 or 8.
+fn hiscore_name_index(name: &str) -> Option<(usize, usize)> {
+    let (n, off) = name.strip_prefix("hiscore_name_")?.split_once("+$")?;
+    let n: usize = n.parse().ok()?;
+    let j = match off {
+        "0" => 0,
+        "4" => 1,
+        "8" => 2,
+        _ => return None,
+    };
+    (1..=8).contains(&n).then(|| (n - 1, j))
 }
 
 impl State {
@@ -169,6 +291,7 @@ impl State {
                 water_cycle: 1,
             },
             object_map: Vec::new(),
+            title: TitleVars::level_1(),
         }
     }
 
@@ -177,6 +300,9 @@ impl State {
     pub fn get(&self, name: &str) -> Option<u32> {
         if let Some(field) = CreatureField::named(name) {
             return Some(field.get(&self.edges.creatures));
+        }
+        if let Some(v) = self.title.get(name) {
+            return Some(v);
         }
         Some(match name {
             "mt_counter" => self.mt_counter.into(),
@@ -260,6 +386,9 @@ impl State {
     pub fn set(&mut self, name: &str, value: u32) -> bool {
         if let Some(field) = CreatureField::named(name) {
             field.set(&mut self.edges.creatures, value);
+            return true;
+        }
+        if self.title.set(name, value) {
             return true;
         }
         let (b, w) = (value as u8, value as u16);

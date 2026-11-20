@@ -1,0 +1,9 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. KONIEC: Down twice, fire; the quit follows fire's release.
+0: -
+20: D        # title_cursor 1 at 30
+30: -
+40: D        # title_cursor 2, KONIEC, at 50
+50: -
+60: F        # fire on KONIEC, released at 70: title_selected in step 5060, quit_to_dos in 5061
+70: -

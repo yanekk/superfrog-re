@@ -28,7 +28,11 @@ pub type Recorder = amiga_record::Recorder<ForestDumb>;
 /// The app's name in the log and the toolkit's windows.
 const APP: &str = "fd-app";
 
-/// The Start Level window's fields (DESIGN §2.7): a level selector offering level 1 only and
+/// The levels the Start Level window offers: level 1 only, until the title plan's T09 starts the
+/// other worlds from it (a recording names all six since T08).
+pub const OFFERED: [LevelId; 1] = [LevelId::W1_1];
+
+/// The Start Level window's fields (DESIGN §2.7): a level selector offering [`OFFERED`] and
 /// "Enable recorder?", on when the window opens, as Superfrog's is.
 pub fn spec() -> StartLevelSpec {
     StartLevelSpec {
@@ -36,7 +40,7 @@ pub fn spec() -> StartLevelSpec {
             LevelField {
                 id: "level".into(),
                 label: "Level".into(),
-                kind: FieldKind::Dropdown(LevelId::ALL.iter().map(|l| l.to_string()).collect()),
+                kind: FieldKind::Dropdown(OFFERED.iter().map(|l| l.to_string()).collect()),
                 default: Value::Choice(0),
             },
             LevelField {
@@ -53,7 +57,7 @@ pub fn spec() -> StartLevelSpec {
 pub fn chosen(v: &Values) -> (LevelId, bool) {
     let level = v
         .choice(0)
-        .and_then(|i| LevelId::ALL.get(i).copied())
+        .and_then(|i| OFFERED.get(i).copied())
         .unwrap_or_default();
     (level, v.on(1).unwrap_or(true))
 }
@@ -132,7 +136,7 @@ fn main_checkout(dir: &Path) -> Option<PathBuf> {
 /// translated program's first frame (translator T39).
 pub fn zip_start(rec: &Recording) -> String {
     match rec.start {
-        StartPoint::Level1 => rec.level.to_string(),
+        StartPoint::Level1 | StartPoint::World { .. } => rec.level.to_string(),
         StartPoint::PowerOn => StartPoint::PowerOn.name().to_string(),
     }
 }

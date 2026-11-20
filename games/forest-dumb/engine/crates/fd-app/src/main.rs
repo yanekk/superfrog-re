@@ -642,8 +642,8 @@ impl App {
             return;
         };
         let run = self.run.as_mut().expect("running");
-        // The one level a recording names today (`LevelId`), started as the app starts it.
-        let LevelId::W1_1 = level;
+        // The one level the window offers today (`recorder::OFFERED`), started as the app starts it.
+        assert_eq!(level, LevelId::W1_1, "the Start Level window offers W1-1 only");
         match &mut run.engine {
             Engine::Hand(g) => *g = Game::new(g.data().clone(), Start::Level1),
             // As `--level 1` starts it (owner, T37): one start path.

@@ -7,8 +7,8 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Status:** planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20 (T02 reviewed)
-**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T08 can
-run beside it. T02 is done.
+**Next `pir-work` will:** T03 to T06, T09 and T10, now that T01, T02 and T08 are done; they can run
+side by side.
 
 ## Tasks
 
@@ -17,14 +17,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | title-read | — | ⬜ | |
+| T01 | title-read | — | ✅ | |
 | T02 | case-goals | — | ✅ | Reviewed: one fix, a stop a frame after the original's exit read as "not by by_frame" (test locks it). Probed: no false exit over world 2's start, two existing loads cases unchanged, entry layout checked in the listing; mutation of the same-frame check caught. Original's exit stack unchecked, accepted. |
 | T03 | title-idle-rows-cases | T01, T02 | ⬜ | |
 | T04 | title-code-cases | T01, T02 | ⬜ | |
 | T05 | title-quit-cases | T01, T02 | ⬜ | |
 | T06 | game-over-cases | T01, T02 | ⬜ | |
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
-| T08 | world-start-recording | — | ⬜ | |
+| T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ⬜ | |
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |

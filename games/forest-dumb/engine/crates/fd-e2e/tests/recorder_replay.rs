@@ -100,17 +100,25 @@ fn a_zip_from_another_build_or_level_is_refused_naming_the_difference() {
         "{err}"
     );
     let level = edited(&zip, "other-level.zip", |t| {
-        t.replacen("level W1-1", "level W2-1", 1)
+        t.replacen("level W1-1", "level W7-1", 1)
     });
     let out = bug_replay(&level);
     let err = String::from_utf8_lossy(&out.stderr);
     assert!(!out.status.success());
     assert!(
-        err.contains("level `W2-1` is not one this engine starts (W1-1)"),
+        err.contains("level `W7-1` is not one this engine starts (W1-1, W2-1"),
         "{err}"
     );
+    // A level-1 start is in W1-1: another world is a `world` start's (title plan T08).
+    let level = edited(&zip, "level-1-elsewhere.zip", |t| {
+        t.replacen("level W1-1", "level W2-1", 1)
+    });
+    let out = bug_replay(&level);
+    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.status.success());
+    assert!(err.contains("a level-1 start is in W1-1, not W2-1"), "{err}");
     let version = edited(&zip, "other-version.zip", |t| {
-        t.replacen("forest-dumb recording 2", "forest-dumb recording 9", 1)
+        t.replacen("forest-dumb recording 3", "forest-dumb recording 9", 1)
     });
     let out = bug_replay(&version);
     let err = String::from_utf8_lossy(&out.stderr);
@@ -118,14 +126,15 @@ fn a_zip_from_another_build_or_level_is_refused_naming_the_difference() {
     assert!(err.contains("recording format `9`"), "{err}");
 }
 
-/// The zip as one made before translator T39: format 1, no `start`, `engine` or `stop` line.
+/// The zip as one made before translator T39: format 1, no `start`, `engine`, `cheat` or `stop`
+/// line; and as one made before title plan T08, format 2, no `cheat` line.
 #[test]
-fn an_old_version_1_zip_still_replays_on_the_hand_engine() {
+fn old_version_1_and_2_zips_still_replay_on_the_hand_engine() {
     let (_app, zip) = recorded();
     let to_v1 = |t: &str| -> String {
-        let t = t.replacen("forest-dumb recording 2", "forest-dumb recording 1", 1);
+        let t = t.replacen("forest-dumb recording 3", "forest-dumb recording 1", 1);
         t.lines()
-            .filter(|l| !["start ", "engine ", "stop "].iter().any(|k| l.starts_with(k)))
+            .filter(|l| !["start ", "engine ", "cheat ", "stop "].iter().any(|k| l.starts_with(k)))
             .map(|l| format!("{l}\n"))
             .collect()
     };
@@ -146,4 +155,20 @@ fn an_old_version_1_zip_still_replays_on_the_hand_engine() {
     assert!(stdout.contains("screenshot equal\n"), "{stdout}");
     let place = |key: &str| stdout.lines().find_map(|l| l.strip_prefix(key)).unwrap().to_string();
     assert_eq!(place("stopped-at "), place("replay-at "));
+
+    // And as one made before title plan T08: format 2, no `cheat` line.
+    let to_v2 = |t: &str| -> String {
+        t.replacen("forest-dumb recording 3", "forest-dumb recording 2", 1)
+            .replacen("\ncheat off\n", "\n", 1)
+    };
+    let text = to_v2(&Recording::to_text(&rec));
+    assert!(
+        text.starts_with("forest-dumb recording 2\nbuild ") && !text.contains("\ncheat "),
+        "{text}"
+    );
+    let out = bug_replay(&edited(&zip, "version-2.zip", to_v2));
+    let v2 = String::from_utf8_lossy(&out.stdout);
+    assert!(out.status.success(), "{v2}{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(v2, stdout, "a version 2 zip replays as the version 1 zip does");
 }
+
