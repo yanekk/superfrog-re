@@ -1,0 +1,15 @@
+# KODY with 2424, world 3's code, then START (forest-dumb-title T04, DESIGN §2.2, docs/16-title.md):
+# world-3-start.toml's path with the world chosen by the typed code, not a `set`: from the idle
+# title at 4990, KODY, the digits, START at 5128 (128 frames after world-3-start's), world 3's load,
+# SCENA 3, fire, and 300 passes of play.
+# Translated, measured 2026-11-20 (T04): both sides reach the goal (world_index 2, 300 passes) at oracle
+# frame 6598, but it differs from 5051, a frame after the first digit's key goes down: the original
+# writes AUD0PER..AUD3PER that pass, the engine not; memory from 5056 (h4+$195c9, 1 against 2).
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-code-w3"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 1628
+compare = ["memory", "picture", "writes"]
+# Play has run 300 passes of game_frame in world 3 on both sides.
+goal = { all = [{ var = "world_index", value = 2 }, { var = "cheat_flag", value = 0 }, { var = "irq_count", value = 300 }], by_frame = 6618 }

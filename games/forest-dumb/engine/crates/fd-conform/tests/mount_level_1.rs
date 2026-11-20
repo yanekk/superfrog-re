@@ -76,8 +76,18 @@ const PASS_MOUNTED: [&str; 50] = [
 
 /// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated
 /// program alone from frame 6301 (T53; measured again 2026-11-20, T58). `title-esc` quits a frame
-/// late on the translated program alone, the same mounted (title T05, 2026-11-20; left for T07).
-const DIFFER: [&str; 2] = ["power-on-level-1", "title-esc"];
+/// late on the translated program alone, the same mounted (title T05, 2026-11-20; left for T07). The
+/// `title-code-*` cases differ on it alone from frame 5051, on the title (title plan T04,
+/// `title_code_cases.rs`).
+const DIFFER: [&str; 7] = [
+    "power-on-level-1",
+    "title-code-cheat",
+    "title-code-w1",
+    "title-code-w3",
+    "title-code-w5",
+    "title-code-wrong",
+    "title-esc",
+];
 
 /// The level 1 cases that hear a sound effect on the original whose Paula writes are the
 /// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
