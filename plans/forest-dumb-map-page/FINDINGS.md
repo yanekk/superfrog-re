@@ -7,6 +7,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | Collision is `collision_map` from shapes and vanishing blocks; tiles reach only the screen. Hidden passages: W1-1 133, W3-1 292, W4-1 63 cells (docs/17). Per-tile majority misses W1-1's tunnel, built mostly of tiles 301 to 310. |
+| 2026-11-20 | 📌 | Judge "drawn as wall" on the raw render, not a collision-tinted overlay: tinting made W1-1's hidden tunnel look like a grey corridor and its solid twin look like a fake one (T07). |
 | 2026-11-20 | 🐞 | `tools/smoke.sh` in a fresh worktree hit its 1200 s limit at plan review: Forest Dumb done at 820 s, 20 Superfrog entries unrun, another smoke beside it. Four afternoon runs hit it too. |
 | 2026-11-20 | 📌 | Headless Chrome 157 answers over `--remote-debugging-pipe` (fds 3 and 4, NUL-separated). Move the pipe ends above fd 4 before `dup2`, else Chrome's end is closed and the first write breaks (plan review probe). |
 | 2026-11-20 | 🐞 | DESIGN §2.7 had play as `irq_count != 0`, but it stands still, not at 0, at game over (docs/09) and SCENA (docs/14 T40). Plan review: play is `irq_count` advancing between samples (T06). |

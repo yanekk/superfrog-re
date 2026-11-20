@@ -162,6 +162,7 @@ source; open the source only for what the README lacks.
 - [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass.
 - [docs/14-translator.md](docs/14-translator.md): the translator plan's result and every reading, dated: 291 of 291 instruction kinds match Moira (`insn_gate.rs`); the whole tree, 100 of 100 routines, no hint; 89 of 100 on `pcode-machine`; 49 of 50 cases translated and with level 1 mounted (`power-on-level-1` fails from 6301); worlds 2 to 6, 5 of 5; no write into code; the app end to end to world 2; sessions translate first, 3 of 3; and what is left open for the level plans ("Open after the plan": read it before planning one).
 - [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
+- [docs/17-secrets.md](docs/17-secrets.md): what the levels hide: hidden passages (wall pictures over empty shapes) by `fd_assets::secrets`, counted per world and walked into on the original in W1-1, W3-1, W4-1; no invisible floor, warp or teleport found.
 
 ## The first case
 
