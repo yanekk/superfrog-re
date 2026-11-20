@@ -197,6 +197,12 @@ fn one_level_and_a_route_beside_the_others() {
     assert_eq!(index.matches(r#""status":"map""#).count(), 5);
     let w1 = std::fs::read_to_string(out.join("data/W1-1.js")).unwrap();
     assert!(array(&w1, "track").len() > 100, "W1-1 has no route");
+    // The route's W1-1 keeps its hidden passages (T09), as the map-only W1-1 does.
+    assert_eq!(
+        w1.matches(r#",0,"secret","hidden passage"]"#).count(),
+        133,
+        "W1-1's route page lost its secrets"
+    );
 }
 
 // ---------------------------------------------------------------------------------------------

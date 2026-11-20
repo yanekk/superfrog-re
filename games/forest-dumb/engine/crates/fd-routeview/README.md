@@ -47,7 +47,7 @@ fd-routeview --script FILE [--out DIR] [--all]  # W1-1's route; with --all the o
   on the owner's disks (`fd_tools::disk_dir`). `world_of(id)` (error names the six), `level_ids()`.
 - `parse_script(path: &Path, text: &str) -> Result<InputScript, String>`: errors name the path and line; a last line past `MAX_FRAMES` is refused.
 - `replay(data, script: &InputScript, notes: Vec<String>) -> Dump`: plays to `TAIL` frames past the last line.
-- `Dump`: `notes`, `palette`, `cols`, `body` (tile map row by row), `tiles`, `objects: Vec<Object>`, `track: Vec<(i32, i32)>` (`char_x`, `char_y` after each frame), `inputs`, `live` (objects in play every other frame), `events`, `items_needed`, `inputs_end` (the last line's frame). `end_cell() -> Location`, `to_json() -> String`.
+- `Dump`: `notes`, `palette`, `cols`, `body` (tile map row by row), `tiles`, `objects: Vec<Object>` (the hidden passages first, cat `secret`, value 0, as `fd-map` writes them), `track: Vec<(i32, i32)>` (`char_x`, `char_y` after each frame), `inputs`, `live` (objects in play every other frame), `events`, `items_needed`, `inputs_end` (the last line's frame). `end_cell() -> Location`, `to_json() -> String`.
 - `Object { c, r, value, cat, name }`; `object_name(value: u8) -> (&'static str, String)`: re-exported from `fd-map`, its layer and name from every `re/objects-*.toml`, `other` when none groups it.
 - `spec() -> PageSpec`: `fd_map::spec()` with live mode off, for the route page. `Route<'a> { dump, entry }`: a dump as `amiga_routeview::LevelDump`.
 - `default_out() -> PathBuf`; `LEVEL` (`LevelId::W1_1`); `TAIL` (100); `MAX_FRAMES` (90 000, 30 minutes); `NO_VERDICT`.
