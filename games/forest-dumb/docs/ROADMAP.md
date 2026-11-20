@@ -52,10 +52,11 @@ it through the seam, the level's cases green with it mounted. It no longer ports
 plan, and the machine's open timing questions.
 
 One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
-2026-10-31.
+2026-10-31. W2-1's brief: [level-2-brief.md](level-2-brief.md) (2026-11-20).
 
 A plan for the title screen and menus, which can run at any point after level 1, independent of the
-level plans.
+level plans. Its brief: [title-brief.md](title-brief.md) (2026-11-20); since the translator runs the
+title, it is mostly a checking plan.
 
 The game has an ending: `end_screen`, after world 6, using `_END` (`docs/07-executable-map.md`, read from
 the code and not run). Its work goes in the last plan below unless it proves large enough for its own.
