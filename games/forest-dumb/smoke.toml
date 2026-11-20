@@ -263,6 +263,10 @@ workspace = "engine"
 # Map page T01: every value of the six object maps has a group in re/objects-*.toml, and made-up
 # tables and maps for the unknown value and the contradiction; reads disk 2, under a second warm.
 "crates/fd-conform/tests/object_tables.rs" = "smoke"
+# Map page T07: the secrets rule's per-world counts on the six levels (disk 2, under a second warm) in
+# smoke; the four oracle claims (W1-1 from the sync cache, W3-1 and W4-1 by level 1's cheat end,
+# about 6 s together warm) are #[ignore]d for the nightly set (DESIGN §5: oracle tests are full).
+"crates/fd-conform/tests/secret_claims.rs" = ["the_rule_lists_the_counts_docs_17_gives"]
 # Map page T02: fd-map on made-up level bytes and on each real world's object file (counts, exit,
 # items needed); reads both disks, about 2 s warm.
 "crates/fd-map/tests/levels.rs" = "smoke"
