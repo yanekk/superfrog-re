@@ -1,0 +1,15 @@
+# KONIEC on the title (forest-dumb-title T05, DESIGN §2.2, §2.3): from the idle title at frame 4990,
+# Down twice to KONIEC and fire on it. title_selected is set in step 5060 and quit_to_dos returns to
+# AmigaDOS after fire's release (docs/16-title.md "KONIEC", tests/title_codes.rs). Both sides must
+# return from the program's entry in the same aligned frame, the translated program reporting
+# TranslatedGame::exited with the exit handed over from the original (FrameEngine::exit_to).
+# Translated engine only.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-koniec"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 110
+compare = ["memory", "picture", "writes"]
+goal = { exited = true, by_frame = 5100 }
+# Passes on the translated program, measured 2026-11-20 (T05): 72 frames' memory, pictures and
+# Paula's writes equal, both sides returning at oracle frame 5063 (tests/title_quit_cases.rs).

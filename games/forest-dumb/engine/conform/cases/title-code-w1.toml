@@ -1,0 +1,15 @@
+# KODY with 0556, world 1's code, then START (forest-dumb-title T04, DESIGN §2.2, docs/16-title.md): from the idle title at
+# frame 4990, KODY, the digits typed on the keyboard, START at 5128, world 1's load, SCENA 1 and
+# fire at 6428. No `set`: the original's own title_code_world writes world_index and cheat_flag.
+# World 1 is judged to play's first frame only, the first run of level3_handler (irq_count 1), and
+# never on: power-on-level-1 fails from its first frames of play (level 2 plan).
+# Translated, measured 2026-11-20 (T04): both sides reach the goal (world 1, cheat_flag 0) at oracle
+# frame 6429, but it differs from 5051, a frame after the first digit's key goes down: the original
+# writes AUD0PER..AUD3PER that pass, the engine not; memory from 5056 (h4+$195c9, 1 against 2).
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-code-w1"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 1439
+compare = ["memory", "picture", "writes"]
+goal = { all = [{ var = "world_index", value = 0 }, { var = "cheat_flag", value = 0 }, { var = "irq_count", value = 1 }], by_frame = 6429 }

@@ -10,6 +10,12 @@ changed.
 |---|---|---|
 | 2026-11-20 | 📌 | Every new case file must be listed in `mount_level_1.rs` (`PASS_MOUNTED` or `DIFFER`) or `every_case_is_in_one_list` fails in smoke; T04 to T06 each grow the same array, a merge to resolve (T03). |
 | 2026-11-20 | 📌 | **An `all` goal true at the start is met on frame one**: `title_cursor` 0, `mt_songpos` 0, `world_index` 0 for world 1. `after = F` (T03, owner's choice) counts it only after oracle frame F. |
+| 2026-11-20 | 🔄 | Owner confirmed (T10 review): `title_paths_short.rs` and `title_paths.rs` are full with no `[[area]]`, against T10's smoke label, as every generated-tree test is. |
+| 2026-11-20 | 🐞 | HELP held 5+ steps under the cheat stops the translated program as the level ends: the release byte arrives in `load_world`'s OS time (`OS's level 2 interrupt handler, not modelled`). T10 taps 2 steps. DESIGN §2.4: owner's choice. |
+| 2026-11-20 | 📌 | Esc on the title, translated: `quit_flag` the step after the press, the return the step after that (press at 301, exit 303); docs/16 has `quit_flag` in the press step on the original. T05's case judges it. |
+| 2026-11-20 | 📌 | `scripts/title-esc.txt` (T01) says the return is in 5011; the exit goal measures the original's return at 5012, its sound shut down at 5011 (T05 review). Comment left alone. |
+| 2026-11-20 | 🐞 | **title-esc fails translated**: the program quits a frame after the original (original returns at 5012, translated 5013; first difference Paula's AUD0PER at 5011). KONIEC passes. Mounted the same (T05, for T07). |
+| 2026-11-20 | 📌 | All five KODY cases first differ translated at 5051, a frame after the first digit key goes down: the original writes AUD0PER..AUD3PER, the translated program not; memory h4+$195c9 from 5056 (T04, `title_code_cases.rs`). |
 | 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
 | 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
 | 2026-11-20 | 📌 | **Codes reach worlds 1, 3 and 5 only** (0556, 2424, 7531) plus 2400, world 1 with `cheat_flag`; worlds 2, 4 and 6 have none, so `title-code-wN` exists for N 1, 3, 5 (T01, docs/16). |
