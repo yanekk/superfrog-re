@@ -1,6 +1,6 @@
 # Backlog: the plans after forest-dumb-start
 
-Owner's sequence, 2026-10-31. Level 1 is built; nothing after it is planned yet. Each plan is a `pir plan` run with a slug
+Owner's sequence, 2026-10-31. Level 1 and the translator are built; nothing after them is planned yet. Each plan is a `pir plan` run with a slug
 starting `forest-dumb-`. `forest-dumb-start` is merged; the level 1 plan's brief is [level-1-brief.md](level-1-brief.md).
 
 ## Level 1
@@ -35,6 +35,11 @@ no executed code. Owner's go, 2026-11-07: the second plan, `forest-dumb-translat
 next once level 1 merges. Level 1 merged 2026-11-11; the brief was rewritten that day for stages 1 to 6
 plus stage 7, which makes the translator the default first pass for new sessions.
 
+Done (plan `plans/forest-dumb-translator/`, closed 2026-11-20, [14-translator.md](14-translator.md)): the
+whole program translates with no hint and runs in the app from power-on with sound, level 1's hand
+engine mounted; 49 of 50 cases pass, `power-on-level-1` failing from frame 6301; worlds 2 to 6 match
+over their first play. Next is W2-1 or the title and menus.
+
 ## After level 1
 
 **What a level plan is now** (translator plan, 2026-11-12): the translated program is the engine. A
@@ -42,7 +47,9 @@ level plan checks it on the level's cases from power-on and its world start agai
 what fails in the translator by pattern (never by a hint or an edit to generated Rust), and rewrites by
 hand only the routines the owner chooses, each starting from the translated routine and checked against
 it through the seam, the level's cases green with it mounted. It no longer ports routine by routine;
-`docs/11-translation.md` holds the procedure.
+`docs/11-translation.md` holds the procedure. Its plan starts from "Open after the plan" in
+[14-translator.md](14-translator.md): `power-on-level-1`'s difference, `task_pack.py`'s hard-coded
+plan, and the machine's open timing questions.
 
 One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan for sound. All owner,
 2026-10-31.

@@ -46,6 +46,7 @@ Each of these cost at least one defect on the first game.
   first the word then on the data bus, usually the prefetch but not always (after audio DMA it was the
   DMA's word), then zero.
   - learned on: Superfrog. `plans/rust-engine/` T20, T107.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T08 (`clr.w AUDxVOL`, COPJMP1); Moira's `clr.l` writes the low word first.
 - `or` is not `add`, even where the operands never overlap in the test data. Port the operator the
   original uses.
   - learned on: Superfrog. `plans/rust-engine/` T56.
@@ -69,6 +70,7 @@ Each of these cost at least one defect on the first game.
   fitted as one constant per routine and never fitted on a net total. Fitted totals hid opposite errors
   for weeks.
   - learned on: Superfrog. `plans/rust-engine/` T128, T129, T208.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T55, T56: a fixed cost per callee missed by up to 7 000 cycles where a routine's time varies with state; walking each path's instructions passed.
 
 ## 3. Proving a port
 
@@ -116,6 +118,7 @@ Each of these cost at least one defect on the first game.
 
 - Format only the files the task touched (`rustfmt <file>`), never `cargo fmt` over a crate.
   - learned on: Superfrog. `plans/toolkit-extract/` T10 reformatted 75 files; `plans/rust-engine/` T71.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T58 review reverted 19 files; `cargo fmt` also rewrites generated test fixtures.
 - A tool that writes a dump, a trace or a recording has a size cap from its first commit.
   - learned on: Superfrog. `plans/rust-engine/` T05 wrote 38 GB and stopped the run.
 - A crate created or moved carries the `opt-level` override its users need, in the root manifest of
@@ -124,7 +127,35 @@ Each of these cost at least one defect on the first game.
   - learned on: Superfrog. `plans/toolkit-extract/` T07, found by T11.
 - Time limits in tests are sized for a loaded machine, and a run is bounded by frames where it can be.
   - learned on: Superfrog. Escapes 20da6b74, 513851eb.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T37 review: an app test passing idle in 65 s hit its 180 s timeout under load 30 to 100.
+- Compare two builds' run times by alternating several runs of each, never one run each: under a
+  loaded machine one binary's time over the same work varied by a quarter.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T04 to T13, 139 to 174 s for one judge run under load 6 to 7.
 - A red test on the base branch is a task the day it is seen, not a finding. A red left for days hid
   newer reds behind it.
   - learned on: Superfrog. `plans/rust-engine/FINDINGS.md`, `the_frog_walks_step_counts...` red from
     T196 to the end of the run.
+
+## 6. Translating with Ghidra's P-code
+
+The translator route (`toolkit/PLAYBOOK.md`): Ghidra decodes the 68k code to P-code, a script turns
+the P-code into Rust, and every instruction kind the program uses is checked against Moira on
+generated states before anything else is trusted.
+
+- Ghidra 12.0's 68000 description (the sinc) is wrong in places, and each is corrected by a pattern
+  over P-code or mnemonic, never by an address: `abcd`/`sbcd`; X on compares; `packflags` ORs T, S
+  and the mask into a one-byte temporary; CCR operations and `rtr` write all of SR; `rte` is
+  `return [0]`; `movem.w -(An)` steps 4; a `bra.w` marked `CALL_RETURN`; an empty relocation table.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T07, T10.
+- Known wrong and not yet corrected, because one program's census did not need them: `subx` V
+  ignores X; `negx` C and V come from the wrapped `src + X`; register-count rotates past the operand
+  size give wrong values; `asr` by a register gives a wrong X. A new program's census is checked
+  for these before translating.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T08, T09.
+- Ghidra's no-return analysis can mark a routine non-returning when data follows its calls, and then
+  drops every call's fall-through. Follow each instruction's own fall-through, never Ghidra's flow
+  flags, and list the calls it marked.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T43, 82 calls to one load routine.
+- Cycle times follow Moira, which differs from the manual in places (`andi.l #imm,Dn` 16 against
+  14); real hardware is the judge where it is measured.
+  - learned on: Forest Dumb Forever. `plans/forest-dumb-translator/` T11, T12.

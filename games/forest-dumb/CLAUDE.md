@@ -8,7 +8,9 @@ Start from `toolkit/PLAYBOOK.md`, whose opening steps fill most of this file.
 
 Forest Dumb Forever, © 1996 L.K. Avalon (read off the title screen, 2026-10-31), developer Eagle Soft: an Amiga platformer in the manner of
 the first game. This project reverse-engineers it and rebuilds it in Rust on the toolkit. Level 1 is built
-and judged against the original (plan `plans/forest-dumb-level-1/`); the app below opens in it. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
+and judged against the original (plan `plans/forest-dumb-level-1/`). The whole program is translated to
+Rust (plan `plans/forest-dumb-translator/`, [docs/14-translator.md](docs/14-translator.md)); the app below
+runs it from power-on, level 1 on its hand engine. Source of everything below: `plans/amiga-toolkit-prep/NORTH-STAR.md`, J1.
 
 ## Turning the original's code into Rust
 
@@ -73,7 +75,9 @@ engine through the seam. `-- --level 1` opens on level 1's first frame, reached 
 headless through the title; `-- --engine hand` opens straight in `W1-1` on the hand engine, as before,
 for comparison. A stop of the translated program freezes the picture, names the stop over it and
 saves a bug zip of the play from its start (`docs/BUG-FIX.md`, "A stop zip"). The translation is generated on this machine (`python3 -I
-games/forest-dumb/tools/translate.py --build`); without it the app says so and exits 1.
+games/forest-dumb/tools/translate.py --build`); without it the app says so and exits 1. In a fresh
+worktree run `fd-tools extract` first, and if the app still finds no translation, `touch
+engine/buildscripts/fd_translated.rs`: the build keeps its cached stub.
 Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
 Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
 `~/Library/Application Support/Forest-Dumb-RE/settings.toml` (`--home DIR` or `FOREST_DUMB_HOME`
@@ -139,11 +143,11 @@ source; open the source only for what the README lacks.
 - [docs/13-full-route.md](docs/13-full-route.md): the routes through the whole of W1-1 (the one route for both sides, the planner's, T48's on the original), how each is guarded and found again.
 - [toolkit/docs/porting-routines.md](../../toolkit/docs/porting-routines.md): read before porting or reading any routine of the original; the first game's porting lessons as rules.
 - [engine/conform/README.md](engine/conform/README.md): the conformance runner `fd-conform` and its case format.
-- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 done.
+- [docs/ROADMAP.md](docs/ROADMAP.md): backlog, the owner's sequence of plans, level 1 and the translator done.
 - [docs/level-1-brief.md](docs/level-1-brief.md): the brief for the level 1 plan.
 - [docs/13-translator-trial.md](docs/13-translator-trial.md): the translator trial (stage 0): 84 of 85 judgeable routines pass with no hand edit, no write into code on level 1's path; how to rerun it; owner's go (2026-11-07).
 - [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass.
-- [docs/14-translator.md](docs/14-translator.md): the translator's readings, dated: stage 1's gate (all 291 instruction kinds match Moira in every column, cycles included, 2 000 states each; `insn_gate.rs`); writes into code (no write on any game path; generated states the original writes into code on are `self-modifying`, not judged); stage 2's whole-tree gate (100 of 100 routines with a generator pass, nothing unsupported or unresolved, no hint; `translator_trial.py --whole`); the routines on `pcode-machine` (88 of 100, the 12 others the oracle's beam and blit, pinned; `--whole --machine`); worlds 2 to 6 from the title, `world_index` set at `load_world` (5 of 5 since T53: the OS's stretch after a load lined up as the load's, play judged at pass ends).
+- [docs/14-translator.md](docs/14-translator.md): the translator plan's result and every reading, dated: 291 of 291 instruction kinds match Moira (`insn_gate.rs`); the whole tree, 100 of 100 routines, no hint; 89 of 100 on `pcode-machine`; 49 of 50 cases translated and with level 1 mounted (`power-on-level-1` fails from 6301); worlds 2 to 6, 5 of 5; no write into code; the app end to end to world 2; sessions translate first, 3 of 3; and what is left open for the level plans ("Open after the plan": read it before planning one).
 - [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
 
 ## The first case
@@ -161,4 +165,5 @@ state only, on every frame of the idle title. Run it from `engine/` with
 
 ## Backlog
 
-- Level 1 (`forest-dumb-level-1`) is done; the next plans are in [docs/ROADMAP.md](docs/ROADMAP.md).
+- Level 1 (`forest-dumb-level-1`) and the translator (`forest-dumb-translator`, 2026-11-20) are done; the next plans are in [docs/ROADMAP.md](docs/ROADMAP.md).
+- Open defects and stale notes the translator plan left: [docs/14-translator.md](docs/14-translator.md), "Open after the plan".
