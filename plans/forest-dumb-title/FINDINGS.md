@@ -8,6 +8,12 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | **Title drill, worker-driven** (`title_drill.rs`): title, KODY, rolled and held keys, focus lost, resizes, Start Level… on the title and in play, game over, at default, 400×300, 1200×900; screens in `build/drill/title/`, nothing clipped. OS layer not run yet: screen locked. |
+| 2026-11-20 | 🐞 | Digits typed rolled counted a digit the original drops: `pcode-machine` sent presses before releases, vAmiga sends a frame's changes by key code. Fixed in `cia.rs` `changes_by_code`; case `title-code-rolled` (T11). |
+| 2026-11-20 | 📌 | Up and Down held together on the title differ from 5021 (`title_joy_up`): vAmiga keeps the later pull, Down; the machine passes both. The level 1 plan's opposite-keys gap, left open (T11). |
+| 2026-11-20 | 📌 | Superfrog's `CiaKeyboard::feed` keeps the last of `amiga-input` `key_bytes`, downs before ups, so a rolled frame may differ from vAmiga there too. Unchecked, outside this plan (T11). |
+| 2026-11-20 | 📌 | `translated_drill.rs` `koniec_while_recording_asks_once…` reaches fd-app's `--timeout 180 s`, with and without T11's change, the screen locked; left alone (T11). |
+| 2026-11-20 | 📌 | A scripted `resize` lands 30 or more steps late on a loaded machine, within 3 alone; `title_drill.rs` checks sizes from step 100 (T11). |
 | 2026-11-20 | 🐞 | **World 1 KODY cases differ with level 1 mounted** at play's first frame 6429 (`h0+$1e65`, camera, 0 against $17), passing translated alone: the mount entered from the title, not the 6301 snapshot. In `mount_level_1.rs` DIFFER; left open (T07). |
 | 2026-11-20 | 📌 | The idle keyboard's first byte took no time on `pcode-machine`; the oracle raises level 2 on line 7. `level2_handler`'s two-line VPOSR wait then crossed `wait_line_1` and the title lost a pass. Fixed in `cia.rs` (T07). |
 | 2026-11-20 | 📌 | Every new case file must be listed in `mount_level_1.rs` (`PASS_MOUNTED` or `DIFFER`) or `every_case_is_in_one_list` fails in smoke; T04 to T06 each grow the same array, a merge to resolve (T03). |

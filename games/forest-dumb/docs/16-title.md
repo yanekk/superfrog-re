@@ -48,6 +48,13 @@ Measured (`title-code-w3.txt`): key 2 let go in step 5056 (its release byte in `
 step) puts `02` in the first byte in step 5057; the fourth key let go in step 5092 ends the entry in
 step 5093, `code_digits` `02040204`, the cursor on KODY.
 
+Typed fast (T11's drill, `title-code-rolled`): the title keeps only the last byte a pass sees, and the
+keyboard sends one frame's key changes in key-code order, presses and releases mixed (vAmiga). So a
+key let go in the frame the next goes down counts only if its code is the higher: 2424 rolled enters
+two 4s, the 2s lost, the entry still on. Two digits pressed in one frame and let go in one frame
+count none; one-frame taps a frame apart all count (both measured equal on the original and
+translated, 2026-11-20).
+
 ## The codes
 
 START runs `title_code_world` (`h0+$777e`) from `session_loop`, in the same step as `lives_reset` and
@@ -144,6 +151,15 @@ across `title_pass`'s `wait_line_1`, which then waited a whole frame. An idle ke
 `run-all --engine translated` after the fix: 60 of 61, the 50 earlier cases as before (49 pass,
 `power-on-level-1` from 6301 at `h0+$1fe6`). With level 1 mounted, `title-code-w1`, `-cheat` and
 `-wrong` differ at play's first frame, 6429 (`h0+$1e65`, the camera), the mount's and left open.
+
+The drill (T11, 2026-11-20, worker-driven) typed the digits rolled and found the translated program
+counting a digit the original did not: `pcode-machine` sent every press before every release. It now
+sends a frame's changes in code order (`cia.rs` `changes_by_code`); `title-code-rolled` passes, and
+the title cases, `game-over-*`, `death-esc` and `level-end` read as before. Up and Down held together
+(Space and the down arrow) differ from 5021 (`title_joy_up`): vAmiga keeps the later of the two pulls,
+Down, a stick being unable to point both ways, and the machine passes both; the level 1 plan's known
+gap (its FINDINGS, 2026-11-11), not fixed here. The app's title, Start Level… and game over at the
+default scale, 400×300 and 1200×900: `fd-e2e` `title_drill.rs`, screens in `build/drill/title/`.
 
 ## Unreferenced title code
 
