@@ -8,7 +8,7 @@ subtracts `$32` and packs the result as BCD (`h4+$1c910`) into `items_left`. A p
 The code was throwaway and is deleted; it is in commit `34b06ade` (`git show 34b06ade`). To rerun:
 
 1. Extract the disks (`cargo run -p fd-tools -- extract` in `engine/`).
-2. From the maps: `from_maps.py` unpacks each `_MapaBobowN` with `tools/unpack.py` and prints the
+2. From the maps: `venv/bin/python from_maps.py` (the repo venv: `tools/unpack.py` needs `machine68k`) unpacks each `_MapaBobowN` with `tools/unpack.py` and prints the
    coin count, the count minus 50 and its BCD word.
 3. On the oracle: copy `oracle_read.rs` to `engine/crates/fd-conform/examples/items_needed_spike.rs` and
    `cargo run --release -p fd-conform --example items_needed_spike` in `engine/` (about two minutes,

@@ -111,7 +111,8 @@ cell, redraws its tile (`h0_29ca`), adds 100 and takes one from `items_left`. W1
 `load_list_world_N` (hunk 4; the store is `h4+$1a884` in world 2's, `h4+$1c8c0` in world 1's) calls `h0+$7a9e`,
 which counts the bytes `$20`-`$27` over all 38400 bytes of the object map at `h0+$cb38` (unused columns
 included) into `h0+$7a9c`, subtracts `$32` and packs the result as three BCD digits (`h4+$1c910`) into
-`items_left`. So items needed = coins in `_MapaBobowN` - 50, in every world. Read 2026-11-20 on the
+`items_left`. No world has a coin in its unused columns (counted 2026-11-20, 96 bytes a column), so the
+used-column count is the same. So items needed = coins in `_MapaBobowN` - 50, in every world. Read 2026-11-20 on the
 oracle after `load_world` returns and at `main_loop`'s first run, equal to the count from the files
 (map-page T00, `spikes/items-needed/`): W1-1 282, W2-1 549, W3-1 676, W4-1 396, W5-1 547, W6-1 751.
 
