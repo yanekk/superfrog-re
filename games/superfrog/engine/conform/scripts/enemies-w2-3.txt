@@ -1,0 +1,18 @@
+# W2-3 from its start right over the crumbling ledges (marker 36) above the spike pit, then onto
+# the ledge at 182,72 and nothing held: it gives way (planned, T43).
+0: -
+144: U R
+148: U
+176: R
+184: -
+188: U
+192: -
+201: U R
+205: R
+241: U R
+245: U
+253: -
+254: U
+258: -
+262: R
+286: -

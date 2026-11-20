@@ -1,0 +1,88 @@
+# Findings log
+
+**What the build taught.** Read the rows touching the task you pick up; read it whole before
+anything only a person can verify — a ✅ row is the *entire* record that something was seen
+working for real.
+
+**Newest first. Forty words a row, counted, not estimated.** The long version is already in
+the commit message that carried the fix. This is the index, not the account.
+
+**What goes here:** what the next session would otherwise rediscover · what you noticed and
+left alone under the scope rule · every answer that came back from the user's own hands, dated.
+
+**What does not:** a decision and its reasoning (that is the commit message) · anything the
+code or a test now states for itself · a restatement of the row above.
+
+## Writing a row
+
+Flat prose. At most one bold phrase in a row, and none is better. No em-dash asides, no
+clause that is there to sound right. If a row reads like it is arguing a case, it is too long.
+
+> 🐞 `DRY_RUN=1` was ignored on an already-connected slug: the repair branch is decided above
+> the dry-run check, so it opened a real browser. Fixed in review, +4 tests.
+
+Thirty-two words, and it is a whole finding — what broke, why, and what happened about it.
+
+## Keeping it short
+
+**Whoever appends, compacts.** Before adding a row, if this file is over 60 rows or 15 KB,
+spend two minutes shrinking it. That is the only maintenance it gets, and it is what stops
+this file becoming the one nobody reads.
+
+- **Merge** rows that are one lesson learned twice.
+- **Drop** a row whose lesson is now enforced by code, by a test, or by a rule in `DESIGN.md`,
+  and name where it went. The test is the better record.
+- **Never drop a ✅ row or its date.** Shorten it; never lose it. `CLAUDE.md` makes this file
+  the only record that anything was ever seen working for real.
+- **Never drop what somebody would grep for** — the flag, the error string, the path.
+
+**Promotion is a move, not a copy.** When a finding binds every session rather than one task
+it goes to the project's traps list in `CLAUDE.md` as **one line** — the rule, without its
+rationale — and the row here becomes a pointer to it. Two copies both grow, and that list is
+loaded into every session whether or not it touches the thing.
+
+Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth knowing ·
+🔄 a decision the user changed.
+
+| Date | | Finding |
+|---|---|---|
+| 2026-10-31 | 📌 | T09 review: mutating `run`'s post-sync input to `frame` for `frame - 1` survives: idle input is constant and `TitleScene` ignores it. No free test observes it; a case with input after sync must add one. |
+| 2026-10-31 | 📌 | T09 review sweep: `sf-conform` `src/lib.rs:216` `2 * case.frames + LOAD_SEARCH` is unchecked, so a huge `frames` may panic, as fd-conform's did. Read-only, not fixed. |
+| 2026-10-31 | 📌 | T09 review sweep: `sf-conform` `src/sync.rs:1467` `reach_frames + frames` is unchecked, same risk. Read-only, not fixed. |
+| 2026-10-31 | 📌 | First case green: `mt_counter` equal to the original on all 15079 passes, frames 4922 to 20000, about 35 s. Sync at 4921 fails at pass 1, tested. Script's Esc and click end one frame after T00's inclusive ranges. |
+| 2026-10-31 | 🐞 | T06 review: odd-sized `last_key_byte`, `save_name` put 69438 listing lines of hunk 0 at odd addresses, `game_frame` included. Fixed in `symbols.toml`; `exe_map_claims` now fails on an odd line in hunk 0. |
+| 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `kbd_toggle` (d1_c03 h0+$16076, size 1) ends odd; the listing may decode out of step after it. Read-only, not fixed. |
+| 2026-10-31 | 📌 | T06 review sweep: Superfrog's `symbols.toml` `key_down` (d1_c03 h0+$16078, size 1) ends odd, same risk. Read-only, not fixed. |
+| 2026-10-31 | 🐞 | T06 review: T09's doc says sync at T00's frame, which is 4921; `mt_counter` is 0 at 4921 and 4922, so the model must start at 4922 or runs one ahead. Map now says so; T09's doc untouched. |
+| 2026-10-31 | 📌 | First case variable: `mt_counter`, h4+$195c9 ($66c31), one byte. Value `(n-4922)%6` for frames 4922-20000, identical across two runs and with the click at 1400. Evidence and near misses: `docs/07-executable-map.md`. |
+| 2026-10-31 | 📌 | T03's open items settled: `DF0:ST`'s routine and `HD_ID` have no reference in the file, so no save and no hang. Play runs in the copper interrupt; the title uses the OS's interrupts, so `irq_count` stands still. |
+| 2026-10-31 | 📌 | Hunk 4's header says DATA but holds code (music player, load lists), so `toolkit/tools/hunk_listing.py` prints it undecoded; `re_listing.py` overrides the kind. Hunk bases: h0 $c077d8, h1 $10178, h2 $11400, h3 $12c38, h4 $4d668. |
+| 2026-10-31 | 🐞 | T05 review, worker-driven: builder's pass called levels coherent, yet all were drawn transposed; maps are stored by column (hunk 0 `$708`). Fixed, seam test. Levels, collision re-judged, level pictures whole. Not compared with the emulator's screen. |
+| 2026-10-31 | 🐞 | T05 worker-driven: 41 renders opened. `_WYBIJACZKA*` and `_ELEMENTY` frame sizes were wrong, fixed, tested. Sprites and tile sheets coherent. |
+| 2026-10-31 | 📌 | T05: all six worlds share one palette, hunk 1 `$404`. Object map values are grouped, not understood. `_NAPIS`, `_CZOLOWKA`, `_OPCJE`, `_END` are front-end pictures, left undecoded as outside the task's list. |
+| 2026-10-31 | 📌 | `amiga-paula` allows only 312 or 313 lines: a non-PAL frame needs `check_frame_lines` widened. T07 review: copper's other three `frame_lines` guards survive single mutation, redundant with the read guards, read-only. |
+| 2026-10-31 | 📌 | T04 review sweep: Superfrog's `games/superfrog/tools/atn.py` has no `raise` or `ValueError`, so may return damaged input as plausible bytes like `unpack.py` did. Read-only, not fixed. |
+| 2026-10-31 | 📌 | T04: 46 disk 2 files are `ESL!`, PowerPacker's format renamed; `BillClintonToDupek` is `S404`; 14 plain. Unpacked to `build/unpacked/` by the originals' routines; PP crates are copyleft (`format198x` GPL, `newtua-amiga` LGPL). T05 reads there. |
+| 2026-10-31 | 📌 | `DF0:ST`, the high-score save, is on neither disk and its routine (`0x92d8`) has no caller found. A call would retry for ever. T06 should settle reachability. `FileName.exe` and `HD_ID` are also absent; see `docs/03-boot-chain.md`. |
+| 2026-10-31 | 📌 | Most file names sit inline in hunk 4, jumped over by `bra.w`, in mixed case. Load routine `0x8ec4` checks magic `ESL!` at `$437c8` and branches to a decoder at `0x1d16`: relevant to T04. |
+| 2026-10-31 | 📌 | T00 review, worker-driven: with disk 2 in df1 the boot runs about 170 frames later, so the one-drive input script stalls on the crack picture. The title stands still to frame 14000 at least, past the 4078 frames measured. |
+| 2026-10-31 | 📌 | Gate verdict go. Kickstart: `kick1.3.rom`, SHA-1 90933936cce43ca9bc6bf375662c076b27e3c458, boots the set first try; 2.04 and 3.1 not needed. |
+| 2026-10-31 | 📌 | Drives: disk 1 alone in df0, then swap. The prompt (frame 3461) says insert disk 2 in DF0, press fire. Disk 2 in df1 from power-on still prompts; fire without the swap stays on the prompt. |
+| 2026-10-31 | 📌 | Repeatable: two lockstep runs byte-identical every frame in chip, slow, picture, Paula, taps, mix and CPU: 3 000 frames idle and 7 000 frames scripted to the title. No configuration switch needed. |
+| 2026-10-31 | 📌 | Boot to title: first title frame 4921 with Esc 800-810 (Show exits only on Esc), left mouse 1300-1310 (crack intro; a click at 1200 is ignored), `insert_disk(0,1)` at 3600, fire 3700-3710. Earlier or later inputs move the count. |
+| 2026-10-31 | 📌 | Frame length: 313 every frame from the crack intro on, checked to 14 000 frames. 75 frames of 312 (677-825 alternating) occur only under Show's interlaced picture. VPOSW writes: 105 twice (8001), 1192 once (8000). |
+| 2026-10-31 | 📌 | Input works: port 2 fire and joystick, keyboard, port 1 button. Down at the title changes the picture; right in level 1 changes RAM on its frame 10000. Fire at the title loads `SCENA 1`, fire again enters the level. |
+| 2026-10-31 | 📌 | Shim reads work: chip, slow, frame, Paula writes, audio taps; no new core patch. Snapshots at 4000 (mid-load) and 6000 continue identically. Speed about 550-610 frames per second headless, with per-frame hashing. |
+| 2026-10-31 | 📌 | Disk 2 is read after the intro (DSKLEN 3791-4916). At frame 5500 `_BALLA` is whole in chip and `_OPCJE` whole in slow RAM. The title picture stands still 4078 frames while RAM changes every frame. |
+| 2026-10-31 | 📌 | In a level `Rgb12Frame` holds only the 320x56 status bar: the crop uses the DIW at frame end, and the game moves it mid-frame. Title unaffected. Left alone; a picture comparison in play needs the crop changed. |
+| 2026-10-31 | 📌 | Title reads COPYRIGHT '96 L.K. AVALON, so the year is 1996; `games/forest-dumb/CLAUDE.md` corrected. Crack intro: cracked 06-11-96, Wanted Team. Picture at `games/forest-dumb/build/spike/title.png`: title frame, witch, cauldron, brick wall, menu START, KODY 0556, KONIEC. |
+| 2026-10-31 | 📌 | T02 review: `fd-tools` seatbelt checks path text only; `--out` under any `build` ancestor or through a symlink there is accepted (probed). Fixed target names mean zips and tracked files are not overwritten. Left as is. |
+| 2026-10-31 | 📌 | T02 cross-check: `xdftool unpack` on both real disks agrees with `fd-tools extract`: 61 files (12 + 49), names, sizes, all bytes identical. |
+| 2026-10-31 | 📌 | Unused `amiga-*` profile overrides in `games/forest-dumb/engine/Cargo.toml` print eight cargo warnings on a non-quiet build until T08/T09 depend on those crates; harmless, `-q` hides them. |
+| 2026-10-31 | 📌 | OFS verdict: `amiga-ffs` 0.4.0 (MIT/Apache-2.0, no dependencies, `std` off) chosen. Against `xdftool` on both real disks: 12 and 49 files, names, sizes, bytes identical. `affs-read` not needed. |
+| 2026-10-31 | 📌 | `s/startup-sequence` sits in a subdirectory, so `OfsImage::files()` lists paths (`s/startup-sequence`), against T01's root-only doc. T02 must create parent folders under `out`; disk 1 lists 12 files. |
+| 2026-10-31 | 📌 | `pir`'s hand_command cannot read `~/Documents` (macOS refused the zip copy); the owner copied them from outside. Zips now in the main checkout's `games/forest-dumb/`. |
+| 2026-10-31 | 📌 | `toolkit/crates/dry-fit/tests/deps.rs` still has only the first game's `GAME_PREFIX`; left alone, outside T01's file list. |
+| 2026-10-31 | 📌 | The stored setup/test lines pass in a fresh worktree: setup leaves the copy clean and the everything-run (toolkit, both games, root checks) is green in ~70 minutes. Re-measured because the plan adds a package folder. |
+| 2026-10-30 | 📌 | The only permissive Rust OFS readers are `amiga-ffs` (MIT/Apache-2.0, 0.4.0) and `affs-read` (MIT, 0.5.1); the `format198x` ADF family is GPL-2.0-or-later. Found while planning, DESIGN §2.2. |
+| 2026-10-30 | 📌 | `amiga-oracle` already reports each stepped frame's length in lines (`amiga_frame_lines`, shim.h: 313 long, 312 short), so T00 measures the frame length with no new patch. |

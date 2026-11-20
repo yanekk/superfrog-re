@@ -1,0 +1,9 @@
+# W2-4 by T25's planned route, to frame 7680 (T29): the frog takes tile coins in the vertical blank
+# while the original's pass lags. At 7658 the original's frame ended in `tile_anim_draw`'s loop
+# (h0+$fa8c) with its queue still full, so the blank's second coin waited for 7659; the engine had
+# freed the slot by its clock and played the coin sound twice in 7658 (channel 3 volume 34 against
+# 33). Green faithful with the loop's slots counted as steps (`sync::pass_step`).
+sync = { level = "W2-4" }
+script = "tile-queue-w2-4"
+frames = 7680
+resync = true

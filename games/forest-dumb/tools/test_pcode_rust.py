@@ -1,0 +1,597 @@
+"""pcode_rust.py: each P-code op's Rust, unsupported ops, hints, bad inputs, determinism, and the
+committed fixture translations against what the translator writes now (translator-trial T03).
+
+The fixtures are made-up programs (engine/crates/pcode-rt/tests/fixtures); `cargo test -p pcode-rt
+--test translated` runs their committed translations. Regenerate them after a translator change with
+`python3 tools/test_pcode_rust.py --regen` and commit the result."""
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import pcode_rust as pr
+
+TOOL = os.path.join(HERE, 'pcode_rust.py')
+FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-rt', 'tests', 'fixtures')
+# (export, hints or None, committed translation, extra arguments): a `.rs` is one module, else a directory
+TRANSLATIONS = [(n + '.json', None, n + '.rs', []) for n in (
+    'bcd', 'code_write', 'dbf_loop', 'endless', 'flags_call', 'jump_table', 'nested_call', 'pushed_return',
+    'relative', 'self_call', 'mutual_call', 'call_loop', 'shared_call', 'unsupported', 'os_call')] + [
+    ('jump_table.json', 'jump_table.hints.toml', 'jump_table_hinted.rs', []),
+    ('shared_call.json', None, 'shared_call', ['--parts', '2'])]
+# The machine's interrupt program (translator T23): its `rte` is the translator's, run against the pushed frame.
+MACHINE_FIXTURES = os.path.join(HERE, '..', 'engine', 'crates', 'pcode-machine', 'tests', 'fixtures')
+TRANSLATIONS += [(os.path.join(MACHINE_FIXTURES, 'irq.json'), None, os.path.join(MACHINE_FIXTURES, 'irq.rs'), [])]
+
+
+def tree_files(path):
+    """{name: text} of a translation, one module or a directory."""
+    if path.endswith('.rs'):
+        with open(path) as f:
+            return {os.path.basename(path): f.read()}
+    out = {}
+    for name in sorted(os.listdir(path)):
+        with open(os.path.join(path, name)) as f:
+            out[name] = f.read()
+    return out
+
+D0 = ['register', 0, 4]
+D1 = ['register', 4, 4]
+D0W = ['register', 2, 2]
+U = ['unique', 0x100, 4]
+RTS = {'len': 2, 'mnem': 'rts', 'ops': [
+    {'op': 'LOAD', 'out': ['register', 80, 4], 'in': [['const', 433, 8], ['register', 60, 4]]},
+    {'op': 'INT_ADD', 'out': ['register', 60, 4], 'in': [['register', 60, 4], ['const', 4, 4]]},
+    {'op': 'RETURN', 'in': [['register', 80, 4]]}]}
+
+
+def export(insns, entries=('h0+$0',), sizes=(0x100,)):
+    return {'hunks': [{'index': i, 'size': s} for i, s in enumerate(sizes)],
+            'entries': list(entries), 'insns': insns}
+
+
+def run(args):
+    return subprocess.run([sys.executable, '-I', TOOL] + args, capture_output=True, text=True)
+
+
+def translate_doc(doc, hints=None):
+    """(Rust text, stats) for an export given as a dict."""
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, 'pcode.json')
+        with open(p, 'w') as f:
+            json.dump(doc, f)
+        args = [p, '--out', os.path.join(d, 'tree.rs')]
+        if hints is not None:
+            h = os.path.join(d, 'hints.toml')
+            with open(h, 'w') as f:
+                f.write(hints)
+            args += ['--hints', h]
+        r = run(args)
+        if r.returncode != 0:
+            raise AssertionError(r.stderr)
+        with open(os.path.join(d, 'tree.rs')) as f:
+            return f.read(), json.loads(r.stdout)
+
+
+def one_op(op):
+    """The Rust lines one op in an instruction of its own becomes."""
+    em = pr.Emit({}, {})
+    ins = {'len': 2, 'mnem': '', 'ops': [op], 'targets': []}
+    lines, stop = em.instruction((0, 0x10), ins)
+    return '\n'.join(lines), stop
+
+
+class OpMapping(unittest.TestCase):
+    def test_each_op_maps_to_its_helper(self):
+        cases = [
+            ({'op': 'COPY', 'out': D0, 'in': [['const', 3, 4]]}, 'let v = 0x3u64;\n    r.set(0x0, 4, v);'),
+            ({'op': 'COPY', 'out': D0, 'in': [['const', -1, 4]]}, None),
+            ({'op': 'LOAD', 'out': D0, 'in': [['const', 433, 8], D1]}, 'load(bus, r.get(0x4, 4) as u32, 4)'),
+            ({'op': 'STORE', 'in': [['const', 433, 8], D1, D0W]},
+             'let v = r.get(0x2, 2);\n    store(bus, img, r.get(0x4, 4) as u32, 2, v)?;'),
+            ({'op': 'INT_SEXT', 'out': D0, 'in': [D0W]}, 'int_sext(r.get(0x2, 2), 2, 4)'),
+            ({'op': 'INT_ZEXT', 'out': D0, 'in': [D0W]}, 'int_zext(r.get(0x2, 2), 2)'),
+            ({'op': 'SUBPIECE', 'out': D0W, 'in': [D0, ['const', 2, 4]]}, 'subpiece(r.get(0x0, 4), 4, 2, 2)'),
+            ({'op': 'PIECE', 'out': D0, 'in': [D0W, ['register', 6, 2]]},
+             'piece(r.get(0x2, 2), r.get(0x6, 2), 2, 4)'),
+            ({'op': 'INT_LEFT', 'out': D0, 'in': [D0, ['const', 3, 4]]}, 'int_left(r.get(0x0, 4), 0x3u64, 4)'),
+            ({'op': 'INT_SRIGHT', 'out': D0W, 'in': [D0W, ['register', 7, 1]]},
+             'int_sright(r.get(0x2, 2), r.get(0x7, 1), 2)'),
+            ({'op': 'BOOL_NEGATE', 'out': ['register', 69, 1], 'in': [['register', 69, 1]]},
+             'bool_negate(r.get(0x45, 1))'),
+            ({'op': 'BOOL_AND', 'out': U, 'in': [['register', 69, 1], ['register', 70, 1]]},
+             'bool_and(r.get(0x45, 1), r.get(0x46, 1))'),
+            ({'op': 'INT_2COMP', 'out': D0, 'in': [D0]}, 'int_2comp(r.get(0x0, 4), 4)'),
+            ({'op': 'POPCOUNT', 'out': ['register', 69, 1], 'in': [D0]}, 'popcount(r.get(0x0, 4), 4)'),
+            ({'op': 'COPY', 'out': ['ram', 'h1+$4', 4], 'in': [D0]},
+             'store(bus, img, img.h(1, 0x4), 4, v)?;'),
+            ({'op': 'COPY', 'out': ['ram', 0xdff096, 2], 'in': [D0W]}, 'store(bus, img, 0xdff096, 2, v)?;'),
+            ({'op': 'COPY', 'out': D0, 'in': [['ram', 4, 4]]}, 'load(bus, 0x4, 4)'),
+            ({'op': 'COPY', 'out': D0, 'in': [['const', 'h2+$1a4', 4]]}, '(img.h(2, 0x1a4) as u64)'),
+            ({'op': 'COPY', 'out': ['unique', 0x80, 2], 'in': [D0W]}, 'u_80 = v & 0xffff;'),
+            ({'op': 'CBRANCH', 'in': [['ram', 'h0+$20', 4], ['register', 69, 1]]},
+             "if r.get(0x45, 1) != 0 { pc = (0, 0x20); continue 'b; }"),
+            ({'op': 'BRANCH', 'in': [['ram', 0xfc0000, 4]]},
+             'return Err(Stop::Untranslated("$fc0000".into()));'),
+            ({'op': 'BRANCHIND', 'in': [D0]}, "Some(k) => { pc = k; continue 'b; }"),
+            ({'op': 'RETURN', 'in': [['register', 80, 4]]}, 'r.set(PC, 4, v);\n    r.depth -= 1;\n    return Ok(());'),
+            ({'op': 'CALL', 'in': [['ram', 'h0+$40', 4]]}, 'return Err(Stop::Untranslated("h0+$40".into()));'),
+            ({'op': 'CALLIND', 'in': [D0]}, 'None => bus.call_outside(a, r, img)?'),
+        ]
+        for name, helper in pr.BINARY.items():
+            cases.append(({'op': name, 'out': D0, 'in': [D0, D1]}, f'{helper}(r.get(0x0, 4), r.get(0x4, 4), 4)'))
+        for op, want in cases:
+            with self.subTest(op=op['op']):
+                text, stop = one_op(op)
+                self.assertFalse(stop, text)
+                if want:
+                    self.assertIn(want, text)
+
+    def test_a_negative_constant_is_its_bytes(self):
+        text, _ = one_op({'op': 'COPY', 'out': D0W, 'in': [['const', -1, 2]]})
+        self.assertIn('0xffffu64', text)
+
+    def test_unknown_ops_and_varnodes_become_one_stop_each(self):
+        for op, name in [
+            ({'op': 'FLOAT_ADD', 'out': D0, 'in': [D0, D1]}, 'FLOAT_ADD'),
+            ({'op': 'CALLOTHER', 'in': [['const', 2, 4]]}, 'CALLOTHER'),
+            ({'op': 'CALLOTHER', 'name': 'reset', 'in': [['const', 5, 4]]}, 'CALLOTHER reset'),
+            ({'op': 'COPY', 'out': ['register', 0x100, 10], 'in': [['register', 0x10a, 10]]}, '10-byte register'),
+            ({'op': 'COPY', 'out': D0, 'in': [['stack', 4, 4]]}, 'stack space'),
+            ({'op': 'MULTIEQUAL', 'out': D0, 'in': [D0, D1]}, 'MULTIEQUAL'),
+        ]:
+            with self.subTest(op=name):
+                text, stop = one_op(op)
+                self.assertTrue(stop)
+                self.assertIn(f'Stop::Unsupported {{ op: "{name}".into(), at: "h0+$10".into() }}', text)
+
+    def test_a_negative_constant_from_the_export_is_its_bytes(self):
+        # Ghidra's varnode offsets are Java longs, so a 64-bit constant may arrive negative.
+        text, stats = translate_doc(export({'h0+$0': {'len': 2, 'mnem': 'x', 'ops': [
+            {'op': 'COPY', 'out': ['register', 0, 8], 'in': [['const', -1, 8]]}]}, 'h0+$2': RTS}))
+        self.assertEqual(stats['unsupported'], 0)
+        self.assertIn('0xffffffffffffffffu64', text)
+
+    def test_a_branch_to_a_relocated_constant_is_one_stop(self):
+        # A relocation landing on a P-code-relative branch makes no sense; that instruction stops.
+        text, stop = one_op({'op': 'BRANCH', 'in': [['const', 'h0+$2', 4]]})
+        self.assertTrue(stop)
+        self.assertIn('BRANCH to a relocated constant', text)
+        text, stop = one_op({'op': 'BRANCH', 'in': [['const', 0xffff, 2]]})
+        self.assertTrue(stop)
+        self.assertIn("first op", text)
+
+    def test_translation_continues_past_an_unsupported_instruction(self):
+        doc = export({
+            'h0+$0': {'len': 2, 'mnem': 'made-up', 'ops': [{'op': 'FLOAT_SQRT', 'out': D0, 'in': [D0]}]},
+            'h0+$2': {'len': 2, 'mnem': 'moveq #1,d1', 'ops': [{'op': 'COPY', 'out': D1, 'in': [['const', 1, 4]]}]},
+            'h0+$4': RTS})
+        text, stats = translate_doc(doc)
+        self.assertEqual(stats['unsupported'], 1)
+        self.assertEqual(text.count('Stop::Unsupported'), 1)
+        self.assertIn('// h0+$2 moveq #1,d1', text)
+        self.assertIn('r.set(0x4, 4, v);', text)
+
+
+class Flow(unittest.TestCase):
+    JMP = {'h0+$0': {'len': 2, 'mnem': 'jmp (a1)', 'flow': {'kind': 'computed', 'targets': []},
+                     'ops': [{'op': 'BRANCHIND', 'in': [['register', 36, 4]]}]},
+           'h0+$10': RTS, 'h0+$20': RTS}
+
+    def test_without_hints_nothing_is_assumed_about_a_computed_jump(self):
+        text, stats = translate_doc(export(self.JMP))
+        self.assertEqual(stats, {'functions': 1, 'blocks': 1, 'unsupported': 0, 'computed_unresolved': 1})
+        self.assertNotIn('(0, 0x10) =>', text)
+
+    def test_a_targets_hint_makes_them_blocks(self):
+        hints = '[[hint]]\nat = "h0+$0"\nkind = "targets"\ntargets = ["h0+$10", "h0+$20"]\nwhy = "t"\n'
+        text, stats = translate_doc(export(self.JMP), hints)
+        self.assertEqual(stats, {'functions': 1, 'blocks': 3, 'unsupported': 0, 'computed_unresolved': 0})
+        self.assertIn('(0, 0x10) =>', text)
+        self.assertIn('(0, 0x20) =>', text)
+
+    def test_ghidras_own_resolved_targets_count_as_resolved(self):
+        doc = export(dict(self.JMP, **{'h0+$0': dict(self.JMP['h0+$0'], flow={'kind': 'computed',
+                                                                              'targets': ['h0+$10']})}))
+        text, stats = translate_doc(doc)
+        self.assertEqual(stats['computed_unresolved'], 0)
+        self.assertIn('(0, 0x10) =>', text)
+
+    def test_a_data_hint_removes_the_instructions_it_covers(self):
+        doc = export({'h0+$0': {'len': 2, 'mnem': 'nop', 'ops': []},
+                      'h0+$2': {'len': 4, 'mnem': 'made-up', 'ops': []}, 'h0+$6': RTS})
+        hints = '[[hint]]\nat = "h0+$4"\nkind = "data"\nlen = 1\nwhy = "t"\n'
+        text, _ = translate_doc(doc, hints)
+        self.assertNotIn('// h0+$2', text)
+        self.assertIn('(0, 0x0, 0x2),', text)
+        self.assertNotIn('(0, 0x2, ', text)
+
+    def test_a_computed_call_with_a_hint_adds_the_function(self):
+        doc = export({'h0+$0': {'len': 2, 'mnem': 'jsr (a0)', 'flow': {'kind': 'computed', 'targets': []},
+                                'ops': [{'op': 'CALLIND', 'in': [['register', 32, 4]]}]},
+                      'h0+$2': RTS, 'h0+$30': RTS})
+        _, stats = translate_doc(doc)
+        self.assertEqual((stats['functions'], stats['computed_unresolved']), (1, 1))
+        hints = '[[hint]]\nat = "h0+$0"\nkind = "targets"\ntargets = ["h0+$30"]\nwhy = "t"\n'
+        text, stats = translate_doc(doc, hints)
+        self.assertEqual((stats['functions'], stats['computed_unresolved']), (2, 0))
+        self.assertIn('"h0+$30" => Some(h0_30),', text)
+
+    def test_a_reloc_entry_makes_its_operand_hunk_relative(self):
+        doc = export({'h0+$0': {'len': 6, 'mnem': 'lea', 'relocs': [{'in_op': 0, 'slot': 0, 'target': 'h1+$8'}],
+                                'ops': [{'op': 'COPY', 'out': ['register', 32, 4],
+                                         'in': [['const', 0x21f408, 4]]}]}, 'h0+$6': RTS},
+                     sizes=(0x10, 0x10))
+        text, _ = translate_doc(doc)
+        self.assertIn('let v = (img.h(1, 0x8) as u64);', text)
+        self.assertNotIn('21f408', text)
+
+    def test_a_reloc_on_slot_minus_1_is_the_ops_output(self):
+        # ExportPcode.java writes slot -1 for a relocated output (a store to an absolute long), which
+        # it has already written hunk-relative; the unique input beside it must stay a local.
+        doc = export({'h0+$0': {'len': 6, 'mnem': 'move.l', 'relocs': [{'in_op': 1, 'slot': -1, 'target': 'h1+$4'}],
+                                'ops': [{'op': 'COPY', 'out': ['unique', 0x100, 4], 'in': [['register', 0, 4]]},
+                                        {'op': 'COPY', 'out': ['ram', 'h1+$4', 4], 'in': [['unique', 0x100, 4]]}]},
+                      'h0+$6': RTS}, sizes=(0x10, 0x10))
+        text, _ = translate_doc(doc)
+        self.assertIn('let v = u_100;', text)
+        self.assertIn('store(bus, img, img.h(1, 0x4), 4, v)?;', text)
+
+    def test_a_branch_into_the_middle_of_a_run_splits_its_block(self):
+        doc = export({'h0+$0': {'len': 2, 'mnem': 'a', 'ops': []},
+                      'h0+$2': {'len': 2, 'mnem': 'b', 'ops': []},
+                      'h0+$4': {'len': 2, 'mnem': 'bne', 'ops': [
+                          {'op': 'CBRANCH', 'in': [['ram', 'h0+$2', 4], ['register', 69, 1]]}]},
+                      'h0+$6': RTS})
+        text, stats = translate_doc(doc)
+        self.assertEqual(stats['blocks'], 3)
+        # An arm names every instruction of its block, so a run can be resumed at any (T28).
+        self.assertEqual(re.findall(r'^            (\(0, 0x[0-9a-f]+\)(?: \| \(0, 0x[0-9a-f]+\))*) =>', text, re.M),
+                         ['(0, 0x0)', '(0, 0x2) | (0, 0x4)', '(0, 0x6)'])
+
+    def test_every_function_counts_its_depth_and_every_block_its_step(self):
+        # Two functions; the caller's three blocks (entry, the branch target, the rts after it).
+        doc = export({'h0+$0': {'len': 2, 'mnem': 'bne', 'ops': [
+                          {'op': 'CBRANCH', 'in': [['ram', 'h0+$4', 4], ['register', 69, 1]]}]},
+                      'h0+$2': {'len': 2, 'mnem': 'a', 'ops': []},
+                      'h0+$4': {'len': 4, 'mnem': 'bsr', 'ops': [
+                          {'op': 'CALL', 'in': [['ram', 'h0+$10', 4]]}]},
+                      'h0+$8': RTS, 'h0+$10': RTS})
+        text, stats = translate_doc(doc)
+        self.assertEqual((stats['functions'], stats['blocks']), (2, 4))
+        # Once per function, before its first block; once per loop pass, so once per block run.
+        self.assertEqual(text.count('    fn_entry(r)?;\n    let mut pc'), 2)
+        self.assertEqual(text.count("    'b: loop {\n        block_start(bus, r, img)?;\n        match pc {"), 2)
+        self.assertNotIn('STEP_CAP', text, 'no per-call count left')
+        self.assertNotIn('let mut steps', text)
+        # Out on a return, and after a function jumped into returns.
+        self.assertEqual(text.count('r.depth -= 1;\n'), 2 + 2)
+        self.assertEqual(text.count('let res = enter(k, r, bus, img);\n                r.depth -= 1;\n'
+                                    '                return res;'), 2)
+
+
+class Cli(unittest.TestCase):
+    def test_bad_inputs_exit_2_naming_them(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree.rs')
+            missing = os.path.join(d, 'nowhere.json')
+            r = run([missing, '--out', out])
+            self.assertEqual(r.returncode, 2)
+            self.assertIn(missing, r.stderr)
+            bad = [('notjson.json', '{', 'not JSON'),
+                   ('noinsns.json', '{"hunks": [], "entries": []}', 'no "insns"'),
+                   ('badaddr.json', json.dumps(export({'0x1000': RTS})), "'0x1000' is not an address"),
+                   ('badvn.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
+                       {'op': 'COPY', 'out': ['register', 0], 'in': []}]}})), 'is not a varnode'),
+                   ('badhunk.json', json.dumps(export({'h3+$0': RTS})), 'hunk 3 is not in "hunks"'),
+                   ('entries.json', json.dumps(dict(export({}), entries=5)), '"entries" must be a list'),
+                   ('relocs.json', json.dumps(export({'h0+$0': dict(RTS, relocs=5)})), '"relocs" must be a list'),
+                   ('flow.json', json.dumps(export({'h0+$0': dict(RTS, flow='x')})), '"flow" must be an object'),
+                   ('targets.json', json.dumps(export({'h0+$0': dict(RTS, flow={'targets': 'h0+$2'})})),
+                    '"targets" must be a list'),
+                   ('arity.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
+                       {'op': 'INT_ADD', 'out': D0, 'in': [D0]}]}})), 'op 0 INT_ADD has too few inputs'),
+                   ('noinput.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [{'op': 'BRANCH', 'in': []}]}})),
+                    'op 0 BRANCH has too few inputs'),
+                   ('negram.json', json.dumps(export({'h0+$0': {'len': 2, 'ops': [
+                       {'op': 'COPY', 'out': D0, 'in': [['ram', -4, 4]]}]}})), 'has a bad offset')]
+            for name, body, says in bad:
+                p = os.path.join(d, name)
+                with open(p, 'w') as f:
+                    f.write(body)
+                r = run([p, '--out', out])
+                self.assertEqual(r.returncode, 2, name)
+                self.assertIn(p, r.stderr)
+                self.assertIn(says, r.stderr)
+            good = os.path.join(d, 'good.json')
+            with open(good, 'w') as f:
+                json.dump(export({'h0+$0': RTS}), f)
+            for hints, says in [('kind = 1\n[[', 'not TOML'),
+                                ('[[hint]]\nat = "h0+$0"\nkind = "guess"\n', 'kind must be'),
+                                ('[[hint]]\nat = "h0+$0"\nkind = "data"\n', 'positive "len"'),
+                                ('hint = 5\n', '[[hint]] tables'), ('hint = [1]\n', '[[hint]] tables')]:
+                h = os.path.join(d, 'h.toml')
+                with open(h, 'w') as f:
+                    f.write(hints)
+                r = run([good, '--out', out, '--hints', h])
+                self.assertEqual(r.returncode, 2, hints)
+                self.assertIn(h, r.stderr)
+                self.assertIn(says, r.stderr)
+            self.assertFalse(os.path.exists(out), 'nothing written on a bad input')
+
+    def test_two_runs_write_identical_files(self):
+        src = os.path.join(FIXTURES, 'nested_call.json')
+        with tempfile.TemporaryDirectory() as d:
+            outs = []
+            for i in range(2):
+                out = os.path.join(d, f'{i}.rs')
+                self.assertEqual(run([src, '--out', out]).returncode, 0)
+                with open(out, 'rb') as f:
+                    outs.append(f.read())
+            self.assertEqual(outs[0], outs[1])
+
+    def test_the_committed_fixture_translations_are_current(self):
+        for src, hints, rs, extra in TRANSLATIONS:
+            with self.subTest(rs=rs), tempfile.TemporaryDirectory() as d:
+                out = os.path.join(d, rs)
+                args = [os.path.join(FIXTURES, src), '--out', out] + extra
+                if hints:
+                    args += ['--hints', os.path.join(FIXTURES, hints)]
+                r = run(args)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(tree_files(out), tree_files(os.path.join(FIXTURES, rs)),
+                                 f'{rs} is stale: run python3 tools/test_pcode_rust.py --regen')
+
+
+def call(at, target):
+    """bsr: push the address after it, call `target`."""
+    nxt = pr.fmt_addr((0, pr.parse_addr(at, 't')[1] + 4))
+    return {'len': 4, 'mnem': 'bsr', 'ops': [
+        {'op': 'INT_SUB', 'out': ['register', 60, 4], 'in': [['register', 60, 4], ['const', 4, 4]]},
+        {'op': 'STORE', 'in': [['const', 433, 8], ['register', 60, 4], ['const', nxt, 4]]},
+        {'op': 'CALL', 'in': [['ram', target, 4]]}]}
+
+
+NOP = {'len': 2, 'mnem': 'nop', 'ops': []}
+
+
+def program(calls, sizes):
+    """An export of functions at $100 apart: `calls` {function: [callees]}, `sizes` {function: nops}."""
+    insns = {}
+    for f in sorted(set(calls) | set(sizes)):
+        a = f * 0x100
+        for c in calls.get(f, []):
+            insns[pr.fmt_addr((0, a))] = call(pr.fmt_addr((0, a)), pr.fmt_addr((0, c * 0x100)))
+            a += 4
+        for _ in range(sizes.get(f, 0)):
+            insns[pr.fmt_addr((0, a))] = NOP
+            a += 2
+        insns[pr.fmt_addr((0, a))] = RTS
+    doc = export(insns, entries=[pr.fmt_addr((0, f * 0x100)) for f in sorted(set(calls) | set(sizes))],
+                 sizes=(0x10000,))
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, 'p.json')
+        with open(p, 'w') as f:
+            json.dump(doc, f)
+        ex = pr.load_export(p)
+    return pr.translate(ex), ex['insns']
+
+
+def parts_of(part_of):
+    """[[function numbers in a part]], from entry -> part."""
+    out = {}
+    for e, i in part_of.items():
+        out.setdefault(i, []).append(e[1] // 0x100)
+    return [sorted(out[i]) for i in sorted(out)]
+
+
+class Split(unittest.TestCase):
+    """--out DIR: the tree as mod.rs and one module per part (translator T04)."""
+
+    def test_a_single_caller_function_sits_with_its_caller_and_a_shared_one_stands_alone(self):
+        # 0 calls 1 and 2; 1 and 2 both call 3; 1 alone calls 4.
+        funcs, insns = program({0: [1, 2], 1: [3, 4], 2: [3]}, {0: 10, 1: 10, 2: 10, 3: 10, 4: 10})
+        groups = sorted(sorted(e[1] // 0x100 for e in g) for g in pr.clusters(funcs, insns, 10 ** 6))
+        self.assertEqual(groups, [[0, 1, 2, 4], [3]])
+
+    def test_a_group_stops_growing_at_the_cap_smallest_first(self):
+        # 1 (2 nops) and 2 (40) both called only by 0 (2): with room for one, the small one folds.
+        funcs, insns = program({0: [1, 2]}, {0: 2, 1: 2, 2: 40})
+        groups = sorted(sorted(e[1] // 0x100 for e in g) for g in pr.clusters(funcs, insns, 12))
+        self.assertEqual(groups, [[0, 1], [2]])
+
+    def test_parts_are_balanced_and_none_is_empty(self):
+        funcs, insns = program({}, {0: 40, 1: 30, 2: 20, 3: 10})
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 2)), [[0, 3], [1, 2]])
+        # More parts than functions: one part each, numbered without gaps.
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 9)), [[0], [1], [2], [3]])
+        self.assertEqual(parts_of(pr.partition(funcs, insns, 1)), [[0, 1, 2, 3]])
+
+    def test_a_call_across_parts_names_the_part_and_one_within_does_not(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', out, '--parts', '2'])
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(json.loads(r.stdout)['parts'], 2)
+            files = tree_files(out)
+            self.assertEqual(sorted(files), ['mod.rs', 'p00.rs', 'p01.rs'])
+            self.assertIn('#[path = "p00.rs"]\nmod p00;', files['mod.rs'])
+            self.assertIn('"h0+$30" => Some(p01::h0_30),', files['mod.rs'])
+            self.assertIn('super::p01::h0_30(r, bus, img)?;', files['p00.rs'])
+            self.assertIn('\n                        h0_30(r, bus, img)?;', files['p01.rs'])
+            self.assertNotIn('pub fn h0_30', files['p00.rs'])
+
+    def test_the_split_holds_the_same_functions_as_one_module(self):
+        with tempfile.TemporaryDirectory() as d:
+            one, tree = os.path.join(d, 'one.rs'), os.path.join(d, 'tree')
+            src = os.path.join(FIXTURES, 'shared_call.json')
+            self.assertEqual(run([src, '--out', one]).returncode, 0)
+            self.assertEqual(run([src, '--out', tree, '--parts', '2']).returncode, 0)
+            fns = lambda text: sorted(re.findall(r'^pub fn (h\d+_[0-9a-f]+)', text, re.M))
+            files = tree_files(tree)
+            self.assertEqual(fns(tree_files(one)['one.rs']), fns(files['p00.rs'] + files['p01.rs']))
+
+    def test_a_smaller_split_removes_the_parts_it_no_longer_has(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            src = os.path.join(FIXTURES, 'shared_call.json')
+            self.assertEqual(run([src, '--out', out, '--parts', '2']).returncode, 0)
+            with open(os.path.join(out, 'notes.txt'), 'w') as f:
+                f.write('kept')
+            self.assertEqual(run([src, '--out', out, '--parts', '1']).returncode, 0)
+            self.assertEqual(sorted(os.listdir(out)), ['mod.rs', 'notes.txt', 'p00.rs'])
+
+    def test_parts_below_one_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', os.path.join(d, 't'), '--parts', '0'])
+            self.assertEqual(r.returncode, 2)
+            self.assertIn('--parts', r.stderr)
+
+    def test_an_out_that_cannot_be_written_exits_2_naming_it(self):
+        # T04 review: a file where the directory goes gave a FileExistsError traceback.
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, 'tree')
+            open(out, 'w').close()
+            r = run([os.path.join(FIXTURES, 'shared_call.json'), '--out', out])
+            self.assertEqual(r.returncode, 2, r.stderr)
+            self.assertIn(out, r.stderr)
+            self.assertNotIn('Traceback', r.stderr)
+
+
+def fixture_insn(at):
+    """One instruction of the bcd fixture, in the translator's own form."""
+    doc = pr.load_export(os.path.join(FIXTURES, 'bcd.json'))
+    return doc['insns'][pr.parse_addr(at, 'test')]
+
+
+def emitted(ins):
+    lines, stop = pr.Emit({}, {}).instruction((0, 0x10), ins)
+    return '\n'.join(lines), stop
+
+
+class Corrections(unittest.TestCase):
+    """Ghidra's P-code wrong for an instruction, corrected by mnemonic and P-code pattern."""
+
+    def test_abcd_between_data_registers_is_decimal(self):
+        text, stop = emitted(fixture_insn('h0+$4'))
+        self.assertFalse(stop)
+        self.assertIn('bcd_add(r.get(0x7, 1), r.get(0x3, 1), r.get(0x43, 1))', text)
+        self.assertIn('r.set(0x3, 1, v);', text)
+        self.assertIn('bcd_flags(r, v, x, o)', text)
+        self.assertNotIn('Unsupported', text)
+
+    def test_sbcd_names_destination_and_source_as_the_sinc_does(self):
+        text, stop = emitted(fixture_insn('h0+$a'))
+        self.assertFalse(stop)
+        self.assertIn('bcd_sub(r.get(0xb, 1), r.get(0x13, 1), r.get(0x43, 1))', text)
+        self.assertIn('r.set(0x13, 1, v);', text)
+
+    def test_abcd_through_memory_reads_the_source_first_and_stores_the_destination(self):
+        text, _ = emitted(fixture_insn('h0+$6'))
+        lines = [l.strip() for l in text.split('\n')]
+        self.assertLess(lines.index('let ay = (r.get(0x24, 4) as u32).wrapping_sub(1);'),
+                        lines.index('let ax = (r.get(0x20, 4) as u32).wrapping_sub(1);'))
+        self.assertIn('store(bus, img, ax, 1, v)?;', lines)
+
+    def test_a_byte_predecrement_of_a7_steps_two(self):
+        ins = fixture_insn('h0+$6')
+        ops = json.loads(json.dumps(ins['ops']).replace('["register", 36, 4]', '["register", 60, 4]'))
+        text, stop = emitted(dict(ins, ops=ops))
+        self.assertFalse(stop)
+        self.assertIn('let ay = (r.get(0x3c, 4) as u32).wrapping_sub(2);', text)
+        self.assertIn('let ax = (r.get(0x20, 4) as u32).wrapping_sub(1);', text)
+
+    def test_another_shape_under_the_mnemonic_stays_a_stop(self):
+        ins = fixture_insn('h0+$4')
+        # A second user op call, or the add gone: not the sinc's pattern, so nothing is assumed.
+        two = dict(ins, ops=ins['ops'] + [o for o in ins['ops'] if o['op'] == 'CALLOTHER'])
+        no_add = dict(ins, ops=[o for o in ins['ops'] if o['op'] != 'INT_ADD'])
+        for bad in (two, no_add):
+            self.assertTrue(emitted(bad)[1])
+        # The same P-code under another mnemonic is not corrected either.
+        self.assertTrue(emitted(dict(ins, mnem='addx.b d1b,d0b'))[1])
+
+    def test_a_compare_leaves_x_and_a_subtract_still_sets_it(self):
+        cmpi = fixture_insn('h0+$0')
+        x_copy = 'r.set(0x43, 1, v);'
+        self.assertNotIn(x_copy, emitted(cmpi)[0])
+        for m in ('cmp.w d0w,d1w', 'cmpa.l a0,a1', 'cmpm.b (a0)+,(a1)+', 'CMPI.L #1,d0'):
+            self.assertNotIn(x_copy, emitted(dict(cmpi, mnem=m))[0], m)
+        self.assertIn(x_copy, emitted(dict(cmpi, mnem='subi.b #1,d3b'))[0])
+
+
+class ShapeRow(unittest.TestCase):
+    """`shape_row` (translator T56): how control leaves an instruction and the custom register it
+    names, which `seam::walk` follows (T60)."""
+
+    @staticmethod
+    def row(mnem, ops, operands=None, raw=None, branch=None):
+        ins = {'len': 2, 'mnem': mnem, 'ops': ops, 'bytes': raw, 'operands': operands}
+        shaped = {'ticks': [], 'branch': branch, 'mem': True, 'ins': ins}
+        return pr.shape_row((0, 0x6), ins, shaped, False, False)[1]
+
+    def test_dbcc_loops_to_the_last_cbranch_not_the_first(self):
+        # Ghidra's dbf: a CBRANCH past the loop when the condition holds, then the count's.
+        ops = [{'op': 'CBRANCH', 'in': [['ram', 'h0+$a', 4], ['const', 0, 1]]},
+               {'op': 'INT_SUB', 'out': D0W, 'in': [D0W, ['const', 1, 2]]},
+               {'op': 'INT_NOTEQUAL', 'out': ['unique', 0x1300, 1], 'in': [D0W, ['const', 0xffff, 2]]},
+               {'op': 'CBRANCH', 'in': [['ram', 'h0+$4', 4], ['unique', 0x1300, 1]]}]
+        row = self.row('dbf d1w,h0+$4', ops, raw='51c9fffc')
+        self.assertIn('flow: pcode_rt::shape::Flow::Dbcc { to: 0x4, reg: 1 }', row)
+
+    def test_rts_returns(self):
+        self.assertIn('flow: pcode_rt::shape::Flow::Ret }', self.row('rts', RTS['ops']))
+
+    def test_a_conditional_branch_carries_both_paths(self):
+        ops = [{'op': 'CBRANCH', 'in': [['ram', 'h0+$10', 4], ['register', 69, 1]]}]
+        row = self.row('beq.b h0+$10', ops, branch=('r.tick(10);', 'r.tick(8);'))
+        self.assertIn('tick: |r: &mut Regs| { r.tick(8); }', row)
+        self.assertIn('Flow::Bcc { taken: |r: &mut Regs| { r.tick(10); }, to: 0x10 }', row)
+
+    def test_a_custom_register_gives_its_offset_size_and_direction(self):
+        cases = [
+            # btst reads its destination; its size is a byte on memory.
+            ('btst #6,(0x00dff002).l', ['0x6', '(0x00dff002).l'], 'Some((0x2, 1, false))'),
+            ('cmp.b (0x00dff006).l,d1b', ['(0x00dff006).l', 'd1b'], 'Some((0x6, 1, false))'),
+            # cmp's destination is read, not written.
+            ('cmp.w d0w,(0x00dff006).l', ['d0w', '(0x00dff006).l'], 'Some((0x6, 2, false))'),
+            ('move.w d0w,(0x00dff096).l', ['d0w', '(0x00dff096).l'], 'Some((0x96, 2, true))'),
+            ('move.l d0,(0x00dff080).l', ['d0', '(0x00dff080).l'], 'Some((0x80, 4, true))'),
+            ('move.w (0x00dff006).l,d0w', ['(0x00dff006).l', 'd0w'], 'Some((0x6, 2, false))'),
+            # Not a chip register.
+            ('move.w d0w,(0x00c01000).l', ['d0w', '(0x00c01000).l'], 'None'),
+        ]
+        for mnem, operands, want in cases:
+            self.assertIn(f'custom: {want},', self.row(mnem, [], operands), mnem)
+
+
+class NoGame(unittest.TestCase):
+    def test_the_translator_names_no_game_and_no_address(self):
+        with open(TOOL) as f:
+            src = f.read()
+        for word in ('forest', 'dumb', 'superfrog', 'FOREST_DUMB'):
+            self.assertNotIn(word, src.lower(), word)
+        # No hex literal of four digits or more (an address); format masks are built from sizes.
+        self.assertEqual(re.findall(r'0x[0-9a-fA-F]{4,}', src), [])
+        self.assertEqual(re.findall(r"h\d+\+\$[0-9a-fA-F]+", src.replace('hN+$off', '')), [])
+
+
+def regen():
+    for src, hints, rs, extra in TRANSLATIONS:
+        args = [os.path.join(FIXTURES, src), '--out', os.path.join(FIXTURES, rs)] + extra
+        if hints:
+            args += ['--hints', os.path.join(FIXTURES, hints)]
+        r = run(args)
+        sys.stdout.write(f'{rs}: {r.stdout or r.stderr}')
+
+
+if __name__ == '__main__':
+    if sys.argv[1:] == ['--regen']:
+        regen()
+    else:
+        unittest.main()

@@ -1,0 +1,320 @@
+# Conformance: scripts and cases
+
+The engine is judged against the original running on the oracle (plans/forest-dumb-level-1 DESIGN
+§2.1, §4). A case brings the original to a sync point, starts the engine there, feeds both the same
+input and compares the variables it names (`LAYOUT` in `fd-core/src/layout.rs`) and, for a level case,
+the picture. It stops at the first difference and names the pass, the frame and the two values.
+
+Everything here is input, never disk data, so it is committed. The level sync point is cached outside
+git (`fd-conform/src/sync.rs`).
+
+## Running
+
+Anywhere under `games/forest-dumb/engine/`:
+
+```sh
+cargo run -p fd-conform -- run cases/first-case.toml   # one case, prints the verdict; about 35 s
+cargo run -p fd-conform -- run cases/w1-idle.toml      # a level case, on fd-core's Game
+cargo run -p fd-conform -- run cases/w1-idle.toml --engine translated   # on the translated program
+cargo run -p fd-conform -- run-all --engine translated --report ../build/translated-cases.md
+cargo run -p fd-conform -- run-all --engine translated --mount level-1   # level 1's hand engine mounted (T36)
+```
+
+Exit 0 when the case passes, 1 for a failure or a missing input, 2 for a wrong command line. The
+verdict is followed by its report: passes and pictures compared, pass ends unseen, frames tolerated,
+each exclusion with the frames it hid a difference on, engine events, the frame the goal was reached
+at, and the coverage report. It needs the two zips (`docs/01-disk-location.md`) and the Kickstart
+(`~/amiga-roms/kick1.3.rom` or `AMIGA_KICKSTART`); absent, it fails naming where it looked.
+
+`run` runs a level case on fd-core's `Game`, started at `Start::Level1` on the data the disks hold
+(`fd_conform::game_data`) and transplanted at the first pass end. The runner's own tests run level cases
+through `fd_conform::run_with` with a stand-in engine, a second copy of the original
+(`fd-conform/tests/common/mod.rs`, used by `tests/runner.rs` and `tests/input_timing.rs`), so it can be
+made to differ in exactly one way. `stub-level.toml` fails on `Game` until the character moves (T08);
+`w1-idle.toml` is the level engine's own case (T07).
+
+`--engine translated` (translator T29) runs a level case on the translated program
+(`fd_conform::translated_engine::run_translated`, the tree from `tools/translate.py --build`), judged
+on the frame bar (translator DESIGN §2.7) by the frame runner, `fd_conform::frames`: the engine starts at
+the same pass end and then runs one frame per oracle step on that step's input. At every pass end
+(the CPU's `INTREQ=$4010`, paired by `irq_count`; T30) both sides' state (the case's `vars`, or every
+play variable in `LAYOUT` where it lists none), Paula's writes of the pass in order
+(`amiga_conform::compare::paula`, beam positions ignored) and the CPU's other custom-chip writes of the
+pass as a (register, value) multiset (T45: the same writes, each as many times, order not checked)
+must be equal, and at every frame's end the picture in the play window. The original's pass straddles
+the frame's end on almost every moving frame and the machine's DMA contention (translator T49) still
+runs a little fast, so a pass may end
+a frame apart on the two sides, and a non-Paula write may fall a pass early or late, its counts
+agreeing again by the next pass end (owner, 2026-11-12). The multiset
+leaves Paula's registers (`$96`, `$9A`, `$9C`, `$9E`, `$A0..=$DE`) out, as they are compared in order
+already, and takes the CPU's writes only on both sides, because the oracle keeps no Copper write; its
+first difference names the frame, the register and both counts (`custom writes` in the reading). An
+accepted difference goes in the case's notes with the measurement that justifies it. The case's `exclude` rows are left out on this engine: each
+names a hand engine task. A stop (`untranslated: hN+$off` and the rest) fails the case naming the frame.
+`run-all` and `run --engine translated` go on past a channel's first difference with the others
+(`Options::every_channel`) and print each channel's first; `run-all --report` writes a Markdown reading
+grouped by the task that works from it (T30, T31, T32) and sorted by first difference. A title case
+runs on `translated` from a snapshot of the original at the end of its sync frame's step, judged on the
+same bar in `SCREEN_WINDOW` (T32: `first-case`, 15 078 frames). `--engine hand` is the default and the pass runner,
+unchanged.
+
+## A case
+
+A key or value the runner does not know is an error. Read by a small parser in `fd-conform/src/case.rs`,
+since the plan admits no `toml` dependency. A value is one line: a whole number (decimal or `0x`), a
+quoted string, `true`/`false`, a `[list]` or a `{ key = value }` table.
+
+```toml
+sync = { script = "boot-to-level1", frame = 6301 }  # scripts/<script>.txt; the engine starts here
+input = "w1-stub"            # optional: scripts/<input>.txt, frames counted from the sync frame
+frames = 130                 # oracle frames run after the sync point
+compare = ["vars", "picture"]
+vars = ["char_x", "camera_x"]                       # names in LAYOUT
+goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
+exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
+set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
+# set = [{ var = "world_index", value = 1, when = "load_world" }]   # lined up by loads: as the routine is entered
+swap = { frame = 3600, disk = 2 }                   # title and power-on cases: this disk into df0 then
+start = "entry"              # power-on cases: the engine starts at the program's entry
+align = "loads"              # power-on cases: frames lined up at each load's return
+```
+
+- **`sync`.** A script of `boot-to-level1` makes a level case: it starts from the cached level sync
+  point (frame 6301, disk 2 already in df0, so no `swap`) and runs the script on to `frame`. Any other
+  script makes a title case, booted from power-on, stepping forest-dumb-start's title scene a frame
+  at a time; title cases compare `vars` only and take no `goal` or `exclude`.
+- **`input`.** Without it the sync script goes on after the sync point.
+- **`compare`.** `"vars"`, `"picture"`, and `"writes"`: the custom-chip writes of every frame,
+  Paula's in order and the CPU's others as a multiset, which only the frame runner compares (the hand
+  engine plays no sound, and `run_with` refuses such a case). One key covers both because §2.7 names
+  one bar, "the custom-chip writes of the frame, Paula's in order"; a key of its own would let a case
+  pass that bar with half of it off.
+- **`goal`.** Every level case states one; agreement that misses it fails, because two sides failing
+  alike agree (porting-routines §4). `all`: every listed variable holds its value at the end of one
+  compared pass ending at or before oracle frame `by_frame`, on both sides. `idle = true`, for stretches
+  where only state is expected to stay in step: the run reaches its last frame with no engine event and
+  every listed variable compared on every pass; a pass whose end the original hides (below) fails it.
+  `game_over = true` (T23): both sides show the game over screen and leave it in the same step.
+  `level_end = true` (T26): both sides find the level's end in the same step, the original running
+  `next_world` (`h0+$1ba`) and the engine entering its level end, `world_index` equal. Both take a
+  `by_frame`.
+- **The comparison ends at `next_world`** (T26, DESIGN §2.5): world 2's load and screen are not built,
+  so a level case stops in the step the original runs it, named in the report as `AFTER_NEXT_WORLD`
+  (`fd-conform/src/lib.rs`). An engine that finds the level's end while the original runs a pass, or
+  not when it runs `next_world`, fails with a scene difference.
+- **`exclude`.** Picture rows (`"rows A..B"`), a box of them (`"rows A..B cols C..D"`, x from the
+  window's left edge) or a variable (`"var NAME"`) whose differences do not fail the case, each with the
+  task that removes it. Row 0 is line 47, the play area's top; the status bar is rows 194 to 249; the
+  countdown's three digits are `rows 223..231 cols 144..168`, beside the items' at x 208. An excluded variable is read every pass and its differing passes counted; it
+  needs `compare = ["vars"]` and is not also in `vars`. A box may name the oracle frames it is left out
+  on (`"rows A..B cols C..D frames F..G"`, T48): on every other frame it is compared. An exclusion that hid no difference over the
+  whole run fails the case: it is no longer needed.
+- **No `freeze`.** Nothing of the original is patched out: T79 removed the last frozen routine and
+  the `freeze` and `thaw` keys with it (docs/10, "Freezing objects"); a case naming either is refused
+  as any unknown key is.
+- **`start = "entry"` and `align = "loads"`** (translator T32): a power-on case, translated engine
+  only (the hand engine refuses it). `sync` is the script with `frame = 0`, and both keys are given
+  together. Below, "Power-on cases".
+- **`compare = ["memory"]`**, power-on cases only: the five hunks byte for byte at every compared
+  frame's end, but for the bytes holding what the OS handed the program (`sync::OS_VALUES`: the
+  dos base, the file handle, the font's fields, copinit and LOFlist, the saved vectors, the saved
+  INTENAR, DMACONR and ADKCONR), which the machine answers with values of its own. On
+  `--engine translated` a power-on case always compares memory, the picture in `SCREEN_WINDOW` and
+  the writes, and its `vars` if it lists any.
+- **`set`.** `LAYOUT` variables written into the original at the sync point, before the engine takes
+  its memory: what no input reaches in play. `level-end` sets `cheat_flag`, which only the title's code
+  sets, so HELP ends the level (T26). A row with `when = "ROUTINE"` (a `func` of `re/symbols.toml`)
+  is written instead the moment the program enters that routine, on both sides: the original's
+  `Amiga::poke_at` at its first instruction, the engine's `FrameEngine::write_at` (the translated
+  program's `TranslatedGame::write_at`) at its entry. Once; a write either side never made fails
+  the case. For a state the program writes and reads within one frame, which no poke between frames
+  reaches: `title_code_world` writes `world_index` in the step `load_world` reads it (T33).
+  `when` is for a case lined up by loads only, and such a case's every row has one.
+
+The oracle's frame cap is the case's last frame. A disk change is in the case and not in the script,
+because a script holds only what the player holds (`amiga-conform`'s `script` module has the format).
+
+## How a level case compares
+
+- **At the end of each pass.** In play a pass of `game_frame` usually ends after the frame does (2 977
+  of 3 000 moving frames; docs/09-play-measured.md), so the state at a frame's end is mid-pass. The
+  runner takes the original's RAM at the pass end, the handler's `INTREQ=$4010` at `h0+$1f02`
+  (`Amiga::watch_write`), and numbers passes by the original's own `irq_count`.
+- **Pass for pass.** The engine is transplanted (`fd_core::Transplant`) from the first pass end after
+  the sync point, then runs each later pass on the input the original read for it. A step now
+  and then ends two passes and shows only the first; the other is counted unseen and not compared.
+- **The input a pass read** (T67, `fd_conform::PassInputs`). Its joystick is the input of the step in
+  which its `read_joystick` read JOY1DAT (`h0+$8e1c`, T48: not the routine's entry, a frame can end between), counted by `Amiga::watch_pcs`: every pass runs either it
+  or the paused branch (`h0+$200e`), one pass after another, so the hits in step order are the passes'
+  in pass order. While the camera scrolls a pass usually reads in the step after its start (57 of 76
+  slide passes), so the start step's joystick is wrong there. Its keys are the step it started in
+  (measured: P held from step `N`, standing or sliding, reaches the pass started in `N`, though when
+  sliding its `play_keys` runs in `N + 1`). A paused pass reads no joystick and gets that of its paused
+  branch's step, which nothing reads. The count is anchored at the level sync point (`irq_count` and
+  `input_log_index` both 1) and checked every step against `input_log_index`; a mismatch is an error.
+  `tests/pass_input.rs` holds it: `character-run-slide-buttons` (up held 6480 to 6489 mid-scroll)
+  matches on `Game` and fails on the start-step pairing.
+- **A case that compares nothing fails**: no pass ended, no variable or no picture compared.
+- **An unported object fails every case.** When the engine meets an object value with no `ObjectKind`
+  registered (`fd_core::Event::Unported`), the case stops there with `Outcome::Unported`, naming the
+  value, the pass and the frame (DESIGN §4.1).
+- **The picture** is `PLAY_WINDOW`, the play area and the status bar together, judged within the
+  owner's tolerance (`amiga_conform::Tolerance::OWNER`, `PictureJudge`). Each step's frame is compared
+  with the engine's picture after the pass that frame shows: the one started at its vertical blank,
+  `irq_count` at the step's end less one (T44, measured). Not the frame of the step a pass's end was
+  seen in: once passes end after the frame does (from frame 6334 at the level sync point) that frame
+  shows the pass before, a scroll apart (`tests/picture_cases.rs`). A frame showing a pass the original
+  has not ended yet, or a pass no frame shows, is not compared. The judge is told of every compared
+  frame, as the toolkit counts (T82, the coordinator agent for the owner, 2026-11-10): an identical frame ends a run of glitch
+  frames, so "in a row" means frames next to each other (`tests/runner.rs`). A
+  run made with `Options { mode: Mode::Strict, .. }` fails on any pixel; a case cannot choose its bar.
+  `Options::diff_dir` writes a diff PNG beside a picture failure; it shows the original, so it goes
+  under `build/`, never into git.
+- **A redraw cut short** (T71, owner 2026-11-06). `main_loop`'s status bar redraw after pass `32k` is
+  cut by pass `32k + 1` at a point that varies with the cycles each pass took (docs/09, "The status
+  bar's redraw and the next pass"), which sub-frame timing the engine does not model (DESIGN §2.1). The
+  runner samples the original's lines in the step starting pass `32k + 1`, reads the PC the interrupt
+  took (`interrupted_pc`) and how many of `h0_6a96`'s reads came before it (`redraw_cut`). Only when
+  the redraw was cut, on the frames of passes `32k + 1` to `32k + 31`, a frame failing as the engine
+  draws it passes if the bar equals `Engine::cut_redraw` at that count: the bar redrawn from the old
+  and new numbers, never listed per case, the play area unchanged. `Verdict::cut_redraws` counts them;
+  a bar matching neither fails (`tests/death.rs`). Line sampling leaves the run unchanged, but turning
+  it off clears the frame just drawn, so the runner turns it on or off before a step, never after.
+- **A status bar redraw never reached** (T82, the coordinator agent's decision under DESIGN §2.1,
+  2026-11-10). `main_loop` reads `irq_count` once a turn and calls its redraw (`bsr.w h0_6a96`,
+  `h0+$29c`) only on a turn that read a multiple of 32. A turn still in its edge redraws when pass
+  `32k + 1` comes read the count before pass `32k` and reads it next after pass `32k + 1`, so the
+  bar keeps its numbers for the whole period. Measured on `route-W1-1`: nine calls between the
+  starts of passes 12 032 and 12 033, none between 12 064 and 12 065, and frames 18 365 to 18 396
+  show the countdown and score of the period before. The runner counts the calls with T31's counter
+  (`Amiga::watch_pcs`, proven to observe only; `tests/edge_latch.rs` holds this count with the
+  sampling). On a period with no call, whose pass `32k + 1` did not come between the turn's read
+  and the call (`redraw_cut`'s first arm), it compares the frames of passes `32k` to `32k + 31`
+  with `Engine::redraw_skipped` (`Game::redraw_skipped`): the bar as it stood before that redraw,
+  the play area the engine's own. Only on those frames, never listed per case; a bar left
+  unredrawn in a period the original redrew fails (`tests/full_route.rs`).
+  `Verdict::skipped_redraws` counts them: seven periods of the route, 220 frames. A wrapper of
+  `Game` that does not forward it fails a case that meets such a period.
+- **Edge redraws cut by the next pass** (T74, 2026-11-09). A pass can come while `main_loop` is still
+  in its edge redraws, as the cycles each pass took decide; the latches it had not yet tested stay set
+  through that pass, and its `frame_flag` clear afterwards swallows that pass's latches (docs/09,
+  "The edge redraws and the next pass"). The runner samples the lines of each step whose pass may find
+  it there (`frame_flag` or a latch set at the step's start, or the last pass still running short of
+  `camera_update`), reads where the pass took the foreground (`edges_cut`: the next latch to test and
+  where the interrupted redraw's object scan stood, or that it had not started, T81) and hands it to the engine before the engine runs
+  that pass (`Engine::foreground_cut`, `Game::cut_foreground`), as it hands over the input each pass
+  read. The engine then stops its redraws there and finishes them, the scan's later animated cells
+  and creature starts (T75, docs/10) included, before the next. `Verdict::edge_cuts` counts the passes; a wrapper of `Game` that does not
+  forward it keeps the engine's own rule (`ROW_BOBS_CUT`) and fails a case that meets such a pass
+  (`tests/edge_latch.rs`). Sampling costs about half a step again on the steps it runs, and leaves
+  the original's run unchanged; every level case is sampled for it (`records_edge_cuts`, `Sampler`),
+  since T78. A pass that came before the cut redraw's scan also carries how many `collision_map`
+  words its shapes had copied (`EdgesCut::shape_words`, `shapes_copied`: the PC's place in the
+  shape loops and their counters, T48); the engine copies the rest after the pass, which probes
+  the band as it was (`tests/full_route.rs`, pass 4 976 of `route-W1-1`). Two more parts of a cut
+  scan are read off the same interrupt (T82). A pass inside `h0_6882` past its four counts
+  (`h0+$691e`) leaves the animated cell's list chosen, and past its search (`h0+$6984`) its entry
+  too (`EdgesCut::add`, `AddCut`; pass 12 569 came at `h0+$693e`). A bob not yet started, in its
+  routine up to its BLTSIZE write or in the blitter wait, counts as after the cut, and the engine
+  starts the bobs from the cut cell on after the pass, a frame later (passes 13 153 to 13 162).
+- **A creature cut behind the beam** (T80, 2026-11-10). With several creatures drawn a pass runs into
+  the next frame's play area, and a creature `h0_5820` cuts after the beam has passed its lines is
+  missing from that frame, whole or from its top (docs/10, "A creature cut behind the beam"). After
+  each step of a case that compares the picture the runner reads the creature cuts made before line
+  233 with the beam at each blit's begin and end (`creature_cuts`, from `cpu_writes` and
+  `blit_events`, which the oracle keeps of every step, so nothing is switched on), works out how
+  many of each cut's blit rows the beam had passed (`rows_behind_beam`), and where any had compares
+  the frame with `Engine::creatures_uncut` (`Game::creatures_uncut`) in place of the engine's
+  picture: those rows as they were before the cut. Only on those frames, never listed per case; a
+  frame differing with no such cut measured fails as any other. `Verdict::creature_cuts` counts
+  them. A wrapper of `Game` that does not forward it fails a case that meets a run of such frames
+  (`tests/creature_cuts.rs`).
+- **A new variable** needs a `LAYOUT` row matching `re/symbols.toml` (a test holds them together), and
+  the engine's `Transplant::probe` arm for it. A field inside a larger symbol is named `symbol+$offset`
+  (`creature_slots+$8`, T46): the test checks it lies inside that symbol's bytes.
+
+## Power-on cases
+
+`power-on-title` and `power-on-level-1` run the translated program from power-on (translator DESIGN
+§2.7, §2.8; `fd_conform::frames::run_entry_frames`).
+
+- **The start.** The original runs from power-on on the case's script, line samples on, until the
+  step that first executes the entry `h0+$0` (frame 3461 on boot-to-title's input). The translated
+  program starts there, with the machine's OS answers, its beam on the first line of that step that
+  ended in the program's code (line 179): Kickstart enters the program partway through a frame, and
+  the program draws the disk 2 prompt at once, so a start at line 0 has drawn more by the frame's
+  end. The engine's first frame is paired with that step.
+- **Loads are lined up at their returns.** A load is a call of `load_file`, `load_file_raw` or
+  `read_marker` (`sync::LOAD_ROUTINES`, docs/07). The translated program reads a file at once, the
+  original in seconds. The engine reports each load's return in the frame it happened in
+  (`TranslatedGame::watch_returns`), the original its `rts` instructions (`sync::LOAD_RETURNS`,
+  `Amiga::watch_pcs`). After each engine frame the original runs on, its frames not compared, while
+  it has returned from fewer loads than the engine; a frame with a load running at its end on either
+  side is not compared either, since the engine has read the next file while the original reads it
+  (`amiga_conform::loads::ByReturns`). A load longer than `sync::LOAD_CAP` frames on the original,
+  or a different count of loads by the case's end, fails as `loads apart`. Measured (T32): 18 loads
+  to level 1, 1 794 of the original's frames inside them.
+- **Writes while the OS has the machine are not compared.** Until the entry takes the machine, and
+  while a load list has handed it back (`system_on` to `system_off`), the OS's interrupts write
+  INTREQ and the rest on the original, which the machine does not run. The custom and Paula writes
+  of a frame are compared only when the program's `level3_handler` is the level 3 vector on the
+  original at the step's start and end; the frames left out are counted.
+- **A stand-in** shows the rule (`tests/power_on.rs`): a copy of the original whose loads are 50
+  frames short lines up and passes, and a byte changed in the frame after the load's return fails
+  there.
+
+## World starts: lined up by loads from a snapshot
+
+`world-2-start` to `world-6-start` (translator T33): `align = "loads"` with no `start` and a sync
+frame on the idle title (4990, boot-to-level1's), run by the same runner as the power-on cases
+(`frames::run_entry_frames`). The engine starts from a snapshot of the original at the end of the
+sync frame's step, as a title case's does, and its first frame is paired with the next step; from
+there frames are lined up at each load's return, and the hunks, the picture in `SCREEN_WINDOW` and
+the writes are compared as a power-on case's. Each case's `set` writes `world_index` as `load_world`
+is entered, and its input (`scripts/world-N-start.txt`) presses Start at 5000 and fire on the
+world's SCENA screen about 110 frames after the original starts waiting there. The stand-ins in
+`tests/world_starts.rs` show the `set`: made on both sides at `load_world`, every channel equal
+through world 2's 13 loads into play; made between frames, it is lost to `title_code_world`.
+
+## The coverage report
+
+Every run counts, from the first step after the sync point, how often the original executed the first
+instruction of each routine in fd-core's `PORTED` (T31's `Amiga::watch_pcs`). A registered routine the
+case never reaches is listed at zero, as "never reached", never left out. A ported routine with no hits
+in any case is not proven by any case (DESIGN §4.1). The counts are in `Verdict::coverage` and printed
+after the verdict.
+
+## Routines: the rig, the generators and the port register
+
+A porting task proves each routine it ports on the routine rig before any case runs it. Read
+`toolkit/docs/porting-routines.md` first: its rules are what the rig and the register enforce.
+
+- **The rig**, `fd-conform/src/routine.rs`. `Rig::new()` loads the main program from disk 1 at the
+  hunk bases above and runs one routine alone on Moira in hardware mode: custom-chip writes recorded
+  in order, blits landing in memory, raster waits ending. `Rig::check(name, cases, entry, &generator,
+  port)` runs the original and the `port` closure from the same generated states and requires the
+  same registers back (d0-d7, a0-a6), the same bytes changed off the rig's stack, and the same
+  custom-chip writes in the same order. The closure takes the case's `Setup`, runs the engine
+  function on it, and returns `Effects`; `Rig::memory_for(&generator)` is the memory it reads under
+  the setup's pokes (`Setup::byte`). States the original hangs or faults on are counted in
+  `RigReport::hangs` and `faults`, never passed; a check that compared nothing fails, and
+  `RigReport::paths` counts the distinct instruction counts the original took, so a generator that
+  never takes a branch shows fewer. `Rig::survey` runs the original alone. `RigReport::unmodelled_blits`
+  counts states that started a line or fill blit, which the oracle's blitter does not run.
+- **The translation judge**, `fd-conform/src/judge/` and `fd-judge`: a literal port written against
+  `Cpu` and `Mem` (the spike's memory and custom-chip model), built in from `FD_PORT` by `build.rs`
+  (a stub without it), checked through `Rig::check`. Driven by `tools/translate.py`;
+  `docs/11-translation.md` says how.
+- **The generators**, `fd-conform/src/gen/` (module `generators`; `gen` is reserved in Rust 2024).
+  One `Generator` per routine, a base laid once and a function making each case, looked up by the
+  routine's name in `re/symbols.toml` (or `hN+$off` until it has one) with `generator(name)`. The
+  translation service's judge and an engine port's rig test use the same one. A generator task adds
+  its own module with a `pub const ALL` list and one line in `MODULES`. `spike.rs` holds the eleven
+  generators of the 2026-11-04 model spike (`spikes/muse-spark/`).
+- **The port register**, `fd-core/src/ported.rs`. Every routine ported into `fd-core`, by hunk and
+  offset, with its Rust function. Porting tasks only append. `fd-conform/tests/ported.rs` fails on
+  two entries for one address and on an entry that is not a `func` of the same name, hunk and offset
+  in `re/symbols.toml`, so a routine is named there before it is registered.
+
+The rig proves a port on generated states only. That the routine runs in play, and that the engine
+matches through it, is a case's job (the coverage report above).

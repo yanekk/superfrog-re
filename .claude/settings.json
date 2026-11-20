@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test:*)",
+      "Bash(node --test:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git merge-base:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(toolkit/tools/setup/install-rust.sh)",
+      "Bash(toolkit/tools/setup/install-brew-deps.sh)",
+      "Bash(toolkit/tools/setup/install-ghidra.sh)",
+      "Bash(toolkit/tools/setup/oracle.sh)",
+      "Bash(cargo add amiga-ffs:*)",
+      "Bash(tools/empty_memory.sh)",
+      "Bash(games/superfrog/tools/move-disks.sh)"
+    ]
+  }
+}

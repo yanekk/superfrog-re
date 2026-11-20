@@ -1,0 +1,8 @@
+# W1-1 paused by P with fire held, unpaused by fire (T191): the pause waits for fire to be let
+# go, then for P or fire; fire pressed again ends it; then play on to the right.
+20: F K19
+22: F
+30: -
+60: F
+64: -
+80: R

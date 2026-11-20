@@ -1,0 +1,4 @@
+# The end sequence (T35), untouched: from end_seq_load after the final level, through END1 and
+# END2, the clears and the frog's reload, back to the title.
+sync = "end-sequence"
+frames = 2500

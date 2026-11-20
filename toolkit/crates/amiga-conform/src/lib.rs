@@ -1,0 +1,35 @@
+//! Shell, test tooling: the game-free half of a conformance harness, which judges an engine against
+//! the original run on the oracle (`amiga-oracle`).
+//!
+//! - [`compare`]: a frame's picture and Paula writes against the original's, and the owner's
+//!   faithful bar over a case ([`Mode`], [`Tolerance`], [`compare::PictureJudge`],
+//!   [`compare::PassMatch`]).
+//! - [`sound_events`]: Paula writes reduced to what a listener hears, and matched within the
+//!   tolerance.
+//! - [`channels`]: each channel's output reduced to a level per frame, and judged.
+//! - [`feed`]: how far a frame of the original's mix swings.
+//! - [`report`]: the diff picture beside a divergence.
+//! - [`screenshot`]: a bug recording's screenshot held against the engine's picture, and the
+//!   original's frame as a PNG.
+//! - [`bug_compare`]: the verdict line of a bug recording compared with the original.
+//! - [`script`]: input scripts, with a hook for a game's own tokens.
+//! - [`loads`]: an engine that loads at once against the original, run on past each load and
+//!   compared once it is over.
+//! - [`sync_cache`]: a sync point's oracle snapshot, cached outside git under a game's key.
+//!
+//! A game keeps its cases, its memory map, its levels and milestones, and the run loop that drives
+//! both sides; it passes in what these read (excluded rows, file headers, an output folder).
+
+pub mod bug_compare;
+pub mod channels;
+pub mod compare;
+pub mod feed;
+pub mod loads;
+pub mod report;
+pub mod screenshot;
+pub mod script;
+pub mod sound_events;
+pub mod sync_cache;
+
+pub use compare::{Mode, Tolerance};
+pub use sound_events::{SoundEvent, sound_events};

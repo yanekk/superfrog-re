@@ -1,0 +1,8 @@
+# W1-4 with world 1's enemies live (T109): hurt by the sitter at 19,27, the spiker at 64,67 and a
+# shot of the spout at 107,66; the crawler at 84,67 stomped; the dropper at 114,51 dropping. The
+# walkers, watchers and the far dropper and spouts (cols 213–239) are past a spring pad whose throw
+# diverges (FINDINGS 2026-10-14, T109); T106's completion meets them. No re-syncs.
+sync = { level = "W1-4" }
+script = "enemies-w1-4"
+frames = 1250
+resync = true

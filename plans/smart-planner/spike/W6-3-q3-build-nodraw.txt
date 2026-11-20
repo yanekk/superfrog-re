@@ -1,0 +1,1 @@
+cells only: nodes 196 (with wings 0), cells 196, edges 2399 (taking a coin 76), build 11.8s, frames simulated 243419, moves dropped: lost heart 1240, died 432, never landed 0

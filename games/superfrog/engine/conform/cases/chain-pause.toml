@@ -1,0 +1,6 @@
+# Pause on P (T191): from W1-1's first frame, P held two frames pauses at the pass's pause check
+# (`pause`, h0+$7442: `logic_running` cleared, the vertical blank's non-level path), some frames
+# paused, P again resumes the pass where it stopped; then play on.
+sync = { level = "W1-1" }
+script = "chain-pause"
+frames = 200

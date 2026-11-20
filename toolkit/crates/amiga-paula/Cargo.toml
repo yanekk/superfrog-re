@@ -1,0 +1,11 @@
+[package]
+name = "amiga-paula"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The frame and line lengths and the beam position (a toolkit crate).
+amiga-clock = { path = "../amiga-clock" }
+# Save states: the types a game holds derive serde, so a game can write itself out.
+serde = { version = "1", features = ["derive"] }

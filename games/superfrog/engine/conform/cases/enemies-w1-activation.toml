@@ -1,0 +1,9 @@
+# W1-1 with world 1's enemies live (T110): right until the camera frees the hovers at 5,30, 8,29
+# and 11,29 (frames 201, 207, 219; `obj_despawn_if_offscreen`), then back left until they spawn
+# again from their markers (295, 287, 281); the sitter at 35,42 is freed on the way back (285).
+# Objects, the picture and Paula every frame; no re-syncs. The frames are pinned in
+# `enemies_w1::w1_activation`.
+sync = { level = "W1-1" }
+script = "enemies-w1-activation"
+frames = 380
+resync = false

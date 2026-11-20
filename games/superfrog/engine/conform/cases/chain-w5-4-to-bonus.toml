@@ -1,0 +1,9 @@
+# World 5 to the bonus level (T21): W5-4 reached by its level code, its exit forced on its first
+# frame, the tally's points taken by fire; then `end_world_pic_w5` (L5ET), `music_fade_wait`,
+# `world_load_lb` with the bonus level's effects and music loaded under the end picture, its
+# loading picture (LBLP: no walk, up as long as its loads, which the engine holds it for), the
+# progress map, the bonus level's start and 250 frames of it, nothing held (its last life goes at
+# 1905, and game over by `player_died` ends the loop a frame early in the engine: FINDINGS, T18).
+sync = { level = "W5-4", exit = true }
+script = "tally-points"
+frames = 1900

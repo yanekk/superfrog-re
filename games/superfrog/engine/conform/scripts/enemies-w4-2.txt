@@ -1,0 +1,40 @@
+# W4-2 from the start west along the bottom corridor (T41), steered by examples/route: the
+# sceneries, the swoopers at 211,63, under the crusher at 206,67 (hurt by it at 241), the spikes,
+# a dart and the crumbling ledges at 150-156,74.
+0: -
+144: U L
+148: U
+164: -
+165: U
+173: R
+175: U
+199: L
+205: -
+210: L
+212: -
+224: R
+226: U
+228: R
+230: U L
+232: U
+234: R
+236: U
+242: -
+347: U L
+349: U
+357: -
+358: U
+362: U L
+364: U
+388: -
+390: U
+396: -
+398: L
+400: -
+402: U
+404: -
+406: L
+428: -
+429: L
+455: -
+456: -

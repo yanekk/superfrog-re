@@ -1,0 +1,463 @@
+# Where FOREST_DUMB_FOREVER leans on the OS, measured on the original by
+# `fd-conform os-surface` (plans/forest-dumb-translator T01). Generated: do not edit.
+# Read with games/forest-dumb/docs/15-os-surface.md. Sites are hN+$off; counts are
+# executions over the run; `when` is load, title, play or other.
+
+[run]
+frames = 300
+worlds = [1, 2]
+steps = { other = 1038, load = 3023, title = 89, play = 602 }
+executed = 2886
+misses = "OS code reached by a return (rts/rte) rather than a jsr/jmp; an OS pointer kept anywhere but a register or an absolute long variable; paths the run does not take (game over, the end screen, worlds not asked for, a failed open, keys other than one ignored key in play)"
+
+[[call]]
+library = "dos.library"
+lvo = -42
+name = "Read"
+base = "a5"
+sites = ["h0+$8f1e", "h0+$8fb2", "h0+$9032"]
+count = 31
+when = ["other", "load"]
+
+[[call]]
+library = "dos.library"
+lvo = -36
+name = "Close"
+base = "a5"
+sites = ["h0+$8f2e", "h0+$8fc2", "h0+$9042"]
+count = 31
+when = ["other", "load"]
+
+[[call]]
+library = "dos.library"
+lvo = -30
+name = "Open"
+base = "a5"
+sites = ["h0+$8eec", "h0+$8f80", "h0+$9000"]
+count = 31
+when = ["load"]
+
+[[call]]
+library = "exec.library"
+lvo = -414
+name = "CloseLibrary"
+base = "a6"
+sites = ["h0+$8f3e", "h0+$8fd2", "h0+$9052"]
+count = 31
+when = ["other", "load"]
+
+[[call]]
+library = "exec.library"
+lvo = -408
+name = "OldOpenLibrary"
+base = "a6"
+sites = ["h0+$82", "h0+$8ed0", "h0+$8f64", "h0+$8fe4"]
+count = 32
+when = ["other", "load"]
+
+[[call]]
+library = "graphics.library"
+lvo = -414
+name = "FreeSprite"
+base = "a6"
+sites = ["h0+$be"]
+count = 1
+when = ["other"]
+
+[[call]]
+library = "graphics.library"
+lvo = -78
+name = "CloseFont"
+base = "a6"
+sites = ["h0+$b8"]
+count = 1
+when = ["other"]
+
+[[call]]
+library = "graphics.library"
+lvo = -72
+name = "OpenFont"
+base = "a6"
+sites = ["h0+$a2"]
+count = 1
+when = ["other"]
+
+[[read]]
+what = "ExecBase"
+addr = "$4"
+access = "read"
+sites = ["h0+$76", "h0+$8ec4", "h0+$8f32", "h0+$8f58", "h0+$8fc6", "h0+$8fd8", "h0+$9046"]
+count = 63
+when = ["other", "load"]
+
+[[read]]
+what = "graphics.library OpenFont result"
+addr = "+$22"
+access = "read"
+sites = ["h0+$a8"]
+count = 1
+when = ["other"]
+
+[[read]]
+what = "graphics.library OpenFont result"
+addr = "+$26"
+access = "read"
+sites = ["h0+$b0"]
+count = 1
+when = ["other"]
+
+[[read]]
+what = "graphics.library base"
+addr = "+$26"
+access = "read"
+sites = ["h0+$88"]
+count = 1
+when = ["other"]
+
+[[read]]
+what = "graphics.library base"
+addr = "+$32"
+access = "read"
+sites = ["h0+$90"]
+count = 1
+when = ["other"]
+
+[[read]]
+what = "level 2 autovector"
+addr = "$68"
+access = "read"
+sites = ["h0+$118", "h0+$476"]
+count = 4
+when = ["other"]
+
+[[write]]
+what = "level 2 autovector"
+addr = "$68"
+access = "write"
+sites = ["h0+$120", "h0+$400", "h0+$47e"]
+count = 7
+when = ["other", "load"]
+
+[[read]]
+what = "level 3 autovector"
+addr = "$6c"
+access = "read"
+sites = ["h0+$f8"]
+count = 1
+when = ["other"]
+
+[[write]]
+what = "level 3 autovector"
+addr = "$6c"
+access = "write"
+sites = ["h0+$100", "h0+$3fa", "h0+$45e"]
+count = 7
+when = ["other", "load"]
+
+[[irq]]
+level = 1
+owner = "os"
+when = "other"
+count = 125
+
+[[irq]]
+level = 1
+owner = "os"
+when = "load"
+count = 1160
+
+[[irq]]
+level = 2
+owner = "os"
+when = "other"
+count = 75
+
+[[irq]]
+level = 2
+owner = "os"
+when = "load"
+count = 1312
+
+[[irq]]
+level = 2
+owner = "program"
+when = "play"
+count = 4
+
+[[irq]]
+level = 3
+owner = "os"
+when = "other"
+count = 519
+
+[[irq]]
+level = 3
+owner = "os"
+when = "load"
+count = 4048
+
+[[irq]]
+level = 3
+owner = "program"
+when = "play"
+count = 602
+
+[[irq]]
+level = 6
+owner = "os"
+when = "other"
+count = 508
+
+[[irq]]
+level = 6
+owner = "os"
+when = "load"
+count = 3027
+
+[[vector]]
+level = 1
+owner = "os"
+when = "other"
+steps = 1038
+
+[[vector]]
+level = 1
+owner = "os"
+when = "load"
+steps = 3023
+
+[[vector]]
+level = 1
+owner = "os"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 1
+owner = "os"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 2
+owner = "os"
+when = "other"
+steps = 506
+
+[[vector]]
+level = 2
+owner = "os"
+when = "load"
+steps = 3017
+
+[[vector]]
+level = 2
+owner = "program"
+when = "other"
+steps = 532
+
+[[vector]]
+level = 2
+owner = "program"
+when = "load"
+steps = 6
+
+[[vector]]
+level = 2
+owner = "program"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 2
+owner = "program"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 3
+owner = "os"
+when = "other"
+steps = 506
+
+[[vector]]
+level = 3
+owner = "os"
+when = "load"
+steps = 3017
+
+[[vector]]
+level = 3
+owner = "program"
+when = "other"
+steps = 532
+
+[[vector]]
+level = 3
+owner = "program"
+when = "load"
+steps = 6
+
+[[vector]]
+level = 3
+owner = "program"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 3
+owner = "program"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 4
+owner = "os"
+when = "other"
+steps = 1038
+
+[[vector]]
+level = 4
+owner = "os"
+when = "load"
+steps = 3023
+
+[[vector]]
+level = 4
+owner = "os"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 4
+owner = "os"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 5
+owner = "os"
+when = "other"
+steps = 1038
+
+[[vector]]
+level = 5
+owner = "os"
+when = "load"
+steps = 3023
+
+[[vector]]
+level = 5
+owner = "os"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 5
+owner = "os"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 6
+owner = "os"
+when = "other"
+steps = 1038
+
+[[vector]]
+level = 6
+owner = "os"
+when = "load"
+steps = 3023
+
+[[vector]]
+level = 6
+owner = "os"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 6
+owner = "os"
+when = "play"
+steps = 602
+
+[[vector]]
+level = 7
+owner = "os"
+when = "other"
+steps = 1038
+
+[[vector]]
+level = 7
+owner = "os"
+when = "load"
+steps = 3023
+
+[[vector]]
+level = 7
+owner = "os"
+when = "title"
+steps = 89
+
+[[vector]]
+level = 7
+owner = "os"
+when = "play"
+steps = 602
+
+[[cia]]
+reg = "ciaa_cra"
+access = "modify"
+sites = ["h0+$1fac", "h0+$1fd0"]
+count = 8
+when = ["play"]
+
+[[cia]]
+reg = "ciaa_icr"
+access = "read"
+sites = ["h0+$1f98"]
+count = 4
+when = ["play"]
+
+[[cia]]
+reg = "ciaa_icr"
+access = "write"
+sites = ["h0+$108", "h0+$110", "h0+$406", "h0+$466", "h0+$46e"]
+count = 11
+when = ["other", "load"]
+
+[[cia]]
+reg = "ciaa_pra"
+access = "modify"
+sites = ["h4+$184d2"]
+count = 1
+when = ["title"]
+
+[[cia]]
+reg = "ciaa_pra"
+access = "read"
+sites = ["h0+$70c8", "h0+$7b96", "h0+$7c7e"]
+count = 2594548
+when = ["other", "load", "title", "play"]
+
+[[cia]]
+reg = "ciaa_sdr"
+access = "read"
+sites = ["h0+$1fa2"]
+count = 4
+when = ["play"]
+
+[[cia]]
+reg = "ciaa_sdr"
+access = "write"
+sites = ["h0+$1fb4"]
+count = 4
+when = ["play"]
+
+[[cia]]
+reg = "ciab_prb"
+access = "modify"
+sites = ["h0+$51a", "h0+$522", "h0+$52a"]
+count = 9
+when = ["other"]

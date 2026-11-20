@@ -1,0 +1,8 @@
+# Power-on to World 1-1 by the menu (T07): click through the crack intro, fire on the title
+# opens the menu, fire on START GAME starts W1-1, playable from about frame 7 290.
+1000: M
+1005: -
+4600: F
+4605: -
+4700: F
+4705: -

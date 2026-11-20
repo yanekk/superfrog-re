@@ -1,0 +1,13 @@
+The shape of a first conformance case. Harness: toolkit/crates/amiga-conform/ for the comparisons,
+toolkit/crates/amiga-oracle/ for the original running on the emulator. A game keeps its own cases and
+run loop, so write the real case in the format of the game's own runner.
+
+  boot     the disk from power-on, on the oracle and on the engine, to the same point
+  run      N frames, both fed the same input, frame by frame
+  verdict  state    the modelled variables, compared per game pass
+           or
+           picture  the display window, compared within the faithful bar's tolerance
+
+Keep it small: an idle screen and one variable is enough to prove the two sides can be compared.
+A case and its script are inputs, so they are committed. Anything it renders derives from the disks
+and is not.

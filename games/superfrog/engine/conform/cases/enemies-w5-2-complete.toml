@@ -1,0 +1,11 @@
+# W5-2 completed (T126): from its first frame (the frog held to 150) through the coins the exit
+# needs to the exit (the level completed on frame 6095), every object live, the exit fade and the tally,
+# fire in its wait taking the points; ends on frame 6279, the next level's (T21's). Planned by
+# `examples/plan_exit --coins 0 --prefix` (150 idle frames), checked on the original chunk by chunk.
+# Nothing left out (T181: the pad and exit-fade frames are within the faithful picture tolerance);
+# no re-sync since T184.
+sync = { level = "W5-2" }
+script = "enemies-w5-2-complete"
+frames = 6279
+resync = true
+

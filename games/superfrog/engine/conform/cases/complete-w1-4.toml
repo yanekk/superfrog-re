@@ -1,0 +1,12 @@
+# W1-4 played from its start to its exit with every object live, no exclusions (T106, T154). T106's
+# route to 1800, then (T154) the lower left's coins; with the wings T106 took at 5,19, the hill's
+# pad at 28,30 and flaps across to the platforms at 59,22 and 71,22 and the block at 100,19; its
+# coins and the cave's below 118-119; down the shaft at 6-12,54, along the bottom and the right
+# half's coins (the pad at 288,44 not needed: its coins are tile coins); the exit at frame 7377 with
+# the 96 coins taken, fire in the tally's wait taking the points; ends on frame 7561, frame 7562
+# being the next level's. Planned by `examples/plan_exit` (`--fly`), checked on the original chunk
+# by chunk. No re-sync.
+sync = { level = "W1-4" }
+script = "complete-w1-4"
+frames = 7562
+resync = false

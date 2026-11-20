@@ -1,0 +1,7 @@
+# The mouse button on the first text page: `WaitOrFire` reads fire only, so the page stays its
+# 400 frames, but the handler sets intro_skip; scene 1 plays, then the end (T48),
+# then fire on the "insert disk 1" page (up from O 3 754): disk 1 goes in, the game starts.
+2700: M
+2705: -
+3790: F
+3795: -

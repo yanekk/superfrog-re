@@ -1,0 +1,9 @@
+# T11, from T41: from the sync frame 6400 (the character stood since pass 16): run left to the wall at
+# char_x $1b, a running jump on the way, stand, then run right back to the start.
+0: -
+10: L
+30: L U      # a running jump, up held 4 frames
+34: L
+80: -        # against the wall since about frame 6425
+100: R
+150: -

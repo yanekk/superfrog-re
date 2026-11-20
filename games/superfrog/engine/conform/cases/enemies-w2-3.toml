@@ -1,0 +1,7 @@
+# W2-3 from its start right over the crumbling ledges (marker 36) above the spike pit, then onto the
+# held on the last (T43): the ledges' solid cells, their creak and crumbling, the scenery; nothing
+# frozen.
+sync = { level = "W2-3" }
+script = "enemies-w2-3"
+frames = 407
+resync = false

@@ -1,0 +1,21 @@
+# W5-1 (T39): two jumps over the first pacer and the pit before the wall, then long jumps (up held)
+# over the spike pit at 98-109, onto the slope by the watchers, out of the dip under the mace and
+# up past the fallers to the dart's wall and over it.
+0: -
+150: R
+180: R U
+194: R
+222: R U
+236: R
+280: R U
+294: R
+360: R U
+374: R
+432: R U
+446: R
+518: R U
+570: R
+636: R U
+686: R
+760: R U
+800: R

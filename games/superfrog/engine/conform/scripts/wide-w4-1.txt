@@ -1,0 +1,97 @@
+# timing: app
+# seed: 1
+# widescreen: on
+# W4-1 by sf-plan, seed 1: planned and confirmed on the engine in widescreen (--widescreen), engine only; frame 0 is W4-1's first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed 1 1) with View ▸ Widescreen on.
+# The level ends at frame 2878, then fire in the tally's wait takes the points.
+0: -
+151: R F
+171: U
+187: U R
+219: -
+223: R F
+239: U R
+255: R
+271: U R
+295: D
+303: U
+363: D
+423: U R
+439: R
+475: U R
+539: U
+543: U R
+563: R
+583: U
+603: D
+607: U R
+623: U L
+659: R F
+675: U R
+699: -
+731: F
+735: R
+755: R F
+771: L F
+795: R
+831: U R
+835: L
+867: F
+883: R F
+907: -
+923: L
+983: U L
+999: L F
+1071: U L
+1123: R
+1171: U L
+1179: U
+1223: D
+1271: -
+1287: L F
+1291: L
+1347: U
+1351: U R
+1391: L F
+1419: U L
+1503: L
+1559: L F
+1583: U
+1607: U R
+1627: R
+1631: L
+1711: R F
+1715: L
+1731: F
+1747: R F
+1783: U R
+1983: U
+2099: R
+2135: R F
+2139: L
+2171: R
+2235: R F
+2239: U
+2279: U R
+2303: -
+2311: U
+2343: R F
+2367: U R
+2423: U
+2455: R F
+2471: U R
+2531: R F
+2543: U
+2559: R
+2595: L
+2599: U
+2639: F
+2647: R
+2651: L
+2655: R
+2779: U R
+2851: L F
+2859: R
+2871: U R
+2878: -
+2947: F
+2951: -

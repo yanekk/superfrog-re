@@ -1,0 +1,5 @@
+# Every option changed (T20 review): lives up to its maximum and back, save high scores on, off and
+# on, as the original's options screen draws them; fire on LIVES leaves for the title's intro.
+sync = "power-on"
+script = "title-options-all"
+frames = 1700

@@ -1,0 +1,335 @@
+//! The variables a conformance case compares, where each lives in the original's memory, and how an
+//! engine is started from and read against them (plans/forest-dumb-level-1 DESIGN §2.1, T06).
+//!
+//! Every entry is a `kind = "var"` of `re/symbols.toml` with the same name, hunk, offset and size; a
+//! test below holds the two together, so a case never compares the engine with some other byte.
+//! `fd-conform` resolves a hunk to its base on the oracle; nothing here knows an address.
+
+/// How many bytes a variable is, read big-endian as the 68000 stores it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Width {
+    Byte,
+    Word,
+    Long,
+}
+
+impl Width {
+    pub const fn bytes(self) -> usize {
+        match self {
+            Width::Byte => 1,
+            Width::Word => 2,
+            Width::Long => 4,
+        }
+    }
+}
+
+/// One compared variable: byte `offset` of the main program's hunk `hunk`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Var {
+    pub name: &'static str,
+    pub hunk: u8,
+    pub offset: u32,
+    pub width: Width,
+}
+
+const fn var(name: &'static str, hunk: u8, offset: u32, width: Width) -> Var {
+    Var {
+        name,
+        hunk,
+        offset,
+        width,
+    }
+}
+
+/// Every variable a case may name. A porting task appends what it models; the runner reads a
+/// variable from the original and asks the engine for it through [`Transplant::probe`].
+/// Measured or read in games/forest-dumb/docs/09-play-measured.md ("Variables"); the BCD ones are
+/// compared as stored.
+pub const LAYOUT: &[Var] = &[
+    // The idle title's song tick (forest-dumb-start), the first case's one variable.
+    var("mt_counter", 4, 0x195c9, Width::Byte),
+    var("char_x", 0, 0x1e5a, Width::Long),
+    var("char_y", 0, 0x1e5e, Width::Long),
+    var("camera_x", 0, 0x1e62, Width::Word),
+    var("camera_y", 0, 0x1e64, Width::Word),
+    var("char_screen_x", 0, 0x4d78, Width::Word),
+    // The camera's hand-off to `main_loop`'s edge redraws (T09, docs/09 "The camera"): a latch a
+    // direction, and where the camera was when that edge was crossed.
+    var("edge_at_right_x", 0, 0x5186, Width::Word),
+    var("edge_at_right_y", 0, 0x5188, Width::Word),
+    var("edge_at_left_x", 0, 0x518a, Width::Word),
+    var("edge_at_left_y", 0, 0x518c, Width::Word),
+    var("edge_at_up_x", 0, 0x518e, Width::Word),
+    var("edge_at_up_y", 0, 0x5190, Width::Word),
+    var("edge_at_down_x", 0, 0x5192, Width::Word),
+    var("edge_at_down_y", 0, 0x5194, Width::Word),
+    var("edge_latch_right", 0, 0x5196, Width::Word),
+    var("edge_latch_left", 0, 0x5198, Width::Word),
+    var("edge_latch_up", 0, 0x519a, Width::Word),
+    var("edge_latch_down", 0, 0x519c, Width::Word),
+    var("lives", 0, 0x6a84, Width::Word),
+    var("hits_taken", 0, 0x3b26, Width::Word),
+    var("countdown", 0, 0x6a80, Width::Long),
+    var("items_left", 0, 0x6a88, Width::Word),
+    var("score", 0, 0x2a66, Width::Long),
+    var("world_index", 0, 0x6dfe, Width::Long),
+    // The level-3 handler's count: one a pass in play, so it numbers the passes (fd-conform
+    // matches the engine's pass n with the original's by it).
+    var("irq_count", 0, 0x1e6a, Width::Word),
+    var("paused", 0, 0x2100, Width::Word),
+    var("level_exit_touched", 0, 0x2696, Width::Word),
+    var("give_up", 0, 0x21b2, Width::Word),
+    // The character's animation pickers and the joystick read (T51).
+    var("char_walk_t", 0, 0x4be4, Width::Byte),
+    var("char_facing", 0, 0x4ece, Width::Byte),
+    var("char_probe_1", 0, 0x4ed1, Width::Byte),
+    var("char_probe_2", 0, 0x4ed2, Width::Byte),
+    // A pointer as the original stores it: equal only with tables loaded at the oracle's bases
+    // (`character::anim`).
+    var("char_anim_ptr", 0, 0x4ed8, Width::Long),
+    var("joy_left", 0, 0x8df2, Width::Word),
+    var("joy_right", 0, 0x8df4, Width::Word),
+    var("joy_up", 0, 0x8df6, Width::Word),
+    var("joy_down", 0, 0x8df8, Width::Word),
+    var("input_log_index", 0, 0x8ec0, Width::Long),
+    // The character's movement (T08). The probe's sixteen samples as four longs: LAYOUT has no
+    // wider width.
+    var("char_jump_3b28", 0, 0x3b28, Width::Word),
+    var("char_jump_41b4", 0, 0x41b4, Width::Word),
+    var("char_jump_41b6", 0, 0x41b6, Width::Word),
+    var("char_dying_t", 0, 0x4b60, Width::Word),
+    var("char_dying", 0, 0x4b62, Width::Word),
+    var("char_rising", 0, 0x4ecf, Width::Byte),
+    var("char_falling", 0, 0x4ed0, Width::Byte),
+    var("char_probe_3", 0, 0x4ed3, Width::Byte),
+    var("char_probe_4", 0, 0x4ed4, Width::Byte),
+    var("char_probe_5", 0, 0x4ed5, Width::Byte),
+    var("char_probe_6", 0, 0x4ed6, Width::Byte),
+    var("char_slide_t", 0, 0x4108, Width::Byte),
+    var("char_jumped", 0, 0x4109, Width::Byte),
+    var("char_jump_t", 0, 0x410a, Width::Byte),
+    var("char_run_left", 0, 0x4710, Width::Long),
+    var("char_run_right", 0, 0x4714, Width::Long),
+    var("char_samples_0", 0, 0x54f0, Width::Long),
+    var("char_samples_4", 0, 0x54f4, Width::Long),
+    var("char_samples_8", 0, 0x54f8, Width::Long),
+    var("char_samples_c", 0, 0x54fc, Width::Long),
+    var("char_update_t", 0, 0x3e2c, Width::Long),
+    var("char_unhurt_t", 0, 0x9b04, Width::Byte),
+    // What ends a life or the game (T23): the countdown's pass count and the keys play acts on.
+    var("countdown_tick", 0, 0x20ac, Width::Long),
+    var("last_key_byte", 0, 0x1f78, Width::Byte),
+    var("pause_key_down", 0, 0x2102, Width::Word),
+    var("esc_down", 0, 0x21b0, Width::Word),
+    var("cheat_flag", 0, 0x780c, Width::Word),
+    // The mechanics (T25): the spring that fired last, the animated cells' phase and tick, and the
+    // water's speed the level's load list sets.
+    var("spring_x", 0, 0x21b4, Width::Long),
+    var("spring_y", 0, 0x21b8, Width::Long),
+    var("spring_timer", 0, 0x21bc, Width::Word),
+    var("spring_kind", 0, 0x21be, Width::Word),
+    var("anim_tick", 0, 0x62b2, Width::Word),
+    var("water_cycle", 0, 0x6342, Width::Word),
+    // CLXDAT as `char_hit_check` copied it (T70).
+    var("clxdat_copy", 0, 0x1fe6, Width::Word),
+    // The five creature slots (T46), each a field inside `creature_active` or `creature_slots`
+    // (`name+$offset`, the symbol's own bytes): its flag, x and y as one long, and kind, facing and
+    // phase as one long, so a slot's path, spawn and despawn are compared every pass.
+    var("creature_active+$0", 0, 0x67da, Width::Byte),
+    var("creature_active+$1", 0, 0x67db, Width::Byte),
+    var("creature_active+$2", 0, 0x67dc, Width::Byte),
+    var("creature_active+$3", 0, 0x67dd, Width::Byte),
+    var("creature_active+$4", 0, 0x67de, Width::Byte),
+    var("creature_slots+$0", 0, 0x67ec, Width::Long),
+    var("creature_slots+$4", 0, 0x67f0, Width::Long),
+    var("creature_slots+$8", 0, 0x67f4, Width::Long),
+    var("creature_slots+$c", 0, 0x67f8, Width::Long),
+    var("creature_slots+$10", 0, 0x67fc, Width::Long),
+    var("creature_slots+$14", 0, 0x6800, Width::Long),
+    var("creature_slots+$18", 0, 0x6804, Width::Long),
+    var("creature_slots+$1c", 0, 0x6808, Width::Long),
+    var("creature_slots+$20", 0, 0x680c, Width::Long),
+    var("creature_slots+$24", 0, 0x6810, Width::Long),
+];
+
+/// The variable called `name`.
+pub fn layout_var(name: &str) -> Option<&'static Var> {
+    LAYOUT.iter().find(|v| v.name == name)
+}
+
+/// The original's memory as the main program's hunks see it. The runner implements it over the
+/// oracle's RAM; a test implements it over a few bytes.
+pub trait Mem {
+    /// `len` bytes from byte `offset` of hunk `hunk`.
+    fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8>;
+
+    /// Variable `v`'s value, big-endian, zero-extended.
+    fn value(&self, v: &Var) -> u32 {
+        self.read(v.hunk, v.offset, v.width.bytes())
+            .iter()
+            .fold(0, |acc, &b| acc << 8 | b as u32)
+    }
+}
+
+/// An engine that a case starts from the original's state and then reads variable by variable.
+pub trait Transplant {
+    /// Take the state the engine models from the original's memory at a pass's end.
+    fn transplant(&mut self, mem: &dyn Mem);
+    /// The engine's value of `v`, as the original stores it (zero-extended to 32 bits).
+    fn probe(&self, v: &Var) -> u32;
+}
+
+/// Memory a mounted routine's adapter writes its changes back into (translator DESIGN §2.9). The
+/// translated program's machine implements it over the hunks; a test, over a few bytes.
+pub trait MemMut: Mem {
+    /// Write `bytes` at byte `offset` of hunk `hunk`.
+    fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]);
+
+    /// Write `bytes` at `hunk`, `offset`, one byte at a time and only the bytes memory does not
+    /// already hold, so a write-back of state that did not change writes nothing.
+    fn put(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+        let held = self.read(hunk, offset, bytes.len());
+        for (k, (&b, &was)) in bytes.iter().zip(&held).enumerate() {
+            if b != was {
+                self.write(hunk, offset + k as u32, &[b]);
+            }
+        }
+    }
+
+    /// Variable `v` set to `value` (its low `v.width` bytes, big-endian), through [`MemMut::put`].
+    fn put_var(&mut self, v: &Var, value: u32) {
+        let n = v.width.bytes();
+        self.put(v.hunk, v.offset, &value.to_be_bytes()[4 - n..]);
+    }
+}
+
+/// The reverse of [`Transplant`] (translator DESIGN §2.9, T35): the state a mounted routine changed,
+/// written back into the original's memory where the translated program reads it. Only bytes that
+/// differ are written, so `transplant` then `write_back` with nothing run in between writes nothing.
+pub trait WriteBack {
+    fn write_back(&self, mem: &mut dyn MemMut);
+}
+
+/// Every variable of `vars` as `t` holds it, written back: the [`WriteBack`] of an engine whose
+/// state is its `LAYOUT` variables.
+pub fn write_back_vars(t: &dyn Transplant, vars: &[Var], mem: &mut dyn MemMut) {
+    for v in vars {
+        mem.put_var(v, t.probe(v));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_variable_is_the_one_symbols_toml_records() {
+        // The committed map is the one source of an address; a copy that drifted from it would make
+        // a case compare the engine with some other byte.
+        let map = include_str!("../../../../re/symbols.toml");
+        for v in LAYOUT {
+            // A field of a larger symbol (`creature_slots+$8`) lies inside that symbol's bytes.
+            if let Some((name, off)) = v.name.split_once("+$") {
+                let off = u32::from_str_radix(off, 16).unwrap();
+                let entry = map
+                    .split("[[sym]]")
+                    .find(|s| s.contains(&format!("name = \"{name}\"\n")))
+                    .unwrap_or_else(|| panic!("{name} is not in symbols.toml"));
+                let field = |key: &str| {
+                    let line = entry.lines().find(|l| l.starts_with(key)).unwrap();
+                    let n = line.split('=').nth(1).unwrap().trim();
+                    match n.strip_prefix("0x") {
+                        Some(h) => u32::from_str_radix(h, 16).unwrap(),
+                        None => n.parse().unwrap(),
+                    }
+                };
+                assert!(entry.contains("kind = \"var\"\n"), "{name}");
+                assert_eq!(field("hunk ="), v.hunk as u32, "{}", v.name);
+                assert_eq!(field("offset ="), v.offset - off, "{}", v.name);
+                assert!(
+                    off + v.width.bytes() as u32 <= field("size ="),
+                    "{}",
+                    v.name
+                );
+                continue;
+            }
+            let entry = map
+                .split("[[sym]]")
+                .find(|s| s.contains(&format!("name = \"{}\"\n", v.name)))
+                .unwrap_or_else(|| panic!("{} is not in symbols.toml", v.name));
+            for want in [
+                format!("hunk = {}\n", v.hunk),
+                format!("offset = {:#x}\n", v.offset),
+                "kind = \"var\"\n".to_string(),
+                format!("size = {}\n", v.width.bytes()),
+            ] {
+                assert!(entry.contains(&want), "{}: no `{want}` in {entry}", v.name);
+            }
+        }
+    }
+
+    #[test]
+    fn names_are_unique() {
+        for (i, v) in LAYOUT.iter().enumerate() {
+            assert!(
+                LAYOUT[i + 1..].iter().all(|w| w.name != v.name),
+                "{} twice",
+                v.name
+            );
+            assert_eq!(layout_var(v.name), Some(v));
+        }
+        assert_eq!(layout_var("no_such"), None);
+    }
+
+    struct Bytes(Vec<u8>);
+
+    impl Mem for Bytes {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            assert_eq!(hunk, 0);
+            self.0[offset as usize..offset as usize + len].to_vec()
+        }
+    }
+
+    impl MemMut for Bytes {
+        fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+            assert_eq!(hunk, 0);
+            self.0[offset as usize..offset as usize + bytes.len()].copy_from_slice(bytes);
+        }
+    }
+
+    /// [`Bytes`] counting the writes that reach it.
+    struct Counting(Bytes, usize);
+
+    impl Mem for Counting {
+        fn read(&self, hunk: u8, offset: u32, len: usize) -> Vec<u8> {
+            self.0.read(hunk, offset, len)
+        }
+    }
+
+    impl MemMut for Counting {
+        fn write(&mut self, hunk: u8, offset: u32, bytes: &[u8]) {
+            self.1 += bytes.len();
+            self.0.write(hunk, offset, bytes)
+        }
+    }
+
+    #[test]
+    fn put_writes_only_the_bytes_that_differ() {
+        let mut m = Counting(Bytes(vec![0x12, 0x34, 0x56, 0x78]), 0);
+        m.put_var(&var("v", 0, 0, Width::Long), 0x1234_5678);
+        assert_eq!(m.1, 0, "the value memory holds");
+        m.put_var(&var("v", 0, 1, Width::Word), 0x3499);
+        assert_eq!((m.1, &m.0.0[..]), (1, &[0x12, 0x34, 0x99, 0x78][..]));
+        m.put_var(&var("v", 0, 3, Width::Byte), 0xffff_ff00);
+        assert_eq!(m.0.0[3], 0, "a byte variable takes the value's low byte");
+    }
+
+    #[test]
+    fn a_value_is_read_big_endian_at_its_width() {
+        let m = Bytes(vec![0x12, 0x34, 0x56, 0x78, 0x9a]);
+        let at = |offset, width| m.value(&var("v", 0, offset, width));
+        assert_eq!(at(0, Width::Byte), 0x12);
+        assert_eq!(at(1, Width::Word), 0x3456);
+        assert_eq!(at(1, Width::Long), 0x3456_789a);
+    }
+}

@@ -1,0 +1,9 @@
+# W6-3's exit to W6-4's start in the whole game (T208): `game-whole` from the original's frame
+# 230200 (W6-3 at chain-w6-3's ~7667, its level transplanted), the exit, `level_exit_fade`, the
+# tally, W6-4's load, the progress map, then `level_init_w6` with W6-3's 17 slots and 18 bob
+# records still in use, which runs to line 258 and makes `level_start` miss `wait_frame_raster`'s
+# $ff by a frame; then W6-4's first 300 frames. The first run reaches the sync point in ~9 minutes.
+sync = { script = "game-whole", frame = 230200, df1 = true }
+script = "game-whole"
+script-from = 230200
+frames = 820

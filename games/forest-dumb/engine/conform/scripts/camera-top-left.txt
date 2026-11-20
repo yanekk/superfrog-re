@@ -1,0 +1,7 @@
+# T43: the camera's top and left limits. From the level sync point (camera 0, $17), stand, then hold
+# up (the jump) for 30 frames: the character rises from row 8 to row 4 and the camera scrolls up to
+# camera_y 0, its clamp, while camera_x stays 0 against the left end (the left scroll crosses and
+# latches every pass there). Then stand while the camera settles back down. Measured 2026-11-05.
+0: -
+30: U
+60: -

@@ -1,0 +1,27 @@
+# The slot machine (T74) from `start-w1-1-blink1`: reel 1 held, 8 8 $18 (20 000); the gamble taken
+# and won (30 000), taken again and lost: the bust. Planned on the engine (examples/slot_plan.rs);
+# frames are the original's.
+798: F
+799: -
+807: F
+810: -
+1072: R
+1075: -
+1079: F
+1082: -
+1089: L
+1092: -
+1096: F
+1099: -
+1412: R
+1415: -
+1419: R
+1422: -
+1426: R
+1429: -
+1433: R
+1436: -
+1438: F
+1441: -
+1448: F
+1451: -

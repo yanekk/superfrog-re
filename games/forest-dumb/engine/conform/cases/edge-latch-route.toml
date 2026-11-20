@@ -1,0 +1,17 @@
+# T73: the first 1 300 steps of T24's planner route (scripts/edge-latch-route.txt), nothing frozen,
+# every variable fd_plan::confirm::VARS names compared on every pass,
+# edge_latch_right included. Passes 1211 and 1228 latch an up row of 9 bobs and a right column: the
+# next pass cuts the row's redraw, so the right latch stays set through it (docs/09, "The edge
+# redraws and the next pass"). Goal: where the engine stands after the route, as confirm sets it.
+# Since T47 springs and the animated cells run on both sides: the original's longer passes cut other
+# rows (a row of no bobs at pass 328) and columns; the runner hands the engine where each pass cut
+# main_loop's redraws, edge_latch_right compared on every pass (T74).
+# Creatures live on both sides since T75: where a late pass cuts an edge redraw before its scan starts
+# a creature, the runner hands the cut and the engine starts it after that pass too (docs/10).
+# With them the route is enemy-route's: the passes named above are the frozen run's (docs/09).
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "edge-latch-route"
+frames = 1308
+compare = ["vars"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_left", "edge_latch_up", "edge_latch_down", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "lives", "hits_taken", "items_left", "score", "irq_count", "countdown", "countdown_tick", "edge_latch_right", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "char_x", value = 0x6db }, { var = "char_y", value = 0x328 }], by_frame = 7609 }

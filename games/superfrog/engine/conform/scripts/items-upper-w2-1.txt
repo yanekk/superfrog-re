@@ -1,0 +1,104 @@
+# W2-1, enemies frozen: both hidden coin springs at 62,44 and 63,44 spent from below (to frame
+# ~300), hops under the pillar at 63-66,36-39 until a jump to the right lifts the frog into it
+# (the ground probe's $3f lift and step-up, frame ~884) onto its ledge at 66,36, then down to the
+# speed-up 73,46 (frame 981). Ends at 1010: from ~1012 the original stops in its pass ($c0f39e,
+# frog at 78,42) and nothing more is compared; the fruit 48,22 and extra life 63,35 are T105's.
+# Planned on the engine (T85, `examples/plan`).
+0: -
+144: L
+157: -
+175: U
+290: -
+321: U
+325: L
+329: U
+345: U R
+349: R
+353: U
+361: L
+365: -
+397: U
+401: -
+413: U
+417: -
+461: U
+465: -
+481: U
+485: -
+525: U
+529: -
+541: U
+545: -
+589: U
+593: -
+605: U
+609: L
+613: -
+617: L
+621: U
+625: L
+629: R
+633: -
+637: R
+645: L
+653: U
+657: -
+673: U
+677: -
+681: R
+685: U
+689: -
+693: L
+697: U
+705: -
+709: R
+713: L
+717: U
+721: L
+725: R
+733: L
+737: U L
+741: R
+749: L
+757: R
+765: L
+773: R
+781: U
+785: -
+789: L
+793: U
+805: U R
+809: R
+813: -
+821: R
+829: -
+837: R
+841: -
+845: L
+849: R
+853: U
+857: -
+873: U R
+877: R
+885: -
+905: R
+909: U
+913: -
+918: U R
+922: U
+938: -
+942: U
+946: -
+948: R
+952: -
+956: L
+960: -
+964: L
+968: -
+972: L
+980: U R
+984: U
+988: R
+996: -
+1000: U L
+1004: L

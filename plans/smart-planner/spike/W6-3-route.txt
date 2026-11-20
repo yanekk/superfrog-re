@@ -1,0 +1,10 @@
+0: 61,11 map input - plat 0 vx 0 coins 86
+322: 90,10 map input R plat 0 vx 0 coins 80
+402: 91,10 map input R plat 0 vx 1 coins 80
+466: 93,10 map input - plat 0 vx 0 coins 80
+544: 92,10 map input - plat 0 vx 0 coins 80
+1140: 93,10 map input - plat 0 vx 0 coins 80
+1406: 97,10 map input - plat 0 vx 3 coins 80
+1457: 96,10 map input U plat 0 vx 0 coins 80
+1542: 95,10 map input L plat 0 vx -2 coins 80
+1785: ended (alive false)

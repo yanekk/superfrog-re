@@ -1,0 +1,6 @@
+# Game over after the last life, as game-over-w1-1, with fire held as it begins and pressed again
+# at frame 120 (T34): `game_over_seq` waits for fire to be let go, then ends its wait for fire at
+# once; the rest to the title's idle is game-over-w1-1's, sooner.
+sync = { game-over = "frog-pit" }
+script = "game-over-fire"
+frames = 720

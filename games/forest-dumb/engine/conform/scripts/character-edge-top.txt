@@ -1,0 +1,9 @@
+# T42: from the sync frame 6400 (measured 2026-11-06): a held jump into the top rows, a running jump
+# left into the top-left corner, a running jump right.
+0: -
+10: U
+50: -
+60: L U
+100: -
+110: R U
+140: -

@@ -1,0 +1,1 @@
+{ "allow": ["Bash(git merge --no-edit pir/forest-dumb-level-1)", "Bash(cargo build)", "Bash(python3 -I games/forest-dumb/tools/pcode_export.py)"], "ask": [] }

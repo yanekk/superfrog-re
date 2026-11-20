@@ -1,0 +1,74 @@
+# The Forest Dumb Forever engine workspace. The toolkit crates' profile overrides are kept here as well
+# as in toolkit/Cargo.toml, because a build reads them from the root manifest of the workspace it builds.
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# The oracle's tests step the emulator thousands of frames and hash 1 MB of RAM per frame.
+[profile.dev.package.amiga-oracle]
+opt-level = 2
+
+# The picture judges compare every pixel of every frame of a case.
+[profile.dev.package.amiga-conform]
+opt-level = 2
+
+# The mixer runs four channels at 3.5 MHz; the oracle comparison runs it for thousands of frames.
+[profile.dev.package.amiga-paula]
+opt-level = 2
+
+# The copper run and the clock's loops run in every render and level test.
+[profile.dev.package.amiga-clock]
+opt-level = 2
+
+[profile.dev.package.amiga-chips]
+opt-level = 2
+
+# A long scripted run falls behind the pacer unoptimised.
+[profile.dev.package.amiga-app]
+opt-level = 2
+
+[profile.dev.package.amiga-input]
+opt-level = 2
+
+[profile.dev.package.amiga-record]
+opt-level = 2
+
+# Inflating and hashing two whole disks runs in several tests.
+[profile.dev.package.amiga-disk]
+opt-level = 2
+
+# The level readers decode every tile pixel the picture checks and the engine's drawing compare.
+[profile.dev.package.fd-assets]
+opt-level = 2
+
+# The route planner (fd-plan, from T20): its explorer steps the engine every frame of every burst.
+[profile.dev.package.amiga-plan]
+opt-level = 2
+
+# The route page writer (the map page, from T19): it writes a whole level's tiles and track.
+[profile.dev.package.amiga-routeview]
+opt-level = 2
+
+# The engine, stepped by the planner (fd-plan, T20) about a million frames a search: unoptimised it
+# steps ~8 000 frames a second a thread, too slow for a smoke-sized plan.
+[profile.dev.package.fd-core]
+opt-level = 2
+
+# The runtime translated code calls (translator-trial T02): a judge run executes millions of
+# translated blocks. Its #[inline] ops are compiled at the calling crate's level, not this one.
+[profile.dev.package.pcode-rt]
+opt-level = 2
+
+# The machine translated code runs on (translator T22): every translated load and store goes through
+# its bus.
+[profile.dev.package.pcode-machine]
+opt-level = 2
+
+# The translated program as an engine (translator T28): the whole generated tree, run frame by frame.
+[profile.dev.package.fd-translated]
+opt-level = 2

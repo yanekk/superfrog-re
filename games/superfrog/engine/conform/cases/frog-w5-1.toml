@@ -1,0 +1,5 @@
+# The frog alone in W5-1 for 1 000 frames: running and jumping right and left in turns, the
+# right turns shorter, clear of the shaft ahead (frog-explore runs into the pit and dies).
+sync = { level = "W5-1" }
+script = "frog-shuttle-w5"
+frames = 1000

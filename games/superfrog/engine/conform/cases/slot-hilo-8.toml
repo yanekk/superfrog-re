@@ -1,0 +1,5 @@
+# The hi-lo game (T74) from `start-w1-1-late`'s first spin (8 $18 0), taken at once by the spin
+# button at rung 8: 10 000. To the frame before `slot_machine` returns.
+sync = { slot = "slot-none", start = "start-w1-1-late" }
+script = "slot-hilo-8"
+frames = 607

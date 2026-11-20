@@ -1,0 +1,27 @@
+# W1-1, enemies frozen: run right (the speed-up at 48,42 taken on the way), jump onto the hill past
+# the hazard at column 84 (frame 330), over the hazard at column 97 (404), step left into the hole
+# beyond it, walk onto the fake wall at 94,51 (~554) and fall into the hidden cave, run left
+# through it to the bounce pad at 16,67 (~740), which throws the frog up the coin shaft to the
+# surface (~800). Hand-written with `examples/plan` for 511-551 (T83).
+0: R
+172: R U
+186: R
+229: R U
+244: R
+330: R U
+346: R
+404: R U
+418: R
+434: -
+470: L
+476: -
+511: L F
+515: -
+523: U L
+527: -
+531: R
+535: -
+543: L
+551: -
+570: L
+805: -

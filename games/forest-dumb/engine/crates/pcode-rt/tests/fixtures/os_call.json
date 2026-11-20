@@ -1,0 +1,50 @@
+{"hunks": [{"index": 0, "size": 64, "kind": "CODE"}, {"index": 1, "size": 128, "kind": "DATA"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 4, "mnem": "movea.l ($4).w,a6", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "LOAD", "out": ["register", 56, 4], "in": [["const", 433, 8], ["const", 4, 4]]}]},
+  "h0+$4": {"len": 6, "mnem": "lea (h1+$0).l,a1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 36, 4], "in": [["const", "h1+$0", 4]]}]},
+  "h0+$a": {"len": 4, "mnem": "jsr (-408,a6)", "flow": {"kind": "computed", "targets": []}, "ops": [
+    {"op": "INT_ADD", "out": ["unique", 256, 4], "in": [["register", 56, 4], ["const", 4294966888, 4]]},
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$e", 4]]},
+    {"op": "CALLIND", "in": [["unique", 256, 4]]}]},
+  "h0+$e": {"len": 2, "mnem": "movea.l d0,a5", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 52, 4], "in": [["register", 0, 4]]}]},
+  "h0+$10": {"len": 6, "mnem": "move.l #h1+$10,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["const", "h1+$10", 4]]}]},
+  "h0+$16": {"len": 6, "mnem": "move.l #$3ed,d2", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 1005, 4]]}]},
+  "h0+$1c": {"len": 4, "mnem": "jsr (-30,a5)", "flow": {"kind": "computed", "targets": []}, "ops": [
+    {"op": "INT_ADD", "out": ["unique", 256, 4], "in": [["register", 52, 4], ["const", 4294967266, 4]]},
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$20", 4]]},
+    {"op": "CALLIND", "in": [["unique", 256, 4]]}]},
+  "h0+$20": {"len": 2, "mnem": "move.l d0,d4", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 16, 4], "in": [["register", 0, 4]]}]},
+  "h0+$22": {"len": 2, "mnem": "move.l d0,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["register", 0, 4]]}]},
+  "h0+$24": {"len": 6, "mnem": "move.l #h1+$20,d2", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", "h1+$20", 4]]}]},
+  "h0+$2a": {"len": 6, "mnem": "move.l #$60,d3", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 12, 4], "in": [["const", 96, 4]]}]},
+  "h0+$30": {"len": 4, "mnem": "jsr (-42,a5)", "flow": {"kind": "computed", "targets": []}, "ops": [
+    {"op": "INT_ADD", "out": ["unique", 256, 4], "in": [["register", 52, 4], ["const", 4294967254, 4]]},
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$34", 4]]},
+    {"op": "CALLIND", "in": [["unique", 256, 4]]}]},
+  "h0+$34": {"len": 2, "mnem": "move.l d0,d5", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 20, 4], "in": [["register", 0, 4]]}]},
+  "h0+$36": {"len": 2, "mnem": "move.l d4,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 4, 4], "in": [["register", 16, 4]]}]},
+  "h0+$38": {"len": 4, "mnem": "jsr (-36,a5)", "flow": {"kind": "computed", "targets": []}, "ops": [
+    {"op": "INT_ADD", "out": ["unique", 256, 4], "in": [["register", 52, 4], ["const", 4294967260, 4]]},
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$3c", 4]]},
+    {"op": "CALLIND", "in": [["unique", 256, 4]]}]},
+  "h0+$3c": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

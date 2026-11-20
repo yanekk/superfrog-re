@@ -1,0 +1,16 @@
+# W2-2 played from its start to its exit with every object live, no exclusions (T166): the start
+# room's coins and coin springs, the top way right to the rooms at 115-131,16-20, back left to
+# the switch at 61,20, down into the coin grid 69-89,48-66, east through the lower rooms
+# (126-164,52-73), west along the floor to 16,73-75, the room at 39-43,50-53, then up the shaft
+# at 151-154 for 154,22-39 and the last coin at 146,17 (frame 4283); the 95 coins the exit needs
+# (tile coins count elsewhere), the exit at frame 4738 (`level_state` 0), the exit fade and the
+# tally, fire in its wait taking the points; ends on frame 4924, frame 4925 being the next level's
+# (`level` 3). Planned by `examples/plan_exit` (`--no-tile-coins --jump 4`), checked on the
+# original chunk by chunk. No heart lost; meets the bouncer (627), the dart (1041) and the mace
+# (2157) (`script_seen`). Plays alone green (T196, 370 milestones); faithful green since T212:
+# frame 1228 ends inside `obj_despawn_if_offscreen` (h0+$1b9ce), its last `camera_y` test made
+# after the blank, and the engine's frame ends at that point too (`Cut::point`; red at 1229 before).
+sync = { level = "W2-2" }
+script = "w2-2-complete"
+frames = 4925
+resync = false

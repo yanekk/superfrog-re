@@ -1,0 +1,545 @@
+# Where the original was seen running: the entries the whole-program export seeds (translator
+# DESIGN §2.3). Written by `fd-conform code-seen` (fd-conform/src/code_seen.rs); do not edit.
+# Addresses and sources only. source: program-entry | symbol (a func of re/symbols.toml that
+# ran) | vector (an autovector pointed at it) | trace (a run start nothing falls or branches to
+# directly: a computed target, an interrupt entry, code entered from the OS).
+
+[[entry]]
+at = "h0+$0"
+source = "program-entry"
+
+[[entry]]
+at = "h0+$30"
+source = "symbol"
+
+[[entry]]
+at = "h0+$158"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1ba"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1ee"
+source = "symbol"
+
+[[entry]]
+at = "h0+$252"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3cc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$440"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4c4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$534"
+source = "symbol"
+
+[[entry]]
+at = "h0+$578"
+source = "symbol"
+
+[[entry]]
+at = "h0+$620"
+source = "symbol"
+
+[[entry]]
+at = "h0+$62e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$672"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6c4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$708"
+source = "symbol"
+
+[[entry]]
+at = "h0+$774"
+source = "symbol"
+
+[[entry]]
+at = "h0+$7cc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$844"
+source = "symbol"
+
+[[entry]]
+at = "h0+$a06"
+source = "symbol"
+
+[[entry]]
+at = "h0+$b20"
+source = "symbol"
+
+[[entry]]
+at = "h0+$ce4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$df6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$104c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$114a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1390"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1d16"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1eda"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1f7a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$1fec"
+source = "symbol"
+
+[[entry]]
+at = "h0+$20b0"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2104"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2146"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2176"
+source = "symbol"
+
+[[entry]]
+at = "h0+$21c0"
+source = "symbol"
+
+[[entry]]
+at = "h0+$24ce"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2648"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2698"
+source = "symbol"
+
+[[entry]]
+at = "h0+$26ec"
+source = "symbol"
+
+[[entry]]
+at = "h0+$29ca"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2a6e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2c7e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2d4c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2dd6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2e0e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2fae"
+source = "symbol"
+
+[[entry]]
+at = "h0+$2fea"
+source = "symbol"
+
+[[entry]]
+at = "h0+$320a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3222"
+source = "symbol"
+
+[[entry]]
+at = "h0+$32f8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3322"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3530"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3566"
+source = "symbol"
+
+[[entry]]
+at = "h0+$35a0"
+source = "symbol"
+
+[[entry]]
+at = "h0+$35dc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3698"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3ab4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3ac2"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3adc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3b2a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3dd8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3e0c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3e30"
+source = "symbol"
+
+[[entry]]
+at = "h0+$3ea8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$410c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$416c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4274"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4696"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4718"
+source = "symbol"
+
+[[entry]]
+at = "h0+$47e2"
+source = "symbol"
+
+[[entry]]
+at = "h0+$48be"
+source = "symbol"
+
+[[entry]]
+at = "h0+$497c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4b0e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4be6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4c28"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4c6a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4d32"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4d54"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4d7e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4e9a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4ea6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4eb4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4ec2"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4f84"
+source = "symbol"
+
+[[entry]]
+at = "h0+$4f90"
+source = "symbol"
+
+[[entry]]
+at = "h0+$513c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$51fc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$526a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$52d8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$5346"
+source = "symbol"
+
+[[entry]]
+at = "h0+$5462"
+source = "symbol"
+
+[[entry]]
+at = "h0+$5820"
+source = "symbol"
+
+[[entry]]
+at = "h0+$5e44"
+source = "symbol"
+
+[[entry]]
+at = "h0+$62b6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$681c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6852"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6882"
+source = "symbol"
+
+[[entry]]
+at = "h0+$69d6"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6a4c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6a96"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6ae8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6b70"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6b78"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6bc0"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6c20"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6c80"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6e06"
+source = "symbol"
+
+[[entry]]
+at = "h0+$6e6e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$70bc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$777e"
+source = "symbol"
+
+[[entry]]
+at = "h0+$79de"
+source = "symbol"
+
+[[entry]]
+at = "h0+$7b06"
+source = "symbol"
+
+[[entry]]
+at = "h0+$7b70"
+source = "symbol"
+
+[[entry]]
+at = "h0+$7c4c"
+source = "symbol"
+
+[[entry]]
+at = "h0+$8dfc"
+source = "symbol"
+
+[[entry]]
+at = "h0+$8ec4"
+source = "symbol"
+
+[[entry]]
+at = "h0+$8f58"
+source = "symbol"
+
+[[entry]]
+at = "h0+$8fd8"
+source = "symbol"
+
+[[entry]]
+at = "h0+$94ba"
+source = "symbol"
+
+[[entry]]
+at = "h0+$94fe"
+source = "symbol"
+
+[[entry]]
+at = "h0+$9550"
+source = "symbol"
+
+[[entry]]
+at = "h0+$9754"
+source = "symbol"
+
+[[entry]]
+at = "h0+$988a"
+source = "symbol"
+
+[[entry]]
+at = "h0+$9a34"
+source = "symbol"
+
+[[entry]]
+at = "h0+$9b06"
+source = "symbol"
+
+[[entry]]
+at = "h4+$18480"
+source = "symbol"
+
+[[entry]]
+at = "h4+$18508"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1852a"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1a062"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1a260"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1a8d4"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1af46"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1b5b8"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1bc2a"
+source = "symbol"
+
+[[entry]]
+at = "h4+$1c29c"
+source = "symbol"

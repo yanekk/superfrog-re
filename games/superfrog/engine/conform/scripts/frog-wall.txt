@@ -1,0 +1,14 @@
+# W1-1, the frog alone: jump the two pits (onto the ledge between them, then on), run down into
+# the tunnel and against the pillar at columns 92–93 (from about frame 405), then jump under its
+# low ceiling (head bumps) and keep pushing right.
+0: R
+172: R U
+186: R
+229: R U
+244: R
+410: R U
+426: R
+460: U
+470: R
+500: L
+520: R

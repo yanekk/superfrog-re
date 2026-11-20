@@ -1,0 +1,220 @@
+//! The window's size and the picture's place in it (DESIGN §2.7): integer scaling only, 1× to the
+//! largest that fits, centred with black around it, in a resizable window that cannot be made
+//! smaller than 1×; or fullscreen with the largest integer scale and black borders.
+//!
+//! Sizes are in the surface's pixels. On a Retina display a point is two of them, so `Scale::N(n)`
+//! is `2n` pixels a game pixel there, and `Auto` may land on an odd number of pixels: still a whole
+//! number, so every game pixel is the same solid square and nothing is smeared.
+//!
+//! While a bug recording runs, the recording bar (`recording_bar.rs`) sits under the picture
+//! (bug-recorder DESIGN §2.3): the window is [`BAR_HEIGHT`] points taller and the picture is placed
+//! in the surface above the bar (`amiga_app::video::picture_area`), so its size and scale stay as
+//! they were.
+
+use sf_core::View;
+use winit::dpi::LogicalSize;
+use winit::window::{Fullscreen, Window};
+
+use crate::settings::Scale;
+
+/// The largest display window the game opens, in its own pixels: a level's, the progress map's
+/// and the tally's, DIWSTRT `$2779` (T210, `sf-conform`'s `examples/windows`). Every other screen
+/// (title, story intro, slot machine, end sequence) is 320×256 or smaller and is centred in it.
+/// The window is sized for it, so `Scale::N(n)` shows every screen at `n`.
+pub const GAME: (u32, u32) = (334, 261);
+
+/// Widescreen's extra columns on each side of a display window `height` lines high and as wide as
+/// [`GAME`]: as many as fill 16:9, `(16/9 × height − 334) / 2` rounded down (65 for 261 lines).
+/// DESIGN §2.7.
+pub fn extra_columns(height: u32) -> u16 {
+    ((16 * height).saturating_sub(9 * GAME.0) / 18) as u16
+}
+
+/// What the game draws for the widescreen setting: 4:3, or 16:9's extra columns.
+pub fn view(widescreen: bool) -> View {
+    View {
+        extra_columns_each_side: if widescreen { extra_columns(GAME.1) } else { 0 },
+    }
+}
+
+/// `game` played and drawn for widescreen `on` (real-widescreen DESIGN §2.1, §2.7): the game's
+/// mode and its view always change together, so the strips show the game the mode plays. Every
+/// place the app makes or switches a game goes through here.
+pub fn show(game: &mut sf_core::Game, on: bool) {
+    game.set_widescreen(on);
+    game.set_view(view(on));
+}
+
+/// The largest picture the game draws for the widescreen setting, in its own pixels.
+pub fn frame(widescreen: bool) -> (u32, u32) {
+    (GAME.0 + 2 * view(widescreen).extra_columns_each_side as u32, GAME.1)
+}
+
+/// The recording bar's height in points: the prototype's 34, room for a regular push button and
+/// 13-point labels. The toolkit's, which lays the bar out (forest-dumb-level-1 T12).
+pub use amiga_app::recording_bar::BAR_HEIGHT;
+
+/// Points under the picture: the bar's height while it shows.
+fn bar_points(bar: bool) -> u32 {
+    if bar { BAR_HEIGHT } else { 0 }
+}
+
+/// The window's inner size at `n` × the game: `Scale::N(n)`, 2× for `Auto`; the bar's height
+/// more when it shows.
+pub fn initial_size(scale: Scale, widescreen: bool, bar: bool) -> LogicalSize<u32> {
+    let n = match scale {
+        Scale::Auto => 2,
+        Scale::N(n) => n,
+    };
+    let (w, h) = frame(widescreen);
+    LogicalSize::new(w * n, h * n + bar_points(bar))
+}
+
+/// The smallest the window may be made: 1×, and the bar when it shows.
+pub fn min_size(widescreen: bool, bar: bool) -> LogicalSize<u32> {
+    let (w, h) = frame(widescreen);
+    LogicalSize::new(w, h + bar_points(bar))
+}
+
+/// Fullscreen on the window's display, or back to the window.
+pub fn set_fullscreen(window: &Window, on: bool) {
+    window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use amiga_app::video::{effective, picture_scale, viewport};
+
+    /// The part of a `surface` the picture is placed in: all of it, or the part above the bar
+    /// when it shows (the app sets `Video::bar_points` to [`BAR_HEIGHT`]).
+    fn picture_area(surface: (u32, u32), scale_factor: f64, bar: bool) -> (u32, u32) {
+        amiga_app::video::picture_area(surface, scale_factor, bar_points(bar))
+    }
+
+    /// The title's display window, the smallest full screen.
+    const TITLE: (u32, u32) = (320, 256);
+
+    #[test]
+    fn a_fixed_scale_is_its_multiple_centred_and_shrinks_to_fit() {
+        let s = |surface, n| picture_scale(surface, GAME, Scale::N(n), 1.0);
+        assert_eq!(s((334, 261), 1), 1);
+        assert_eq!(viewport((334, 261), GAME, 1), (0, 0, 334, 261));
+        assert_eq!(s((1000, 600), 2), 2);
+        assert_eq!(viewport((1000, 600), GAME, 2), (166, 39, 668, 522));
+        assert_eq!(s((700, 600), 3), 2, "3× does not fit 700 wide");
+        assert_eq!(viewport((700, 600), GAME, 2), (16, 39, 668, 522));
+        assert_eq!(s((100, 100), 2), 1, "never below 1×");
+    }
+
+    #[test]
+    fn auto_is_the_largest_whole_multiple_that_fits() {
+        let a = |surface| picture_scale(surface, GAME, Scale::Auto, 1.0);
+        assert_eq!(a((334, 261)), 1);
+        assert_eq!(a((1001, 782)), 2);
+        assert_eq!(a((1002, 783)), 3);
+        assert_eq!(a((3000, 800)), 3, "the height decides");
+        assert_eq!(a((3456, 2234)), 8, "a 16-inch Retina display, fullscreen");
+    }
+
+    #[test]
+    fn on_retina_a_point_is_two_pixels() {
+        assert_eq!(picture_scale((1336, 1044), GAME, Scale::N(2), 2.0), 4);
+        assert_eq!(picture_scale((1336, 1044), GAME, Scale::N(3), 2.0), 4, "shrunk to fit");
+        assert_eq!(picture_scale((1002, 783), GAME, Scale::Auto, 2.0), 3, "odd pixels, still whole");
+    }
+
+    #[test]
+    fn fullscreen_is_always_the_largest_whole_scale() {
+        assert_eq!(effective(Scale::N(1), true), Scale::Auto);
+        assert_eq!(effective(Scale::N(2), false), Scale::N(2));
+        assert_eq!(effective(Scale::Auto, false), Scale::Auto);
+    }
+
+    #[test]
+    fn the_window_opens_at_its_scale_and_never_goes_below_1x() {
+        assert_eq!(initial_size(Scale::N(3), false, false), LogicalSize::new(1002, 783));
+        assert_eq!(initial_size(Scale::Auto, false, false), LogicalSize::new(668, 522));
+        assert_eq!(min_size(false, false), LogicalSize::new(334, 261));
+    }
+
+    /// T210: a window sized for the title showed a level at `n − 1`.
+    #[test]
+    fn every_screen_shows_at_the_scale_its_window_opened_at() {
+        for wide in [false, true] {
+            let n_cols = view(wide).extra_columns_each_side as u32;
+            for n in 1..=4 {
+                for sf in [1.0, 2.0] {
+                    let size = initial_size(Scale::N(n), wide, false);
+                    let surface = ((size.width as f64 * sf) as u32, (size.height as f64 * sf) as u32);
+                    for (w, h) in [GAME, TITLE, (320, 106), (320, 200)] {
+                        let frame = (w + 2 * n_cols, h);
+                        let s = picture_scale(surface, frame, Scale::N(n), sf);
+                        assert_eq!(s, n * sf as u32, "{w}×{h} at {n}× (wide {wide}, {sf} px/pt)");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn widescreen_adds_the_columns_that_fill_16_9() {
+        assert_eq!(extra_columns(261), 65, "(464 - 334) / 2");
+        assert_eq!(extra_columns(180), 0, "a window already wider than 16:9 adds none");
+        assert_eq!(view(false), View::default());
+        assert_eq!(view(true).extra_columns_each_side, 65);
+        assert_eq!(frame(true), (464, 261));
+        assert_eq!(initial_size(Scale::N(2), true, false), LogicalSize::new(928, 522));
+        assert_eq!(min_size(true, false), LogicalSize::new(464, 261));
+        // 16:9 to within a column at every whole scale.
+        let (w, h) = frame(true);
+        assert!((w as f64 / h as f64 - 16.0 / 9.0).abs() < 1.0 / h as f64 * 2.0);
+    }
+
+    /// real-widescreen DESIGN §2.1: the game's wide screen edges and the picture's strips are one
+    /// number, or the strips would show what the game does not keep alive.
+    #[test]
+    fn the_games_wide_extra_is_the_pictures_extra_columns() {
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, extra_columns(GAME.1));
+        assert_eq!(sf_core::level::screen::WIDE_EXTRA, view(true).extra_columns_each_side);
+    }
+
+    /// bug-recorder T09: the bar adds its height under the picture, and the picture keeps the
+    /// scale and size it had without it, at every scale, widescreen or not, 1 or 2 pixels a point.
+    #[test]
+    fn the_bar_adds_its_height_and_the_picture_keeps_its_scale_and_place() {
+        assert_eq!(initial_size(Scale::N(2), false, true), LogicalSize::new(668, 522 + BAR_HEIGHT));
+        assert_eq!(min_size(false, true), LogicalSize::new(334, 261 + BAR_HEIGHT));
+        assert_eq!(min_size(true, true), LogicalSize::new(464, 261 + BAR_HEIGHT));
+        assert_eq!(picture_area((668, 600), 1.0, false), (668, 600));
+        assert_eq!(picture_area((668, 600), 1.0, true), (668, 600 - BAR_HEIGHT));
+        assert_eq!(picture_area((1336, 1200), 2.0, true), (1336, 1200 - 2 * BAR_HEIGHT));
+        assert_eq!(picture_area((10, 10), 1.0, true), (10, 0), "never below nothing");
+        for wide in [false, true] {
+            for n in 1..=4 {
+                for sf in [1.0, 2.0] {
+                    let px = |l: LogicalSize<u32>| ((l.width as f64 * sf) as u32, (l.height as f64 * sf) as u32);
+                    let plain = px(initial_size(Scale::N(n), wide, false));
+                    let barred = px(initial_size(Scale::N(n), wide, true));
+                    let f = frame(wide);
+                    for scale in [Scale::N(n), Scale::Auto] {
+                        let s0 = picture_scale(plain, f, scale, sf);
+                        let area = picture_area(barred, sf, true);
+                        let s1 = picture_scale(area, f, scale, sf);
+                        assert_eq!(s1, s0, "{n}× {scale:?} (wide {wide}, {sf} px/pt)");
+                        assert_eq!(viewport(area, f, s1), viewport(plain, f, s0), "the same place");
+                        let (_, y, _, h) = viewport(area, f, s1);
+                        assert!(y + h <= area.1, "nothing under the bar");
+                    }
+                }
+            }
+        }
+        // Fullscreen on a 16-inch Retina display: the largest whole scale above the bar.
+        let area = picture_area((3456, 2234), 2.0, true);
+        assert_eq!(picture_scale(area, GAME, Scale::Auto, 2.0), 8, "2166 / 261 is still 8");
+        // A 1680×1050 display: 1050 lines fit 4×, the 1016 above the bar only 3×.
+        let area = picture_area((1680, 1050), 1.0, true);
+        assert_eq!(picture_scale((1680, 1050), GAME, Scale::Auto, 1.0), 4);
+        assert_eq!(picture_scale(area, GAME, Scale::Auto, 1.0), 3, "the bar costs this display a scale");
+    }
+}

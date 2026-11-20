@@ -1,0 +1,35 @@
+# Power-on to the options screen (T20 review): every option changed both ways. LIVES right to its
+# maximum, once more at it, and left again; down to GAME MODE, down to SAVE HIGH SCORES, right,
+# left, right; then up to LIVES and fire to leave.
+1000: M
+1005: -
+4600: F
+4605: -
+4650: D
+4655: -
+4700: F
+4705: -
+4900: R
+4905: -
+4950: R
+4955: -
+4975: R
+4980: -
+5000: L
+5005: -
+5050: D
+5055: -
+5100: D
+5105: -
+5150: R
+5155: -
+5200: L
+5205: -
+5230: R
+5235: -
+5250: U
+5255: -
+5300: U
+5305: -
+5350: F
+5355: -

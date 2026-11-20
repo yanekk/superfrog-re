@@ -1,0 +1,24 @@
+{"hunks": [{"index": 0, "size": 64, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "beq h0+$8", "flow": {"kind": "cbranch", "targets": ["h0+$8"]}, "ops": [
+    {"op": "CBRANCH", "in": [["ram", "h0+$8", 4], ["register", 69, 1]]}]},
+  "h0+$2": {"len": 4, "mnem": "bsr h0+$20", "flow": {"kind": "call", "targets": ["h0+$20"]}, "ops": [
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$6", 4]]},
+    {"op": "CALL", "in": [["ram", "h0+$20", 4]]}]},
+  "h0+$6": {"len": 2, "mnem": "moveq #1,d2", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 1, 4]]}]},
+  "h0+$8": {"len": 2, "mnem": "addq.l #4,d3", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_ADD", "out": ["register", 12, 4], "in": [["register", 12, 4], ["const", 4, 4]]}]},
+  "h0+$a": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]},
+  "h0+$20": {"len": 2, "mnem": "move.l d4,(sp)", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["register", 16, 4]]}]},
+  "h0+$22": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

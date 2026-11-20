@@ -1,0 +1,11 @@
+# W5-1 (T39): into the first pacer (hurt at 246), a long jump over the pit when the frog can move
+# again, onto the ledge by the shooter, and stand.
+0: -
+150: R
+180: R U
+194: R
+364: R U
+404: R
+462: R U
+476: R
+494: -

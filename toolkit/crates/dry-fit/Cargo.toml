@@ -1,0 +1,16 @@
+[package]
+name = "dry-fit"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The dry fit (toolkit-extract T11): one frame of a made-up game built from toolkit crates alone,
+# to show the toolkit is enough to start a second game on. Its tests assert each step and that its
+# dependency tree holds toolkit crates only (tests/deps.rs).
+[dependencies]
+# The beam clock and the frame's lengths.
+amiga-clock = { path = "../amiga-clock" }
+# Chip memory, the blitter, the copper and the display piece that draws a Picture.
+amiga-chips = { path = "../amiga-chips" }
+# The four sound channels and their mixer.
+amiga-paula = { path = "../amiga-paula" }

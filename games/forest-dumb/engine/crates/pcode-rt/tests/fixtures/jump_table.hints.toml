@@ -1,0 +1,5 @@
+[[hint]]
+at = "h0+$e"
+kind = "targets"
+targets = ["h0+$10", "h0+$14"]
+why = "the two longs at h1+$0 the jmp (a1) reads its target from"

@@ -1,0 +1,35 @@
+diff --git a/Core/Components/CPU/Moira/Moira.cpp b/Core/Components/CPU/Moira/Moira.cpp
+--- a/Core/Components/CPU/Moira/Moira.cpp
++++ b/Core/Components/CPU/Moira/Moira.cpp
+@@ -17,6 +17,15 @@
+ #include <vector>
+ #include <stdexcept>
+ 
++namespace vamiga {
++
++// amiga-toolkit (amiga-oracle): called once per instruction the CPU executes, with its address, just
++// before its handler runs. Null unless a client installs it. Defined here, not in CPU.cpp, because
++// amiga-oracle also compiles this file alone (its routine runner), where it must still link.
++void (*vamiga_exec_hook)(uint32_t pc) = nullptr;
++
++}
++
+ namespace vamiga::moira {
+ 
+ using namespace Flag;
+@@ -311,6 +320,7 @@ Moira::execute()
+         // Fast path: Call the instruction handler and return
+         //
+ 
++        if (vamiga_exec_hook) vamiga_exec_hook(reg.pc0);
+         reg.pc += 2;
+         try {
+             (this->*exec[queue.ird])(queue.ird);
+@@ -375,6 +385,7 @@ Moira::execute()
+         if (flags & LOGGING) {
+             debugger.logInstruction();
+         }
++        if (vamiga_exec_hook) vamiga_exec_hook(reg.pc0);
+ 
+         // Execute the instruction
+         reg.pc += 2;

@@ -1,0 +1,5 @@
+# T23: from frame 6400 standing until the countdown runs out (999 counts of 63 passes, about 21 minutes
+# of play); the game over screen then shows from about frame 69245, and fire ends it.
+0: -
+62880: F
+62883: -

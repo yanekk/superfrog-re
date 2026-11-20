@@ -1,0 +1,14 @@
+# Power-on with disk 3 through the whole intro, untouched, to the "insert disk 1" page (T56, T144),
+# then fire there: the page waits for fire, reads disk 1's id, waits for fire to go, fades out, and
+# disk 1's boot starts the game as `front-boot`'s power-on does, to its title waiting (T47; loads
+# re-synced as `story-intro`'s and `front-boot`'s). Slow (about 5 min): not in the test block;
+# `cargo test -p sf-conform -- --ignored` runs it.
+sync = "power-on-disk3"
+script = "story-insert-disk1"
+frames = 9870
+
+[[exclude]]
+what = "picture"
+frames = [7237, 7241]
+note = "scene 12's fade in: colour 28 (green $040..$060) shows black, the engine's fade step clearing its word ~7 DMA cycles before the copper reads it, the original's after; accepted by the owner, 2026-10-15 (T181), not to be modelled"
+task = "none (accepted)"

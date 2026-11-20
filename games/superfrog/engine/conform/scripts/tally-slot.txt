@@ -1,0 +1,5 @@
+# The level's tally after W1-1's forced exit (tally-slot-w1-1): up held in the wait for the choice,
+# which lights the slot machine's line, then fire with it, so the slot machine is taken.
+60: U
+70: U F
+74: -

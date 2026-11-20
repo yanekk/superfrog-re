@@ -1,0 +1,5 @@
+# The title's menu and options (T20): from power-on, fire opens the menu, down to OPTIONS, fire;
+# down to GAME MODE, right changes it, up to LIVES, fire leaves for the title's intro again.
+sync = "power-on"
+script = "title-options"
+frames = 1300

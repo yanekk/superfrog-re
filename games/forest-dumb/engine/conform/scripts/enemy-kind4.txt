@@ -1,0 +1,32 @@
+# T77: camera-bottom-right's input to step 700 (the character in the bottom corridor at W1-1:93,91),
+# then left along the corridor over the mound at columns 52 to 59 until W1-1:45,92's kind 4 creature
+# is in view (step 855), and still from step 862 while it walks and turns. Measured on the engine
+# 2026-11-10.
+0: -
+40: U R
+52: R
+80: U R
+92: R
+120: U R
+132: R
+160: U R
+172: R
+200: U R
+212: R
+240: U R
+252: R
+280: U R
+292: R
+320: U R
+330: L
+430: R
+500: -
+528: R
+553: -
+586: R
+678: U R
+681: -
+693: U
+700: L
+862: -
+1400: -

@@ -1,0 +1,8 @@
+# The final level won (T18): from the frog's start, the witch rises (frames 101–151), bobs and
+# loops while the spud hits her once a pass it overlaps her; at 1267 her 128 hit points are gone:
+# the palette flashes white and steps back (fade record 0, mode 1), `level_state` = $64 ends the
+# level 100 passes on (1469), then `top_loop`'s exit fade, `game_over_check`, the music faded,
+# `end_seq_load` (disk 3 inserted as the original asks) and the end sequence from 1762.
+sync = { level = "WW-1" }
+script = "final-win"
+frames = 2600

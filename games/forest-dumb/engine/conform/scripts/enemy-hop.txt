@@ -1,0 +1,41 @@
+# T46, T75: T43's camera-right-left run (scripts/camera-right-left.txt), from the level sync point:
+# right and up along W1-1's upper route for 620 frames, then left.
+0: -
+40: R U
+52: R
+80: R U
+92: R
+120: R U
+132: R
+160: R U
+172: R
+200: R U
+212: R
+240: R U
+252: R
+280: R U
+292: R
+320: R U
+332: R
+360: R U
+372: R
+400: R U
+412: R
+440: R U
+452: R
+480: R U
+492: R
+520: R U
+532: R
+560: R U
+572: R
+600: R U
+612: R
+640: R U
+652: R
+660: L U
+672: L
+700: L U
+712: L
+740: L U
+752: L

@@ -1,0 +1,11 @@
+# Hints for the translator (translator-trial DESIGN §2.3): one fact a hint about one address of the
+# main program that the analysis could not find. Read by tools/pcode_rust.py --hints; the trial
+# (tools/translator_trial.py) runs once without this file and once with it. A routine needing a hint
+# does not pass for the gate: a hint is a hand edit (owner, 2026-11-07).
+# Addresses and facts only, never listing text, as re/translate.toml.
+#
+# [[hint]]
+# at = "h0+$2fae"            # the instruction it is about
+# kind = "targets"           # targets | data
+# targets = ["h0+$3010"]     # for targets; for data: len = 12
+# why = "jump table of 4 words after the jmp; Ghidra does not follow it"

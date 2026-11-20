@@ -1,0 +1,11 @@
+# The high-score name entry after game over (T200): W1-1 with no lives and `score` set to 60000 at
+# its first frame (60350 once the level's coin is in), the frog run into the first pit. Game over,
+# the title loaded again, and its `hiscore_and_credits`: the title music, the hall of talent's
+# picture, CONGRATULATIONS and the rank from the original's frame 1083 (the case's 550: the loads
+# are skipped), the name typed on the keyboard (letters, space, a digit, Backspace, three letters
+# on the last place), fire ending it at 1230; the score into the table at the top, the table
+# scrolled in, held and out, the title back (no intro: the music is on) and its idle from the
+# case's frame 1155 (attract mode would follow at 1554).
+sync = { game-over = "frog-pit", score = 60000 }
+script = "hiscore-entry"
+frames = 1220

@@ -1,0 +1,83 @@
+# timing: original
+# W2-1 by sf-plan, seed 1: planned on the engine, confirmed on the original; frame 0 is W2-1's AtLevel sync point.
+# The level ends at frame 2516, then fire in the tally's wait takes the points.
+0: -
+151: U L
+155: R F
+163: U
+247: R F
+251: U L
+267: U R
+283: -
+287: U L
+319: L
+359: D
+363: L
+371: R
+407: U R
+491: R F
+507: U R
+579: L
+587: R F
+647: U L
+704: F
+724: U
+728: R
+732: U L
+796: L
+828: U R
+880: U L
+912: -
+944: F
+980: R
+996: L F
+1012: -
+1016: D
+1080: R
+1096: U
+1100: D
+1116: L
+1132: U L
+1196: -
+1204: R F
+1228: -
+1260: L
+1372: U R
+1428: R
+1540: U R
+1572: F
+1588: U R
+1596: R
+1636: U
+1652: R F
+1684: U
+1756: U R
+1788: L F
+1820: U R
+1824: D
+1832: U R
+1848: R
+1888: F
+1920: R
+1928: U R
+1960: D
+1968: U
+1976: L
+1980: F
+1996: U
+2028: L F
+2060: U R
+2304: L F
+2312: U R
+2316: R
+2332: U
+2380: R
+2400: U
+2440: U R
+2460: F
+2464: U
+2480: R F
+2512: F
+2516: -
+2585: F
+2589: -

@@ -1,0 +1,6 @@
+# The slot machine's loads (T92): from `slot_machine`'s first frame (nothing played in W1-1, two
+# coins), the loads instant, the overlay's fade-out, the music's start, the count, `slot_init`,
+# `slot_digits` and the fade-in's set-up, through the frame the attract loop first waits on the
+# raster (h0+$4d24).
+sync = { slot = "slot-none" }
+frames = 17

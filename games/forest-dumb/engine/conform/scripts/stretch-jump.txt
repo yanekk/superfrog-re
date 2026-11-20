@@ -1,0 +1,21 @@
+# T11: T41's character-run-jumps, then character-run-landing 200 frames later (from the sync frame 6400,
+# measured on the original 2026-11-06).
+0: -
+10: U        # tapped: peaks at char_y $5c
+13: -
+60: U        # held: peaks at char_y $30
+100: -
+210: U       # tapped jump
+213: -
+238: U       # up on the landing frame only: the original jumps again at once
+239: -
+260: U       # up in the air, falling: nothing
+263: -
+289: U       # a one-frame tap standing: a jump
+290: -
+350: U       # up held through a landing: it jumps again without a new press
+450: -
+460: U       # a tapped jump
+463: -
+488: L       # left on the landing frame: taken, run to the wall at char_x $1b
+508: -

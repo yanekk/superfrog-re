@@ -1,0 +1,48 @@
+//! Pure: the game — State, Game::step, renderer, audio driver, layout table (DESIGN §3.2).
+//!
+//! [`Game`] is the decision function (DESIGN §3.3): a function of the [`GameData`], its [`Start`]
+//! and the inputs, one PAL frame per [`Game::step`]. Every original variable the engine models is
+//! in [`layout::LAYOUT`] with its address, so conformance can transplant the original's memory in
+//! and probe the engine's values back out.
+
+pub mod audio;
+pub mod bonus;
+pub mod bosses;
+pub mod enemies;
+pub mod feed;
+pub mod frog;
+pub mod front;
+pub mod game;
+pub mod input;
+pub mod items;
+pub mod keyboard;
+pub mod layout;
+pub mod level;
+pub mod mem;
+pub mod pass_clock;
+pub mod recording;
+pub mod render;
+pub mod rng;
+pub mod savestate;
+pub mod scene;
+pub mod slot;
+pub mod state;
+
+pub use front::password::Progress;
+pub use game::{CODE_TIMES, CodeTimes, Cpu, DiskPrompt, FrameOut, Game, HandlerEnd, Job, LoadEnd, Pacing, Start};
+pub use pass_clock::PassClock;
+pub use layout::{AmigaMemory, LAYOUT, Ram, VarDef, VarId, Width};
+pub use render::{DisplayData, Picture, PictureView, Split, View, to_rgb12};
+pub use rng::Rng;
+pub use savestate::{StateError, StateHeader};
+pub use scene::Scene;
+pub use slot::{Award, SlotOutcome};
+pub use sf_assets::{GameData, LevelId};
+pub use amiga_paula::PaulaWrite;
+
+/// DMACON as the original's boot leaves Agnus and Paula: DMA's master switch on (its frame 58; its
+/// trackloader's `$8210` after, which the engine loads without), every audio channel off. The mixer
+/// and the audio DMA start from it (`amiga_paula::Paula::booted`, `AudioDma::booted`); the sound
+/// driver then turns channels on with their bits alone (`$8001`).
+pub const BOOT_DMACON: u16 = 0x8200;
+pub use state::State;

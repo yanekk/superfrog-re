@@ -1,0 +1,7 @@
+# A level code from power-on (T201): OPTIONS, W1-2's code (password_table entry 1) typed
+# into LEVEL CODE, the options left, START GAME; `game_start_at` takes the code, the world's files
+# load (each disk the original asks for put in), its loading picture, the progress map and
+# W1-2's first frames, nothing held.
+sync = "power-on"
+script = "code-w1-2"
+frames = 2200

@@ -1,0 +1,9 @@
+# W3-3 with world 3's enemies live (T112): the hoppers, flows, the swing, a spiker, a dart, the
+# bouncer, the shufflers (the one at 180,15 stomped into a reward), then down through the right
+# into the cave: crumbling platforms and the jumper at 208,49. The pads and the scenery below
+# marker 14 (the lower left) are left to T115's completion. The re-sync at 256, after the original
+# ends 255 mid-pass (T101's class), is pinned in `enemies_w3::w3_3`.
+sync = { level = "W3-3" }
+script = "enemies-w3-3"
+frames = 1924
+resync = true

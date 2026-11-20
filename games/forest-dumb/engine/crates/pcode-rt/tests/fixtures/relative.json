@@ -1,0 +1,14 @@
+{"hunks": [{"index": 0, "size": 16, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 4, "mnem": "made-up: d2 = d0 == d1 ? 2 : 1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_EQUAL", "out": ["unique", 512, 1], "in": [["register", 0, 4], ["register", 4, 4]]},
+    {"op": "CBRANCH", "in": [["const", 3, 4], ["unique", 512, 1]]},
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 1, 4]]},
+    {"op": "BRANCH", "in": [["const", 2, 4]]},
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 2, 4]]}]},
+  "h0+$4": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

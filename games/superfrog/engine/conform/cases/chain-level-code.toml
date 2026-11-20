@@ -1,0 +1,7 @@
+# A level code (T192): power-on, OPTIONS, W3-1's code typed into LEVEL CODE, the options left,
+# START GAME; `game_start_at` checks the code and jumps to `top_loop`'s world 3 entry, W3's loads
+# from disk 2 (every disk the original asks for goes in), W3's loading picture and the frog's
+# walk, the progress map, W3-1's start and play, nothing held.
+sync = "power-on"
+script = "chain-level-code"
+frames = 3200

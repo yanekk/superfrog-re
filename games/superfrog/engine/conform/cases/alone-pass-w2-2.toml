@@ -1,0 +1,10 @@
+# W2-2 by T31's set-B route (sf-plan seed 1), from its leg's lead frame (T32): the frog opens a
+# secret passage while the original's passes run two frames each, digging. Before T32 the engine
+# ended its frames by the clock after a whole `passage_step`, freed the frog a frame early, and
+# its next vertical blank moved it: alone it ran a move ahead from 530, and at frame 1091 the engine's item (marker 38 at 67,63)
+# had no match. Green faithful with the passage's digs counted as steps (`sync::pass_step`).
+sync = { script = "game-whole", frame = 48528, df1 = true }
+script = "alone-pass-w2-2"
+frames = 7079
+resync = true
+lag-limit = { frames = 390, note = "game-whole's: the route is a leg of the whole game (T31)" }

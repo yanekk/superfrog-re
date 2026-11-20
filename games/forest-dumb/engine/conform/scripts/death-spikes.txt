@@ -1,0 +1,7 @@
+# T70: from frame 6400: right held, the slide drops into the spike pit (frame 6521), and right stays held
+# while the spikes take every life, one about every 135 passes; the game over screen shows from frame
+# 10716, and fire after its wait ends it where the high scores would start.
+0: -
+10: R
+4370: F
+4373: -

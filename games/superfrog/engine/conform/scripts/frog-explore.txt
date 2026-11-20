@@ -1,0 +1,47 @@
+# A level, the frog alone: after its drop-in, run right jumping every 60 frames (up held for 14),
+# then from frame 600 run left the same way.
+150: R
+170: R U
+184: R
+210: R
+230: R U
+244: R
+270: R
+290: R U
+304: R
+330: R
+350: R U
+364: R
+390: R
+410: R U
+424: R
+450: R
+470: R U
+484: R
+510: R
+530: R U
+544: R
+570: R
+590: R U
+604: R
+630: L
+650: L U
+664: L
+690: L
+710: L U
+724: L
+750: L
+770: L U
+784: L
+810: L
+830: L U
+844: L
+870: L
+890: L U
+904: L
+930: L
+950: L U
+964: L
+990: L
+1010: L U
+1024: L

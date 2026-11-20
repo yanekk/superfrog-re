@@ -1,0 +1,12 @@
+# The bonus level: the frog flown about the screen while firing, and still now and then.
+0: F
+60: U F
+110: R F
+170: D F
+260: L F
+330: U L
+380: -
+420: D R F
+480: R
+520: U F
+560: F

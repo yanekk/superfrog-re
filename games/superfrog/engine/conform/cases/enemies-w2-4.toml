@@ -1,0 +1,7 @@
+# W2-4 from its start right along row 68 to the hopper at 41,68 (T168): stomped once it is stunned
+# (h0+$23bee, frame 379), stomped again it becomes a reward (h0+$23e6c, 403), which arcs out; the
+# walker, the dart and the crumbling ledge met on the way. Nothing frozen.
+sync = { level = "W2-4" }
+script = "enemies-w2-4"
+frames = 460
+resync = false

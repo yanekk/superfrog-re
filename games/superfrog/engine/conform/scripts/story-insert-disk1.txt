@@ -1,0 +1,6 @@
+# The story intro untouched, then fire on its "insert disk 1" page (shown from O 12 718; disk 1
+# goes in as soon as the intro asks for it), held through the read of disk 1's id (O 12 740-12 824)
+# and let go: the intro fades the page out and boots the game (T47). The hold is not needed: a
+# one-frame press (12740-12741) is green too (T47 review).
+12740: F
+12830: -

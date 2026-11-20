@@ -1,0 +1,33 @@
+{"hunks": [{"index": 0, "size": 64, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "bsr h0+$10", "flow": {"kind": "call", "targets": ["h0+$10"]}, "ops": [
+    {"op": "INT_SUB", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["register", 60, 4], ["const", "h0+$2", 4]]},
+    {"op": "CALL", "in": [["ram", "h0+$10", 4]]}]},
+  "h0+$2": {"len": 2, "mnem": "beq.b h0+$8", "flow": {"kind": "cbranch", "targets": ["h0+$8"]}, "ops": [
+    {"op": "CBRANCH", "in": [["ram", "h0+$8", 4], ["register", 69, 1]]}]},
+  "h0+$4": {"len": 2, "mnem": "moveq #1,d2", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 1, 4]]}]},
+  "h0+$6": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]},
+  "h0+$8": {"len": 2, "mnem": "moveq #2,d2", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["register", 8, 4], "in": [["const", 2, 4]]}]},
+  "h0+$a": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]},
+  "h0+$10": {"len": 2, "mnem": "cmp.l d0,d1", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_LESS", "out": ["register", 71, 1], "in": [["register", 4, 4], ["register", 0, 4]]},
+    {"op": "INT_SBORROW", "out": ["register", 70, 1], "in": [["register", 4, 4], ["register", 0, 4]]},
+    {"op": "COPY", "out": ["register", 67, 1], "in": [["register", 71, 1]]},
+    {"op": "INT_SUB", "out": ["unique", 9472, 4], "in": [["register", 4, 4], ["register", 0, 4]]},
+    {"op": "INT_SLESS", "out": ["register", 68, 1], "in": [["unique", 9472, 4], ["const", 0, 4]]},
+    {"op": "INT_EQUAL", "out": ["register", 69, 1], "in": [["unique", 9472, 4], ["const", 0, 4]]}]},
+  "h0+$12": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

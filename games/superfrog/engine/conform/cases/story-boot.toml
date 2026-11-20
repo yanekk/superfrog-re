@@ -1,0 +1,4 @@
+# Power-on with disk 3 (T32): the Team 17 logo fades in, the intro loads (skipped), the logo fades
+# out.
+sync = "power-on-disk3"
+frames = 67

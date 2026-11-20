@@ -1,0 +1,4 @@
+# W1-1, the frog alone: run right from the start without jumping, into the first pit (columns
+# 27–30, marker 6) at about frame 200: the frog dies, and its death plays until frame 276 (at 277
+# the level's loop ends for the restart, which is T15's).
+0: R

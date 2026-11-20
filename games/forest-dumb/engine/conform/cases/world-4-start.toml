@@ -1,0 +1,26 @@
+# World 4's load and its first 300 frames of play on the translated program (translator T33, DESIGN
+# §2.1, §2.7): from the idle title at frame 4990, a few frames before Start, both sides run
+# boot-to-level1's Start, world 4's load, its SCENA screen and play. title_code_world writes
+# world_index in the step load_world reads it, so no poke between frames reaches it: the `set` is
+# made on both sides as load_world is entered (the oracle's poke_at, fd-translated's write_at). The
+# loads are instant on the translated side, so the frames are lined up at each load's return.
+# Translated engine only. Reading: docs/14-translator.md, "Worlds 2 to 6".
+# Measured 2026-11-19 (T51), owner's rules: the OS's stretch after a load, to system_off, is lined
+# up as part of the load (261 engine frames; on the original the OS's interrupts take ~5% of the
+# CPU there, world 2: system_off at 6026 with them stubbed, not 6029); beam_sample_unread
+# (h0+$8dfa) is left out of memory, its hpos mostly 3 colour clocks apart; a frame-end byte passes
+# when one frame on (7 frames in view_tiles, the engine 0 to 2 tile rows of ~1100 a frame ahead).
+# In play memory is judged at pass ends, paired by irq_count (owner's §2.7 rule, T53): T51's one
+# failing frame end (6132, h0+$1e61, char_y's low byte, engine $a4, original $a5) fell mid-pass.
+# Passes on the translated program, measured 2026-11-19 (T53): 319 pass ends in play and 131 frame
+# ends before it equal, the picture and Paula's writes every frame.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "world-4-start"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 1450
+compare = ["memory", "picture", "writes"]
+set = [{ var = "world_index", value = 3, when = "load_world" }]
+# Play has run 300 passes of game_frame in world 4 on both sides (irq_count counts from 0: the title
+# takes no interrupt).
+goal = { all = [{ var = "world_index", value = 3 }, { var = "irq_count", value = 300 }], by_frame = 6440 }

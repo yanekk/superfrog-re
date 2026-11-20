@@ -1,0 +1,5 @@
+# Pause ended by fire (T191): P pressed with fire held in W1-1 pauses; `pause` waits for fire to
+# be let go (h0+$7458), then fire pressed again ends it as P would (h0+$7472); then play on.
+sync = { level = "W1-1" }
+script = "chain-pause-fire"
+frames = 160

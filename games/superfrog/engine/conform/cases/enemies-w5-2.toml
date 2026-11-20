@@ -1,0 +1,8 @@
+# W5-2 with every object live (T123): west over the spike pits to the second dart (54, marker 19),
+# hurt by it, down past the drips and the faller into the shooters' room until the shooter fires,
+# then east under the crushers to the pacer (13/14). No re-sync. The 2/3 pacer cannot spawn here;
+# the mace, the flow and dart 53 are enemies-w5-1's (FINDINGS 2026-10-15, T123).
+sync = { level = "W5-2" }
+script = "enemies-w5-2"
+frames = 1000
+resync = true

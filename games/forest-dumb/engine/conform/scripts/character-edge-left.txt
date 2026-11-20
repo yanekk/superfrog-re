@@ -1,0 +1,9 @@
+# T42: from the sync frame 6400: run left to the edge (char_x $1b), up held against it, jump away right
+# and turn back left into it in the air, stand.
+0: -
+10: L
+40: L U
+80: L
+90: R U
+100: L U
+140: -

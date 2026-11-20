@@ -1,0 +1,6 @@
+{"hunks": [{"index": 0, "size": 16, "kind": "CODE"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 2, "mnem": "bra.b h0+$0", "flow": {"kind": "branch", "targets": ["h0+$0"]}, "ops": [
+    {"op": "BRANCH", "in": [["ram", "h0+$0", 4]]}]}
+ }}

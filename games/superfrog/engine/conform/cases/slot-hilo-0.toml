@@ -1,0 +1,6 @@
+# The hi-lo game (T74) from `start-w1-1-late`'s first spin (8 $18 0): all 8 guesses right (each
+# higher or lower as the next number makes it right): the jackpot: its one coin left as 5 000, then
+# 150 000 and the next level's code, flashed until fire. To the frame before `slot_machine` returns.
+sync = { slot = "slot-none", start = "start-w1-1-late" }
+script = "slot-hilo-0"
+frames = 1688

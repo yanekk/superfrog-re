@@ -1,0 +1,19 @@
+[package]
+name = "amiga-plan"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# The route planner's game-free half: a whole-level explorer over any game that implements
+# `PlanGame`. `src/core/` is pure (no clock, file, environment, process or network;
+# tests/purity.rs); `run` is its shell, the threads and the wall-clock budget. Hash maps and floats
+# stay in the core: they were there before the move, and replacing them could change the routes a
+# game has pinned.
+
+[dependencies]
+# Frame input: the joystick bytes a route is made of.
+amiga-input = { path = "../amiga-input" }
+# The movement map's graph is saved by a game's map cache.
+serde = { version = "1", features = ["derive"] }
+# Peak resident memory for a run's report (`run::peak_rss_bytes`).
+libc = "0.2"

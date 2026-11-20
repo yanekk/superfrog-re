@@ -1,0 +1,7 @@
+# W2-1 from its start, right for 200 frames and back left (T43): the walker and the flyers spawn as
+# the camera reaches them and are freed once it has left them (`obj_despawn_if_offscreen`), then
+# again on the way back; every slot, the picture and Paula every frame, no exclusion.
+sync = { level = "W2-1" }
+script = "enemies-there-and-back"
+frames = 440
+resync = false

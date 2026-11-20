@@ -1,0 +1,16 @@
+{"hunks": [{"index": 0, "size": 32, "kind": "CODE"}, {"index": 1, "size": 16, "kind": "DATA"}],
+ "entries": ["h0+$0"],
+ "insns": {
+  "h0+$0": {"len": 6, "mnem": "move.l d0,(h1+$4).l", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "COPY", "out": ["ram", "h1+$4", 4], "in": [["register", 0, 4]]}]},
+  "h0+$6": {"len": 6, "mnem": "lea (h0+$0).l,a0", "flow": {"kind": "fallthrough"},
+    "relocs": [{"in_op": 0, "slot": 0, "target": "h0+$0"}], "ops": [
+    {"op": "COPY", "out": ["register", 32, 4], "in": [["const", 2224128, 4]]}]},
+  "h0+$c": {"len": 4, "mnem": "move.w d1w,(2,a0)", "flow": {"kind": "fallthrough"}, "ops": [
+    {"op": "INT_ADD", "out": ["unique", 4224, 4], "in": [["register", 32, 4], ["const", 2, 4]]},
+    {"op": "STORE", "in": [["const", 433, 8], ["unique", 4224, 4], ["register", 6, 2]]}]},
+  "h0+$10": {"len": 2, "mnem": "rts", "flow": {"kind": "return"}, "ops": [
+    {"op": "LOAD", "out": ["register", 80, 4], "in": [["const", 433, 8], ["register", 60, 4]]},
+    {"op": "INT_ADD", "out": ["register", 60, 4], "in": [["register", 60, 4], ["const", 4, 4]]},
+    {"op": "RETURN", "in": [["register", 80, 4]]}]}
+ }}

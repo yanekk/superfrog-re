@@ -1,0 +1,6 @@
+# W1-1 with ESC pressed (T37 review): the level's loop ends at frame 61 (`abort_flag`) into
+# `level_exit_fade`, whose front end must not read the ESC byte the level's poll already handled
+# (`kbd_toggle`, frame 63). Ends on frame 76; `game-over-esc-w1-1` goes on to the title (T34).
+sync = { level = "W1-1" }
+script = "frog-esc"
+frames = 77

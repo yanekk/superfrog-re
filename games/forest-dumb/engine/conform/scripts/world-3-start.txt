@@ -1,0 +1,9 @@
+# World 3's start (translator T33) after boot-to-level1's frame 4990 (frames count from the case's
+# sync frame): Start on the title as boot-to-level1 presses it, world 3's load (world_index set to
+# 2 as load_world is entered, in the case), and fire on its SCENA screen, which waits for fire
+# (h0+$7c7e) from frame 6057 on the original (measured 2026-11-18). Then play with nothing pressed.
+0: -
+10: F        # fire on START (frame 5000): title_code_world, then load_world in the same step
+21: -
+1180: F      # fire on SCENA 3 (frame 6170); play's first frame is 6171
+1191: -

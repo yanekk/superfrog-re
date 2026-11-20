@@ -1,0 +1,16 @@
+{
+  "allow": [
+    "Bash(python3 -I games/forest-dumb/tools/pcode_export.py)",
+    "Bash(python3 -I games/forest-dumb/tools/pcode_export.py:*)",
+    "Bash(cargo build)",
+    "Bash(cargo build:*)",
+    "Bash(python3 -I games/forest-dumb/tools/generate.py:*)",
+    "Bash(python3 -I games/forest-dumb/tools/reshape.py:*)",
+    "Bash(python3 -I games/forest-dumb/tools/haiku_trial.py)",
+    "Bash(python3 -I games/forest-dumb/tools/haiku_trial.py:*)",
+    "Bash(python3 -I games/forest-dumb/tools/default_check.py)",
+    "Bash(python3 -I games/forest-dumb/tools/default_check.py:*)",
+    "Bash(claude auth status)"
+  ],
+  "ask": []
+}

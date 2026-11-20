@@ -1,0 +1,5 @@
+# Power-on with disk 3, fire on the Team 17 logo (not read), then the mouse button in scene 1: the
+# intro skips to its end, fire on the "insert disk 1" page, the game to its title waiting (T48).
+sync = "power-on-disk3"
+script = "story-skip-logo-fire"
+frames = 1850

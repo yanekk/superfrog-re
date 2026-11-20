@@ -1,0 +1,474 @@
+//! T27: View → Filter and View → Widescreen (DESIGN §2.7), driven through the app's script
+//! layer (`N: menu filter-…`, `N: menu widescreen`, the settings file) and checked against the
+//! engine run headless.
+//!
+//! Widescreen draws 65 extra columns each side (16:9 of a level's 334×261, T210). On a level
+//! they are the level's; on every other screen (title, story intro, slot machine) each line's
+//! colour 0, the border an Amiga monitor shows outside the display window (owner, 2026-10-18).
+//! In a level widescreen is its own game (real-widescreen DESIGN §2.1, T10): the app plays the
+//! engine's widescreen game, mode and view together. With widescreen off the app is the 4:3 game;
+//! outside a level the centre of a widescreen frame is the 4:3 frame.
+//!
+//! Every filter runs after the integer scaling: the frames the game hands over are the same with
+//! any of them on, only the window differs.
+
+mod common;
+
+use common::{assert_integer_scaled, cache_data, not_black};
+use sf_core::input::{FrameInput, Joy};
+use sf_core::{DisplayData, Game, Picture, PictureView, Progress, Rng, Scene, Start, View};
+use sf_e2e::{App, Captured, Image, LaunchOpts, Shot};
+
+const WIDE: View = View {
+    extra_columns_each_side: 65,
+};
+const N: u32 = 65;
+/// The widescreen window at 1×: a level's 334×261 widened (T210).
+const WINDOW: (u32, u32) = (334 + 2 * N, 261);
+/// A widescreen frame of the title's 320×256.
+const TITLE: (u32, u32) = (320 + 2 * N, 256);
+
+/// Image columns `x0..x0 + w`.
+fn columns(img: &Image, x0: u32, w: u32) -> Image {
+    let rgba = (0..img.height)
+        .flat_map(|y| {
+            let at = ((y * img.width + x0) * 4) as usize;
+            img.rgba[at..at + (w * 4) as usize].to_vec()
+        })
+        .collect();
+    Image {
+        width: w,
+        height: img.height,
+        rgba,
+    }
+}
+
+/// A widescreen frame less its extra columns: the 4:3 frame's place (320 columns on a level; a
+/// screen with a wider display window, like the progress map's 334, keeps its own).
+fn centre(img: &Image) -> Image {
+    columns(img, N, img.width - 2 * N)
+}
+
+/// W3-1 by Continue at step 10 (progress World 3). Its loading picture and map take until about
+/// step 1 664; the right arrow held 1 700..1 900 then scrolls the camera mid-level (x 70 → 272).
+const LEVEL_SCRIPT: &str = "10: menu continue\n1700: down ArrowRight\n1900: up ArrowRight\n";
+const LEVEL_FRAMES: u64 = 2000;
+
+fn level_input(n: u64) -> FrameInput {
+    if (1700..1900).contains(&n) { FrameInput::joy(Joy::RIGHT) } else { FrameInput::NONE }
+}
+
+/// `g` played and drawn in widescreen `on`, as the app sets both (sf-app `window::show`).
+fn show(g: &mut Game, on: bool) {
+    g.set_widescreen(on);
+    g.set_view(if on { WIDE } else { View::default() });
+}
+
+/// The game Continue starts at step 10 of a scripted run (seed 0 0), headless, in widescreen
+/// `wide`.
+fn w3_1(data: &sf_core::GameData, wide: bool) -> Game {
+    let display = std::sync::Arc::new(DisplayData::new(data));
+    let mut g = Game::start_at_with(display, &Progress { world: 3, level: 1 }, Rng::seeded(0, 0));
+    show(&mut g, wide);
+    g
+}
+
+fn level_run(widescreen: bool) -> (App, Captured) {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: LEVEL_FRAMES,
+        timeout_s: 300,
+        ..Default::default()
+    });
+    std::fs::write(app.home.join("progress.toml"), "world = 3\nlevel = 1\n").unwrap();
+    let script = if widescreen { format!("5: menu widescreen\n{LEVEL_SCRIPT}") } else { LEVEL_SCRIPT.into() };
+    let c = app.run_script_unread(&script);
+    assert!(c.exit.success(), "{}", c.stderr);
+    (app, c)
+}
+
+/// Picture pixels left of picture column `x_end` on rows `rows` are all colour index 0.
+fn index_0(p: &Picture, x_end: usize, rows: std::ops::Range<usize>) -> bool {
+    rows.into_iter()
+        .all(|y| p.pixels[y * p.width as usize..][..x_end].iter().all(|&i| i == 0))
+}
+
+#[test]
+fn widescreen_off_is_the_4_3_game() {
+    let (app, narrow) = level_run(false);
+    let data = cache_data(&app.home);
+    let mut g = w3_1(&data, false);
+    for n in 10..=LEVEL_FRAMES {
+        let p = g.step(level_input(n)).picture;
+        assert_eq!(narrow.read_frame(n), Image::of_picture(&p), "frame {n} is not the 4:3 engine's");
+        assert!(!g.widescreen());
+    }
+    assert!(g.scene() == Scene::Level && g.state().camera().x > N + 16, "mid-level");
+}
+
+#[test]
+fn widescreen_from_the_menu_plays_the_widescreen_game_and_its_strips_show_the_level() {
+    let (app, wide) = level_run(true);
+    let (_narrow_home, narrow) = level_run(false);
+    let data = cache_data(&app.home);
+    assert_eq!(wide.inputs, narrow.inputs);
+
+    // Before the switch the runs are one; from it every frame is 130 wider, and until Continue
+    // (the title) its centre is the 4:3 frame. From Continue on the app's frames are the engine's
+    // widescreen game headless, a game that is not the 4:3 one.
+    let mut g_wide = w3_1(&data, true);
+    let mut g_narrow = w3_1(&data, false);
+    let (mut scrolled, mut differs) = (false, false);
+    for n in 0..=LEVEL_FRAMES {
+        let (w, c) = (wide.read_frame(n), narrow.read_frame(n));
+        if n < 5 {
+            assert_eq!(w, c, "frame {n}, before the switch");
+            continue;
+        }
+        assert_eq!((w.width, w.height), (c.width + 2 * N, c.height), "frame {n}");
+        if n < 10 {
+            assert_eq!(centre(&w), c, "frame {n}: the title's centre is the 4:3 frame");
+            continue;
+        }
+        let pw = g_wide.step(level_input(n)).picture;
+        g_narrow.step(level_input(n));
+        assert_eq!(w, Image::of_picture(&pw), "frame {n} is not the engine's widescreen game");
+        differs |= g_wide.probe() != g_narrow.probe() || g_wide.state() != g_narrow.state();
+        // Mid-level, the side columns show the level: not all colour 0 below the panel.
+        if g_wide.scene() == Scene::Level && g_wide.state().camera().x > N + 16 {
+            scrolled = true;
+            assert!(!index_0(&pw, N as usize, 40..pw.height as usize), "frame {n}: left side empty");
+            let right = pw.pixels.chunks(pw.width as usize).skip(40).any(|r| r[(N + 320) as usize..].iter().any(|&i| i != 0));
+            assert!(right, "frame {n}: right side empty");
+        }
+    }
+    assert!(scrolled, "camera at x {}: the camera never left the level's left edge: not a mid-level check", g_wide.state().camera().x);
+    assert!(differs, "the widescreen run never differed from the 4:3 game: the mode did not reach it");
+}
+
+/// T29 drill: `level_start`'s fade-in runs in the front end on the level's own copper list, and
+/// was drawn 4:3 with colour 0 at the sides until the level's loop began, then snapped to 16:9
+/// (24 frames on W3-2). The level is on screen, so its sides are the level's from its first frame.
+#[test]
+fn widescreen_draws_the_level_s_sides_through_its_fade_in_too() {
+    let (app, wide) = level_run(true);
+    let data = cache_data(&app.home);
+    let mut g = w3_1(&data, true);
+    let mut fading = 0;
+    for n in 10..=LEVEL_FRAMES {
+        g.step(level_input(n));
+        if g.scene() == Scene::Level || g.cop1lc() != Some(sf_core::render::LEVEL_COPPER) {
+            continue;
+        }
+        let w = wide.read_frame(n);
+        let lit = |x0: u32, x1: u32| (40..w.height).any(|y| (x0..x1).any(|x| w.rgb(x, y) != [0, 0, 0]));
+        if lit(N, w.width - N) {
+            fading += 1;
+            assert!(lit(w.width - N, w.width), "frame {n}: the level shows, its right side is empty");
+        }
+    }
+    assert!(fading > 0, "no frame of W3-1's fade-in was seen");
+}
+
+/// real-widescreen DESIGN §2.5: the widescreen game's camera stops 65 pixels further in, so at
+/// W1-1's left end the left strip begins at level x 16 and shows no colour 0 from off the map.
+/// (`widescreen_app.rs` drives both ends through the app.)
+#[test]
+fn widescreen_at_a_level_s_left_edge_shows_the_map_not_colour_0() {
+    let data = cache_data(&App::launch(LaunchOpts::default()).home);
+    let mut g = Game::new(&data, Start::Level("W1-1".parse().unwrap()));
+    show(&mut g, true);
+    for n in 1..=40u64 {
+        let p = g.step(FrameInput::NONE).picture;
+        assert_eq!(g.state().camera().x, 16 + N, "frame {n}: the camera at widescreen's clamp");
+        let h = p.height as usize;
+        assert!(!(h / 2..h).all(|y| p.pixels[y * p.width as usize] == 0), "frame {n}: off the map shows");
+    }
+}
+
+/// Every frame of a non-level screen: the 4:3 picture in the centre, colour 0 at the sides.
+fn assert_border_sides(g: &mut Game, frames: u32, input: impl Fn(u32) -> FrameInput, what: &str) {
+    let mut narrow = g.clone();
+    narrow.set_view(View::default());
+    // The view alone: the mode would start an unplayed level's game again (`Game::set_widescreen`),
+    // and outside a level it changes nothing but the picture (DESIGN §2.7).
+    g.set_view(WIDE);
+    let mut seen = Vec::new();
+    for n in 1..=frames {
+        let pw = g.step(input(n)).picture;
+        let pn = narrow.step(input(n)).picture;
+        seen.push(g.scene());
+        assert_eq!((pw.width, pw.left), (pn.width + 2 * N as u16, pn.left - N as i32), "{what} {n}");
+        assert_eq!(pw.narrowed(WIDE), pn, "{what} {n}: the centre is the 4:3 picture");
+        let side = |y: usize| {
+            let row = &pw.pixels[y * pw.width as usize..][..pw.width as usize];
+            row[..N as usize].iter().chain(&row[(N + pn.width as u32) as usize..]).all(|&i| i == 0)
+        };
+        assert!((0..pw.height as usize).all(side), "{what} {n}: a side is not colour 0");
+        assert!(g.state() == narrow.state(), "{what} {n}: widescreen changed the state");
+    }
+    assert!(seen.iter().all(|s| *s != Scene::Level), "{what}: {seen:?}");
+}
+
+#[test]
+fn widescreen_on_the_title_story_intro_and_slot_machine_shows_the_border_at_the_sides() {
+    let data = cache_data(&App::launch(LaunchOpts::default()).home);
+    // Power-on to the title, and fire to its menu.
+    let mut g = Game::new(&data, Start::PowerOn { seed: Rng::seeded(0, 0) });
+    assert_border_sides(&mut g, 300, |n| if n == 100 || n == 200 { FrameInput::joy(Joy::FIRE) } else { FrameInput::NONE }, "title");
+    // The story intro (disk 3).
+    let mut g = Game::new(&data, Start::Disk3 { seed: Rng::seeded(0, 0) });
+    assert_border_sides(&mut g, 300, |_| FrameInput::NONE, "intro");
+    // The slot machine, entered from a level as the tally enters it, fire pressed.
+    let mut g = Game::new(&data, Start::Level("W1-1".parse().unwrap()));
+    g.enter_slot(3);
+    assert_border_sides(&mut g, 300, |n| if n % 80 == 40 { FrameInput::joy(Joy::FIRE) } else { FrameInput::NONE }, "slot");
+
+    // The app shows the title's widescreen frames as the engine draws them.
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 300,
+        ..Default::default()
+    });
+    std::fs::write(app.home.join("settings.toml"), "widescreen = true\n").unwrap();
+    let c = app.run_script("");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let mut g = Game::new(&data, Start::PowerOn { seed: Rng::seeded(0, 0) });
+    show(&mut g, true);
+    assert_eq!(c.frames[0], Image::of_picture(&g.render(WIDE)));
+    for n in 1..=300 {
+        assert_eq!(c.frames[n], Image::of_picture(&g.step(FrameInput::NONE).picture), "frame {n}");
+    }
+    assert!(not_black(&c.frames[150]));
+}
+
+/// A run with `settings` in its home, a shot at 150: the app, whose home holds the shot until it is
+/// dropped, and the capture. (Fifty frames after it: a run whose last step lands in the same
+/// catch-up as the shot's ends before the shot is taken.)
+fn shot_run(settings: &str, scale: Option<u32>) -> (App, Captured) {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 200,
+        scale,
+        ..Default::default()
+    });
+    std::fs::write(app.home.join("settings.toml"), settings).unwrap();
+    let c = app.run_script("150: shot\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    (app, c)
+}
+
+#[test]
+fn widescreen_at_1x_2x_and_3x_is_a_16_9_window_at_a_whole_scale() {
+    for n in 1..=3u32 {
+        let (_app, c) = shot_run("widescreen = true\n", Some(n));
+        let (img, info) = c.read_shot(150);
+        let sf = info.scale_factor as u32;
+        assert_eq!(info.surface, (WINDOW.0 * n * sf, WINDOW.1 * n * sf), "{n}× widescreen: {info:?}");
+        let frame = c.read_frame(info.frame);
+        assert_eq!((frame.width, frame.height), TITLE);
+        assert_eq!(assert_integer_scaled(&img, &info, &frame), n * sf);
+    }
+}
+
+/// Mean and largest per-channel difference between the shot's picture and `frame` scaled by `s`.
+fn difference(img: &Image, info: &Shot, frame: &Image, s: u32) -> (f64, u8) {
+    let (x, y, w, h) = info.viewport;
+    let (mut sum, mut max, mut count) = (0u64, 0u8, 0u64);
+    for py in y..y + h {
+        for px in x..x + w {
+            let (a, b) = (img.rgb(px, py), frame.rgb((px - x) / s, (py - y) / s));
+            for ch in 0..3 {
+                let d = a[ch].abs_diff(b[ch]);
+                sum += d as u64;
+                max = max.max(d);
+                count += 1;
+            }
+        }
+    }
+    (sum as f64 / count as f64, max)
+}
+
+/// The filters other than None, by their `settings.toml` names.
+const FILTERS: [&str; 4] = ["basic", "lottes", "geom", "easymode"];
+
+/// Every surface pixel outside the picture's viewport is black.
+fn black_outside(img: &Image, info: &Shot) -> bool {
+    let (x, y, w, h) = info.viewport;
+    (0..img.height).all(|py| {
+        (0..img.width).all(|px| (x..x + w).contains(&px) && (y..y + h).contains(&py) || img.rgb(px, py) == [0, 0, 0])
+    })
+}
+
+/// The shot's light summed by row phase within a game line (surface row `0..s` of each), over
+/// the central half of the picture: the libretro ports warp the rows near the edges.
+fn phases(img: &Image, info: &Shot, s: u32) -> Vec<u64> {
+    let (x, y, w, h) = info.viewport;
+    let lines = h / s;
+    let mut sum = vec![0u64; s as usize];
+    for gy in lines / 4..lines * 3 / 4 {
+        for (row, total) in sum.iter_mut().enumerate() {
+            for px in x + w / 4..x + w * 3 / 4 {
+                *total += img.rgb(px, y + gy * s + row as u32).iter().map(|&c| c as u64).sum::<u64>();
+            }
+        }
+    }
+    sum
+}
+
+#[test]
+fn every_filter_changes_only_the_scaled_picture_and_basic_stays_legible_at_1x() {
+    for n in 1..=3u32 {
+        let (_plain_app, plain) = shot_run("", Some(n));
+        let (pi, pinfo) = plain.read_shot(150);
+        for name in FILTERS {
+            let (_app, c) = shot_run(&format!("filter = \"{name}\"\n"), Some(n));
+            assert!(c.frames == plain.frames, "{n}× {name}: the filter changed a game frame");
+            let (ci, cinfo) = c.read_shot(150);
+            assert_eq!(pinfo, cinfo, "{n}× {name}: the same place and scale");
+            assert_ne!(pi, ci, "{n}× {name}: the filter changed nothing on screen");
+            assert!(black_outside(&ci, &cinfo), "{n}× {name}: drew outside the picture");
+            let frame = c.read_frame(cinfo.frame);
+            let s = cinfo.viewport.2 / frame.width;
+            if name == "basic" {
+                let (mean, max) = difference(&ci, &cinfo, &frame, s);
+                if s == 1 {
+                    // At 1× only the vignette: every pixel within 10% of the frame's.
+                    assert!(max <= 26 && mean < 6.0, "1×: mean {mean}, max {max}: not legible");
+                } else {
+                    // From 2× scanlines: a game line's middle brighter than its top edge, on average.
+                    let (x, y, w, h) = cinfo.viewport;
+                    let (mut mid, mut edge) = (0u64, 0u64);
+                    for gy in 0..h / s {
+                        for px in x..x + w {
+                            let at = |row: u32| ci.rgb(px, y + gy * s + row).iter().map(|&c| c as u64).sum::<u64>();
+                            mid += at(s / 2);
+                            edge += at(0);
+                        }
+                    }
+                    assert!(mid > edge, "{n}× ({s} pixels a game pixel): no scanlines ({mid} vs {edge})");
+                    assert!(mean < 40.0, "{n}×: mean difference {mean}");
+                }
+            } else if s == 1 {
+                // Legible: not darkened to nothing (a `pow` of a base rounded below 0 is black on
+                // Metal, which once blacked out Easymode at 1×).
+                let light = |img: &Image| img.rgba.chunks(4).map(|p| p[..3].iter().map(|&c| c as u64).sum::<u64>()).sum::<u64>();
+                let (lit, plain_lit) = (light(&ci), light(&pi));
+                assert!(lit * 2 >= plain_lit, "1× {name}: {lit} of the plain picture's {plain_lit}: not legible");
+            } else {
+                // Scanlines: the brightest row of a game line at least 10% above the darkest. At
+                // 2× this needs the ports' quarter-pixel nudge (port.wgsl).
+                let p = phases(&ci, &cinfo, s);
+                let (lo, hi) = (*p.iter().min().unwrap(), *p.iter().max().unwrap());
+                assert!(hi * 10 >= lo * 11 && hi > 0, "{n}× {name} ({s} pixels a game pixel): no scanlines: {p:?}");
+            }
+        }
+    }
+}
+
+#[test]
+fn a_filter_and_widescreen_from_the_menu_are_remembered_by_the_next_launch() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 200,
+        ..Default::default()
+    });
+    let c = app.run_script("10: menu filter-geom\n20: menu widescreen\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert_eq!((c.frames[19].width, c.frames[20].width), (320, TITLE.0), "widescreen from step 20");
+    let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
+    assert!(settings.contains("filter = \"geom\"") && settings.contains("widescreen = true"), "{settings}");
+
+    // The next launch opens with both on: a 16:9 window from frame 0, through the filter.
+    let c = app.run_script("150: shot\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.frames.iter().all(|f| f.width == TITLE.0), "widescreen from the start");
+    let (img, info) = c.read_shot(150);
+    let sf = info.scale_factor as u32;
+    assert_eq!(info.surface, (WINDOW.0 * sf, WINDOW.1 * sf));
+    let frame = c.read_frame(info.frame);
+    let (x, y, _, _) = info.viewport;
+    assert!(not_black(&frame));
+    let plain = (0..frame.height).flat_map(|gy| (0..frame.width).map(move |gx| (gx, gy))).all(|(gx, gy)| {
+        img.rgb(x + gx * sf, y + gy * sf) == frame.rgb(gx, gy)
+    });
+    assert!(!plain, "the filter is on");
+
+    // And off again, both remembered off.
+    let c = app.run_script("5: menu filter-none\n6: menu widescreen\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
+    assert!(settings.contains("filter = \"none\"") && settings.contains("widescreen = false"), "{settings}");
+    assert_eq!(c.frames.last().unwrap().width, 320);
+}
+
+/// A settings file from before View → Filter: its `crt = true` is Basic, and the next save writes
+/// a `filter` line in its place.
+#[test]
+fn an_older_crt_setting_opens_as_basic_and_is_saved_as_a_filter() {
+    let (_basic_app, basic) = shot_run("filter = \"basic\"\n", None);
+    let (mut app, old) = shot_run("crt = true\n", None);
+    assert_eq!(old.read_shot(150), basic.read_shot(150), "crt = true draws as Basic");
+    let c = app.run_script("5: menu widescreen\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let settings = std::fs::read_to_string(app.home.join("settings.toml")).unwrap();
+    assert!(settings.contains("filter = \"basic\"") && !settings.contains("crt"), "{settings}");
+}
+
+#[test]
+fn a_loaded_state_is_drawn_for_the_widescreen_setting_not_the_one_it_was_saved_in() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 200,
+        ..Default::default()
+    });
+    // Saved in widescreen, loaded in widescreen: still 16:9.
+    let c = app.run_script("5: menu widescreen\n100: menu save-state-1\n150: menu load-state-1\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.frames[5..].iter().all(|f| f.width == TITLE.0), "widescreen after the load");
+    // Loaded with widescreen off (the setting saved by the run above): 4:3.
+    let c = app.run_script("1: menu widescreen\n50: menu load-state-1\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    assert!(c.frames[1..].iter().all(|f| f.width == 320), "4:3 after loading a widescreen state");
+}
+
+#[test]
+#[ignore = "takes over the display: SF_E2E_OS=1 cargo test -p sf-e2e --test view -- --ignored"]
+fn fullscreen_widescreen_is_the_largest_whole_scale_of_the_16_9_picture() {
+    assert!(
+        std::env::var_os("SF_E2E_OS").is_some_and(|v| v == "1"),
+        "the fullscreen run takes over the display; run it with SF_E2E_OS=1"
+    );
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 200,
+        extra_args: vec!["--allow-fullscreen".into()],
+        ..Default::default()
+    });
+    std::fs::write(app.home.join("settings.toml"), "fullscreen = true\nwidescreen = true\n").unwrap();
+    let c = app.run_script("150: shot\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let (img, info) = c.read_shot(150);
+    let frame = c.read_frame(info.frame);
+    assert_eq!((frame.width, frame.height), TITLE);
+    let s = assert_integer_scaled(&img, &info, &frame);
+    let fit = (info.surface.0 / frame.width).min(info.surface.1 / frame.height);
+    assert_eq!(s, fit, "the largest whole scale: {info:?}");
+}
+
+/// DESIGN §2.5 with the heaviest filter (Geom) on: over 3 000 frames (a minute) at 3×, widescreen, every frame
+/// stepped is presented. The shipped build's pacing, so in release (the debug engine drops frames
+/// with or without the filter, more as the machine is busier); long, so outside the test block.
+/// T27 ran it (FINDINGS).
+#[test]
+#[ignore = "a minute long: cargo test --release -p sf-e2e --test view -- --ignored crt_drops"]
+fn crt_drops_no_frame_over_3000_frames() {
+    let mut app = App::launch(LaunchOpts {
+        max_frames: 3000,
+        timeout_s: 150,
+        scale: Some(3),
+        ..Default::default()
+    });
+    std::fs::write(app.home.join("settings.toml"), "filter = \"geom\"\nwidescreen = true\n").unwrap();
+    let c = app.run_script_unread("");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let pacing = std::fs::read_to_string(c.dir.join("pacing.txt")).unwrap();
+    eprintln!("{pacing}");
+    assert!(pacing.contains("stepped 3000\n"), "{pacing}");
+    assert!(pacing.contains("dropped 0\n"), "{pacing}");
+}
+

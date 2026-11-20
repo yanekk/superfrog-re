@@ -1,0 +1,8 @@
+# W1-1 to W1-2 (T183): W1-1's exit forced on its first frame (as `tally-w1-1`; `complete-w1-1`
+# is not green alone yet, T182), the tally's points taken by fire, then `top_loop` goes on:
+# `level_load_w1_l2` (the loading picture's end, the progress map with its marker blinking,
+# W1-2's map), `overlays_end`, `level_init_w1`, `level_start` and W1-2's first 500 frames,
+# nothing held.
+sync = { level = "W1-1", exit = true }
+script = "tally-points"
+frames = 1150

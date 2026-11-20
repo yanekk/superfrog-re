@@ -1,0 +1,5 @@
+# `slot-hold-jackpot` (T74) with the attract's fire on frame 50 (T129): the jackpot flash's sixth
+# lamp starts on the other side of the frame's interrupt from where it does at fire 41.
+sync = { slot = "slot-none", start = "start-w1-1-blink1" }
+script = "slot-hold-jackpot-50"
+frames = 1083

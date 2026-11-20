@@ -1,0 +1,43 @@
+[package]
+name = "sf-app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "superfrog"
+path = "src/main.rs"
+
+[dependencies]
+# The game and its data (DESIGN §3.1). Never sf-oracle: the shipped game may not contain an emulator.
+sf-disk = { path = "../sf-disk" }
+sf-assets = { path = "../sf-assets" }
+sf-core = { path = "../sf-core" }
+amiga-paula = { path = "../../../../../toolkit/crates/amiga-paula" }
+# The app's game-free parts: sound out, pacing, pads, the GPU picture and filters, capture files,
+# atomic writes, the lock and the Amiga key table (toolkit-extract T07).
+amiga-app = { path = "../../../../../toolkit/crates/amiga-app" }
+# The bug recorder and replay state machines and the bug zip (toolkit-extract T09).
+amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }
+# The window and its events (DESIGN §3.2).
+winit = "0.30"
+# The --timeout seatbelt stops the app's whole process group (DESIGN §5.2); the recorder names its zip by the local time.
+libc = "0.2"
+# The native disk picker and the import's messages (DESIGN §2.2, §2.11).
+rfd = "0.15"
+# The native menu bar every setting and feature lives in (DESIGN §2.7, §7; T24).
+muda = "0.21"
+# settings.toml, progress.toml and disks.toml (DESIGN §2.9, §3.5).
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# One AppKit default: keep AppKit from adding its own "Enter Full Screen" to the View menu (menu.rs).
+objc2 = "0.6"
+# The Controls window's native labels and buttons (T25), on a window winit opens; NSPasteboard puts a
+# saved bug zip's path on the clipboard (bug-recorder T06); the Start Level window is an NSWindow of
+# its own run modally, with NSPopUpButton dropdowns, taking ⌘A/⌘C/⌘V itself (bug-recorder T08); the
+# save window is an NSWindow sheet with an NSImageView and an NSAlert for a write that fails (T10).
+# The recording bar is an NSBox strip on the game window (bug-recorder T09).
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSView", "NSControl", "NSButton", "NSTextField", "NSText", "NSColor", "NSFont", "NSAccessibilityProtocols", "NSAccessibilityConstants", "NSPasteboard", "NSWindow", "NSApplication", "NSPopUpButton", "NSMenu", "NSMenuItem", "NSCell", "NSGraphics", "NSEvent", "NSImage", "NSImageView", "NSImageCell", "NSTextFieldCell", "NSAlert", "NSBox", "NSFontDescriptor", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSUserDefaults", "NSString", "NSDictionary", "NSValue", "NSGeometry", "NSObject", "NSData"] }

@@ -1,0 +1,7 @@
+# W1-3 with world 1's enemies live (T110): the frog jumps from the start and lands on the hover at
+# 57,51 (frame 189), whose `touch_kill_1hit` kills it: it falls (h0+$23b34), splats and is freed
+# with 200 points (239). No re-syncs. Checked in `enemies_w1::w1_hover_kill`.
+sync = { level = "W1-3" }
+script = "enemies-w1-hover-kill"
+frames = 330
+resync = true

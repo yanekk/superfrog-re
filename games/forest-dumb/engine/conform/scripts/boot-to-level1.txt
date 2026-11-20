@@ -1,0 +1,15 @@
+# Power-on to the first frame of play in W1-1 (docs/09-play-measured.md), on the disks in the case's
+# `swap` (disk 2 into df0 at frame 3600). The first 3711 frames are boot-to-title's, so the title
+# idles from frame 4922 as in the first case. Measured 2026-11-05.
+0: -
+800: K45     # Esc: `Show` leaves its picture only on Esc
+811: -
+1300: M      # left mouse: leaves the crack intro
+1311: -
+3700: F      # fire: past the insert-disk-2 prompt, after the swap
+3711: -      # the idle title from frame 4922
+5000: F      # fire on START: title_screen returns at once and world 1 loads from disk
+5011: -
+# The SCENA 1 screen (h0+$7c4c) waits for fire from frame 6206.
+6300: F      # fire on SCENA 1: the copper list of play is set in this frame, and the first
+6311: -      # level-3 interrupt runs game_frame once; frame 6301 is the first frame of play

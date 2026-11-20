@@ -1,0 +1,7 @@
+# The slot machine's gamble (T74) from `start-w1-1-blink1`: reel 1 held, 8 8 $18 pays 20 000
+# (rung 7); the gamble taken and won (rung 6, 30 000, offered again), taken again and lost: three
+# rungs down is past the ladder, so the bust lamp flashes and nothing is won. To the frame before
+# `slot_machine` returns.
+sync = { slot = "slot-none", start = "start-w1-1-blink1" }
+script = "slot-gamble"
+frames = 955

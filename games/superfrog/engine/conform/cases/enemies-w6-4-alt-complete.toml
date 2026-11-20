@@ -1,0 +1,13 @@
+# W6-4's second map (`W6-4alt`) completed (T151): from its first frame through the 99 coins
+# `coins_left_for_exit` counts and switch 50 (the alt has no switch 51), then the wings (212,37),
+# the flight over the 24 cells of spikes at row 10 and down the shaft to the exit (the exit
+# milestone on frame 7089), every object live, nothing left out. Its first 4900 frames are
+# `enemies-w6-4-complete`'s (the two maps play alike until the alt's frog is hit at 4942); the rest
+# planned with `examples/plan_exit_w6`, the flight and the shaft found by search on the engine in
+# legs (224,16; the platform at 234-237; 262,9; the exit), each checked on the original.
+# Re-synced after the lag at 5688, as DESIGN §2.1 allows checks 1–3; the run alone (check 4)
+# meets every milestone.
+sync = { level = "W6-4alt" }
+script = "enemies-w6-4-alt-complete"
+frames = 7090
+resync = true

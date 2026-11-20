@@ -1,0 +1,7 @@
+# Power-on to the title (as boot-to-title), then the attract cycle to its demo (`level_start` at
+# frame 8354), and fire held for 5 frames in the middle of the demo's play: `demo_play` ends the
+# recording, `level_frame_loop` stops on fire, and `LevelOver` goes back to the title (T164).
+1000: M
+1005: -
+9000: F
+9005: -

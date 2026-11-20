@@ -1,0 +1,4 @@
+# T26: from frame 6400 standing, cheat_flag set at the sync point (the case's `set`): HELP pressed so
+# that the pass whose play_keys runs help_key is pass 224, which main_loop's check follows.
+123: K5f
+126: -

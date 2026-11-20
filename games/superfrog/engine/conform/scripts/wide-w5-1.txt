@@ -1,0 +1,63 @@
+# timing: app
+# seed: 1
+# widescreen: on
+# W5-1 by sf-plan, seed 1: planned and confirmed on the engine in widescreen (--widescreen), engine only; frame 0 is W5-1's first frame from Game ▸ Start Level… (the dialog's defaults, power-on seed 1 1) with View ▸ Widescreen on.
+# The level ends at frame 1869, then fire in the tally's wait takes the points.
+0: -
+151: R F
+183: L F
+207: U R
+255: U L
+271: U R
+367: U
+411: -
+419: L
+467: U R
+503: R F
+519: U R
+643: L
+651: U R
+683: F
+715: U
+719: R F
+735: U
+747: U R
+819: R F
+879: U R
+911: F
+927: R
+935: -
+939: U R
+971: -
+991: U
+1031: F
+1055: R F
+1091: D
+1155: U
+1243: R F
+1263: F
+1267: L
+1271: U
+1287: U R
+1375: -
+1407: U
+1443: F
+1475: D
+1479: U L
+1511: L
+1559: U R
+1563: U
+1603: R F
+1627: U R
+1675: U L
+1683: F
+1707: R F
+1723: L F
+1727: R
+1775: U R
+1779: D
+1795: L F
+1803: R
+1869: -
+1938: F
+1942: -

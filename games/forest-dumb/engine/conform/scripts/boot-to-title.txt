@@ -1,0 +1,10 @@
+# Power-on to the idle title with T00's input (plans/forest-dumb-start FINDINGS), on the disks in the
+# case's `swap`. Earlier or later inputs move the title's first frame, so these frames are exact.
+0: -
+800: K45     # Esc: `Show` leaves its picture only on Esc
+811: -
+1300: M      # left mouse: leaves the crack intro; a click at 1200 is ignored
+1311: -
+# Frame 3461: the game asks for disk 2 in DF0. The case's `swap` puts it there at frame 3600.
+3700: F      # fire: past the prompt, after the swap
+3711: -      # nothing held from here on: the idle title

@@ -1,0 +1,8 @@
+# W5-1 with every object live (T39), start to the second pacer: over the first pacer and two spike
+# pits, under the watchers, the mace and the fallers, past drips, crushers, flows and the dart:
+# every W5-1 type but the shot (enemies-w5-1-hurt has it). The re-sync at 979 (the panel after a
+# lag) is pinned in enemies_w5_cases.rs; also with enemies frozen.
+sync = { level = "W5-1" }
+script = "enemies-w5-1"
+frames = 1000
+resync = true

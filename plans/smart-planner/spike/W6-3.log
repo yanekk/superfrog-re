@@ -1,0 +1,115 @@
+  bfs layer 10: 172 nodes, 2067 edges, frontier 13, 10s
+== /tmp/t00spike/W6-3-maps.txt
+W6-3: start cell (61, 11) frame 151, coins needed 86, coin cells 138, standable cells (static rule) 730, threads 10, load { 13.75 17.04 18.16 }
+live (enemies live, seeded by real moves): nodes 196 (with wings 0), cells 196, edges 2399 (taking a coin 76), build 12.4s, frames simulated 243419, moves dropped: lost heart 1240, died 432, never landed 0
+  coin cells touched by an edge: 12 (without wings 12) of 138; exit cell within one cell of a node: false
+== /tmp/t00spike/W6-3-q5-enemies.txt
+spawning markers (cells in the map): {8: 86, 9: 52, 12: 16, 13: 6, 14: 4, 15: 3, 16: 3, 17: 4, 18: 8, 19: 10, 29: 1}
+  marker  0: 16 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$23582 update h0+$27e34
+  marker  8: 19 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$239f6 update h0+$23f86
+  marker 12: 7 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$7d4 update h0+$28340
+  marker 13: 1 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$28488
+  marker 14: 2 slots seen; passive 0 stompable 1 hp 1f touch h0+$23582 update h0+$2826e
+  marker 15: 2 slots seen; passive 0 stompable 1 hp 7d00 touch h0+$2360e update h0+$27fd4
+  marker 16: 1 slots seen; passive 0 stompable 1 hp 7d00 touch h0+$2360e update h0+$28086
+  marker 17: 1 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$236ac update h0+$2619c
+  marker 19: 3 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$25fa8
+  marker 48: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$255f6
+enemy markers (a slot with contact that hurts): [12, 13, 14, 15, 16, 17, 19]
+Q5: enemy marker cells in the map 46; ever in a slot with the frog parked 2000 frames: 2 (all objects 3, at frame 0 3); ever in a slot over the live map's moves (the level walked): 17 (all objects 53)
+  bfs layer 10: 212 nodes, 3877 edges, frontier 1, 9s
+== /tmp/t00spike/W6-3-q2-freeze.txt
+live: nodes 196 (with wings 0), cells 196, edges 2399 (taking a coin 76), build 12.4s, frames simulated 243419, moves dropped: lost heart 1240, died 432, never landed 0
+frozen: nodes 212 (with wings 0), cells 212, edges 3894 (taking a coin 239), build 9.3s, frames simulated 248513, moves dropped: lost heart 0, died 496, never landed 0
+Q2: edges (from, move) in both 2197; landing differs 527 (24.0%); live-only edges 202; frozen-only edges 1697; cells live-only 13, frozen-only 29
+  misses by distance: adjacent cell 320, 2-3 cells 55, further 152, same cell other fields 0
+marker 44 (lift) cells: 6; marker 44 and 62 are tile markers (not in the spawn list [1, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 29, 45]), never objects
+== /tmp/t00spike/W6-3-q7-live-failure.txt
+live walk on the live map:   played 500: ok 224, landed elsewhere 238, lost a heart 36, died 1, never landed 0; failure 55.0%; restarts 13; distinct start nodes 91; edges taking a coin 7; misses by distance: adjacent cell 104, 2-3 cells 16, further 118, same cell other fields 0
+live walk on the frozen map: played 500: ok 157, landed elsewhere 266, lost a heart 69, died 3, never landed 0; failure 67.6%; restarts 28; distinct start nodes 86; edges taking a coin 18; misses by distance: adjacent cell 92, 2-3 cells 20, further 154, same cell other fields 0
+== /tmp/t00spike/W6-3-q1-seeding.txt
+poke (frog placed by writing X/Y): nodes 695 (with wings 2), cells 695, edges 10980 (taking a coin 394), build 76.9s, frames simulated 855312, moves dropped: lost heart 0, died 0, never landed 0
+Q1: standable cells 730, placed 695; cells covered poke 956 vs live 196 (live only 29, poke only 789); poke edges checkable from a real state 2166: false 1160 (53.6%)
+  of the false: died, hurt or never landed 656; misses by distance: adjacent cell 327, 2-3 cells 57, further 120, same cell other fields 0
+== /tmp/t00spike/W6-3-q4-stall.txt
+Q4 stall coins: 79
+  84,4 above-air: reachable by 4 moves, 218 frames, last hopL from 89,10 wings 0; replays and takes it: true
+  86,4 above-air: reachable by 3 moves, 190 frames, last runR8 from 77,15 wings 0; replays and takes it: true
+  253,4 above-air: unreachable on the map
+  255,4 above-air: unreachable on the map
+  82,5 above-air: reachable by 3 moves, 158 frames, last runR16 from 69,11 wings 0; replays and takes it: true
+  88,5 above-air: reachable by 3 moves, 190 frames, last runR8 from 77,15 wings 0; replays and takes it: true
+  253,5 above-air: unreachable on the map
+  254,5 above-air: unreachable on the map
+  255,5 above-air: unreachable on the map
+  128,6 above-air: reachable by 8 moves, 447 frames, last runR8 from 120,6 wings 0; replays and takes it: true
+  253,6 above-air: unreachable on the map
+  255,6 above-air: unreachable on the map
+  81,7 above-air: reachable by 3 moves, 190 frames, last hopR from 74,14 wings 0; replays and takes it: true
+  126,7 above-air: reachable by 9 moves, 388 frames, last walkR12 from 122,6 wings 0; replays and takes it: true
+  130,7 above-air: reachable by 8 moves, 447 frames, last runR8 from 120,6 wings 0; replays and takes it: true
+  253,7 above-air: unreachable on the map
+  255,7 above-air: unreachable on the map
+  66,20 above-air: unreachable on the map
+  68,20 above-air: unreachable on the map
+  64,21 above-air: unreachable on the map
+  70,21 above-air: unreachable on the map
+  63,23 above-air: unreachable on the map
+  71,23 above-air: unreachable on the map
+  42,25 above-air: unreachable on the map
+  43,25 above-air: unreachable on the map
+  44,25 above-air: unreachable on the map
+  45,25 above-air: unreachable on the map
+  46,25 above-air: unreachable on the map
+  63,25 above-air: unreachable on the map
+  71,25 above-air: unreachable on the map
+  43,26 above-air: unreachable on the map
+  45,26 above-air: unreachable on the map
+  214,30 above-air: unreachable on the map
+  218,31 above-air: unreachable on the map
+  225,33 above-air: unreachable on the map
+  216,34 above-air: unreachable on the map
+  219,37 above-air: unreachable on the map
+  108,39 above-air: unreachable on the map
+  107,41 above-air: unreachable on the map
+  205,43 above-air: unreachable on the map
+  213,45 above-air: unreachable on the map
+  225,45 above-air: unreachable on the map
+  173,47 above-air: unreachable on the map
+  175,49 above-air: unreachable on the map
+  177,51 above-air: unreachable on the map
+  151,53 above-air: unreachable on the map
+  158,53 above-air: unreachable on the map
+  62,56 above-air: unreachable on the map
+  63,56 above-air: unreachable on the map
+  115,56 above-air: unreachable on the map
+  95,57 above-air: unreachable on the map
+  101,57 above-air: unreachable on the map
+  107,57 above-air: unreachable on the map
+  62,58 above-air: unreachable on the map
+  63,58 above-air: unreachable on the map
+  251,58 above-air: unreachable on the map
+  253,58 above-air: unreachable on the map
+  255,58 above-air: unreachable on the map
+  97,59 above-air: unreachable on the map
+  252,59 above-air: unreachable on the map
+  253,59 above-air: unreachable on the map
+  254,59 above-air: unreachable on the map
+  62,60 above-air: unreachable on the map
+  63,60 above-air: unreachable on the map
+  252,60 above-air: unreachable on the map
+  254,60 above-air: unreachable on the map
+  93,61 above-air: unreachable on the map
+  109,61 above-air: unreachable on the map
+  255,61 above-air: unreachable on the map
+  153,63 above-air: unreachable on the map
+  187,63 above-air: unreachable on the map
+  189,63 above-air: unreachable on the map
+  79,64 above-air: unreachable on the map
+  151,64 above-air: unreachable on the map
+  155,64 above-air: unreachable on the map
+  79,65 above-air: unreachable on the map
+  81,65 above-air: unreachable on the map
+  185,65 above-air: unreachable on the map
+  81,66 above-air: unreachable on the map
+Q4: 8/79 reachable (8 without wings), 8 replayed from the start taking the coin

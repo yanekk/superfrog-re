@@ -1,0 +1,34 @@
+diff --git a/Core/Components/Agnus/Sequencer/SequencerDas.cpp b/Core/Components/Agnus/Sequencer/SequencerDas.cpp
+--- a/Core/Components/Agnus/Sequencer/SequencerDas.cpp
++++ b/Core/Components/Agnus/Sequencer/SequencerDas.cpp
+@@ -9,6 +9,7 @@
+ 
+ #include "vaconfig.h"
+ #include "Sequencer.h"
++#include <mutex>
+ 
+ namespace vamiga {
+ 
+@@ -17,6 +18,13 @@
+ void
+ Sequencer::initDasEventTable()
+ {
++    // amiga-toolkit (amiga-oracle): the table is one for every emulator in the process and every
++    // emulator's set-up wiped and refilled it, so one running on another thread meanwhile could
++    // copy an empty line of slots (updateDasEvents, twice a frame while sprite DMA is on). Its
++    // contents never differ: fill it once.
++    static std::once_flag filled;
++    std::call_once(filled, [] {
++
+     std::memset(dasDMA, 0, sizeof(dasDMA));
+ 
+     for (isize enable = 0; enable < 64; enable++) {
+@@ -66,6 +74,8 @@
+         p[0xE2] = DAS_EOL;
+         p[0xE3] = DAS_EOL;
+     }
++
++    });
+ }
+ 
+ void

@@ -1,0 +1,7 @@
+# Entering the bonus level (T79): its first 600 frames from the first in-level frame, the frog
+# flown about in shooter mode and firing, the camera creeping right, the first enemies (markers 2
+# and 6) met and one shot into a reward (frame 591); every frame compared, no re-sync after a lag.
+sync = { level = "WB-1" }
+script = "bonus-fly"
+frames = 600
+resync = false

@@ -1,0 +1,127 @@
+/* amiga-oracle's routine runner: the Moira 68000 core alone, over a flat 24-bit memory, with no
+ * chipset. Test tooling only; never linked into a shipped game.
+ *
+ * Moira is compiled from the vAmiga source tree that toolkit/tools/setup/oracle.sh fetched, as a private copy
+ * in its own namespace (build.rs), because vAmiga's copy has its memory interface bound to the
+ * emulated Amiga. One `amiga_cpu68k` may be used from one thread at a time; several may run on several.
+ */
+#ifndef AMIGA_ORACLE_MOIRA_SHIM_H
+#define AMIGA_ORACLE_MOIRA_SHIM_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct amiga_cpu68k amiga_cpu68k;
+
+/* The flat memory: 16 MiB, every 24-bit address, zeroed. */
+#define AMIGA_CPU68K_MEM_SIZE 0x1000000u
+
+typedef struct {
+    uint32_t d[8];
+    uint32_t a[8];
+    uint16_t sr;
+} amiga_regs;
+
+/* How a call ended. */
+enum {
+    AMIGA_CALL_RETURNED = 0,   /* the routine returned to the sentinel */
+    AMIGA_CALL_TIMEOUT = 1,    /* max_instr instructions ran without returning */
+    AMIGA_CALL_CUSTOM = 2,     /* an access to $DFF000-$DFF1FF or $BF0000-$BFFFFF (pc, addr) */
+    AMIGA_CALL_EXCEPTION = 3,  /* the CPU took an exception (pc, vector) */
+    AMIGA_CALL_HALTED = 4      /* the CPU halted (a double fault) (pc) */
+};
+
+typedef struct {
+    uint32_t status;
+    uint32_t pc;      /* the instruction that caused it */
+    uint32_t addr;    /* AMIGA_CALL_CUSTOM: the address accessed */
+    uint16_t vector;  /* AMIGA_CALL_EXCEPTION: the exception vector number */
+    uint64_t instr;   /* instructions executed */
+    uint64_t cycles;  /* Moira's clock when the call ended: CPU cycles, from 0 at its start */
+} amiga_call_status;
+
+amiga_cpu68k *amiga_cpu68k_new(void);
+void amiga_cpu68k_free(amiga_cpu68k *c);
+
+/* The flat memory, AMIGA_CPU68K_MEM_SIZE bytes, for the caller to fill between calls. */
+uint8_t *amiga_cpu68k_mem(amiga_cpu68k *c);
+
+/* Reset the CPU, start it at `entry` with `regs` (SR first, then D0-D7/A0-A7, A7 being the stack
+ * pointer SR selects), and run until the PC reaches `sentinel`, an error, or `max_instr` instructions.
+ * The caller has already pushed `sentinel` as the return address. Every byte written from here on is
+ * journalled; custom-chip writes are not performed (in hardware mode they are recorded). On return `regs` holds the final registers. */
+void amiga_cpu68k_call(amiga_cpu68k *c, uint32_t entry, amiga_regs *regs, uint32_t sentinel, uint64_t max_instr,
+                 amiga_call_status *out);
+
+/* What a step leaves besides D0-D7/A0-A7 and SR: the next PC and both stack pointers (a 68000 has
+ * no master stack pointer, so `ssp` is Moira's ISP). */
+typedef struct {
+    uint32_t pc;
+    uint32_t usp;
+    uint32_t ssp;
+} amiga_step_regs;
+
+/* Reset the CPU as amiga_cpu68k_call does and execute exactly one instruction at `pc`. Nothing is
+ * pushed; the stack pointer SR does not select starts at `other_sp`. `out->status` is RETURNED when
+ * the instruction completed, else what stopped it (an exception it took, a custom-chip access, a
+ * halt); `out->instr` is 1. Writes are journalled as in a call. */
+void amiga_cpu68k_step(amiga_cpu68k *c, uint32_t pc, amiga_regs *regs, uint32_t other_sp, amiga_step_regs *ext,
+                       amiga_call_status *out);
+
+/* The bytes written since the last rollback: each address once, in first-write order, with the value
+ * it held before. Valid until the next call or rollback. */
+size_t amiga_cpu68k_journal(const amiga_cpu68k *c, const uint32_t **addrs, const uint8_t **olds);
+
+/* Put every journalled byte back and empty the journal. */
+void amiga_cpu68k_rollback(amiga_cpu68k *c);
+
+/* One custom-chip write in hardware mode: the register's offset from $DFF000 and the word written. */
+typedef struct {
+    uint16_t reg;
+    uint16_t value;
+} amiga_hw_write;
+
+/* Hardware mode, off by default (T11): for routines that drive the custom chips themselves, such as
+ * the sound driver. Writes to $DFF000-$DFF1FF are recorded in order and not performed; a byte write
+ * is recorded as that byte on both halves, as the chip sees it. Reads of VHPOSR ($DFF006/7) return a
+ * counter that steps on every read, so a raster wait ends; other custom registers and the CIAs read 0;
+ * CIA writes are dropped. */
+void amiga_cpu68k_set_hw(amiga_cpu68k *c, int on);
+
+/* In hardware mode, what a read of the byte at `addr` (a custom register or a CIA's) returns from now
+ * on, until set again: a joystick's JOY1DAT, CIA-A's fire buttons. VHPOSR keeps counting. */
+void amiga_cpu68k_set_hw_read(amiga_cpu68k *c, uint32_t addr, uint8_t value);
+
+/* The custom-chip writes of the last call, in order. Valid until the next call. */
+size_t amiga_cpu68k_hw_writes(const amiga_cpu68k *c, const amiga_hw_write **out);
+
+/* One conditional branch a traced call executed: its address, and whether it went each way. */
+typedef struct {
+    uint32_t at;
+    uint8_t not_taken;  /* executed at least once falling through to the next instruction */
+    uint8_t taken;      /* executed at least once going elsewhere */
+} amiga_branch;
+
+/* Tracing, off by default (T60): while on, each call records every conditional branch it executes
+ * (Bcc other than BRA and BSR, DBcc; a DBcc's loop exit counts as not taken) and every byte address
+ * it reads in data space (function code data: PC-relative operands and instruction fetches are
+ * program space and are not recorded). Off, the call loop pays one test per instruction. */
+void amiga_cpu68k_set_trace(amiga_cpu68k *c, int on);
+
+/* The last call's branches, in no order, each address once; and its data reads, ascending, each
+ * once. Valid until the next call. Empty when tracing was off. */
+size_t amiga_cpu68k_branches(const amiga_cpu68k *c, const amiga_branch **out);
+size_t amiga_cpu68k_reads(const amiga_cpu68k *c, const uint32_t **out);
+
+/* The length in bytes of the instruction at `addr`, by Moira's 68000 disassembler. */
+int amiga_cpu68k_insn_len(const amiga_cpu68k *c, uint32_t addr);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

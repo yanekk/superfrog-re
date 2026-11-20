@@ -1,0 +1,844 @@
+//! The OS layer (DESIGN §5, End to end): real key events posted to the app with CGEvent, menu
+//! items clicked through the Accessibility API (what System Events' UI scripting drives, without
+//! its separate Automation grant), and the window captured by CoreGraphics. The terminal
+//! running the tests needs Accessibility (to post events and click menus) and Screen Recording (to
+//! capture the window): [`os_permissions`] says which is missing and where to grant it.
+
+use std::ffi::c_void;
+use std::process::Command;
+use std::time::{Duration, Instant};
+
+use crate::{App, Image};
+
+/// A key on the Mac's keyboard, by what is printed on it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Key {
+    Left,
+    Right,
+    Up,
+    Down,
+    Space,
+    Return,
+    Escape,
+    Tab,
+    /// The left Option key, alone (a game's Fire), posted as a key of its own.
+    OptionLeft,
+    /// A letter or digit key.
+    Char(char),
+}
+
+impl Key {
+    /// The macOS virtual key code (`kVK_…`, ANSI layout).
+    fn code(self) -> u16 {
+        match self {
+            Key::Left => 0x7B,
+            Key::Right => 0x7C,
+            Key::Down => 0x7D,
+            Key::Up => 0x7E,
+            Key::Space => 0x31,
+            Key::Return => 0x24,
+            Key::Escape => 0x35,
+            Key::Tab => 0x30,
+            Key::OptionLeft => 0x3A,
+            Key::Char(c) => match c.to_ascii_lowercase() {
+                'a' => 0x00,
+                's' => 0x01,
+                'd' => 0x02,
+                'f' => 0x03,
+                'h' => 0x04,
+                'g' => 0x05,
+                'z' => 0x06,
+                'x' => 0x07,
+                'c' => 0x08,
+                'v' => 0x09,
+                'b' => 0x0B,
+                'q' => 0x0C,
+                'w' => 0x0D,
+                'e' => 0x0E,
+                'r' => 0x0F,
+                'y' => 0x10,
+                't' => 0x11,
+                '1' => 0x12,
+                '2' => 0x13,
+                '3' => 0x14,
+                '4' => 0x15,
+                '6' => 0x16,
+                '5' => 0x17,
+                '9' => 0x19,
+                '7' => 0x1A,
+                '8' => 0x1C,
+                '0' => 0x1D,
+                'o' => 0x1F,
+                'u' => 0x20,
+                'i' => 0x22,
+                'p' => 0x23,
+                'l' => 0x25,
+                'j' => 0x26,
+                'k' => 0x28,
+                'n' => 0x2D,
+                'm' => 0x2E,
+                '.' => 0x2F,
+                _ => panic!("no key for {c:?}"),
+            },
+        }
+    }
+}
+
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    fn AXIsProcessTrusted() -> bool;
+}
+
+#[link(name = "CoreGraphics", kind = "framework")]
+unsafe extern "C" {
+    fn CGPreflightScreenCaptureAccess() -> bool;
+    fn CGEventCreateKeyboardEvent(source: *const c_void, key: u16, down: bool) -> *mut c_void;
+    fn CGEventPostToPid(pid: i32, event: *mut c_void);
+    fn CGEventSetFlags(event: *mut c_void, flags: u64);
+}
+
+/// Modifier keys held with a key, as [`App::os_key_with`] posts them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Mods {
+    pub command: bool,
+    pub control: bool,
+    pub shift: bool,
+}
+
+impl Mods {
+    pub const COMMAND: Mods = Mods { command: true, control: false, shift: false };
+    pub const CONTROL_COMMAND: Mods = Mods { command: true, control: true, shift: false };
+    pub const SHIFT_COMMAND: Mods = Mods { command: true, control: false, shift: true };
+
+    /// `CGEventFlags`: `kCGEventFlagMaskCommand`, `kCGEventFlagMaskControl`,
+    /// `kCGEventFlagMaskShift`.
+    fn flags(self) -> u64 {
+        (self.command as u64 * 0x10_0000) | (self.control as u64 * 0x4_0000) | (self.shift as u64 * 0x2_0000)
+    }
+}
+
+/// A menu item as the menu bar shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MenuItemState {
+    pub title: String,
+    pub enabled: bool,
+    /// It shows a check mark.
+    pub checked: bool,
+}
+
+#[link(name = "CoreFoundation", kind = "framework")]
+unsafe extern "C" {
+    fn CFRelease(cf: *const c_void);
+}
+
+/// `Ok` when this process may post events and capture windows; otherwise what to grant, where,
+/// and to which app.
+pub fn os_permissions() -> Result<(), String> {
+    // SAFETY: both only read this process's privacy grants.
+    let (ax, screen) = unsafe { (AXIsProcessTrusted(), CGPreflightScreenCaptureAccess()) };
+    let mut missing = Vec::new();
+    if !ax {
+        missing.push("System Settings → Privacy & Security → Accessibility");
+    }
+    if !screen {
+        missing.push("System Settings → Privacy & Security → Screen & System Audio Recording");
+    }
+    if missing.is_empty() {
+        return Ok(());
+    }
+    Err(format!(
+        "the OS-layer tests need these macOS permissions for the app running them ({}):\n  {}\n\
+         Enable it there, then run the tests again.",
+        responsible_app(),
+        missing.join("\n  ")
+    ))
+}
+
+/// The first `.app` among this process's ancestors: the terminal macOS asks permissions of.
+fn responsible_app() -> String {
+    let mut pid = std::process::id();
+    for _ in 0..32 {
+        let out = Command::new("ps")
+            .args(["-o", "ppid=,comm=", "-p", &pid.to_string()])
+            .output();
+        let Ok(out) = out else { break };
+        let line = String::from_utf8_lossy(&out.stdout).trim().to_string();
+        let Some((ppid, comm)) = line.split_once(' ') else { break };
+        if let Some(i) = comm.find(".app/") {
+            return comm[..i + 4].to_string();
+        }
+        match ppid.trim().parse::<u32>() {
+            Ok(p) if p > 1 => pid = p,
+            _ => break,
+        }
+    }
+    // A terminal started by launchd's descendants (as an agent runner's is) is named by its own
+    // variables.
+    std::env::var("TERM_PROGRAM")
+        .or_else(|_| std::env::var("__CFBundleIdentifier"))
+        .unwrap_or_else(|_| "the terminal app the tests run in".to_string())
+}
+
+/// Why a window capture can come back blank: every pixel transparent is what macOS returns for
+/// another app's window when Screen Recording is not granted, whatever the preflight says.
+pub(crate) fn blank_capture_message() -> String {
+    format!(
+        "the window capture came back blank: macOS gave no Screen Recording access. Enable \
+         {} in System Settings → Privacy & Security → Screen & System Audio Recording, \
+         then run the tests again.",
+        responsible_app()
+    )
+}
+
+impl App {
+    fn os_pid(&self) -> u32 {
+        self.pid()
+            .expect("no app is running: launch with `LaunchOpts { os: true, .. }`")
+    }
+
+    /// The app's window: its number and bounds in points, once it is on screen.
+    pub fn os_window(&self) -> (u32, [i32; 4]) {
+        let pid = self.os_pid();
+        let script = format!(
+            "ObjC.import('CoreGraphics'); \
+             const l = ObjC.deepUnwrap(ObjC.castRefToObject(\
+               $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))); \
+             const w = l.find(w => w.kCGWindowOwnerPID == {pid} && w.kCGWindowLayer == 0); \
+             w ? [w.kCGWindowNumber, w.kCGWindowBounds.X, w.kCGWindowBounds.Y, \
+                  w.kCGWindowBounds.Width, w.kCGWindowBounds.Height].join(' ') : ''"
+        );
+        let start = Instant::now();
+        loop {
+            let out = Command::new("osascript")
+                .args(["-l", "JavaScript", "-e", &script])
+                .output()
+                .expect("running osascript");
+            let text = String::from_utf8_lossy(&out.stdout);
+            let n: Vec<i64> = text
+                .split_whitespace()
+                .filter_map(|v| v.parse::<f64>().ok().map(|f| f as i64))
+                .collect();
+            if let [id, x, y, w, h] = n[..] {
+                return (id as u32, [x as i32, y as i32, w as i32, h as i32]);
+            }
+            assert!(
+                start.elapsed() < Duration::from_secs(20),
+                "the app (pid {pid}) showed no window within 20 s: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    /// Bring the app to the front, as a click on its window would. An app whose main thread is
+    /// busy (a level started from Start Level runs seconds unseen) cannot answer (`AXError
+    /// -25204`); it is asked again for up to 20 s.
+    pub fn os_activate(&self) {
+        let app = ax::app(self.os_pid());
+        let start = Instant::now();
+        while let Err(e) = ax::set_true(&app, "AXFrontmost") {
+            assert!(start.elapsed() < Duration::from_secs(20), "activating the app: {e}");
+            std::thread::sleep(Duration::from_millis(200));
+        }
+    }
+
+    /// Press and release `key`, posted to the app as the keyboard would.
+    pub fn os_key(&mut self, key: Key) {
+        for down in [true, false] {
+            self.os_key_event(key, down);
+            std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    /// Hold `key` down, as the keyboard would, until [`App::os_key_up`].
+    pub fn os_key_down(&mut self, key: Key) {
+        self.os_key_event(key, true);
+    }
+
+    pub fn os_key_up(&mut self, key: Key) {
+        self.os_key_event(key, false);
+    }
+
+    fn os_key_event(&mut self, key: Key, down: bool) {
+        self.os_key_event_with(Mods::default(), key, down);
+    }
+
+    /// Press and release `key` with `mods` held, as the keyboard posts a shortcut: the modifiers
+    /// travel as the key events' flags.
+    pub fn os_key_with(&mut self, mods: Mods, key: Key) {
+        for down in [true, false] {
+            self.os_key_event_with(mods, key, down);
+            std::thread::sleep(Duration::from_millis(60));
+        }
+    }
+
+    fn os_key_event_with(&mut self, mods: Mods, key: Key, down: bool) {
+        let pid = self.os_pid() as i32;
+        // SAFETY: a keyboard event made, posted and released here.
+        unsafe {
+            let e = CGEventCreateKeyboardEvent(std::ptr::null(), key.code(), down);
+            assert!(!e.is_null(), "CGEventCreateKeyboardEvent failed");
+            if mods != Mods::default() {
+                CGEventSetFlags(e, mods.flags());
+            }
+            CGEventPostToPid(pid, e);
+            CFRelease(e);
+        }
+    }
+
+    /// The titles of the menu bar's menus, left to right.
+    pub fn os_menu_bar(&self) -> Vec<String> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::menu_bar(&app);
+        ax::children(&bar).iter().map(ax::title).collect()
+    }
+
+    /// The items of the menu at `path` (`["View", "Scale"]`), separators left out.
+    pub fn os_menu_items(&self, path: &[&str]) -> Vec<MenuItemState> {
+        let app = ax::app(self.os_pid());
+        let bar = ax::menu_bar(&app);
+        let mut items = ax::children(&bar);
+        for name in path {
+            let titles: Vec<String> = items.iter().map(ax::title).collect();
+            let at = titles
+                .iter()
+                .position(|t| t == name)
+                .unwrap_or_else(|| panic!("no menu {name:?} in {path:?}; there are {titles:?}"));
+            let menu = ax::children(&items[at]).into_iter().next().unwrap_or_else(|| panic!("{name:?} has no menu"));
+            items = ax::children(&menu);
+        }
+        items
+            .iter()
+            .map(|e| MenuItemState {
+                title: ax::title(e),
+                enabled: ax::flag(e, "AXEnabled"),
+                checked: !ax::text(e, "AXMenuItemMarkChar").is_empty(),
+            })
+            .filter(|i| !i.title.is_empty())
+            .collect()
+    }
+
+    /// How many windows the app has on screen, panels included.
+    pub fn os_window_count(&self) -> usize {
+        self.os_windows().len()
+    }
+
+    /// The app's windows on screen, panels included, front to back: their numbers and bounds in
+    /// points (the window server's list). A window run modally (`runModalForWindow`) sits on
+    /// layer 8, the modal-panel level, not 0, so both are listed (measured: a Start Level window).
+    pub fn os_windows(&self) -> Vec<(u32, [i32; 4])> {
+        let pid = self.os_pid();
+        let script = format!(
+            "ObjC.import('CoreGraphics'); \
+             const l = ObjC.deepUnwrap(ObjC.castRefToObject(\
+               $.CGWindowListCopyWindowInfo($.kCGWindowListOptionOnScreenOnly, 0))); \
+             l.filter(w => w.kCGWindowOwnerPID == {pid} && (w.kCGWindowLayer == 0 || w.kCGWindowLayer == 8)) \
+              .map(w => [w.kCGWindowNumber, w.kCGWindowBounds.X, w.kCGWindowBounds.Y, \
+                         w.kCGWindowBounds.Width, w.kCGWindowBounds.Height].join(' ')).join(';')"
+        );
+        let out = Command::new("osascript")
+            .args(["-l", "JavaScript", "-e", &script])
+            .output()
+            .expect("running osascript");
+        String::from_utf8_lossy(&out.stdout)
+            .trim()
+            .split(';')
+            .filter(|w| !w.is_empty())
+            .map(|w| {
+                let n: Vec<i64> = w.split(' ').map(|v| v.parse::<f64>().unwrap() as i64).collect();
+                (n[0] as u32, [n[1] as i32, n[2] as i32, n[3] as i32, n[4] as i32])
+            })
+            .collect()
+    }
+
+    /// Is the app hidden (Hide)?
+    pub fn os_hidden(&self) -> bool {
+        ax::flag(&ax::app(self.os_pid()), "AXHidden")
+    }
+
+    /// Show the app again after Hide, as clicking it in the Dock would.
+    pub fn os_unhide(&mut self) {
+        ax::set_bool(&ax::app(self.os_pid()), "AXHidden", false).unwrap_or_else(|e| panic!("unhiding: {e}"));
+    }
+
+    /// The item titled `title` in the menu at `path`.
+    pub fn os_menu_item(&self, path: &[&str], title: &str) -> MenuItemState {
+        let items = self.os_menu_items(path);
+        items
+            .iter()
+            .find(|i| i.title == title)
+            .cloned()
+            .unwrap_or_else(|| panic!("no item {title:?} in {path:?}: {items:?}"))
+    }
+
+    /// Click the menu item at `path`, from the menu bar down: `["myapp", "Quit My App"]` (the app menu is titled with the process name).
+    pub fn os_menu(&mut self, path: &[&str]) {
+        assert!(path.len() >= 2, "a menu path names a menu and an item");
+        let app = ax::app(self.os_pid());
+        let bar = ax::menu_bar(&app);
+        let mut items = ax::children(&bar);
+        let mut walked = Vec::new();
+        for (i, name) in path.iter().enumerate() {
+            let titles: Vec<String> = items.iter().map(|e| ax::title(e)).collect();
+            let at = titles
+                .iter()
+                .position(|t| t == name)
+                .unwrap_or_else(|| panic!("no menu item {name:?} under {walked:?}; there are {titles:?}"));
+            let item = &items[at];
+            if i == path.len() - 1 {
+                ax::press(item).unwrap_or_else(|e| panic!("clicking {path:?}: {e}"));
+                return;
+            }
+            walked.push(*name);
+            // A menu bar item or a submenu item holds one menu, which holds the items.
+            let menu = ax::children(item).into_iter().next().unwrap_or_else(|| panic!("{walked:?} has no menu"));
+            items = ax::children(&menu);
+        }
+    }
+
+    /// The titles of the buttons in the app's windows, panels and alerts included, through the
+    /// Accessibility API.
+    pub fn os_buttons(&self) -> Vec<String> {
+        let mut out = Vec::new();
+        for w in ax::windows(&ax::app(self.os_pid())) {
+            ax::walk(&w, 12, &mut |e| {
+                if ax::text(e, "AXRole") == "AXButton" {
+                    out.push(ax::title(e));
+                }
+            });
+        }
+        out
+    }
+
+    /// Press the button titled `title` in one of the app's windows (a panel or an alert too), as a
+    /// click on it would, waiting up to 20 s for it to appear.
+    pub fn os_press_button(&mut self, title: &str) {
+        let start = Instant::now();
+        loop {
+            let mut pressed = None;
+            for w in ax::windows(&ax::app(self.os_pid())) {
+                ax::walk(&w, 12, &mut |e| {
+                    if pressed.is_none()
+                        && ax::text(e, "AXRole") == "AXButton"
+                        && ax::title(e) == title
+                    {
+                        pressed = Some(ax::press(e));
+                    }
+                });
+            }
+            match pressed {
+                Some(r) => return r.unwrap_or_else(|e| panic!("pressing {title:?}: {e}")),
+                None => assert!(
+                    start.elapsed() < Duration::from_secs(20),
+                    "no button {title:?} within 20 s; the buttons are {:?}",
+                    self.os_buttons()
+                ),
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    /// Click the close button of the app's window titled `title`, as a person would.
+    pub fn os_close_window(&mut self, title: &str) {
+        let windows = ax::windows(&ax::app(self.os_pid()));
+        let titles: Vec<String> = windows.iter().map(ax::title).collect();
+        let w = windows
+            .iter()
+            .find(|w| ax::title(w) == title)
+            .unwrap_or_else(|| panic!("no window {title:?}; there are {titles:?}"));
+        let close = ax::attr(w, "AXCloseButton").unwrap_or_else(|e| panic!("{title:?} has no close button: {e}"));
+        // A close that asks first ("Recording in progress") runs its alert inside the press, so
+        // the press outlives the Accessibility API's wait and says it could not complete
+        // (`AXError -25204`) though it was delivered; the caller waits for what it opens.
+        match ax::press(&close) {
+            Err(e) if !e.ends_with("AXError -25204") => panic!("closing {title:?}: {e}"),
+            _ => {}
+        }
+    }
+
+    /// The element whose accessibility identifier is `id`, in one of the app's windows, waiting up
+    /// to 20 s for it to appear, handed to `f`.
+    fn os_with_id<T>(&self, id: &str, mut f: impl FnMut(&ax::Cf) -> T) -> T {
+        let start = Instant::now();
+        loop {
+            let mut found = None;
+            for w in ax::windows(&ax::app(self.os_pid())) {
+                ax::walk(&w, 12, &mut |e| {
+                    if found.is_none() && ax::text(e, "AXIdentifier") == id {
+                        found = Some(f(e));
+                    }
+                });
+            }
+            if let Some(r) = found {
+                return r;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "no element {id:?} within 20 s");
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    /// Press the button whose accessibility identifier is `id` (the Controls window's
+    /// `fire-keys`, `defaults`…), as a click on it would.
+    pub fn os_press_id(&mut self, id: &str) {
+        self.os_with_id(id, ax::press).unwrap_or_else(|e| panic!("pressing {id:?}: {e}"));
+    }
+
+    /// The text the element with accessibility identifier `id` shows: a button's title, a
+    /// label's value.
+    pub fn os_text_id(&self, id: &str) -> String {
+        self.os_with_id(id, |e| {
+            let v = ax::text(e, "AXValue");
+            if v.is_empty() { ax::title(e) } else { v }
+        })
+    }
+
+    /// Where the element with accessibility identifier `id` is on screen, in points, top-left
+    /// origin, as the window server's bounds are: `[x, y, w, h]`.
+    pub fn os_frame_id(&self, id: &str) -> [f64; 4] {
+        self.os_with_id(id, ax::frame).unwrap_or_else(|e| panic!("the frame of {id:?}: {e}"))
+    }
+
+    /// Does the element with accessibility identifier `id` show? `false` once it is gone or
+    /// hidden (a hidden view leaves the accessibility tree), checked once, without waiting.
+    pub fn os_shows_id(&self, id: &str) -> bool {
+        let mut found = false;
+        for w in ax::windows(&ax::app(self.os_pid())) {
+            ax::walk(&w, 12, &mut |e| found |= ax::text(e, "AXIdentifier") == id);
+        }
+        found
+    }
+
+    /// Whether the control with accessibility identifier `id` is enabled.
+    pub fn os_enabled_id(&self, id: &str) -> bool {
+        self.os_with_id(id, |e| ax::flag(e, "AXEnabled"))
+    }
+
+    /// Whether the checkbox with accessibility identifier `id` is ticked.
+    pub fn os_checked_id(&self, id: &str) -> bool {
+        self.os_with_id(id, |e| ax::number(e, "AXValue")) == Some(1)
+    }
+
+    /// Give the keyboard to the element with accessibility identifier `id` (a text field), as a
+    /// click into it would.
+    pub fn os_focus_id(&mut self, id: &str) {
+        self.os_with_id(id, |e| ax::set_true(e, "AXFocused")).unwrap_or_else(|e| panic!("focusing {id:?}: {e}"));
+    }
+
+    /// The items of the dropdown with accessibility identifier `id`, top to bottom. Its menu is
+    /// opened to read them, as a person would, and closed again with Esc.
+    pub fn os_popup_titles(&mut self, id: &str) -> Vec<String> {
+        let titles = self.os_with_open_popup(id, |items| items.iter().map(ax::title).collect());
+        self.os_key(Key::Escape);
+        std::thread::sleep(Duration::from_millis(200));
+        titles
+    }
+
+    /// Choose `title` in the dropdown with accessibility identifier `id`: its menu opened, the
+    /// item clicked.
+    pub fn os_choose_id(&mut self, id: &str, title: &str) {
+        let r = self.os_with_open_popup(id, |items| {
+            let item = items.iter().find(|i| ax::title(i) == title).map(ax::press);
+            item.unwrap_or_else(|| Err(format!("no item {title:?}")))
+        });
+        r.unwrap_or_else(|e| panic!("choosing {title:?} in {id:?}: {e}"));
+        std::thread::sleep(Duration::from_millis(200));
+    }
+
+    /// The dropdown's menu items, its menu open, handed to `f`. A press made just as another
+    /// menu closes can open nothing, so the dropdown is pressed again each second until it opens.
+    fn os_with_open_popup<T>(&mut self, id: &str, mut f: impl FnMut(&[ax::Cf]) -> T) -> T {
+        let start = Instant::now();
+        let mut pressed: Option<Instant> = None;
+        loop {
+            if pressed.is_none_or(|t| t.elapsed() > Duration::from_secs(1)) {
+                self.os_with_id(id, ax::press).unwrap_or_else(|e| panic!("opening {id:?}: {e}"));
+                pressed = Some(Instant::now());
+            }
+            std::thread::sleep(Duration::from_millis(100));
+            let found = self.os_with_id(id, |e| {
+                let mut items = Vec::new();
+                ax::walk_owned(e, 3, &mut |c| {
+                    if ax::text(&c, "AXRole") == "AXMenuItem" {
+                        items.push(c);
+                    }
+                });
+                (!items.is_empty()).then(|| f(&items))
+            });
+            if let Some(r) = found {
+                return r;
+            }
+            assert!(start.elapsed() < Duration::from_secs(20), "{id:?}'s menu did not open within 20 s");
+        }
+    }
+
+    /// The window as the screen shows it, title bar included, at the display's pixel density.
+    pub fn os_capture(&self) -> Image {
+        self.os_capture_window(self.os_window().0)
+    }
+
+    /// The app's window numbered `id` (from [`App::os_windows`]) as the screen shows it.
+    pub fn os_capture_window(&self, id: u32) -> Image {
+        let path = self.home.join(format!("window-{id}.png"));
+        // `CGWindowListCreateImage` through JXA: on macOS 26 the `screencapture` tool is refused
+        // ("could not create image from window") where the terminal's own grant is enough for this.
+        let script = format!(
+            "ObjC.import('CoreGraphics'); ObjC.import('AppKit'); \
+             const img = $.CGWindowListCreateImage($.CGRectNull, \
+               $.kCGWindowListOptionIncludingWindow, {id}, $.kCGWindowImageBoundsIgnoreFraming); \
+             const rep = $.NSBitmapImageRep.alloc.initWithCGImage(img); \
+             rep.representationUsingTypeProperties($.NSBitmapImageFileTypePNG, $({{}})) \
+               .writeToFileAtomically({:?}, true); \
+             rep.pixelsWide + 'x' + rep.pixelsHigh",
+            path.to_string_lossy()
+        );
+        let out = Command::new("osascript")
+            .args(["-l", "JavaScript", "-e", &script])
+            .output()
+            .expect("running osascript");
+        assert!(
+            out.status.success() && path.exists(),
+            "capturing window {id} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let img = Image::read_png(&path).unwrap_or_else(|e| panic!("{e}"));
+        assert!(img.rgba.chunks(4).any(|p| p[3] != 0), "{}", blank_capture_message());
+        img
+    }
+}
+
+/// The Accessibility API, which is what System Events' UI scripting drives. Called directly, it
+/// needs only the Accessibility grant (System Events needs an Automation grant as well).
+mod ax {
+    use std::ffi::{CString, c_char, c_void};
+    use std::time::{Duration, Instant};
+
+    type CFRef = *const c_void;
+
+    #[link(name = "ApplicationServices", kind = "framework")]
+    unsafe extern "C" {
+        fn AXUIElementCreateApplication(pid: i32) -> CFRef;
+        fn AXUIElementCopyAttributeValue(e: CFRef, attr: CFRef, out: *mut CFRef) -> i32;
+        fn AXUIElementSetAttributeValue(e: CFRef, attr: CFRef, value: CFRef) -> i32;
+        fn AXUIElementPerformAction(e: CFRef, action: CFRef) -> i32;
+        fn AXValueGetValue(value: CFRef, kind: u32, out: *mut c_void) -> bool;
+    }
+
+    #[link(name = "CoreFoundation", kind = "framework")]
+    unsafe extern "C" {
+        static kCFBooleanTrue: CFRef;
+        static kCFBooleanFalse: CFRef;
+        fn CFStringCreateWithCString(alloc: CFRef, s: *const c_char, enc: u32) -> CFRef;
+        fn CFStringGetCString(s: CFRef, buf: *mut c_char, len: isize, enc: u32) -> bool;
+        fn CFGetTypeID(r: CFRef) -> usize;
+        fn CFStringGetTypeID() -> usize;
+        fn CFStringGetLength(s: CFRef) -> isize;
+        fn CFStringGetMaximumSizeForEncoding(len: isize, enc: u32) -> isize;
+        fn CFArrayGetTypeID() -> usize;
+        fn CFNumberGetTypeID() -> usize;
+        fn CFNumberGetValue(n: CFRef, kind: isize, out: *mut c_void) -> bool;
+        fn CFArrayGetCount(a: CFRef) -> isize;
+        fn CFArrayGetValueAtIndex(a: CFRef, i: isize) -> CFRef;
+        fn CFRetain(r: CFRef) -> CFRef;
+        fn CFRelease(r: CFRef);
+    }
+
+    const UTF8: u32 = 0x0800_0100;
+
+    /// An owned Core Foundation reference.
+    pub struct Cf(CFRef);
+
+    impl Drop for Cf {
+        fn drop(&mut self) {
+            // SAFETY: we hold one reference.
+            unsafe { CFRelease(self.0) }
+        }
+    }
+
+    fn string(s: &str) -> Cf {
+        let c = CString::new(s).unwrap();
+        // SAFETY: a valid C string; the result is owned.
+        Cf(unsafe { CFStringCreateWithCString(std::ptr::null(), c.as_ptr(), UTF8) })
+    }
+
+    pub fn app(pid: u32) -> Cf {
+        // SAFETY: creates an owned element for the pid.
+        Cf(unsafe { AXUIElementCreateApplication(pid as i32) })
+    }
+
+    pub fn attr(e: &Cf, name: &str) -> Result<Cf, String> {
+        let mut out: CFRef = std::ptr::null();
+        // SAFETY: `out` receives an owned reference on success.
+        let err = unsafe { AXUIElementCopyAttributeValue(e.0, string(name).0, &mut out) };
+        if err != 0 || out.is_null() {
+            return Err(format!("{name}: AXError {err}"));
+        }
+        Ok(Cf(out))
+    }
+
+    /// The app's menu bar. An app whose main thread is busy (a level started from Start Level
+    /// runs seconds unseen) cannot answer (`AXError -25204`); it is asked again for up to 20 s,
+    /// as [`App::os_activate`] does (bug-recorder T11: three save-window tests read the menu
+    /// while the level started).
+    pub fn menu_bar(app: &Cf) -> Cf {
+        let start = Instant::now();
+        loop {
+            match attr(app, "AXMenuBar") {
+                Ok(bar) => return bar,
+                Err(e) if e.ends_with("AXError -25204") && start.elapsed() < Duration::from_secs(20) => {
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+                Err(e) => panic!("the app's menu bar: {e}"),
+            }
+        }
+    }
+
+    pub fn set_true(e: &Cf, name: &str) -> Result<(), String> {
+        set_bool(e, name, true)
+    }
+
+    pub fn set_bool(e: &Cf, name: &str, value: bool) -> Result<(), String> {
+        // SAFETY: a static CF boolean, an owned attribute name.
+        let v = unsafe { if value { kCFBooleanTrue } else { kCFBooleanFalse } };
+        let err = unsafe { AXUIElementSetAttributeValue(e.0, string(name).0, v) };
+        if err != 0 { Err(format!("{name}: AXError {err}")) } else { Ok(()) }
+    }
+
+    pub fn press(e: &Cf) -> Result<(), String> {
+        // SAFETY: an owned element and action name.
+        let err = unsafe { AXUIElementPerformAction(e.0, string("AXPress").0) };
+        if err != 0 { Err(format!("AXPress: AXError {err}")) } else { Ok(()) }
+    }
+
+    pub fn children(e: &Cf) -> Vec<Cf> {
+        let Ok(a) = attr(e, "AXChildren") else { return Vec::new() };
+        array(a)
+    }
+
+    /// The elements of a CFArray.
+    fn array(a: Cf) -> Vec<Cf> {
+        // SAFETY: type-checked before use; each element is retained into its own `Cf`.
+        unsafe {
+            if CFGetTypeID(a.0) != CFArrayGetTypeID() {
+                return Vec::new();
+            }
+            (0..CFArrayGetCount(a.0))
+                .map(|i| Cf(CFRetain(CFArrayGetValueAtIndex(a.0, i))))
+                .collect()
+        }
+    }
+
+    /// The app's windows, panels and alerts included.
+    pub fn windows(app: &Cf) -> Vec<Cf> {
+        let Ok(a) = attr(app, "AXWindows") else { return Vec::new() };
+        array(a)
+    }
+
+    /// `f` on `e` and everything under it, `depth` levels down.
+    pub fn walk(e: &Cf, depth: u32, f: &mut dyn FnMut(&Cf)) {
+        f(e);
+        if depth > 0 {
+            for c in children(e) {
+                walk(&c, depth - 1, f);
+            }
+        }
+    }
+
+    /// `AXPosition` and `AXSize`: `[x, y, w, h]` in points, top-left origin.
+    pub fn frame(e: &Cf) -> Result<[f64; 4], String> {
+        // `kAXValueCGPointType`, `kAXValueCGSizeType`: two doubles each.
+        let pair = |name: &str, kind: u32| -> Result<[f64; 2], String> {
+            let v = attr(e, name)?;
+            let mut out = [0f64; 2];
+            // SAFETY: an AXValue of `kind`, which holds two CGFloats, read into two f64s.
+            match unsafe { AXValueGetValue(v.0, kind, out.as_mut_ptr().cast()) } {
+                true => Ok(out),
+                false => Err(format!("{name} is not a point or a size")),
+            }
+        };
+        let [x, y] = pair("AXPosition", 1)?;
+        let [w, h] = pair("AXSize", 2)?;
+        Ok([x, y, w, h])
+    }
+
+    /// `f` on everything under `e`, `depth` levels down, each handed over owned.
+    pub fn walk_owned(e: &Cf, depth: u32, f: &mut dyn FnMut(Cf)) {
+        if depth > 0 {
+            for c in children(e) {
+                walk_owned(&c, depth - 1, f);
+                f(c);
+            }
+        }
+    }
+
+    /// A number attribute (a checkbox's value), `None` when there is none.
+    pub fn number(e: &Cf, name: &str) -> Option<i64> {
+        let v = attr(e, name).ok()?;
+        let mut n: i64 = 0;
+        // SAFETY: type-checked; `kCFNumberSInt64Type` (4) into an i64.
+        unsafe {
+            (CFGetTypeID(v.0) == CFNumberGetTypeID() && CFNumberGetValue(v.0, 4, (&mut n as *mut i64).cast()))
+                .then_some(n)
+        }
+    }
+
+    /// A boolean attribute, `false` when there is none.
+    pub fn flag(e: &Cf, name: &str) -> bool {
+        let Ok(v) = attr(e, name) else { return false };
+        // SAFETY: CFBoolean is a static singleton; comparing the pointer reads nothing.
+        unsafe { v.0 == kCFBooleanTrue }
+    }
+
+    pub fn title(e: &Cf) -> String {
+        text(e, "AXTitle")
+    }
+
+    /// A string attribute, empty when there is none.
+    pub fn text(e: &Cf, name: &str) -> String {
+        let Ok(t) = attr(e, name) else { return String::new() };
+        string_of(&t).unwrap_or_default()
+    }
+
+    /// A CFString's text, `None` for anything else. The buffer is sized from the string: a fixed
+    /// one made a long field (a pasted 2 000-character note) read as empty.
+    fn string_of(t: &Cf) -> Option<String> {
+        // SAFETY: type-checked before any string call; the buffer's length is passed.
+        unsafe {
+            if CFGetTypeID(t.0) != CFStringGetTypeID() {
+                return None;
+            }
+            let size = CFStringGetMaximumSizeForEncoding(CFStringGetLength(t.0), UTF8) + 1;
+            let mut buf = vec![0 as c_char; size as usize];
+            if !CFStringGetCString(t.0, buf.as_mut_ptr(), size, UTF8) {
+                return None;
+            }
+            Some(std::ffi::CStr::from_ptr(buf.as_ptr()).to_string_lossy().into_owned())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn a_string_longer_than_512_bytes_reads_whole() {
+            let long: String = (0..400).map(|k| format!("w{k:03}é")).collect();
+            assert_eq!(long.len(), 2400);
+            assert_eq!(string_of(&string(&long)).as_deref(), Some(long.as_str()));
+            assert_eq!(string_of(&string("")).as_deref(), Some(""));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn letters_and_digits_have_their_ansi_key_codes() {
+        let codes: Vec<u16> = "asdzqp1059mn".chars().map(|c| Key::Char(c).code()).collect();
+        assert_eq!(
+            codes,
+            [0x00, 0x01, 0x02, 0x06, 0x0C, 0x23, 0x12, 0x1D, 0x17, 0x19, 0x2E, 0x2D]
+        );
+    }
+}

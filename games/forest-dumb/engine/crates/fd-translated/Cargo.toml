@@ -1,0 +1,21 @@
+[package]
+name = "fd-translated"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+# The build script reads a file and the environment, which the purity test forbids anywhere under a
+# pure crate's folder (fd-conform/tests/purity.rs scans every .rs there): it runs in the compiler,
+# never in the game, so it lives outside the folder.
+build = "../../buildscripts/fd_translated.rs"
+
+# Pure (translator DESIGN §3.1): the translated program as an engine. The generated tree from
+# build/translator/tree/ (or FD_TRANSLATED), run a frame at a time on pcode-machine.
+[dependencies]
+# The runtime the generated tree is written against.
+pcode-rt = { path = "../pcode-rt" }
+# The machine it runs on: memory, chips, interrupts, the OS's answers.
+pcode-machine = { path = "../pcode-machine" }
+# Where the original's hunks are loaded (`HUNK_BASES`), which the generated code is resolved against.
+fd-core = { path = "../fd-core" }
+# The input type `fd_core::Game::game_frame_on` takes (the frame mount, T36).
+amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }

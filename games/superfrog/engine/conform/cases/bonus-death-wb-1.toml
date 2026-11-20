@@ -1,0 +1,11 @@
+# Failing the bonus level (T79): fire held, the frog left where it is put. It dies three times:
+# at frames 2031 and 2234 (the second ending a pass the frame before cut) the loop ends with a
+# life left and `top_loop` puts the frog back on the screen in the same frame (`frog_reset`,
+# `bonus_frame`), the camera and the enemies going on where they were; the third takes the last
+# life, and the loop ends in frame 2448 into `level_exit_fade`, which starts with `game_over_seq`
+# (T34), after a lag: green since T106. Frame 2449 diverges (FINDINGS, T79 review);
+# `frog_cases::bonus_death_wb_1` pins it, with the game-over outcome.
+sync = { level = "WB-1" }
+script = "bonus-fire"
+frames = 2449
+resync = false

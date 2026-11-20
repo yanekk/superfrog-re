@@ -1,0 +1,12 @@
+# W6-1 with every object live on both sides and nothing left out (T40): the flier stomped dead,
+# the walkers, the charger pacing and attacking, the cannon and its shots, the switch at 84,29
+# opening the gate at 111,17, the maces and their chains, both darts, a hit (frame 414) and the
+# thrower throwing. Planned with `examples/plan_exit` (engine-planned, oracle-checked).
+sync = { level = "W6-1" }
+script = "enemies-w6-1"
+frames = 2150
+resync = false
+# From frame 425 the original's object pass (phase 5, h0+$191xx-$196xx) runs longer than a frame,
+# so 133 frames in a row end mid-pass and nothing is compared there (T120): pinned at that run,
+# to shrink with T104.
+lag-limit = { frames = 133, note = "W6-1's object pass runs longer than a frame from 425: 133 frames in a row end mid-pass; T104" }

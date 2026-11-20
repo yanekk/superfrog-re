@@ -1,0 +1,28 @@
+# T200: a name typed in the high-score entry after game over (sync point: game over, score set).
+# F R O G, space, 1, X, Backspace, Z, then A B C on the last place; fire ends the entry.
+1100: K23
+1103: -
+1110: K13
+1113: -
+1120: K18
+1123: -
+1130: K24
+1133: -
+1140: K40
+1143: -
+1150: K01
+1153: -
+1160: K32
+1163: -
+1170: K41
+1173: -
+1180: K31
+1183: -
+1190: K20
+1193: -
+1200: K35
+1203: -
+1210: K33
+1213: -
+1230: F
+1234: -

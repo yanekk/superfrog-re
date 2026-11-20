@@ -1,0 +1,77 @@
+# W3-1 with world 3's enemies live (T114): the first 830 frames of `enemies-w3-1`'s route, which
+# passes two enemies the camera frees and spawns again (`obj_despawn_if_offscreen`). Right past
+# the hopper at 62,44 until the camera's left edge frees it (461), a step back left until it
+# spawns again from its marker (481), right until it is freed again (515); up past the spiker at
+# 72,42 until the camera's bottom edge frees it (573), down until it spawns again (708), up until
+# it is freed again (817).
+0: -
+150: R
+154: U R
+158: U
+166: R
+186: -
+190: R
+194: -
+198: U
+202: R
+206: L
+210: L F
+214: R
+262: -
+298: R
+318: -
+322: U R
+326: U
+330: -
+331: R
+375: U
+391: -
+395: R
+403: L
+407: R
+411: L
+419: -
+431: U
+432: -
+433: R
+445: U
+449: R
+477: U L
+481: -
+493: U
+497: R
+501: U
+509: L
+513: R
+517: -
+519: R
+527: U
+531: R
+535: -
+551: U
+555: -
+567: U
+571: -
+587: R
+595: -
+599: L
+607: -
+611: L
+615: -
+647: U
+651: L
+655: U
+659: -
+663: L
+667: U
+671: L
+674: -
+791: R
+795: U R
+799: -
+807: R
+811: U R
+815: R
+819: -
+823: U
+827: R

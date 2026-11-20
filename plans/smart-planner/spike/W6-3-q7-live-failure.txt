@@ -1,0 +1,2 @@
+live walk on the live map:   played 500: ok 224, landed elsewhere 238, lost a heart 36, died 1, never landed 0; failure 55.0%; restarts 13; distinct start nodes 91; edges taking a coin 7; misses by distance: adjacent cell 104, 2-3 cells 16, further 118, same cell other fields 0
+live walk on the frozen map: played 500: ok 157, landed elsewhere 266, lost a heart 69, died 3, never landed 0; failure 67.6%; restarts 28; distinct start nodes 86; edges taking a coin 18; misses by distance: adjacent cell 92, 2-3 cells 20, further 154, same cell other fields 0

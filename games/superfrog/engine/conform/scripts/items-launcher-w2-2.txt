@@ -1,0 +1,59 @@
+# W2-2, enemies frozen: from the start east along the top, under the wall at 173-174,11, up the
+# shaft by 176-182: the launchers at 176,6-7 (thrown right), 182,8-9 (left) and 176 again (right),
+# over the block to 202,16. Planned on the engine (T86).
+0: -
+144: R
+148: U R
+152: L
+156: R
+168: U
+172: R
+192: -
+196: U
+200: -
+204: U R
+208: U
+256: -
+260: R
+264: -
+273: L
+277: U R
+281: -
+285: R
+293: U
+297: R
+301: -
+325: R
+341: U
+373: -
+374: U
+382: R
+394: U
+422: R
+430: -
+434: R
+442: -
+450: R
+454: -
+458: L
+462: R
+466: -
+470: R
+474: U
+478: -
+479: U
+487: -
+491: R
+495: U
+499: L
+503: R
+507: L
+515: -
+527: L
+531: R
+543: U R
+547: -
+555: U
+559: U L
+563: L
+567: -

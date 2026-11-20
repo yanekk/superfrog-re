@@ -1,0 +1,18 @@
+spawning markers (cells in the map): {1: 37, 2: 9, 3: 6, 8: 96, 9: 26, 10: 3, 11: 2, 12: 4, 15: 2, 18: 2, 29: 1, 45: 1}
+  marker  0: 7 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$7d4 update h0+$24b20
+  marker  1: 37 slots seen; passive 0 stompable 1 hp 1f touch h0+$23582 update h0+$243b6
+  marker  2: 9 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$249c2
+  marker  3: 6 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$2496a
+  marker  4: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$241b2
+  marker  5: 2 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$241b2
+  marker  8: 95 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$239f6 update h0+$23f86
+  marker  9: 26 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$239f6 update h0+$23f86
+  marker 10: 3 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$25358
+  marker 11: 2 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$7d4 update h0+$24dca
+  marker 12: 4 slots seen; passive 0 stompable 1 hp 1f touch h0+$2360e update h0+$247b8
+  marker 15: 2 slots seen; passive 0 stompable 0 hp 7d00 touch h0+$2360e update h0+$248e2
+  marker 18: 2 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$26904
+  marker 29: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$7d4 update h0+$2404c
+  marker 45: 1 slots seen; passive 1 stompable 0 hp 7d00 touch h0+$23970 update h0+$2408a
+enemy markers (a slot with contact that hurts): [1, 2, 3, 11, 12, 15]
+Q5: enemy marker cells in the map 60; ever in a slot with the frog parked 2000 frames: 1 (all objects 2, at frame 0 2); ever in a slot over the live map's moves (the level walked): 60 (all objects 198)

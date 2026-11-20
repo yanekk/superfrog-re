@@ -1,0 +1,53 @@
+# W2-4's hopper at 41,68 stomped twice (T168): found by examples/explore --reward from frame 200 of
+# w2-4-complete, checked on the original; idle once the reward is out.
+0: -
+144: U R
+148: -
+160: U
+164: R
+188: U
+200: F
+204: U R
+212: L
+216: D
+220: R
+228: U R
+232: U L
+236: U R
+240: D
+244: R
+248: F
+252: -
+256: R
+260: -
+264: U
+268: U R
+272: R
+276: F
+284: U R
+288: D
+292: -
+296: U L
+300: D
+304: U R
+308: -
+312: U L
+316: U
+320: -
+324: D
+328: U R
+344: L
+348: D
+352: U
+356: R
+360: L
+364: U L
+368: R
+376: U
+380: -
+384: U L
+388: R
+392: F
+396: U
+400: U L
+460: -

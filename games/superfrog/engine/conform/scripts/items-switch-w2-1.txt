@@ -1,0 +1,50 @@
+# W2-1, enemies frozen: left under the hidden coin springs at 62,44 and 63,44 and jump into them
+# until both are spent (ten coins, all caught as they fall); then right: the spud 69,47, the
+# speed-up 73,46, through the cave below to the checkpoint 112,46, the switch at 116,39 (its gate
+# at 144,36-40 opens), the checkpoint 141,40 through the gate, and the wings at 162,42 (frame
+# ~683). Planned on the engine (T85, `examples/plan`).
+0: -
+144: L
+157: -
+175: U
+290: -
+321: R
+365: U
+381: R
+397: L
+401: R
+405: L
+409: R
+421: -
+425: R
+429: U R
+433: U
+449: -
+457: R
+474: U
+478: -
+490: U L
+494: L
+503: -
+504: R
+528: U R
+532: U
+544: -
+552: U
+556: -
+560: L
+564: R
+568: L
+572: -
+576: R
+600: U R
+604: U
+612: R
+616: U
+620: -
+624: R
+636: -
+640: R
+668: U
+680: -
+684: -

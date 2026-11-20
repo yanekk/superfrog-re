@@ -1,0 +1,21 @@
+# T47: the vanishing blocks (scripts/mechanic-vanish.txt): h0_6882 adds the column at W1-1:82,77..83 to
+# h0_62b6's animated cells as it scrolls into view, h0_62b6 draws each block's frames and writes its
+# collision_map cell. Jumps meet a block shown and gone; after the column has left the view and come
+# back, the character stands on the block at 82,83. Every character, camera, edge, status and
+# animation variable on every pass. Creatures live on both sides since T79, no life lost.
+# Goal: on that block after the return, char_x $531 (under the column the first time it is $516),
+# char_y $508.
+# A long pass can come while main_loop still redraws, so main_loop's frame_flag clear swallows its
+# latch: the runner hands the engine where each pass cut the redraws (T74, docs/09).
+# A creature the original cuts after the beam has passed its lines is missing from that frame, whole
+# or from its top: the runner measures the cuts' beam positions and the engine draws those frames so
+# (T80, 51 frames here).
+# Nothing is excluded since T81: the play area is compared on every frame.
+# All fifteen creature slot variables are compared since T81: pass 331 cuts the row redraw in its
+# shapes, before its scan, and the creature at $429,$482 starts after that pass (docs/10).
+sync = { script = "boot-to-level1", frame = 6301 }
+input = "mechanic-vanish"
+frames = 1480
+compare = ["vars", "picture"]
+vars = ["char_x", "char_y", "camera_x", "camera_y", "char_screen_x", "char_walk_t", "char_facing", "char_probe_1", "char_probe_2", "char_anim_ptr", "joy_left", "joy_right", "joy_up", "joy_down", "input_log_index", "char_jump_3b28", "char_jump_41b4", "char_jump_41b6", "char_dying_t", "char_dying", "char_rising", "char_falling", "char_probe_3", "char_probe_4", "char_probe_5", "char_probe_6", "char_slide_t", "char_jumped", "char_jump_t", "char_run_left", "char_run_right", "char_samples_0", "char_samples_4", "char_samples_8", "char_samples_c", "char_update_t", "char_unhurt_t", "edge_latch_right", "edge_latch_left", "edge_latch_up", "edge_at_right_x", "edge_at_right_y", "edge_at_left_x", "edge_at_left_y", "edge_at_up_x", "edge_at_up_y", "edge_at_down_x", "edge_at_down_y", "clxdat_copy", "hits_taken", "lives", "items_left", "score", "irq_count", "countdown", "anim_tick", "water_cycle", "spring_x", "spring_y", "spring_timer", "spring_kind", "edge_latch_down", "creature_active+$0", "creature_active+$1", "creature_active+$2", "creature_active+$3", "creature_active+$4", "creature_slots+$0", "creature_slots+$4", "creature_slots+$8", "creature_slots+$c", "creature_slots+$10", "creature_slots+$14", "creature_slots+$18", "creature_slots+$1c", "creature_slots+$20", "creature_slots+$24"]
+goal = { all = [{ var = "char_x", value = 0x531 }, { var = "char_y", value = 0x508 }], by_frame = 7781 }

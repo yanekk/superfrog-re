@@ -1,0 +1,41 @@
+map cells 196; explorer (40 random bursts per node) found 47 landed cells the map lacks
+  63,10 from 61,11: -x4 Fx16 Rx24 Rx12 Fx8 Lx12 
+  64,11 from 60,11: Lx8 -x8 Lx4 Rx20 
+  69,8 from 60,11: LUx20 Dx20 Ux12 Dx8 Rx24 Ux16 Lx8 RUx24 Fx24 Rx24 
+  69,10 from 71,12: Ux12 Dx4 -x20 Ux12 Lx8 -x8 
+  70,11 from 63,11: Rx24 Lx4 RUx16 LUx8 Dx20 Fx24 Rx20 
+  70,13 from 60,11: Rx8 Fx16 -x4 Fx4 Dx20 Dx12 LUx4 LUx12 RUx16 -x4 RUx8 Ux16 Fx16 Lx4 
+  71,11 from 76,14: Ux20 Fx12 Fx8 Lx4 Lx20 
+  72,14 from 64,10: Dx4 RUx20 Fx16 Fx24 Fx24 Ux4 LUx12 Rx24 RUx24 Lx24 Lx4 Fx20 Lx16 
+  73,12 from 69,12: Rx12 -x12 RUx12 
+  75,13 from 79,17: Lx12 Dx4 Rx4 
+  76,13 from 69,12: LUx4 RUx4 Ux4 RUx8 Ux16 Lx16 Ux12 -x8 Rx16 Dx20 -x16 
+  77,14 from 64,10: Fx12 Dx8 -x16 Dx20 LUx12 LUx20 Rx20 LUx4 Ux12 RUx12 Rx16 Rx20 Fx24 Rx16 
+  78,15 from 63,11: Rx24 Lx4 RUx16 LUx8 Dx20 Fx24 Rx20 Dx8 Rx12 
+  78,17 from 64,10: Dx4 RUx20 Fx16 Fx24 Fx24 Ux4 LUx12 Rx24 RUx24 Lx24 
+  79,15 from 81,18: Fx20 LUx4 -x4 
+  80,16 from 73,14: Fx8 -x12 -x8 -x4 RUx20 Lx24 Fx16 Dx4 Rx16 
+  80,18 from 63,11: Rx24 Lx4 RUx16 LUx8 Dx20 Fx24 Rx20 Dx8 Rx12 Lx4 Lx24 
+  82,11 from 67,8: Rx16 Ux16 -x12 Rx12 RUx12 Rx24 
+  82,17 from 70,12: Dx24 RUx8 Dx24 Rx20 RUx12 Rx8 
+  83,13 from 89,10: Lx12 LUx8 Ux20 Ux8 Ux12 LUx12 LUx24 
+  84,17 from 79,16: Dx20 Rx20 RUx12 RUx20 Fx20 LUx16 LUx4 LUx8 Lx8 Dx20 
+  85,18 from 66,10: -x16 Lx8 RUx24 -x16 Dx8 -x8 -x16 Fx12 Dx24 Dx8 Rx16 -x16 Rx24 
+  86,10 from 84,12: -x20 RUx16 Dx8 Ux12 Lx12 Rx24 
+  86,19 from 76,15: Rx24 Lx24 
+  86,21 from 72,13: RUx20 Dx16 Rx8 Rx16 Ux24 LUx4 Lx8 -x16 Lx20 
+  87,19 from 83,18: Fx16 RUx16 Rx4 -x16 LUx8 Dx12 
+  88,22 from 77,16: -x16 Rx16 Rx16 Lx20 Lx4 
+  89,20 from 86,20: Rx16 RUx24 
+  100,16 from 83,11: RUx12 Dx24 Lx4 RUx16 Ux8 RUx12 RUx24 RUx24 -x24 Dx12 Lx8 Lx24 
+  101,15 from 94,17: RUx12 Dx12 Rx24 
+  101,17 from 77,16: Rx24 Ux20 -x8 Ux12 Dx8 -x20 Rx16 
+  115,8 from 112,8: Lx20 Rx16 
+  116,20 from 83,18: -x4 RUx20 Fx16 Fx20 RUx12 RUx8 Rx8 RUx8 Rx16 Rx16 LUx12 Rx24 
+  118,6 from 113,8: -x4 Dx4 Rx8 RUx8 RUx4 Dx12 Lx4 -x20 
+  119,5 from 113,8: RUx12 Fx4 Rx12 Rx16 
+  143,17 from 155,15: LUx20 Lx12 Ux12 Dx16 Ux12 Rx16 
+  143,18 from 136,23: RUx24 LUx8 RUx4 -x16 Dx16 
+  149,13 from 144,18: Lx4 RUx24 RUx8 Fx16 Lx20 
+  153,13 from 134,12: Dx20 RUx24 RUx16 RUx12 Ux20 Dx16 
+  160,7 from 152,13: RUx16 Ux16 Lx16 -x4 

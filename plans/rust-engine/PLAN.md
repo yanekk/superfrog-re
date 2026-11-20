@@ -1,0 +1,327 @@
+# Implementation plan
+
+31 tasks in 4 phases. Each has a file in [tasks/](tasks/) with its goal, the files it touches, the
+interfaces it defines, and what "done" means.
+
+Track state in [PROGRESS.md](PROGRESS.md). Read [DESIGN.md](DESIGN.md) first.
+
+---
+
+## Shape of the build
+
+- **The reference comes first.** Every mechanic is judged by comparison with the original running in
+  vAmiga (DESIGN §2.1), so the spike proving that comparison is possible (T00) and the permanent
+  harness (T05, T06) come before any game code. Without them "faithful" (DESIGN §2.1) is a claim nobody
+  can check.
+- **Everything is proven headless before anything opens a window.** Phases 1 and 2 build and verify
+  the whole game as pure functions against the oracle; Phase 3 wires a window, sound and menus onto a
+  core already known to match the original.
+- **Understand before porting.** T07 maps the executables once, so the mechanic tasks start from a
+  shared map instead of each rediscovering the main loop. T07 may re-split the mechanic tasks; that is
+  an amendment to this plan, made with the owner.
+- **The small thing before the big thing.** One level with only the frog (T14) before items, enemies
+  and bosses; scripted runs from transplanted sync points before a whole game from power-on (T21).
+
+```
+Phase 0  ▸  T00                       prove the oracle            throwaway
+Phase 1  ▸  T01 … T11                 foundations, headless       no window
+Phase 2  ▸  T12 … T21                 the game, faithful          no window
+Phase 3  ▸  T22 … T30                 the app                     window, menus, pad
+```
+
+---
+
+## Amendment 2026-10-15 — faithful, not frame-exact (owner)
+
+DESIGN §2.1 now defines "faithful": game state equal pass by pass, picture and sound within a
+tolerance no player perceives, and the engine run alone meeting the original's milestones. Still
+judged automatically against the original; no task waits on the owner to play or look.
+
+- **Added:** T180 faithful-compare (the checks, `--strict` kept for diagnosis), T182 plays-alone (the
+  engine run with nothing from the original), T181 faithful-rebaseline (every case re-judged, the
+  dropped tasks' cases included), T183 level-chain (menu → W1-1, level → level, world → world, pause),
+  split ahead of T21 so the game plays through the worlds before the final boss exists.
+- **Dropped (➖):** T128, T131, T140–T143, T146, T153, T155, T161, T165, T169, T170, T171.
+  Each chased sub-frame timing, except T169, whose `level1_vector` fix moves to T183 (or T160) and
+  T155, whose encounter checks move to T181. T181 re-judges their cases; a red that survives is a
+  real behaviour difference and gets an owning task then. They leave PROGRESS.md's table, whose parser
+  knows no dropped state. T129 was
+  in review when this landed, and T126 and T132 were being built; all three finish as their docs
+  are written, with no wait on T180/T182 (owner). T181 re-judges their cases under the new checks.
+- **Re-scoped:** every open task doc carries an "Amended" note: green means faithful, completion
+  cases are also judged alone. Completion tasks now block T21 instead of T18. T18 is the final level
+  and its witch (docs/09: no per-world bosses). T25 tests the pad with simulated input; T30 replaces
+  the owner's play session with a scripted whole game through the real app.
+- **Order:** T180 → T182 → T183 and T181 in parallel → completions, T18, intro and attract work → T21
+  → Phase 3.
+
+## Phase 0 — Prove the ground
+
+| # | Task | Depends on |
+|---|---|---|
+| [T00](tasks/T00-oracle-spike.md) | oracle-spike | — |
+
+**T00 gates the whole verification design** (DESIGN §2.1, §3.2 `sf-oracle`, §7). If vAmiga boots the
+disks headless, deterministically, with per-frame input and readable memory, frame and Paula state,
+T05 builds on it. If it boots but one capability is missing, T05 adds it to the shim (the core is
+ours to patch, MPL-2.0). If it cannot boot or is not deterministic, the plan stops and the owner
+chooses between another emulator core and a weaker definition of exactness.
+
+## Phase 1 — Foundations, headless
+
+| # | Task | Depends on |
+|---|---|---|
+| [T01](tasks/T01-rust-workspace.md) | rust-workspace | — |
+| [T02](tasks/T02-re-workbench.md) | re-workbench | — |
+| [T03](tasks/T03-disk-import.md) | disk-import | T01 |
+| [T04](tasks/T04-atn-decompressor.md) | atn-decompressor | T03 |
+| [T05](tasks/T05-oracle-harness.md) | oracle-harness | T00, T01 |
+| [T06](tasks/T06-routine-oracle.md) | routine-oracle | T04, T05 |
+| [T07](tasks/T07-exe-map.md) | exe-map | T02, T04, T05 |
+| [T08](tasks/T08-asset-decode.md) | asset-decode | T04, T07 |
+| [T09](tasks/T09-asset-cache.md) | asset-cache | T03, T08 |
+| [T10](tasks/T10-paula-mixer.md) | paula-mixer | T01, T05 |
+| [T11](tasks/T11-audio-driver.md) | audio-driver | T06, T07 |
+
+At the end: the disks import into a verified cache in Rust, every asset decodes, the original runs
+under scripted control in the oracle, and the code map tells every later task where to look.
+
+## Phase 2 — The game, faithful (frame-exact until 2026-10-15)
+
+| # | Task | Depends on |
+|---|---|---|
+| [T12](tasks/T12-core-state.md) | core-state | T05, T06, T07 |
+| [T13](tasks/T13-renderer.md) | renderer | T08, T12 |
+| [T14](tasks/T14-frog-and-level.md) | frog-and-level | T06, T11, T12, T13 |
+| [T15](tasks/T15-items-and-scoring.md) | items-and-scoring | T14 |
+| [T16](tasks/T16-enemies-worlds-1-3.md) | enemies-worlds-1-3 | T15 |
+| [T17](tasks/T17-enemies-worlds-4-6.md) | enemies-worlds-4-6 | T15 |
+| [T18](tasks/T18-bosses.md) | bosses | T16, T17, T180, T182 |
+| [T19](tasks/T19-slot-and-bonus.md) | slot-and-bonus | T15 |
+| [T20](tasks/T20-front-end.md) | front-end | T08, T11, T12, T13 |
+| [T21](tasks/T21-game-flow.md) | game-flow | T18, T19, T20, T181, T183 (and every row that lists T21 under blocks) |
+
+At the end: a scripted game from power-on to the end sequence, played by the engine alone, meets the
+original's milestones and passes the faithful checks (DESIGN §2.1), headless.
+
+## Phase 3 — The app
+
+| # | Task | Depends on |
+|---|---|---|
+| [T22](tasks/T22-app-rig.md) | app-rig | T09, T10, T12, T13 |
+| [T23](tasks/T23-app-shell.md) | app-shell | T21, T22 |
+| [T24](tasks/T24-macos-menus.md) | macos-menus | T23 |
+| [T25](tasks/T25-controls-and-gamepad.md) | controls-and-gamepad | T24 |
+| [T26](tasks/T26-save-states.md) | save-states | T24 |
+| [T27](tasks/T27-crt-and-widescreen.md) | crt-and-widescreen | T24 |
+| [T28](tasks/T28-level-override.md) | level-override | T14, T24 |
+| [T29](tasks/T29-app-drill.md) | app-drill | T21, T25, T26, T27, T28 |
+| [T30](tasks/T30-acceptance.md) | acceptance | T29 |
+| [T31](tasks/T31-render-remaining-levels.md) | render-remaining-levels | T13 |
+| [T32](tasks/T32-story-intro.md) | story-intro | T20; blocks T21 |
+| [T33](tasks/T33-attract-demo.md) | attract-demo | T16, T20 |
+| [T34](tasks/T34-game-over.md) | game-over | T15, T20; blocks T21 |
+| [T35](tasks/T35-end-sequence.md) | end-sequence | T20; blocks T21 |
+| [T36](tasks/T36-items-on-the-beam.md) | items-on-the-beam | T15 |
+| [T37](tasks/T37-level-restart.md) | level-restart | T36; blocks T34 |
+| [T38](tasks/T38-level-tally.md) | level-tally | T37; blocks T21 |
+| [T39](tasks/T39-enemies-world-5.md) | enemies-world-5 | T16, T38; blocks T18 |
+| [T40](tasks/T40-enemies-world-6.md) | enemies-world-6 | T38; blocks T18 |
+| [T41](tasks/T41-enemies-world-4.md) | enemies-world-4 | T38; blocks T18 |
+| [T42](tasks/T42-enemies-world-1.md) | enemies-world-1 | T38; blocks T18, T33 |
+| [T43](tasks/T43-enemies-world-2.md) | enemies-world-2 | T38; blocks T18, T39 |
+| [T44](tasks/T44-enemies-world-3.md) | enemies-world-3 | T38; blocks T18 |
+| [T46](tasks/T46-story-intro-scenes.md) | story-intro-scenes | T32; blocks T21 |
+| [T47](tasks/T47-story-intro-handover.md) | story-intro-handover | T46; blocks T21 |
+| [T48](tasks/T48-story-intro-skips.md) | story-intro-skips | T46, T47; blocks T21 |
+| [T49](tasks/T49-story-fade-setup-job.md) | story-fade-setup-job | T46; blocks T56 |
+| [T50](tasks/T50-story-objects-init-display.md) | story-objects-init-display | T49; blocks T56 |
+| [T51](tasks/T51-story-oracle-blit-tooling.md) | story-oracle-blit-tooling | T46; blocks T52 |
+| [T52](tasks/T52-story-blitter-bus-sim.md) | story-blitter-bus-sim | T51; blocks T53 |
+| [T53](tasks/T53-story-draw-cpu-program.md) | story-draw-cpu-program | T52; blocks T54 |
+| [T54](tasks/T54-story-handler-end-feed.md) | story-handler-end-feed | T53; blocks T56 |
+| [T55](tasks/T55-story-intro-sound-timing.md) | story-intro-sound-timing | T50; blocks T56 |
+| [T56](tasks/T56-story-intro-to-insert-disk.md) | story-intro-to-insert-disk | T49, T50, T54, T55; blocks T21, T47, T48 |
+| [T70](tasks/T70-bonus-level.md) | bonus-level | T15; blocks T21 |
+| [T71](tasks/T71-slot-sync.md) | slot-sync | T15 |
+| [T72](tasks/T72-slot-screen.md) | slot-screen | T71 |
+| [T73](tasks/T73-slot-rounds.md) | slot-rounds | T72 |
+| [T74](tasks/T74-slot-prizes.md) | slot-prizes | T73; blocks T21 |
+| [T75](tasks/T75-bonus-shots.md) | bonus-shots | T70; blocks T21 |
+| [T76](tasks/T76-bonus-enemies-a.md) | bonus-enemies-a | T70; blocks T21 |
+| [T77](tasks/T77-bonus-enemies-b.md) | bonus-enemies-b | T70, T76; blocks T21 |
+| [T78](tasks/T78-bonus-enemy-death.md) | bonus-enemy-death | T70, T75; blocks T21 |
+| [T79](tasks/T79-bonus-level-frames.md) | bonus-level-frames | T70, T37, T75, T76, T77, T78; blocks T21 |
+| [T81](tasks/T81-beam-cleanup.md) | beam-cleanup | T36; blocks T37 |
+| [T82](tasks/T82-beam-tests.md) | beam-tests | T81 |
+| [T83](tasks/T83-items-w1.md) | items-w1 | T81 |
+| [T84](tasks/T84-items-w3.md) | items-w3 | T81 |
+| [T85](tasks/T85-items-w2.md) | items-w2 | T81 |
+| [T86](tasks/T86-items-launchers.md) | items-launchers | T81 |
+| [T87](tasks/T87-slot-symbols-routines.md) | slot-symbols-routines | T71; blocks T72 |
+| [T88](tasks/T88-slot-symbols-tables.md) | slot-symbols-tables | T71; blocks T72 |
+| [T89](tasks/T89-story-copper-bus-cycles.md) | story-copper-bus-cycles | T52; blocks T53 |
+| [T90](tasks/T90-story-draw-blits-oracle.md) | story-draw-blits-oracle | T89; blocks T53 |
+| [T91](tasks/T91-slot-beam-races.md) | slot-beam-races | T72 |
+| [T92](tasks/T92-slot-load.md) | slot-load | T72 |
+| [T93](tasks/T93-slot-attract-draw.md) | slot-attract-draw | T72, T91, T92 |
+| [T94](tasks/T94-slot-interrupt-timing.md) | slot-interrupt-timing | T72, T91, T93; blocks T73 |
+| [T95](tasks/T95-slot-load-finish.md) | slot-load-finish | T92; blocks T93 |
+| [T96](tasks/T96-story-audio-dma-slots.md) | story-audio-dma-slots | T53; blocks T56 |
+| [T97](tasks/T97-story-split-handler.md) | story-split-handler | T54; blocks T56 |
+| [T100](tasks/T100-front-vbl-timing.md) | front-vbl-timing | T37; blocks T21 |
+| [T101](tasks/T101-lag-long-pass.md) | lag-long-pass | T81, T82; blocks T21 |
+| [T102](tasks/T102-items-w3-faults.md) | items-w3-faults | T101; blocks T21 |
+| [T103](tasks/T103-w4-completions.md) | w4-completions | T41, T101, T102; blocks T18 |
+| [T105](tasks/T105-w2-1-hang-fruit-life.md) | w2-1-hang-fruit-life | T85; blocks T21 |
+| [T106](tasks/T106-w1-completions.md) | w1-completions | T42, T86, T101; blocks T18 |
+| [T107](tasks/T107-enemies-w1-2-case.md) | enemies-w1-2-case | T42; blocks T18, T33, T106 |
+| [T108](tasks/T108-enemies-w1-3-case.md) | enemies-w1-3-case | T42; blocks T18, T33, T106 |
+| [T109](tasks/T109-enemies-w1-4-case.md) | enemies-w1-4-case | T42; blocks T18, T33, T106 |
+| [T110](tasks/T110-enemies-w1-activation.md) | enemies-w1-activation | T42; blocks T18, T33, T106 |
+| [T111](tasks/T111-enemies-w3-2-case.md) | enemies-w3-2-case | T44; blocks T18 |
+| [T112](tasks/T112-enemies-w3-3-case.md) | enemies-w3-3-case | T44; blocks T18 |
+| [T113](tasks/T113-enemies-w3-4-case.md) | enemies-w3-4-case | T44, T102, T180; blocks T115, T21 |
+| [T114](tasks/T114-enemies-w3-activation.md) | enemies-w3-activation | T44; blocks T18 |
+| [T115](tasks/T115-w3-completions.md) | w3-completions | T44, T101, T102, T111, T112, T113, T180, T182; blocks T21 |
+| [T121](tasks/T121-bob-draw-cut.md) | bob-draw-cut | T101; blocks T21 |
+| [T122](tasks/T122-w2-completions.md) | w2-completions | T43, T101, T121; blocks T18 |
+| [T123](tasks/T123-enemies-w5-2-case.md) | enemies-w5-2-case | T39; blocks T18 |
+| [T124](tasks/T124-enemies-w5-3-case.md) | enemies-w5-3-case | T39; blocks T18 |
+| [T125](tasks/T125-enemies-w5-4-case.md) | enemies-w5-4-case | T39; blocks T18 |
+| [T126](tasks/T126-w5-completions.md) | w5-completions | T39, T101, T121, T123, T124, T125; blocks T21 |
+| [T127](tasks/T127-restore-sprite-wait.md) | restore-sprite-wait | T101; blocks T21 |
+| [T128](tasks/T128-w3-4-sprite-race.md) | w3-4-sprite-race | ➖ dropped 2026-10-15 (was: T127; blocks T113) |
+| [T129](tasks/T129-slot-lamp-cut.md) | slot-lamp-cut | T74; blocks T21 |
+| [T130](tasks/T130-front-vbl-318.md) | front-vbl-318 | T100; blocks T21 |
+| [T133](tasks/T133-w2-1-fruit-room.md) | w2-1-fruit-room | T105, T180; blocks T21 |
+| [T140](tasks/T140-story-setup-under-music.md) | story-setup-under-music | ➖ dropped 2026-10-15 (was: T56) |
+| [T141](tasks/T141-story-fade-colour-race.md) | story-fade-colour-race | ➖ dropped 2026-10-15 (was: T56) |
+| [T142](tasks/T142-story-draw-end-order.md) | story-draw-end-order | ➖ dropped 2026-10-15 (was: T56) |
+| [T143](tasks/T143-story-last-fade-out.md) | story-last-fade-out | ➖ dropped 2026-10-15 (was: T56) |
+| [T144](tasks/T144-story-intro-full-green.md) | story-intro-full-green | T56, T180; blocks T21, T47, T48 |
+| [T131](tasks/T131-w4-completion-faults.md) | w4-completion-faults | ➖ dropped 2026-10-15 (was: T103, T121, T127; blocks T18, T21) |
+| [T132](tasks/T132-w4-4-completion.md) | w4-4-completion | T103; blocks T21 |
+| [T145](tasks/T145-w4-4-dart-21.md) | w4-4-dart-21 | T132; blocks T21 |
+| [T146](tasks/T146-w6-completion-faults.md) | w6-completion-faults | ➖ dropped 2026-10-15 (was: T104; blocks T18, T21) |
+| [T147](tasks/T147-w6-2-completion.md) | w6-2-completion | T104, T180, T182; blocks T21 |
+| [T148](tasks/T148-w6-2-alt-completion.md) | w6-2-alt-completion | T104, T147, T180, T182; blocks T21 |
+| [T149](tasks/T149-w6-3-completion.md) | w6-3-completion | T104, T180, T182; blocks T21 |
+| [T150](tasks/T150-w6-4-completion.md) | w6-4-completion | T104, T180, T182; blocks T21 |
+| [T151](tasks/T151-w6-4-alt-completion.md) | w6-4-alt-completion | T104, T150, T180, T182; blocks T21 |
+| [T153](tasks/T153-bob-draw-step-cuts.md) | bob-draw-step-cuts | ➖ dropped 2026-10-15 (was: T121; blocks T21) |
+| [T160](tasks/T160-attract-demo-entry.md) | attract-demo-entry | T33, T180 |
+| [T161](tasks/T161-attract-demo-init-timing.md) | attract-demo-init-timing | ➖ dropped 2026-10-15 (was: T160) |
+| [T162](tasks/T162-attract-demo-level-start.md) | attract-demo-level-start | T160, T180 |
+| [T163](tasks/T163-attract-demo-return.md) | attract-demo-return | T162 |
+| [T164](tasks/T164-attract-demo-cycles.md) | attract-demo-cycles | T163; blocks T21 |
+| [T154](tasks/T154-w1-4-completion.md) | w1-4-completion | T106, T127, T180, T182; blocks T21 |
+| [T165](tasks/T165-w1-1-completion.md) | w1-1-completion | ➖ dropped 2026-10-15 (was: T106, T131; blocks T18) |
+| [T120](tasks/T120-conform-no-silent-pass.md) | conform-no-silent-pass | T05, T36; blocks T21 |
+| [T104](tasks/T104-w6-completions.md) | w6-completions | T40, T101, T102; blocks T18 |
+| [T155](tasks/T155-w2-completions-green.md) | w2-completions-green | ➖ dropped 2026-10-15 (was: T122, T127, T131, T132; blocks T18) |
+| [T166](tasks/T166-w2-2-completion.md) | w2-2-completion | T122, T180, T182; blocks T21 |
+| [T167](tasks/T167-w2-3-completion.md) | w2-3-completion | T122, T180, T182; blocks T21 |
+| [T168](tasks/T168-w2-4-completion.md) | w2-4-completion | T122, T180, T182; blocks T21 |
+| [T169](tasks/T169-power-on-cases-green.md) | power-on-cases-green | ➖ dropped 2026-10-15 (was: T160; blocks T21) |
+| [T170](tasks/T170-game-over-timeup-copper.md) | game-over-timeup-copper | ➖ dropped 2026-10-15 (was: T34; blocks T21) |
+| [T171](tasks/T171-front-handler-bus-model.md) | front-handler-bus-model | ➖ dropped 2026-10-15 (was: T130, T129; blocks T21) |
+| [T180](tasks/T180-faithful-compare.md) | faithful-compare | T120; blocks T181, T182 and every open conformance task |
+| [T181](tasks/T181-faithful-rebaseline.md) | faithful-rebaseline | T180, T182; blocks T21 |
+| [T182](tasks/T182-plays-alone.md) | plays-alone | T180; blocks T181, T183 and every completion task |
+| [T183](tasks/T183-level-chain.md) | level-chain | T180, T182; blocks T21 |
+| [T184](tasks/T184-alone-pass-drift.md) | alone-pass-drift | T182; blocks T21, T18, T115, T147, T148, T149, T150, T151, T154, T166, T167, T168 |
+| [T185](tasks/T185-w6-4-lag-frog-fall.md) | w6-4-lag-frog-fall | T182; blocks T21 |
+| [T190](tasks/T190-chain-world-change.md) | chain-world-change | T183; blocks T21 |
+| [T191](tasks/T191-chain-pause.md) | chain-pause | T183; blocks T21 |
+| [T192](tasks/T192-chain-level-code.md) | chain-level-code | T183, T190; blocks T21 |
+| [T193](tasks/T193-chain-e2e.md) | chain-e2e | T183; blocks T21 |
+| [T194](tasks/T194-w6-2-sfx-double-blank.md) | w6-2-sfx-double-blank | T147; blocks T21 |
+| [T195](tasks/T195-w3-3-slot-order.md) | w3-3-slot-order | T115; blocks T21 |
+| [T196](tasks/T196-pass-over-two-blanks.md) | pass-over-two-blanks | T184, T150; blocks T21 |
+| [T197](tasks/T197-w4-3-dmacon-regression.md) | w4-3-dmacon-regression | T194; blocks T21 |
+| [T198](tasks/T198-disk-prompts.md) | disk-prompts | T21; blocks T23, T29 |
+| [T199](tasks/T199-live-restart.md) | live-restart | T21; blocks T23, T29 |
+| [T200](tasks/T200-hiscore-entry.md) | hiscore-entry | T21; blocks T23, T29 |
+| [T201](tasks/T201-continue-and-codes.md) | continue-and-codes | T21, T200; blocks T23, T29 |
+| [T202](tasks/T202-whole-game-script.md) | whole-game-script | T21, T198, T199; blocks T23, T29 |
+| [T203](tasks/T203-whole-game-green.md) | whole-game-green | T21, T202; blocks T23, T29 |
+| [T204](tasks/T204-w3-4-template-86.md) | w3-4-template-86 | T201; blocks T203 |
+| [T205](tasks/T205-chain-routes-w1-w2.md) | chain-routes-w1-w2 | T202; blocks T203 |
+| [T206](tasks/T206-chain-routes-w3-w4.md) | chain-routes-w3-w4 | T205; blocks T203 |
+| [T207](tasks/T207-chain-routes-w5-w6-final.md) | chain-routes-w5-w6-final | T206; blocks T203 |
+| [T208](tasks/T208-w6-4-start-and-final-load.md) | w6-4-start-and-final-load | T203; blocks T23, T29 |
+| [T209](tasks/T209-whole-game-alone.md) | whole-game-alone | T203, T208; blocks T23, T29 |
+| [T210](tasks/T210-window-fits-the-game.md) | window-fits-the-game | T27; blocks T29 |
+| [T211](tasks/T211-app-whole-game-paced.md) | app-whole-game-paced | T21, T25, T26, T27, T28; blocks T30 |
+| [T212](tasks/T212-conform-known-reds.md) | conform-known-reds | T29; blocks T30 |
+| [T213](tasks/T213-paula-write-timing.md) | paula-write-timing | T30 |
+| [T214](tasks/T214-story-load-blanks.md) | story-load-blanks | T213 |
+| [T215](tasks/T215-channel-check-neighbours.md) | channel-check-neighbours | T213; blocks T214 |
+| [T216](tasks/T216-bonus-channel3-alone.md) | bonus-channel3-alone | T213; blocks T214 |
+| [T217](tasks/T217-t213-acceptance-runs.md) | t213-acceptance-runs | T213, T215; blocks T214 |
+
+T22 is the rig task: it comes before every surface task and they depend on it. T29 is the phase's
+drill. At the end: the real app plays a scripted whole game that meets the original's milestones (T30);
+the owner may play it, but that is not a gate (owner, 2026-10-15).
+
+---
+
+## The main path, builder and wirer
+
+| Step | Built by | Wired by |
+|---|---|---|
+| Launch `superfrog` | T22 (`sf-app/src/main.rs`) | T22 |
+| Find or ask for disks, import, verify cache | T03, T04, T08, T09 | T23 (import flow in `sf-app/src/import.rs`, called from `main.rs`) |
+| Power-on → intro → title → options/passwords | T20 | T21 (`sf-core/src/flow.rs`), run by the game loop T22/T23 |
+| Play a level: frog, items, enemies, bosses | T14–T18 | T14 (`sf-core/src/level/mod.rs` object dispatch; T15–T18 register into it) |
+| Slot machine and bonus levels between levels | T19 | T21 |
+| Picture to the window | T13 | T22 (`sf-app/src/video.rs`) |
+| Sound to the speakers | T11, T10 | T22 (`sf-app/src/audio.rs`) |
+| Keyboard / pad to the game | T23, T25 | T23 (`sf-app/src/input.rs`), T25 adds the pad |
+| Menus, settings, save states, CRT, widescreen, level files | T24–T28 | T24 (`sf-app/src/menu.rs`); each feature task adds its items there |
+| Progress remembered, passwords offered | T21 (`Progress` in core), T23 (file) | T23 |
+
+## Critical path
+
+```
+T01 → T03 → T04 → T07 → T12 → T13 → T14 → T15 → T16 → T18 → T21 → T23 → T24 → T25 → T29 → T30
+```
+
+T00 and T05 run alongside T01–T04. T02 can start at once. T08–T11 run beside T12. T19 and T20 run
+beside the enemy tasks, and T22 beside Phase 2's mechanics. T23 onward waits for T21, because
+T23–T28 test the real game (the frog in W1-1, the title, progress, saving mid-level, widescreen on
+the slot screen); owner's decision 2026-10-10 to keep those checks in the tasks rather than move them
+to the drill.
+
+Leaves (tasks nothing depends on): only T30.
+
+## Parallel width
+
+31 tasks · longest dependency chain 16 · up to 5 could run at once (for example T16, T17, T19, T20,
+T22). Every edge is a real use: a task depends on what its code calls or its tests
+compare against.
+
+## Rough sizing
+
+| Weight | Tasks |
+|---|---|
+| **Heavy** | T05, T07, T13, T14, T16, T17, T18, T20 |
+| **Medium** | T00, T04, T06, T08, T11, T12, T15, T19, T21, T22, T23, T29, T30 |
+| **Light** | T01, T02, T03, T09, T10, T24, T25, T26, T27, T28 |
+
+Where it will overrun: T07 (330 KB of 68000 code plus four other executables; it is a map, not a full
+understanding, and must stop at that), and the enemy and boss tasks, whose size is unknown until T07
+counts the object types. T13 risks overrunning on copper effects (per-line palette changes) and on how
+the original composes bobs and hardware sprites.
+
+## Decisions still open
+
+- **Lag and timing-dependent randomness** (DESIGN §2.1). T07 measures whether the original ever takes
+  more than one frame per main-loop pass and whether its random seed depends on CPU timing. If either
+  is true, the owner decides how frame-exact is defined there; this blocks T12's final layout of
+  `Game::step`, not T00–T11.
+- **The real task split for enemies and bosses.** T07 reports the object types per world; if
+  T16–T18 are each more than one session, this plan is amended with the owner before they start.
+- **Which Kickstart boots the crack** (T00). Does not block design.
+- **Ghidra or a capstone workbench** (T02). Does not block design.

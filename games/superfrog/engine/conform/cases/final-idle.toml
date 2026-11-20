@@ -1,0 +1,6 @@
+# The witch's every pattern with nothing held (T18): her wait (to 101), her rise (to 151), her bob
+# (100–199 passes and to its path's end) and her loop round the arena, in turn, three times; her
+# loop takes the idle frog's hearts and its life at 2127, the level restarts (2229) and she rises,
+# bobs and loops again. The frog never hits her.
+sync = { level = "WW-1" }
+frames = 3000

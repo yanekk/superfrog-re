@@ -1,0 +1,8 @@
+[package]
+name = "fd-assets"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Pure (DESIGN §3.1): readers over bytes handed in. No dependencies.
+[dependencies]

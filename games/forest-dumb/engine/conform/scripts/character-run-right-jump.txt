@@ -1,0 +1,6 @@
+# T41 review: from the sync frame 6400: right, then up held from frame 30 while running and scrolling.
+# A running jump into the wall at char_x $14c (char_y $36, about frame 6471), then the fall down the
+# slope beyond. Up is never released, so no input changes while the camera scrolls (T67).
+0: -
+10: R
+30: R U

@@ -1,0 +1,7 @@
+# W1-1 paused by P and unpaused by P (T191): P down for two frames, some frames paused, P again,
+# then play on to the right.
+20: K19
+22: -
+80: K19
+82: -
+100: R

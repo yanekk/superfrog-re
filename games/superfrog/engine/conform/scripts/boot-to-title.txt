@@ -1,0 +1,4 @@
+# Power-on to the title screen. The crack intro on disk 1 skips on a port-1 mouse click
+# (FINDINGS 2026-10-11); the title (frog in cape) is up from about frame 4 360.
+1000: M
+1005: -

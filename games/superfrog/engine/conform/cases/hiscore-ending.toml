@@ -1,0 +1,7 @@
+# The high-score name entry after the end sequence (T200): the game's end with `score` set to
+# 60000 at `end_seq_load`. The end sequence, `top_loop` back to the title, its load, and the name
+# entry from the original's frame 3929: J A N typed, Return ending it at 3990, the table, and the
+# title's idle from the case's frame 2543.
+sync = { end-sequence = true, score = 60000 }
+script = "hiscore-ending"
+frames = 2610

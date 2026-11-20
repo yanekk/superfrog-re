@@ -1,0 +1,9 @@
+# Fire on the first text page skips the intro (as story-skip-page-fire); on the "insert disk 1"
+# page (up from O 3 465) the mouse button does nothing (`intro_wait_disk1` polls fire only), then
+# fire: disk 1 goes in, the game starts (T48).
+2700: F
+2705: -
+3480: M
+3490: -
+3500: F
+3505: -

@@ -1,0 +1,36 @@
+# Walk right through a level, jumping every 40 frames and throwing the spud every 100:
+# moves the camera both ways, spawns and draws bobs, and changes the panel.
+0: R
+20: R U
+28: R
+40: R
+60: R F
+64: R
+68: R
+80: R
+100: R U
+108: R
+120: R
+140: R U
+148: R
+160: R F
+164: R
+180: R U
+188: R
+200: R
+220: R U
+228: R
+240: R
+260: R F
+264: R
+268: R
+280: R
+300: R U
+308: R
+320: R
+340: R U
+348: R
+360: R F
+364: R
+380: R U
+388: R

@@ -1,0 +1,8 @@
+# W1-1 with its items live: the speed-up, the fake wall at 94,51 into the hidden cave, the bounce
+# pad at 16,67 and the coins up the shaft it throws the frog through; score, the panel and the
+# picture every frame (T83). Its pad bounce lags every frame: a pass across three frames, and an
+# effect started in `sfx_play`'s raster wait as a frame ends, its vertical blank held off (T101).
+sync = { level = "W1-1" }
+script = "items-pad-w1-1"
+frames = 860
+resync = false

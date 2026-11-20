@@ -1,0 +1,4 @@
+# Power-on with disk 3, the mouse button while scene 1 plays: as story-skip-play-fire (T48).
+sync = "power-on-disk3"
+script = "story-skip-play-mouse"
+frames = 1850

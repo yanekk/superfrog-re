@@ -1,0 +1,8 @@
+# The bonus level to world 6 (T21): the bonus level played to its end as `bonus-end-wb-1` (60
+# lives, fire held; marker 55 ends it, its loop ends in frame 8111), `level_exit_fade`,
+# `shooter_off`, `game_over_check`, the bonus level's end picture (h0+$4326, L6ET),
+# `music_fade_wait`, `world_load_w6` with its loading picture and the frog's walk, the progress
+# map, W6-1's start and 750 frames of it, nothing held from 8111.
+sync = { level = "WB-1", lives = 60 }
+script = "chain-bonus-to-w6-1"
+frames = 11000

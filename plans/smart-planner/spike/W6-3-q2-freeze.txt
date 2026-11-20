@@ -1,0 +1,5 @@
+live: nodes 196 (with wings 0), cells 196, edges 2399 (taking a coin 76), build 12.4s, frames simulated 243419, moves dropped: lost heart 1240, died 432, never landed 0
+frozen: nodes 212 (with wings 0), cells 212, edges 3894 (taking a coin 239), build 9.3s, frames simulated 248513, moves dropped: lost heart 0, died 496, never landed 0
+Q2: edges (from, move) in both 2197; landing differs 527 (24.0%); live-only edges 202; frozen-only edges 1697; cells live-only 13, frozen-only 29
+  misses by distance: adjacent cell 320, 2-3 cells 55, further 152, same cell other fields 0
+marker 44 (lift) cells: 6; marker 44 and 62 are tile markers (not in the spawn list [1, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19, 20, 29, 45]), never objects
