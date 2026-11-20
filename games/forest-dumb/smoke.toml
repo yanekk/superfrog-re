@@ -343,7 +343,7 @@ workspace = "engine"
 # generated tree) full.
 "crates/fd-e2e/tests/live.rs" = ["a_short_hand_run_writes_live_js_into_its_home"]
 # Map page T11: Game ▸ Show Map. The scripted page write into <home>/map, about 2 s warm, in smoke; the
-# read-only folder full; the real menu bar's listing is #[ignore]d, FD_E2E_OS=1.
+# read-only folder and the click on the frame cap full; the real menu bar's listing is #[ignore]d, FD_E2E_OS=1.
 "crates/fd-e2e/tests/show_map.rs" = ["a_scripted_show_map_writes_the_page_into_its_home_and_opens_nothing"]
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about

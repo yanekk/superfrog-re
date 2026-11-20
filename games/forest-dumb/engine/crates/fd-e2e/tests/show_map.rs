@@ -102,6 +102,24 @@ fn a_map_folder_it_cannot_write_is_named_and_the_run_goes_on() {
     same_as_headless(&c, STEPS);
 }
 
+/// Show Map one step before the frame cap: the page takes far longer than one fast step to write,
+/// so the app waits for it at quit and its line is still said (map page T11 review).
+#[test]
+fn a_show_map_still_writing_at_the_frame_cap_is_finished_and_said() {
+    const STEPS: u64 = 160;
+    let mut app = App::launch(LaunchOpts {
+        max_frames: STEPS,
+        ..Default::default()
+    });
+    let c = app.run_script_unread("fast-until 160\n159: menu show-map\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let page = app.home.join("map/index.html");
+    let would = format!("fd-app: show-map: would open {}", page.display());
+    assert!(c.stderr.lines().any(|l| l == would), "{}", c.stderr);
+    assert!(page.exists());
+    assert_eq!(quit_step(&c), STEPS);
+}
+
 fn os_layer() {
     assert!(
         std::env::var_os("FD_E2E_OS").is_some_and(|v| v == "1"),
