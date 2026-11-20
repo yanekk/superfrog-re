@@ -35,6 +35,8 @@ enum Report {
     /// Its exit as a stop that is not the exit: the translated program's jump to an address
     /// with no translation.
     AsStop,
+    /// Its exit as such a stop, a frame after it happened.
+    LateStop,
 }
 
 struct StandIn {
@@ -146,7 +148,7 @@ impl StandIn {
     fn reported(&mut self, now: bool) -> bool {
         match self.report {
             Report::AsIs | Report::AsStop => now,
-            Report::Late => std::mem::replace(&mut self.held, now),
+            Report::Late | Report::LateStop => std::mem::replace(&mut self.held, now),
             Report::Never => false,
         }
     }
@@ -182,8 +184,10 @@ impl FrameEngine for StandIn {
         let (entered, exited) = (self.hit(self.entry_pc), self.hit(self.exit_pc));
         if self.entry_pc.is_some() {
             self.entered = self.reported(entered);
-        } else if exited && self.report == Report::AsStop {
-            self.stop = Some(format!("untranslated: ${:06x}", self.exit_pc.unwrap()));
+        } else if matches!(self.report, Report::AsStop | Report::LateStop) {
+            if self.reported(exited) {
+                self.stop = Some(format!("untranslated: ${:06x}", self.exit_pc.unwrap()));
+            }
         } else if self.reported(exited) {
             self.exited = true;
             self.stop = Some("exit: the program returned from its entry".into());
@@ -367,6 +371,21 @@ fn a_stop_where_the_original_exits_fails_as_a_stop() {
         Outcome::Stopped { frame, stop, .. } => {
             assert_eq!(*frame, 5074, "{v}");
             assert!(stop.starts_with("untranslated: $"), "{v}");
+        }
+        other => panic!("expected a stop, got {other}"),
+    }
+}
+
+/// The same stop a frame after the original's exit: still the stop, at its own frame, not the
+/// engine's exit missing by `by_frame` (title T02 review).
+#[test]
+#[ignore = "full: the disks and Kickstart; the original from power-on twice"]
+fn a_stop_a_frame_after_the_originals_exit_fails_as_that_stop() {
+    let v = run(&exited(false), Report::LateStop);
+    match &v.outcome {
+        Outcome::Stopped { frame, stop, .. } => {
+            assert!(stop.starts_with("untranslated: $"), "{v}");
+            assert_eq!(*frame, 5075, "{v}");
         }
         other => panic!("expected a stop, got {other}"),
     }

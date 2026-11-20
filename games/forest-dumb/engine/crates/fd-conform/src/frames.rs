@@ -1303,17 +1303,27 @@ pub fn run_entry_frames(
         let mut f = ours.map_or(am.frame(), |_| 0);
         while ours.is_none() && f < by && engine.stopped().is_none() {
             engine.frame(inputs.at(f));
+            run += 1;
             f += 1;
-            if engine.entered() || engine.exited() {
+            if if wants_exit { engine.exited() } else { engine.entered() } {
                 ours = Some(f);
             }
         }
+        // An engine that stopped on its own before its event fails as that stop, at its frame:
+        // "not by `by_frame`" would hide both (a jump with no translation a frame after the
+        // original's exit is no exit, translator T41).
+        let stop = engine.stopped().filter(|_| ours.is_none());
         let what = match &case.goal {
             Some(Goal::Enters { routine, .. }) => format!("entered {routine}"),
             _ => "returned from the program's entry".to_string(),
         };
         let at = |side: Option<u32>| side.map_or(format!("not by oracle frame {by}"), |f| format!("at oracle frame {f}"));
         match (theirs, ours) {
+            _ if let Some(stop) = stop => verdict.firsts.push(Outcome::Stopped {
+                pass: run,
+                frame: f,
+                stop,
+            }),
             (Some(t), Some(o)) if t == o => {
                 if t <= by {
                     verdict.goal_met = Some(t);
