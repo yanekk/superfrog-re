@@ -33,6 +33,8 @@ use winit::event_loop::ActiveEventLoop;
 
 use crate::App;
 use crate::recorder::{EndChoice, Recorder};
+use amiga_app::view_menu::{ViewCommand, ViewItems};
+
 use crate::settings::{Filter, Scale};
 use crate::states::SLOTS;
 
@@ -96,12 +98,22 @@ pub fn export_levels() -> Vec<LevelId> {
     ids.iter().map(|s| sf_assets::level_id_named(s).expect("a level id")).collect()
 }
 
-/// The scales the View menu offers.
-pub const SCALES: [Scale; 4] = [Scale::N(1), Scale::N(2), Scale::N(3), Scale::Auto];
-
 impl Command {
+    /// The View item's command, for the toolkit's View items (`amiga_app::view_menu`).
+    fn view(self) -> Option<ViewCommand> {
+        Some(match self {
+            Command::Scale(s) => ViewCommand::Scale(s),
+            Command::ToggleFullscreen => ViewCommand::ToggleFullscreen,
+            Command::Filter(f) => ViewCommand::Filter(f),
+            _ => return None,
+        })
+    }
+
     /// Its menu item's id, also its name in a script's `menu …` event (`scale 2` is `scale-2`).
     pub fn id(self) -> String {
+        if let Some(v) = self.view() {
+            return v.id();
+        }
         match self {
             Command::ImportDisks => "import".into(),
             Command::ExportLevel(id) => format!("export-{id}"),
@@ -109,10 +121,7 @@ impl Command {
             Command::ContinueFromProgress => "continue".into(),
             Command::StartLevel => "start-level".into(),
             Command::StopRecording => "stop-recording".into(),
-            Command::Scale(Scale::Auto) => "scale-auto".into(),
-            Command::Scale(Scale::N(n)) => format!("scale-{n}"),
-            Command::ToggleFullscreen => "fullscreen".into(),
-            Command::Filter(f) => format!("filter-{}", f.name()),
+            Command::Scale(_) | Command::ToggleFullscreen | Command::Filter(_) => unreachable!("a View item"),
             Command::ToggleWidescreen => "widescreen".into(),
             Command::Pause => "pause".into(),
             Command::Reset => "reset".into(),
@@ -125,20 +134,24 @@ impl Command {
 
     /// The command whose [`Command::id`] is `id`; the scale any whole number 1 to 16.
     pub fn from_id(id: &str) -> Option<Command> {
+        if let Some(v) = ViewCommand::from_id(id) {
+            return Some(match v {
+                ViewCommand::Scale(s) => Command::Scale(s),
+                ViewCommand::ToggleFullscreen => Command::ToggleFullscreen,
+                ViewCommand::Filter(f) => Command::Filter(f),
+            });
+        }
         Some(match id {
             "import" => Command::ImportDisks,
             "continue" => Command::ContinueFromProgress,
             "start-level" => Command::StartLevel,
             "stop-recording" => Command::StopRecording,
-            "scale-auto" => Command::Scale(Scale::Auto),
-            "fullscreen" => Command::ToggleFullscreen,
             "widescreen" => Command::ToggleWidescreen,
             "pause" => Command::Pause,
             "reset" => Command::Reset,
             "controls" => Command::Controls,
             "quit" => Command::Quit,
             "play-level-file" => Command::PlayLevelFile,
-            _ if id.starts_with("filter-") => Command::Filter(Filter::named(&id[7..])?),
             _ if id.starts_with("export-") => Command::ExportLevel(sf_assets::level_id_named(&id[7..])?),
             _ => {
                 let slot = |prefix: &str| -> Option<u8> {
@@ -148,11 +161,7 @@ impl Command {
                 if let Some(n) = slot("save-state-") {
                     return Some(Command::SaveState(n));
                 }
-                if let Some(n) = slot("load-state-") {
-                    return Some(Command::LoadState(n));
-                }
-                let n: u32 = id.strip_prefix("scale-")?.parse().ok()?;
-                (1..=16).contains(&n).then_some(Command::Scale(Scale::N(n)))?
+                Command::LoadState(slot("load-state-")?)
             }
         })
     }
@@ -206,9 +215,8 @@ pub struct MenuBar {
     changes_game: Vec<MenuItem>,
     states_menus: [Submenu; 2],
     pause: CheckMenuItem,
-    scales: Vec<(Scale, CheckMenuItem)>,
-    fullscreen: CheckMenuItem,
-    filters: Vec<(Filter, CheckMenuItem)>,
+    /// View's Scale, Fullscreen and Filter items, the toolkit's.
+    view_items: ViewItems,
     widescreen: CheckMenuItem,
     loads: Vec<MenuItem>,
     shown: Option<MenuState>,
@@ -246,23 +254,7 @@ pub fn build_menu() -> MenuBar {
         Some(Accelerator::new(Modifiers::META, Code::Period)),
     );
     let pause = check(Command::Pause, "Pause", None);
-    let scales: Vec<(Scale, CheckMenuItem)> = SCALES
-        .iter()
-        .map(|&s| {
-            let title = match s {
-                Scale::Auto => "Auto".to_string(),
-                Scale::N(n) => format!("{n}×"),
-            };
-            (s, check(Command::Scale(s), &title, None))
-        })
-        .collect();
-    let fullscreen = check(
-        Command::ToggleFullscreen,
-        "Fullscreen",
-        Some(Accelerator::new(Modifiers::CONTROL | Modifiers::META, Code::KeyF)),
-    );
-    let filters: Vec<(Filter, CheckMenuItem)> =
-        Filter::ALL.iter().map(|&f| (f, check(Command::Filter(f), f.title(), None))).collect();
+    let view_items = ViewItems::new();
     let widescreen = check(Command::ToggleWidescreen, "Widescreen", None);
 
     let app = Submenu::with_items(
@@ -331,22 +323,7 @@ pub fn build_menu() -> MenuBar {
             &load_menu,
         ],
     );
-    let scale_items: Vec<&dyn muda::IsMenuItem> = scales.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
-    let scale = Submenu::with_items("Scale", true, &scale_items).expect("a menu");
-    let filter_items: Vec<&dyn muda::IsMenuItem> = filters.iter().map(|(_, i)| i as &dyn muda::IsMenuItem).collect();
-    let filter = Submenu::with_items("Filter", true, &filter_items).expect("a menu");
-    let view = Submenu::with_items(
-        "View",
-        true,
-        &[
-            &scale,
-            &PredefinedMenuItem::separator(),
-            &fullscreen,
-            &PredefinedMenuItem::separator(),
-            &filter,
-            &widescreen,
-        ],
-    );
+    let view = view_items.view_menu(&[&widescreen]);
 
     let menu = Menu::new();
     for m in [app, Ok(file.clone()), game, view] {
@@ -360,9 +337,7 @@ pub fn build_menu() -> MenuBar {
         changes_game: vec![start_level, reset, controls],
         states_menus: [save_menu, load_menu],
         pause,
-        scales,
-        fullscreen,
-        filters,
+        view_items,
         widescreen,
         loads,
         shown: None,
@@ -398,13 +373,7 @@ impl MenuBar {
             m.set_enabled(!s.replay);
         }
         self.pause.set_checked(s.paused);
-        for (scale, i) in &self.scales {
-            i.set_checked(*scale == s.scale);
-        }
-        self.fullscreen.set_checked(s.fullscreen);
-        for (filter, i) in &self.filters {
-            i.set_checked(*filter == s.filter);
-        }
+        self.view_items.show(s.scale, s.fullscreen, s.filter);
         self.widescreen.set_checked(s.widescreen);
         self.widescreen.set_enabled(!s.replay);
         for (i, filled) in self.loads.iter().zip(s.states) {
@@ -416,19 +385,7 @@ impl MenuBar {
 
 /// Before the app finishes launching: AppKit adds "Enter Full Screen" to a menu titled View unless
 /// told not to, and View → Fullscreen is the app's own (DESIGN §2.7: the largest integer scale).
-pub fn before_launch() {
-    #[cfg(target_os = "macos")]
-    {
-        use objc2_foundation::{NSDictionary, NSNumber, NSString, NSUserDefaults};
-        // Registered, not set: nothing is written to the user's preferences.
-        let key = NSString::from_str("NSFullScreenMenuItemEverywhere");
-        let no = NSNumber::new_bool(false);
-        let no: &objc2::runtime::AnyObject = &no;
-        let defaults = NSDictionary::from_slices(&[&*key], &[no]);
-        // SAFETY: a property-list dictionary (a string key, a number), as the method requires.
-        unsafe { NSUserDefaults::standardUserDefaults().registerDefaults(&defaults) };
-    }
-}
+pub use amiga_app::view_menu::before_launch;
 
 /// The next command chosen in the menu bar since the last call, if any.
 pub fn next_command() -> Option<Command> {

@@ -14,6 +14,9 @@
 //! is no device (a scripted run, the hand engine, or a device that fails), and the newest frame is
 //! presented at each refresh at a whole-number scale. Keys and pads feed
 //! the game through `input.rs`; Controls and Quit are in the menu bar (`menu.rs`), Esc also quits.
+//! View ▸ Scale, Fullscreen and Filter apply at once and are saved in `settings.toml`, which the
+//! next launch starts from (`--scale` still wins for its run); a scripted run goes fullscreen only
+//! with `--allow-fullscreen`.
 //!
 //! Game → Start Level… starts W1-1 afresh, and with its recorder on every stepped frame's input is
 //! recorded until Stop Recording saves it as a bug zip (`recorder.rs`, DESIGN §2.8); while it runs
@@ -54,7 +57,8 @@ use amiga_app::lock::{self, Lock};
 use amiga_app::pacing::{Pacer, Presenter};
 use amiga_app::pad::{self, PadSource};
 use amiga_app::recording_bar::{BAR_HEIGHT, RecordingBar, elapsed};
-use amiga_app::video::Video;
+use amiga_app::video::{Filter, Video};
+use amiga_app::view_menu::{self, ViewCommand};
 use fd_core::recording::{
     EngineKind, LevelId, StartPoint, recorder as start_recording, recorder_from, stop_text,
     test_stop,
@@ -118,6 +122,7 @@ fn main() {
         eprintln!("fd-app: {}: {e}", dir.display());
         std::process::exit(1);
     }
+    view_menu::before_launch();
     let mut builder = EventLoop::builder();
     #[cfg(target_os = "macos")]
     {
@@ -289,6 +294,9 @@ struct Run {
     trail: Recorder,
     /// The stop band's lines once the translated program has stopped: the picture is frozen.
     stopped: Option<Vec<String>>,
+    /// Whether the window's size holds the bar: it lags `video.bar` while fullscreen, and is
+    /// caught up on leaving it.
+    window_bar: bool,
 }
 
 /// The translated program's recording from `start`, by this build.
@@ -388,6 +396,15 @@ impl App {
             Err(e) => return self.fail(event_loop, &e),
         };
         video.bar_points = BAR_HEIGHT;
+        video.filter = settings.filter;
+        if settings.fullscreen {
+            if self.args.fullscreen_allowed() {
+                view_menu::set_fullscreen(&window, true);
+                video.fullscreen = true;
+            } else {
+                eprintln!("fd-app: staying windowed: a scripted run goes fullscreen only with --allow-fullscreen");
+            }
+        }
         self.ui.attach(window.clone());
         let (pads, present) = if self.args.unattended() {
             (None, Vec::new())
@@ -458,6 +475,7 @@ impl App {
                 EngineChoice::Translated => translated_recorder(StartPoint::PowerOn),
             },
             stopped: None,
+            window_bar: false,
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
@@ -465,6 +483,7 @@ impl App {
             self.pad_event(e);
         }
         eprintln!("fd-app: playing {playing}");
+        self.show_menu();
         self.show_newest();
     }
 
@@ -507,8 +526,77 @@ impl App {
             // Settings are saved when they change, never on the way out: a damaged file stays as
             // it is until the owner changes a setting (DESIGN §2.12).
             Command::Quit => self.finish(event_loop),
+            Command::View(ViewCommand::Scale(s)) => self.set_scale(s),
+            Command::View(ViewCommand::ToggleFullscreen) => self.toggle_fullscreen(),
+            Command::View(ViewCommand::Filter(f)) => self.set_filter(f),
         }
         self.show_menu();
+    }
+
+    /// View → Scale ▸ `s`: remembered, and a window (not fullscreen) resized to it, the bar's
+    /// height more while it shows. Auto keeps the window's size. Whether the window is fullscreen
+    /// is `video.fullscreen`, not the setting: a scripted run kept windowed holds `true` there.
+    fn set_scale(&mut self, s: Scale) {
+        let run = self.run.as_mut().expect("running");
+        run.settings.scale = s;
+        run.video.scale = s;
+        if let Scale::N(_) = s
+            && !run.video.fullscreen
+        {
+            let size = initial_size(s, run.picture);
+            let bar = if run.video.bar { BAR_HEIGHT } else { 0 };
+            let _ = run.window.request_inner_size(LogicalSize::new(size.width, size.height + bar));
+            run.window_bar = run.video.bar;
+        }
+        self.save_settings();
+    }
+
+    /// View → Fullscreen, ⌃⌘F: on or off, remembered; refused in a scripted run without
+    /// `--allow-fullscreen`, the setting left as it was.
+    fn toggle_fullscreen(&mut self) {
+        if !self.args.fullscreen_allowed() {
+            eprintln!("fd-app: fullscreen refused: a scripted run needs --allow-fullscreen");
+            return;
+        }
+        let run = self.run.as_mut().expect("running");
+        run.settings.fullscreen = !run.settings.fullscreen;
+        view_menu::set_fullscreen(&run.window, run.settings.fullscreen);
+        run.video.fullscreen = run.settings.fullscreen;
+        // Back in the window: it gains or loses the bar if that came or went in fullscreen.
+        self.fit_window_to_bar(None);
+        self.save_settings();
+    }
+
+    /// View → Filter ▸ `f`: the scaled picture through it from the next present, remembered.
+    fn set_filter(&mut self, f: Filter) {
+        let run = self.run.as_mut().expect("running");
+        run.settings.filter = f;
+        run.video.filter = f;
+        run.window.request_redraw();
+        self.save_settings();
+    }
+
+    /// Settings are saved when they change (DESIGN §2.12). `widescreen` is written back as read.
+    fn save_settings(&self) {
+        let run = self.run.as_ref().expect("running");
+        if let Err(e) = settings::save(&self.home, &run.settings) {
+            eprintln!("fd-app: could not save the settings: {e}");
+        }
+    }
+
+    /// A window (not fullscreen) is the bar's height taller while the bar shows: grown or shrunk
+    /// by it when that changed, now or while fullscreen. `at`: the size to grow or shrink, when not
+    /// the size it has now. (Never set the minimum size here: on a window going fullscreen winit
+    /// applies it as a resize.)
+    fn fit_window_to_bar(&mut self, at: Option<LogicalSize<f64>>) {
+        let run = self.run.as_mut().expect("running");
+        if run.video.fullscreen || run.window_bar == run.video.bar {
+            return;
+        }
+        let at = at.unwrap_or_else(|| run.window.inner_size().to_logical(run.window.scale_factor()));
+        let by = if run.video.bar { BAR_HEIGHT as f64 } else { -(BAR_HEIGHT as f64) };
+        let _ = run.window.request_inner_size(LogicalSize::new(at.width, at.height + by));
+        run.window_bar = run.video.bar;
     }
 
     /// What "Recording in progress" calls `c`, when taking it would end the recording running.
@@ -665,6 +753,7 @@ impl App {
         let on = run.recorder.is_recording();
         if let Some(m) = &self.menu {
             m.show_recording(on);
+            m.show_view(run.video.scale, run.settings.fullscreen, run.settings.filter);
         }
         if on != run.video.bar {
             run.video.bar = on;
@@ -690,14 +779,7 @@ impl App {
                 .to_logical::<f64>(run.window.scale_factor());
             run.window
                 .set_min_inner_size(Some(min_size(run.picture, on)));
-            let by = if on {
-                BAR_HEIGHT as f64
-            } else {
-                -(BAR_HEIGHT as f64)
-            };
-            let _ = run
-                .window
-                .request_inner_size(LogicalSize::new(at.width, at.height + by));
+            self.fit_window_to_bar(Some(at));
         }
         self.show_bar_time();
     }

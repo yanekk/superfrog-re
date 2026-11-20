@@ -86,7 +86,10 @@ games/forest-dumb/tools/translate.py --build`); without it the app says so and e
 still finds no translation after step 2, `touch
 games/forest-dumb/engine/buildscripts/fd_translated.rs`: the build keeps its cached stub.
 Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
-Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
+View ▸ Scale (1×, 2×, 3×, Auto), Fullscreen (⌃⌘F) and Filter (None, Basic, Lottes, Geom, Easymode) apply at
+once and are remembered for the next launch (`--scale N` still wins for its run); there is no Widescreen,
+the original has no wider view. A scripted run stays windowed unless it passes `--allow-fullscreen` (with
+`--max-frames 300` or fewer). Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
 `~/Library/Application Support/Forest-Dumb-RE/settings.toml` (`--home DIR` or `FOREST_DUMB_HOME`
 elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `--timeout`) are in
 `fd-app/src/args.rs`; `fd-e2e` drives it end to end (`cargo test -p fd-e2e`).

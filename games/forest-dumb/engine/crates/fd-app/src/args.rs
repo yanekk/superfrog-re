@@ -3,7 +3,7 @@
 //! ```text
 //! fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N]
 //!        [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1]
-//!        [--stop-after N]
+//!        [--stop-after N] [--allow-fullscreen]
 //! ```
 
 use std::ffi::OsString;
@@ -12,9 +12,13 @@ use std::path::PathBuf;
 /// `--timeout` under `--script` when none is given (DESIGN §5.2).
 pub const SCRIPT_TIMEOUT_S: u64 = 120;
 
+/// The most frames a run may ask for together with `--allow-fullscreen`, so a fullscreen run
+/// always ends by itself (as the first game's app).
+pub const FULLSCREEN_MAX_FRAMES: u64 = 300;
+
 pub const USAGE: &str = "usage: fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] \
 [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] \
-[--stop-after N]";
+[--stop-after N] [--allow-fullscreen]";
 
 /// Which engine plays (translator DESIGN §2.10).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -57,6 +61,8 @@ pub struct Args {
     /// `--stop-after N`, a test's seatbelt-style hook (translator T39): the translated program
     /// stops at step N as if it had reached a stop, so the app's stop path runs without a defect.
     pub stop_after: Option<u64>,
+    /// Lets a scripted run go fullscreen (View → Fullscreen, a saved `fullscreen = true`).
+    pub allow_fullscreen: bool,
 }
 
 impl Args {
@@ -64,6 +70,11 @@ impl Args {
     /// a real pad, and shows no native message.
     pub fn unattended(&self) -> bool {
         self.script.is_some()
+    }
+
+    /// May this run go fullscreen? Never under `--script` without `--allow-fullscreen`.
+    pub fn fullscreen_allowed(&self) -> bool {
+        !self.unattended() || self.allow_fullscreen
     }
 }
 
@@ -84,6 +95,7 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
             "--script" => a.script = Some(value("a file")?.into()),
             "--capture" => a.capture = Some(value("a folder")?.into()),
             "--capture-hashes" => a.capture_hashes = true,
+            "--allow-fullscreen" => a.allow_fullscreen = true,
             "--bugs-dir" => a.bugs_dir = Some(value("a folder")?.into()),
             "--engine" => {
                 a.engine = match value("translated or hand")?.to_string_lossy().as_ref() {
@@ -127,6 +139,12 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
     if a.stop_after.is_some() && a.engine == EngineChoice::Hand {
         return Err(format!(
             "--stop-after: only the translated program stops; drop --engine hand\n{USAGE}"
+        ));
+    }
+    if a.allow_fullscreen && !a.max_frames.is_some_and(|n| n <= FULLSCREEN_MAX_FRAMES) {
+        return Err(format!(
+            "--allow-fullscreen needs --max-frames {FULLSCREEN_MAX_FRAMES} or fewer, so a \
+             fullscreen run always ends by itself\n{USAGE}"
         ));
     }
     if a.stop_after == Some(0) {
@@ -220,6 +238,22 @@ mod tests {
                 .capture_hashes
         );
         assert!(!p(&["--capture", "c"]).unwrap().capture_hashes);
+    }
+
+    #[test]
+    fn a_script_stays_windowed_unless_it_allows_fullscreen_with_a_short_cap() {
+        assert!(!p(&["--script", "s", "--max-frames", "5"]).unwrap().fullscreen_allowed());
+        assert!(p(&[]).unwrap().fullscreen_allowed());
+        let a = p(&["--script", "s", "--max-frames", "300", "--allow-fullscreen"]).unwrap();
+        assert!(a.allow_fullscreen && a.fullscreen_allowed());
+        for bad in [
+            &["--script", "s", "--max-frames", "301", "--allow-fullscreen"][..],
+            &["--allow-fullscreen"],
+            &["--script", "s", "--allow-fullscreen"],
+        ] {
+            let e = p(bad).unwrap_err();
+            assert!(e.contains("--max-frames 300 or fewer") && e.contains(USAGE), "{bad:?}: {e}");
+        }
     }
 
     #[test]

@@ -7,7 +7,8 @@ publish.workspace = true
 # The game-free parts of a desktop app that plays an Amiga game (a shell crate): sound out, PAL
 # frame pacing, gamepads, the picture on the GPU, capture files, atomic writes, the single-copy
 # lock, the Amiga key table, settings.toml, the Controls, Start Level, recording bar and save
-# windows, and a script's game-free lines. The run loop, game window and menus stay the game's.
+# windows, a script's game-free lines and the View menu's Scale, Fullscreen and Filter items
+# (`view_menu`). The run loop, game window and the rest of the menus stay the game's.
 [dependencies]
 # Picture and its 12-bit colours, what the window draws (a toolkit crate).
 amiga-chips = { path = "../amiga-chips" }
@@ -32,6 +33,9 @@ gilrs = "0.11"
 # settings.toml.
 serde = { version = "1", features = ["derive"] }
 toml = "0.9"
+# The View menu's items (`view_menu`), in the native menu bar each game's app builds; the version
+# both games' apps use.
+muda = "0.21"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # The Controls window's labels and buttons on a window winit opens; Start Level, an NSWindow of its
