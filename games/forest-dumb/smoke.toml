@@ -33,6 +33,9 @@ workspace = "engine"
 # to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
 # cases on it: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/world_starts.rs" = "full"
+# forest-dumb-title T01: the title's read held on the original from a snapshot of the idle title, every
+# code, a wrong one, the rows, Esc, KONIEC, game over and a name to the title, the song's loop: about 30 s.
+"crates/fd-conform/tests/title_codes.rs" = "full"
 # Title plan T08: a world 3 cheat-on recording made headless from power-on and replayed by
 # `bug::replay_translated` to its recorded RAM: the disks and the generated tree put it in full.
 "crates/fd-conform/tests/world_start_replay.rs" = "full"

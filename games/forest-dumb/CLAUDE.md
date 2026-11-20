@@ -163,6 +163,7 @@ source; open the source only for what the README lacks.
 - [docs/translator-brief.md](docs/translator-brief.md): the brief for the full translator plan (stages 1 to 7), rewritten after the trial (2026-11-11): translated-first, hand-written where chosen, and the translator as new sessions' default first pass.
 - [docs/14-translator.md](docs/14-translator.md): the translator plan's result and every reading, dated: 291 of 291 instruction kinds match Moira (`insn_gate.rs`); the whole tree, 100 of 100 routines, no hint; 89 of 100 on `pcode-machine`; 49 of 50 cases translated and with level 1 mounted (`power-on-level-1` fails from 6301); worlds 2 to 6, 5 of 5; no write into code; the app end to end to world 2; sessions translate first, 3 of 3; and what is left open for the level plans ("Open after the plan": read it before planning one).
 - [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
+- [docs/16-title.md](docs/16-title.md): the title measured: the rows, KODY's digits, the four codes (0556, 2424, 7531, 2400 the cheat) and a wrong one, Esc and KONIEC returning to AmigaDOS, game over through the high scores (name entry, memory only) to the title, the song's loop.
 
 ## The first case
 

@@ -1,0 +1,15 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. Down and Up through the rows; a row moves when the stick is let go.
+0: -
+20: D        # held 10 frames, released at 30: title_cursor 0 to 1 in step 5020
+30: -
+40: D        # held 30 frames: nothing moves until the release at 70, 1 to 2 in step 5060
+70: -
+80: D        # released at 82: 2 wraps to 0 in step 5072
+82: -
+100: U       # 0 wraps to 2 in step 5100
+110: -
+120: U       # 2 to 1 in step 5120
+130: -
+140: U       # 1 to 0 in step 5140
+150: -
