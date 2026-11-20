@@ -8,6 +8,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 🐞 | **title-esc fails translated**: the program quits a frame after the original (original returns at 5012, translated 5013; first difference Paula's AUD0PER at 5011). KONIEC passes. Mounted the same (T05, for T07). |
 | 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
 | 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
 | 2026-11-20 | 📌 | **Codes reach worlds 1, 3 and 5 only** (0556, 2424, 7531) plus 2400, world 1 with `cheat_flag`; worlds 2, 4 and 6 have none, so `title-code-wN` exists for N 1, 3, 5 (T01, docs/16). |
