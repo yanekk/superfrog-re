@@ -5,7 +5,7 @@
 
 use std::collections::VecDeque;
 
-use amiga_input::{KeySet, key_bytes};
+use amiga_input::{KeySet, key_byte};
 
 /// CIA registers by number (address bits 8 to 11).
 pub const PRA: u16 = 0x0;
@@ -29,6 +29,18 @@ const CR_START: u8 = 0x01;
 /// 60 µs a bit (Hardware Reference Manual, keyboard chapter) at 7.09 MHz. From the manual, not
 /// measured; the frame bar admits it moving inside the frame (DESIGN §2.7).
 pub const KEY_BYTE_CYCLES: u64 = 3_405;
+
+/// The bytes the keyboard sends when the keys held go from `held` to `keys`: one per key that
+/// changed, lowest code first, down or up alike. vAmiga, the oracle, queues a frame's changes so
+/// (`shim.cpp` `input`, codes 0 to 127), and a program keeping only the last byte sees the order:
+/// key 2 let go with key 4 pressed in one frame leaves key 4's press last, and the title counts no
+/// digit. `amiga_input::key_bytes` sends every down before every up, which left key 2's release
+/// last and counted one (title plan T11's drill).
+fn changes_by_code(held: KeySet, keys: KeySet) -> impl Iterator<Item = u8> {
+    (0..128u8)
+        .filter(move |&c| held.contains(c) != keys.contains(c))
+        .map(move |c| key_byte(c, held.contains(c)))
+}
 
 /// CIA-A: `$BFE001`, odd bytes.
 #[derive(Clone, Debug)]
@@ -185,7 +197,7 @@ impl CiaA {
         // Landing it at once ran the original's level 2 handler 7 lines early, across the title's
         // `wait_line_1`, and the title lost a pass (title plan T07).
         let idle = self.queue.is_empty() && !self.awaiting_handshake;
-        self.queue.extend(key_bytes(self.held, keys));
+        self.queue.extend(changes_by_code(self.held, keys));
         if idle && !self.queue.is_empty() {
             self.ready_at = at + KEY_BYTE_CYCLES;
         }
@@ -263,7 +275,6 @@ impl CiaA {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use amiga_input::key_byte;
 
     #[test]
     fn the_fire_buttons_read_low_on_pra_inputs_only() {
@@ -408,4 +419,24 @@ mod tests {
         c.write(CRA, 0x01, 0);
         assert_eq!(c.fault(), Some(0x7), "the first is kept");
     }
+
+    #[test]
+    fn a_frames_key_changes_go_out_in_code_order_downs_and_ups_alike() {
+        let mut c = CiaA::default();
+        c.set_keys(KeySet::key(0x02), 0);
+        c.tick(KEY_BYTE_CYCLES);
+        c.write(CRA, CRA_SPMODE, 4_000);
+        c.write(CRA, 0, 4_100);
+        // Key 2 let go and key 4 pressed in one frame: 2's release, then 4's press, as vAmiga
+        // queues them; the last byte in SDR is the press.
+        c.set_keys(KeySet::key(0x04), 10_000);
+        c.tick(10_000 + KEY_BYTE_CYCLES);
+        assert_eq!(c.read(SDR, 0), key_byte(0x02, true));
+        c.write(CRA, CRA_SPMODE, 14_000);
+        c.write(CRA, 0, 14_100);
+        c.tick(14_100 + KEY_BYTE_CYCLES);
+        assert_eq!(c.read(SDR, 0), key_byte(0x04, false));
+        assert_eq!(c.keys_queued(), 0);
+    }
+
 }

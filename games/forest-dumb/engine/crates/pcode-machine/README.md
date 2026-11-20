@@ -56,8 +56,10 @@ let frame = m.end_frame();   // frame.picture, frame.writes: (cycle, reg, value)
   registers; CRA reads bits 4 and 7 as 0, CRB bit 4 (vAmiga). ICR: a write with bit 7 sets mask
   bits, without clears them; a read returns the flags (bit 7 if the line is driven) and clears them.
   Only that read releases the line: masking a raised interrupt and unmasking it gives no new edge. The line falling is PORTS (`$0008`) from
-  `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard (`amiga-input`
-  `key_bytes`): each frame's changes queue a byte each; a byte lands in SDR with the serial flag
+  `take_cia_interrupts`, for the interrupt logic to set in INTREQ. The keyboard: each frame's changes
+  queue a byte each, in key-code order with presses and releases mixed, as vAmiga queues them
+  (`cia.rs` `changes_by_code`; `amiga-input` `key_bytes`, downs before ups, lost a rolled digit,
+  `title-code-rolled`); a byte lands in SDR with the serial flag
   `KEY_BYTE_CYCLES` (3 405, the manual's 8 bits at 60 µs) after an idle keyboard saw the change, and
   the next waits for the handshake (CRA bit 6 set then cleared) plus the same. On the oracle a key
   pressed at a frame's start raises level 2 on line 7 (title plan T07); the machine's first

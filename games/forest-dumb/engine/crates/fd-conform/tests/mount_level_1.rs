@@ -22,8 +22,8 @@ use pcode_rt::{Image, Regs, Stop};
 /// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20;
 /// `title-koniec`, title T05, and the two idle title cases, which never reach play, title T03,
 /// 2026-11-20; the two game over cases, title T06, 2026-11-20; `title-esc` and the two KODY cases
-/// into worlds 3 and 5, title T07, 2026-11-20).
-const PASS_MOUNTED: [&str; 57] = [
+/// into worlds 3 and 5, title T07, 2026-11-20; `title-code-rolled`, title T11, 2026-11-20).
+const PASS_MOUNTED: [&str; 58] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -81,6 +81,7 @@ const PASS_MOUNTED: [&str; 57] = [
     "title-code-w3",
     "title-code-w5",
     "title-esc",
+    "title-code-rolled",
 ];
 
 /// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated
@@ -160,7 +161,7 @@ fn every_case_is_in_one_list() {
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 57 cases, about 30 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 58 cases, about 30 min"]
 fn every_case_that_passes_mounted_still_does() {
     generated();
     let cases: Vec<Case> = PASS_MOUNTED

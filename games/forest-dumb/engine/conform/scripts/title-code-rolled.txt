@@ -1,0 +1,14 @@
+# forest-dumb-title T11 (docs/16-title.md, "KODY"): frames from boot-to-level1's 4990, the idle
+# title. KODY, then 2424 typed rolling: each key let go in the frame the next goes down, as fast
+# typing does. The keyboard sends a frame's changes in key-code order, so the press lands after
+# the release, the title keeps only the last byte, and the rolled releases count no digit.
+0: -
+20: D        # Down released at 30: title_cursor 1, KODY
+30: -
+40: F        # fire on KODY, released at 50: the digit entry starts
+50: -
+60: K02      # key 2 down
+66: K04      # key 2 up and key 4 down in one frame
+72: K02      # key 4 up and key 2 down
+78: K04      # key 2 up and key 4 down
+84: -        # key 4 up alone

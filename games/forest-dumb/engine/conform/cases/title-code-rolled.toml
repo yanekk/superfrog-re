@@ -1,0 +1,17 @@
+# KODY with keys rolled (forest-dumb-title T11, the title drill; docs/16-title.md, "KODY"): from the
+# idle title at 4990, KODY, then 2424 typed fast, each key let go in the frame the next goes down.
+# The keyboard sends one frame's changes in key-code order (vAmiga), so a rolled release of key 2
+# is followed by key 4's press, the title keeps only the last byte, and that digit is lost: two
+# digits count, both 4. No load runs, so every frame is compared.
+# Translated, measured 2026-11-20 (T11): passes once `pcode-machine` sends a frame's key changes in
+# code order; before, it sent every press before every release and differed at 5057 (last_key_byte
+# $fa against $f7), counting a 2.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-code-rolled"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 120
+compare = ["memory", "picture", "writes", "vars"]
+vars = ["code_digits", "code_digit_index", "title_selected", "last_key_byte"]
+# The entry is still on after two digits: the first two bytes 4, the rest the program file's 05 06.
+goal = { all = [{ var = "code_digit_index", value = 2 }, { var = "code_digits", value = 0x04040506 }], after = 5080, by_frame = 5109 }
