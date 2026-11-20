@@ -439,6 +439,10 @@ workspace = "engine"
     "the_committed_routes_are_route_scripts",
     "the_planners_route_finishes_on_the_engine_alone",
 ]
+# fd-view-menu: View ▸ Scale, Fullscreen and Filter. The script layer is three scripted runs, about
+# 6 s warm, and the OS layer (`FD_E2E_OS=1`, unlocked screen, about 6 s in release) is `#[ignore]`d.
+# Full, not smoke: smoke was over its 1200 s limit on main itself (owner, 2026-11-20).
+"crates/fd-e2e/tests/view_menu.rs" = "full"
 # T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
 # seven in about 40 s in release, as Superfrog's recorder_drill.rs.
 "crates/fd-e2e/tests/drill_os.rs" = "full"

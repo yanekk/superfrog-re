@@ -13,7 +13,6 @@
 
 use sf_core::View;
 use winit::dpi::LogicalSize;
-use winit::window::{Fullscreen, Window};
 
 use crate::settings::Scale;
 
@@ -76,10 +75,8 @@ pub fn min_size(widescreen: bool, bar: bool) -> LogicalSize<u32> {
     LogicalSize::new(w, h + bar_points(bar))
 }
 
-/// Fullscreen on the window's display, or back to the window.
-pub fn set_fullscreen(window: &Window, on: bool) {
-    window.set_fullscreen(on.then_some(Fullscreen::Borderless(None)));
-}
+/// Fullscreen on the window's display, or back to the window (the toolkit's, fd-view-menu).
+pub use amiga_app::view_menu::set_fullscreen;
 
 #[cfg(test)]
 mod tests {
