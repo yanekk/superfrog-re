@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Every task built; T12 awaiting review.
+**Status:** Every task built and reviewed.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T12 (map-drill).
+**Next `pir-work` will:** nothing left; pir's end gate runs smoke on the feature branch.
 
 ## Tasks
 
@@ -28,9 +28,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T09 | secrets-layer | T07, T08 | ✅ | |
 | T10 | app-live | T02, T05, T06 | ✅ | |
 | T11 | app-show-map | T08, T10 | ✅ | |
-| T12 | map-drill | T09, T11 | 🔍 | Drill `fd-e2e/tests/map_drill.rs` (full, ignored, 13 min) passes. Fixed with tests: live switch on the old map, torn live.js read, secret mark, one EXIT, level-end sample as play. Owner kept route wording, hid secret counts. Deviations: `live_from_ram` takes `Prev` (T06 code); T09's levels_chrome test updated; W1-1 fast but its last 1500 steps. |
+| T12 | map-drill | T09, T11 | ✅ | Review clean, no fix commit. Drill rerun green (592 s, quit to "App not running" 3.4 s); screens judged. Mutated world gate, torn-read fallback, loaded-data check, secret count, EXIT label, secret mark: each red. Oracle `live_reader` 4/4, `fd-e2e` live 5/5, `live_chrome` 5 runs. Owner decisions on wording and secret counts `read-only`. |
 
-**Review queue:** T12
+**Review queue:** (empty)
 
 ## Blocked on the user
 

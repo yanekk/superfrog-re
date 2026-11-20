@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T12 review drill, worker-driven at 1920×1080: with the dot near W2-1's left edge Follow centres it, leaving about a third of the map box black beyond the level (`page.html` follow, T05). Left as is. |
 | 2026-11-20 | 📌 | T12 drill, worker-driven (`map_drill.rs`): translated app through W1-1 into W2-1, three Chromes at 1280×800, 1920×1080, 800×600. Dot, items, taken coins, creatures, Follow, hand pick, load, reload, resize and quit (3.2 s) as DESIGN §2. |
 | 2026-11-20 | 🐞 | T12 drill: the level-end step read as play in the next world (old spot, 0 items), and a live switch drew on the old map while the new loaded. Both fixed (`fd-core/tests/live.rs`, `live_chrome.rs`). |
 | 2026-11-20 | 📌 | T12 drill: at 800×600 the map starts about 320 px down, below the heading, switcher, layers and status, so under half the window is map. Nothing clipped; left as is. |
