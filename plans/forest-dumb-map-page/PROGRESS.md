@@ -7,8 +7,8 @@ the over-budget cell they walk past.
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
 **Status:** Planned 2026-11-20; nothing built.
-**Last updated:** 2026-11-20 (T04 implemented)
-**Next `pir-work` will:** review T04; T05 (page-live) follows it, T02, T06 and T07 can run beside it.
+**Last updated:** 2026-11-20 (T04 reviewed)
+**Next `pir-work` will:** T05 (page-live), now unblocked; T02, T06 and T07 can run beside it.
 
 ## Tasks
 
@@ -20,7 +20,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ✅ | |
-| T04 | page-map-only | T03 | 🔍 | `Entry.verdict: Option`, None is manifest status `map`; the page treats `track: []` as map only, hiding timeline, Follow, events card and route-layer chips. 1 new unit test, 1 Chrome test (both sizes, smoke, own area). Deviation: count reads "levels" when any is map only. Chrome test injects an error catcher, the rig has no console capture. |
+| T04 | page-map-only | T03 | ✅ | Reviewed clean, no fix commit. Three mutations went red (actor drawn, route chips shown, status `map`); Chrome test 5 runs green, 2.3-3.1 s. Probe: switch mid-play with Follow on, coin readout, only-bad filter, back to routed, no page errors. Superfrog count still says routes: read-only. |
 | T05 | page-live | T04 | ⬜ | |
 | T06 | live-reader | — | ⬜ | |
 | T07 | secrets-research | — | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T04
+**Review queue:** empty
 
 ## Blocked on the user
 

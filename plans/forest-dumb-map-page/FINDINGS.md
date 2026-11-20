@@ -7,6 +7,8 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T04 review: a map-only level's header still reads "<title> route · <level>" and the filter "Only routes with faults or failures" (`page.html`). Wording the task left open; left for the owner or T12's drill. |
+| 2026-11-20 | 📌 | T04 review: fake unverified against real. `page_chrome.rs` and `made_up_level.rs` write map-only JSON by hand; no game writes one until T02 and T08, which should drive the page on a real dump. |
 | 2026-11-20 | 📌 | `amiga-browser` has no console capture (T04): a page test catches errors by writing a script into `index.html` before the page's own, collecting `error`, `unhandledrejection` and `console.error` into `window.ERRS` (`page_chrome.rs` `CATCH`). |
 | 2026-11-20 | 📌 | **Items needed is computed from the map** (T00): `load_list_world_N` stores BCD(count of `$20`-`$27` over all 38400 object-map bytes - 50). T02 counts the file; the oracle agrees in all six worlds (docs/10). |
 | 2026-11-20 | 🐞 | `tools/smoke.sh` in a fresh worktree hit its 1200 s limit at plan review: Forest Dumb done at 820 s, 20 Superfrog entries unrun, another smoke beside it. Four afternoon runs hit it too. |
