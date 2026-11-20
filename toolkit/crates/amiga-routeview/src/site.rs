@@ -71,7 +71,9 @@ pub struct Entry {
     pub group: String,
     /// The route file, shown under the title; `None` for a level drawn with no route.
     pub route_file: Option<String>,
-    pub verdict: Verdict,
+    /// `None` for a map-only level (its data's `track` is empty): the page shows "Map only" in the
+    /// verdict's place and counts no faults.
+    pub verdict: Option<Verdict>,
     /// The planner's planning time and route lengths, for the summary.
     pub wall_s: Option<f64>,
     pub ref_frames: Option<u32>,
@@ -94,7 +96,7 @@ pub trait LevelDump {
             group: id.clone(),
             id,
             route_file: None,
-            verdict: Verdict { status: Status::Clean, faults: vec![], info: vec![] },
+            verdict: Some(Verdict { status: Status::Clean, faults: vec![], info: vec![] }),
             wall_s: None,
             ref_frames: None,
         }
@@ -137,9 +139,15 @@ fn manifest(entries: &[Entry]) -> String {
         j.str("id", &e.id);
         j.str("label", &e.label);
         j.str("group", &e.group);
-        j.str("status", e.verdict.status.word());
-        j.raw("faults", &strs(e.verdict.faults.iter()));
-        j.raw("info", &strs(e.verdict.info.iter()));
+        // `map` is the page's own status for a level with no route, beside the verdict words.
+        let none: &[String] = &[];
+        let (status, faults, info) = match &e.verdict {
+            Some(v) => (v.status.word(), &v.faults[..], &v.info[..]),
+            None => ("map", none, none),
+        };
+        j.str("status", status);
+        j.raw("faults", &strs(faults.iter()));
+        j.raw("info", &strs(info.iter()));
         j.str("data", &format!("data/{}.js", e.id));
         match &e.route_file {
             Some(f) => j.str("route_file", f),
@@ -239,7 +247,7 @@ mod tests {
             label: "L1".into(),
             group: "A".into(),
             route_file: Some("a</script>b__TITLE__.txt".into()),
-            verdict: Verdict { status: Status::Faults, faults: vec!["lost 1 heart".into()], info: vec![] },
+            verdict: Some(Verdict { status: Status::Faults, faults: vec!["lost 1 heart".into()], info: vec![] }),
             wall_s: Some(60.0),
             ref_frames: None,
         };

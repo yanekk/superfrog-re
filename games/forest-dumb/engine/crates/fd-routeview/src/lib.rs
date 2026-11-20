@@ -452,11 +452,11 @@ pub fn write_page(
         route_file: Some(script_path.display().to_string()),
         // Until the level's end is ported (T26) the page gives no verdict ([`offline`] marks it
         // unknown) and says why.
-        verdict: Verdict {
+        verdict: Some(Verdict {
             status: Status::Clean,
             faults: vec![NO_VERDICT.into()],
             info: vec![],
-        },
+        }),
         wall_s: None,
         ref_frames: None,
     };
