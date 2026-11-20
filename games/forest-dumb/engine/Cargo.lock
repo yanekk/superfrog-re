@@ -989,6 +989,7 @@ dependencies = [
 name = "fd-e2e"
 version = "0.1.0"
 dependencies = [
+ "amiga-browser",
  "amiga-conform",
  "amiga-disk",
  "amiga-e2e",

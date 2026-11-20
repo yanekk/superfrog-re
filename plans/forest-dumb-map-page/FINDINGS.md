@@ -7,18 +7,19 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T12 drill, worker-driven (`map_drill.rs`): translated app through W1-1 into W2-1, three Chromes at 1280×800, 1920×1080, 800×600. Dot, items, taken coins, creatures, Follow, hand pick, load, reload, resize and quit (3.2 s) as DESIGN §2. |
+| 2026-11-20 | 🐞 | T12 drill: the level-end step read as play in the next world (old spot, 0 items), and a live switch drew on the old map while the new loaded. Both fixed (`fd-core/tests/live.rs`, `live_chrome.rs`). |
+| 2026-11-20 | 📌 | T12 drill: at 800×600 the map starts about 320 px down, below the heading, switcher, layers and status, so under half the window is map. Nothing clipped; left as is. |
+| 2026-11-20 | 🔄 | T12, owner: a page with no routes keeps the route viewer's wording ("<title> route · W1-1", "0 clean 0 with faults", the faults filter); secrets leave the heading count and Level summary while their layer is off. |
+| 2026-11-20 | 📌 | Chrome 157 sometimes reads `live.js` half replaced despite the rename: about 1 read in 950 under a writer replacing it thousands of times a second. The page sees "Script error." and keeps its last frame (`live_chrome.rs`). |
+| 2026-11-20 | 📌 | `amiga-browser` continues paused file requests only while a call waits: a test that stops calling for seconds stalls the page's script loads. Call `eval` in any long wait loop (T12 probe). |
 | 2026-11-20 | ✅ | T11, owner by hand: `fd-app --engine hand`, Game ▸ Show Map opened Chrome on the W1-1 map with the dot on the character, moving in play (`show-map: opened …/build/map/index.html in Chrome`). |
 | 2026-11-20 | 📌 | T10 review: in `--level 1` after 240 route steps the translated app and a hand `Game` from W1-1's start disagree: one more creature in view, another 8 px apart. Items left and taken cells agree. Not investigated. |
-| 2026-11-20 | 📌 | T09, worker-driven at 1280×800: the heading's object count (W1-1 "1156 objects") includes the 133 secrets with the layer off, so it hints at them; `page.html` counts `D.objects`. Left for T12. |
-| 2026-11-20 | 📌 | T09: in live play a cell the app changed is drawn by its live value only, so W3-1 41,78, a passage holding an object, loses its secret mark once that object is taken (`page.html`). Left for T12. |
-| 2026-11-20 | 📌 | T08 review, worker-driven: the map-only page's heading reads "Forest Dumb Forever route · W3-1" and the summary counts "0 clean 0 with faults"; toolkit `page.html` wording, left for T12. |
-| 2026-11-20 | 📌 | T08 drill, worker-driven at three sizes: at the fitted view each of the six `$ff` cells draws its own EXIT label, so they overlap into one smudge. One label per block is `page.html`'s drawing; left for T12. |
 | 2026-11-20 | 🐞 | `cargo clippy` on any crate linking fd-conform fails today: `while_immutable_condition` at `fd-conform/src/bug.rs:292`, untouched by T08. |
 | 2026-11-20 | 🐞 | T05 drill, worker-driven at three sizes: after the page switched level by itself the last hover's tip still named a cell of the old level; hidden on a live switch, asserted in `live_chrome.rs`. |
 | 2026-11-20 | 📌 | T07 review: the character stood in 34 listed passage cells across 9 of 11 groups on the original; W1-1's tower `121,79` and W3-1's `164,53` group were not probed. docs/17's group extents were measured and corrected. |
 | 2026-11-20 | 📌 | Collision is `collision_map` from shapes and vanishing blocks; tiles reach only the screen. Hidden passages: W1-1 133, W3-1 292, W4-1 63 cells (docs/17). Per-tile majority misses W1-1's tunnel, built mostly of tiles 301 to 310. |
 | 2026-11-20 | 📌 | Judge "drawn as wall" on the raw render, not a collision-tinted overlay: tinting made W1-1's hidden tunnel look like a grey corridor and its solid twin look like a fake one (T07). |
-| 2026-11-20 | 📌 | T04 review: a map-only level's header still reads "<title> route · <level>" and the filter "Only routes with faults or failures" (`page.html`). Wording the task left open; left for the owner or T12's drill. |
 | 2026-11-20 | 📌 | T04 review: fake unverified against real. `page_chrome.rs` and `made_up_level.rs` write map-only JSON by hand; no game writes one until T02 and T08, which should drive the page on a real dump. |
 | 2026-11-20 | 📌 | `amiga-browser` has no console capture (T04): a page test catches errors by writing a script into `index.html` before the page's own, collecting `error`, `unhandledrejection` and `console.error` into `window.ERRS` (`page_chrome.rs` `CATCH`). |
 | 2026-11-20 | 📌 | **Items needed is computed from the map** (T00): `load_list_world_N` stores BCD(count of `$20`-`$27` over all 38400 object-map bytes - 50). T02 counts the file; the oracle agrees in all six worlds (docs/10). |
