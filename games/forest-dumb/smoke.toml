@@ -43,6 +43,7 @@ workspace = "engine"
 # forest-dumb-title T05: title-koniec and title-esc on the translated program against the original
 # from the 4990 snapshot, about 30 s: the disks, Kickstart and the tree's build put it in full.
 "crates/fd-conform/tests/title_quit_cases.rs" = "full"
+"crates/fd-conform/tests/game_over_cases.rs" = "full"
 # Title plan T08: a world 3 cheat-on recording made headless from power-on and replayed by
 # `bug::replay_translated` to its recorded RAM: the disks and the generated tree put it in full.
 "crates/fd-conform/tests/world_start_replay.rs" = "full"

@@ -1,0 +1,17 @@
+# Game over's way back to the title (forest-dumb-title T06, DESIGN §2.2, §2.3): from the idle title
+# at frame 4990, Start into world 2 (world_index set as load_world is entered, as world-2-start
+# does), Esc in play to give up, fire on the game over screen, fire on the high scores, and
+# session_loop's way back into title_screen. A score of 0 is under the eighth entry's, so
+# high_scores asks for no name. Game over is reached by Esc, not by lives set low and deaths: T01
+# read Esc in play as give_up straight to session_game_over (docs/16-title.md "Game over"), the
+# same routine the last death reaches, and from there the path is the original's own.
+# Measured on the original (T01, tests/title_codes.rs): game_over_screen 6278, high_scores 6400,
+# session_loop 6500, title_screen 7447. Translated engine only.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "game-over-title"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 2520
+compare = ["memory", "picture", "writes"]
+set = [{ var = "world_index", value = 1, when = "load_world" }]
+goal = { enters = "title_screen", by_frame = 7500 }
