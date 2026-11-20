@@ -93,3 +93,8 @@ and test.sh; `test_smoke_core.py`, `test_smoke_shell.py`: smoke; `test_full_comm
 `test_tier_names.py`: the name check). Run them with
 `venv/bin/python -m unittest discover -q -s tools -p 'test_*.py'` from the repo root. They are unlabelled
 and always run in smoke.
+
+## A virtual Mac for the nightly run (brief)
+
+[test-vm-brief.md](test-vm-brief.md): the brief for running `full.sh` nightly in a Tart virtual Mac, screen tests
+included; waits on disk space (2026-11-20).
