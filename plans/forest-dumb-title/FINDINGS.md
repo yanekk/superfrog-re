@@ -8,6 +8,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
 | 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
 | 2026-11-20 | 📌 | `tools/smoke.sh` in a fresh worktree (plan review): setup clean; root, toolkit and forest-dumb ok, forest-dumb done at 1061 s from a cold build; killed at the 1200 s limit in games/superfrog. Warm runs are the 842 s figure. |
 | 2026-11-20 | 📌 | `bug compare` judges only hand-engine level 1 recordings (`fd-conform/src/bug.rs` `compare`, retimed to the level sync point); translated recordings, any start, only replay. Left out of scope here. |

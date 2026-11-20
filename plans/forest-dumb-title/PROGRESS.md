@@ -6,9 +6,9 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 **Plan reviewed:** 2026-11-20 — 10 fixed, 1 decided with the user
 
 **Status:** planned 2026-11-20; nothing built.
-**Last updated:** 2026-11-20 (T02 implemented)
-**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T02 and
-T08 can run beside it.
+**Last updated:** 2026-11-20 (T02 reviewed)
+**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T08 can
+run beside it. T02 is done.
 
 ## Tasks
 
@@ -18,7 +18,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T01 | title-read | — | ⬜ | |
-| T02 | case-goals | — | 🔍 | Goals enters/exited parse and run on run_entry_frames; 8 stand-in and 2 translated tests (case_goals.rs, full), 2 parse, 2 fd-translated. Deviations: original's exit is its return address running, stack unchecked (oracle counts PCs only); exit read from entry-step line samples; runner hands snapshot engine its exit, not case_start; apart events fail as SceneDiffers. |
+| T02 | case-goals | — | ✅ | Reviewed: one fix, a stop a frame after the original's exit read as "not by by_frame" (test locks it). Probed: no false exit over world 2's start, two existing loads cases unchanged, entry layout checked in the listing; mutation of the same-frame check caught. Original's exit stack unchecked, accepted. |
 | T03 | title-idle-rows-cases | T01, T02 | ⬜ | |
 | T04 | title-code-cases | T01, T02 | ⬜ | |
 | T05 | title-quit-cases | T01, T02 | ⬜ | |
@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |
 
-**Review queue:** T02
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
