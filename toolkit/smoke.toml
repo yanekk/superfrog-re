@@ -3,6 +3,10 @@ workspace = "."
 
 [tests]
 "crates/amiga-app/src" = "smoke"
+"crates/amiga-browser/src" = "smoke"
+# One Chrome session, about 1 s; the font, script re-read, time limit and drop tests stay in full
+# (map-page plan DESIGN §5: each new area puts one test of 5 s or less in smoke).
+"crates/amiga-browser/tests/drive.rs" = ["a_page_opens_reads_its_text_and_a_click_changes_it"]
 "crates/amiga-chips/src" = "smoke"
 "crates/amiga-clock/src" = "smoke"
 "crates/amiga-conform/src" = "smoke"
@@ -108,3 +112,12 @@ covers = ["crates/amiga-plan/tests/made_up_game.rs"]
 [[area]]
 name = "the route page"
 covers = ["crates/amiga-routeview/src", "crates/amiga-routeview/tests/made_up_level.rs"]
+
+# About 1 s: a page opened from disk in headless Chrome, read, clicked, scrolled and shot. Every
+# page's end-to-end test drives it.
+[[area]]
+name = "the browser rig"
+covers = [
+    "crates/amiga-browser/src",
+    "crates/amiga-browser/tests/drive.rs::a_page_opens_reads_its_text_and_a_click_changes_it",
+]

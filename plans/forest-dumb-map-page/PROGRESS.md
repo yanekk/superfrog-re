@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T06 done.
+**Status:** Building; T00, T01, T03 and T06 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01 and T07 can run beside it.
+**Next `pir-work` will:** T04 (page-map-only), the head of the critical path; T02 and T07 can run beside it.
 
 ## Tasks
 
@@ -16,10 +16,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | items-needed-source | — | ⬜ | |
-| T01 | objects-all-worlds | — | ⬜ | |
+| T00 | items-needed-source | — | ✅ | |
+| T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
-| T03 | chrome-rig | — | ⬜ | |
+| T03 | chrome-rig | — | ✅ | |
 | T04 | page-map-only | T03 | ⬜ | |
 | T05 | page-live | T04 | ⬜ | |
 | T06 | live-reader | — | ✅ | Clean, no fix commit. Ran the 6 made-up-RAM tests, purity and all 4 headless tests green. Mutations caught: play rule, column/row swap, hand-side creature kind. Probed: world 2's first pass has 0 changed cells, all six level maps 38 400 bytes; a lone Game ends a pass and a pixel off (irq 601 vs 600), so the transplant deviation holds. |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** empty
+**Review queue:** (empty)
 
 ## Blocked on the user
 
