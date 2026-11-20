@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** every task ✅ but T41 (🔍) and T42.
+**Status:** every task ✅ but T42.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T41 (app-drill); then T42 (close).
+**Next `pir-work` will:** T42 (close).
 
 ## Tasks
 
@@ -55,7 +55,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T38 | app-sound | T37 | ✅ | |
 | T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ✅ | |
-| T41 | app-drill | T40 | 🔍 | Drove launch, title rows, KODY, KONIEC, Esc, Start, deaths, game over, restart, route to world 2, held keys through loads, resizes, blur, stops at three sizes, zip replays, sound; FINDINGS row. One fix (owner's choice): KONIEC quits the app, no zip. 5 tests (`engine.rs` 2, `translated_drill.rs` 3). Deviation: DESIGN §2.10 bullet amended, owner-asked. |
+| T41 | app-drill | T40 | ✅ | Review: KONIEC while recording re-asked Quit every step after a cancel (reproduced by driving the app, fixed, test locks it); exit guard's stack and mode mutations survived, test added. Probed: drill at 500×500, 700×600; `translated_drill.rs` five runs. Owner's KONIEC choice and the builder's sound drill read-only. |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
-**Review queue:** T41
+**Review queue:** *(empty)*
 
 ## Blocked on the user
 
