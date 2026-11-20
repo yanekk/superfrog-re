@@ -370,6 +370,20 @@ mod tests {
     }
 
     #[test]
+    fn a_key_changing_while_a_byte_clocks_out_does_not_restart_it() {
+        // vAmiga `wakeUp` starts sending only when no keyboard event is pending: a byte already
+        // on its way keeps its time, the new one queues behind it.
+        let mut c = CiaA::default();
+        c.set_icr_mask(ICR_SP);
+        c.set_keys(KeySet::key(0x45), 5_000);
+        c.set_keys(KeySet::NONE, 6_000);
+        assert_eq!(c.next_at(), Some(5_000 + KEY_BYTE_CYCLES));
+        c.tick(5_000 + KEY_BYTE_CYCLES);
+        assert_eq!(c.read(SDR, 0), key_byte(0x45, false));
+        assert_eq!(c.keys_queued(), 1);
+    }
+
+    #[test]
     fn cra_and_crb_read_their_strobe_bits_as_zero() {
         // vAmiga `CIA::peek`: CRA without bits 4 and 7, CRB without bit 4 (LOAD is a strobe).
         let mut c = CiaA::default();
