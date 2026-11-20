@@ -43,6 +43,10 @@ Sprites (`src/sprites.rs`):
 - `Sprites { creatures, elements, flame, vanishing, knocker }`, each a `Sheet`.
 - `Sheet { file, picture, mask: Option<Vec<u8>>, line_bytes, frame_width, frame_height }`; `lines()`, `pixel(x, y) -> u8`. World-specific sheets have no mask.
 
+Secrets (`src/secrets.rs`, plan forest-dumb-map-page T07, `docs/17-secrets.md`):
+- `secrets(level: &Level) -> Vec<Secret>`: the hidden passages, cells drawn as wall that are passable, sorted by column then row. `Secret { c, r, kind: SecretKind }`; `SecretKind::HiddenPassage` is the only kind the original was seen to have.
+- The rule: a tile fully solid in at least `WALL_MIN` (2) cells and a tenth of its cells is a wall picture; its empty-shaped cells, 4-connected, count when one of the group has wall pictures on all four sides (trim around visible openings does not). Vanishing-block cells never count.
+
 Program (`src/program.rs`):
 - `loaded_hunk(exe: &[u8], file: &str, hunk: usize, bases: &[u32]) -> Result<Vec<u8>, AssetError>`: one hunk as the loader leaves it, zero-padded, `RELOC32` longs relocated by `bases`. Pass the oracle's bases (`fd_conform::HUNK_BASES`) so pointers match the original's.
 
