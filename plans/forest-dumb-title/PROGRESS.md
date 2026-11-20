@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | title-read | — | ⬜ | |
+| T01 | title-read | — | ✅ | |
 | T02 | case-goals | — | ⬜ | |
 | T03 | title-idle-rows-cases | T01, T02 | ⬜ | |
 | T04 | title-code-cases | T01, T02 | ⬜ | |
