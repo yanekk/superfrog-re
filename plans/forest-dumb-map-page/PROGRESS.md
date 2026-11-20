@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | chrome-rig | — | ✅ | |
 | T04 | page-map-only | T03 | ✅ | Reviewed clean, no fix commit. Three mutations went red (actor drawn, route chips shown, status `map`); Chrome test 5 runs green, 2.3-3.1 s. Probe: switch mid-play with Follow on, coin readout, only-bad filter, back to routed, no page errors. Superfrog count still says routes: read-only. |
 | T05 | page-live | T04 | ⬜ | |
-| T06 | live-reader | — | ⬜ | |
+| T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ⬜ | |
 | T08 | map-command | T02, T05 | ⬜ | |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
