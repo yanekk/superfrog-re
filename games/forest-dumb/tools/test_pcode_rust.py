@@ -525,6 +525,51 @@ class Corrections(unittest.TestCase):
         self.assertIn(x_copy, emitted(dict(cmpi, mnem='subi.b #1,d3b'))[0])
 
 
+class ShapeRow(unittest.TestCase):
+    """`shape_row` (translator T56): how control leaves an instruction and the custom register it
+    names, which `seam::walk` follows (T60)."""
+
+    @staticmethod
+    def row(mnem, ops, operands=None, raw=None, branch=None):
+        ins = {'len': 2, 'mnem': mnem, 'ops': ops, 'bytes': raw, 'operands': operands}
+        shaped = {'ticks': [], 'branch': branch, 'mem': True, 'ins': ins}
+        return pr.shape_row((0, 0x6), ins, shaped, False, False)[1]
+
+    def test_dbcc_loops_to_the_last_cbranch_not_the_first(self):
+        # Ghidra's dbf: a CBRANCH past the loop when the condition holds, then the count's.
+        ops = [{'op': 'CBRANCH', 'in': [['ram', 'h0+$a', 4], ['const', 0, 1]]},
+               {'op': 'INT_SUB', 'out': D0W, 'in': [D0W, ['const', 1, 2]]},
+               {'op': 'INT_NOTEQUAL', 'out': ['unique', 0x1300, 1], 'in': [D0W, ['const', 0xffff, 2]]},
+               {'op': 'CBRANCH', 'in': [['ram', 'h0+$4', 4], ['unique', 0x1300, 1]]}]
+        row = self.row('dbf d1w,h0+$4', ops, raw='51c9fffc')
+        self.assertIn('flow: pcode_rt::shape::Flow::Dbcc { to: 0x4, reg: 1 }', row)
+
+    def test_rts_returns(self):
+        self.assertIn('flow: pcode_rt::shape::Flow::Ret }', self.row('rts', RTS['ops']))
+
+    def test_a_conditional_branch_carries_both_paths(self):
+        ops = [{'op': 'CBRANCH', 'in': [['ram', 'h0+$10', 4], ['register', 69, 1]]}]
+        row = self.row('beq.b h0+$10', ops, branch=('r.tick(10);', 'r.tick(8);'))
+        self.assertIn('tick: |r: &mut Regs| { r.tick(8); }', row)
+        self.assertIn('Flow::Bcc { taken: |r: &mut Regs| { r.tick(10); }, to: 0x10 }', row)
+
+    def test_a_custom_register_gives_its_offset_size_and_direction(self):
+        cases = [
+            # btst reads its destination; its size is a byte on memory.
+            ('btst #6,(0x00dff002).l', ['0x6', '(0x00dff002).l'], 'Some((0x2, 1, false))'),
+            ('cmp.b (0x00dff006).l,d1b', ['(0x00dff006).l', 'd1b'], 'Some((0x6, 1, false))'),
+            # cmp's destination is read, not written.
+            ('cmp.w d0w,(0x00dff006).l', ['d0w', '(0x00dff006).l'], 'Some((0x6, 2, false))'),
+            ('move.w d0w,(0x00dff096).l', ['d0w', '(0x00dff096).l'], 'Some((0x96, 2, true))'),
+            ('move.l d0,(0x00dff080).l', ['d0', '(0x00dff080).l'], 'Some((0x80, 4, true))'),
+            ('move.w (0x00dff006).l,d0w', ['(0x00dff006).l', 'd0w'], 'Some((0x6, 2, false))'),
+            # Not a chip register.
+            ('move.w d0w,(0x00c01000).l', ['d0w', '(0x00c01000).l'], 'None'),
+        ]
+        for mnem, operands, want in cases:
+            self.assertIn(f'custom: {want},', self.row(mnem, [], operands), mnem)
+
+
 class NoGame(unittest.TestCase):
     def test_the_translator_names_no_game_and_no_address(self):
         with open(TOOL) as f:

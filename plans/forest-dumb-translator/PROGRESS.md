@@ -73,8 +73,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ✅ | Review: one fix, the builder's `cargo fmt` of 19 untouched files reverted. Mutations caught (kind 7, CLXDAT mask, `probe_6`; `far_samples` off fails 2 states). `mount_level_1` full 4 of 4, `mount_timing` 20 of 20, `seam` full pass. Probe: mounted enemy-contact reads on the translated cycles, pass lengths 2 to 8 off (FINDINGS). |
-| T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
-| T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
+| T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | |
+| T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
 **Review queue:** *(empty)*
 

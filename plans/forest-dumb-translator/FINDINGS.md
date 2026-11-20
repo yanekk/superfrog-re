@@ -6,8 +6,10 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | **T58 merge, left alone:** with `COSTS` gone every callee is walked, so `frame.rs`'s unwalked path (`owed`, `settle`, `pay`, `LUMP`, the `!self.walked` branches of `clxdat` and the sound writes) is dead code. |
 | 2026-11-20 | 📌 | **T58 review, open:** `game_frame_costs --passes --mounted enemy-contact`: CLXDAT, JOY1DAT and pass entries on the translated cycles; 422 of 1 299 passes run 2 to 8 cycles longer, all bus waits. Unlocated. |
 | 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25 (item, stomp, slide, hurt, spring; no time bonus in W1-1), `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. |
+| 2026-11-20 | 🐞 | **T60:** `seam::walk` made a `block_start` after a return and after `skip_call` where the generated caller makes `insn_start`, one extra poll. Fixed (`Escape: forest-dumb-translator T56`); `mount_timing.rs`'s full test not re-run here (no disks, no tree). |
 | 2026-11-20 | 🐞 | **Machine crash, from T54:** `engine.rs`'s mounted handler never polled, so after T54's `IPL_DELAY` its `rte` retook VERTB forever and the frame's writes grew to 25 GB (panic 2026-11-20). `Machine::stuck_interrupt` stops such a loop. |
 | 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
 | 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). |
@@ -21,7 +23,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 🐞 | **T37 review, open:** under load 30 to 100, `translated_app.rs` `start_by_its_key…` fails at `c.exit.success()`: fd-app's `--timeout 180 s` reached (debug, 1 220 captured frames). Idle, the file passes in 65 s. Left alone. |
 | 2026-11-19 | 🐞 | **T36 review:** `fd-judge --seam 'h0+$1fec'` would print `pass` if the frame mount fell through to the translated routine (translated against itself). `seam.rs` now asserts `Level1::passes()`; the CLI's JSON carries no such count, left alone. |
 | 2026-11-19 | 🐞 | T36, left alone: `watch_returns` counts a mounted routine's entry and return (`Host::mounted` sets `entered` before the seam answers), though `fd-translated/README.md` and its doc say a mount hides it. |
-| 2026-11-19 | 🔄 | **Owner, T50:** interrupts are taken at instruction boundaries (DESIGN §2.8, `Bus::insn`, `Machine::quiet`); block starts took line 233's after `h0_6852`'s creature start. T52's and T53's readings ran on block-start interrupts. |
 | 2026-11-19 | 🔄 | **T54 added** (owner, T50; blocks T42): T50 left 40 of 42 level cases passing translated, the W1-1 routes to pass 4160; instruction-boundary checks cost about 7% (death-spikes 46.2 s against 43.3 s). |
 | 2026-11-19 | 🐞 | **T53 review, open:** a load-aligned case's `Verdict` headline reads `same on all 0 passes compared` (`lib.rs` Display uses `passes`, never set there), as before T53. Left alone. |
 | 2026-11-19 | 📌 | **T53:** in play (handler in `$6C`, a pass ended either side) load-aligned cases judge memory at pass ends by `irq_count`, custom writes by `custom_carried`. Worlds 2 to 6 pass; power-on-level-1 fails at 6301 (`h0+$1fe6`, engine $80, original $f1). |
@@ -61,8 +62,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-11 | 🐞 | `pcode_export.py` `load_symbols` (`symbols.toml`) and `load_entries` (`--routines`, `translate.toml`) crash with a bare `KeyError` traceback on a row missing a key, not exit 2 naming the file (T03 review sweep). Predates T03, left alone. |
 | 2026-11-11 | 📌 | **T02 code-seen:** 48 runs, 6 380 instructions, 135 entries (program-entry 1, symbol 134, vector 0, trace 0); every computed target is a named symbol. |
 | 2026-11-11 | 📌 | `os-surface --worlds 1,3,6` (T01 review) lists `lea $0.l` to `$3.l` at `h0+$691e`..`$6930`, constants in play, as `[[read]]` OS memory with access `address`. Not in the committed worlds 1,2 file; not OS use. |
-| 2026-11-11 | 📌 | docs/07 says the file routines open dos.library by `OpenLibrary`; they call `OldOpenLibrary` (-408), as `entry` does for graphics (T01 review, listing). docs/15 is right; docs/07 left alone. |
-| 2026-11-11 | 🐞 | docs/07 says the OS's interrupts and keyboard run through the title. Measured (T01): none is taken, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`), so the title's Esc route is live; not run. |
+| 2026-11-11 | 🐞 | docs/07 is wrong twice (T01, left alone): file routines call `OldOpenLibrary` (-408), not `OpenLibrary`; the OS's interrupts are not taken through the title, autovectors 2 and 3 are the program's (`load_list_title` ends in `system_off`). |
 | 2026-11-11 | 📌 | Round trip (write back whole, transplant again) over `camera-right-left`'s first 100 steps: 0 equal. Not transplanted: `edges.pos` (`h0+$1e66`), pointers `p840`, `p83c`, the `input_log` bytes. Screen and plane share `h3+$fa10..$fa4f`; 4 bytes disagree. `game_frame` reads none. |
 | 2026-11-11 | 🐞 | `Cpu68k::call` with an odd entry runs the instruction at the even address below it (probe: call(0x2001) ran moveq at 0x2000); Moira's reset ignores bit 0. Fixed in `step` (T05 review), left open in `call`. |
 | 2026-11-11 | 🐞 | Smoke in a fresh worktree (cold build) hit `tools/smoke.py`'s 1 200 s limit, no test failed: forest-dumb done at 783 s, Superfrog unrun. Owner chose to start the build anyway (plan review). Translated-program tests go in full. |

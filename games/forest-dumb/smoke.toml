@@ -16,6 +16,8 @@ workspace = "engine"
 "crates/fd-translated/tests/engine.rs" = "smoke"
 # Translator T35: the seam's table and its register check, under a second.
 "crates/fd-translated/src" = "smoke"
+# Translator T60: the seam walk against three fixtures' generated code, and each decision and stop, no disks, under a second.
+"crates/fd-translated/tests/walk.rs" = "smoke"
 # Translator T28: 50 frames and w1-idle from the sync point on the generated tree; about 10 and 15 s
 # warm, but the tree's build (about 40 s) and the disks put them in full.
 "crates/fd-conform/tests/translated_engine.rs" = "full"

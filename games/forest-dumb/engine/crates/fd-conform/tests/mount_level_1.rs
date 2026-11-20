@@ -78,9 +78,10 @@ const DIFFER: [&str; 1] = ["power-on-level-1"];
 
 /// The level 1 cases that hear a sound effect on the original whose Paula writes are the
 /// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
-/// again on T55's mount time; the five after `stretch-wall` with T58's, 2026-11-20): the mount makes each effect's writes as the hand engine starts it
-/// (`seam::frame`, `Sound`, the character's `Scratch::hw`). `run_with`, which the hand engine's case
-/// tests use, refuses a case comparing writes, so `writes` is turned on here, not in the case files.
+/// again on T55's mount time; the three T56's walk added, T59, and both routes with T58's,
+/// 2026-11-20): the mount makes each effect's writes as the hand engine starts it (`seam::frame`,
+/// `Sound`, the character's `Scratch::hw`). `run_with`, which the hand engine's case tests use,
+/// refuses a case comparing writes, so `writes` is turned on here, not in the case files.
 const HEARS: [(&str, &str); 25] = [
     ("camera-bottom-right", "item, stomp, hurt"),
     ("camera-right-left", "stomp, hurt"),
@@ -90,9 +91,12 @@ const HEARS: [(&str, &str); 25] = [
     ("character-run-landing", "slide"),
     ("collect-ledge", "item, stomp"),
     ("collect-return", "item, stomp"),
+    ("contact-route", "item, stomp, hurt"),
     ("death-pit", "hurt"),
     ("death-spikes", "hurt"),
+    ("death-water", "item, stomp, slide, hurt"),
     ("edge-latch-route", "item, stomp, hurt"),
+    ("enemy-contact", "item, stomp, hurt"),
     ("enemy-hop", "stomp, hurt"),
     ("enemy-kind4", "item, stomp, slide, hurt"),
     ("enemy-route", "item, stomp, hurt"),
@@ -102,9 +106,6 @@ const HEARS: [(&str, &str); 25] = [
     ("stretch-pit", "hurt"),
     ("stretch-slope", "slide, hurt"),
     ("stretch-wall", "slide"),
-    ("contact-route", "item, stomp, hurt"),
-    ("death-water", "item, stomp, slide, hurt"),
-    ("enemy-contact", "item, stomp, hurt"),
     ("route-W1-1", "item, stomp, slide"),
     ("route-both-W1-1", "item, stomp, slide"),
 ];
@@ -348,7 +349,7 @@ const CLX_LINES_OFF: u8 = 0;
 
 /// T36's first mounted difference: contact-route's pass 2 (oracle frame 6304) read `$8060`, the
 /// original `$8061`, the mount having read CLXDAT at the pass's start. With the mount's time
-/// (T55) it reads the original's bit, on the translated program's line within [`CLX_LINES_OFF`].
+/// (T55, T56) it reads the original's bit, on the translated program's line ([`CLX_LINES_OFF`]).
 #[test]
 #[ignore = "full: the disks, Kickstart and the generated tree; about 20 s"]
 fn the_mounts_clxdat_read_lands_on_the_translated_programs_line() {
