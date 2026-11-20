@@ -7,7 +7,7 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Status:** building; T01 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T02 and T08, then T03 to T06 and T10, which T01 unblocked.
+**Next `pir-work` will:** T02 and T09, then T03 to T06 and T10, which T01 unblocked.
 
 ## Tasks
 
@@ -23,7 +23,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T05 | title-quit-cases | T01, T02 | ⬜ | |
 | T06 | game-over-cases | T01, T02 | ⬜ | |
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
-| T08 | world-start-recording | — | ⬜ | |
+| T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ⬜ | |
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |

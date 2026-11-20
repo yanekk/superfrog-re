@@ -7,7 +7,8 @@
 //!
 //! A recording the translated program played (`engine translated`, translator T39) is replayed on
 //! it by [`replay_translated`]: from power-on, through the title on `to_level_1_input` first for a
-//! `level-1` start, then its inputs one frame each, to its end or its stop.
+//! `level-1` or `world` start (a world start's writes made as `load_world` is entered, title plan
+//! T08), then its inputs one frame each, to its end or its stop.
 //!
 //! [`compare`] plays the recording on the original from the level sync point, its inputs retimed
 //! onto the original's frames ([`retime`]), and judges the owner's game against it with the level
@@ -34,8 +35,9 @@ use amiga_conform::script::InputScript;
 use amiga_oracle::{FrameInput, Rgb12Frame};
 use fd_core::level::EdgesCut;
 use fd_core::recording::{
-    ForestDumb, Location, Recording, StartPoint, TO_LEVEL_1_FRAMES, ZIP_SCREENSHOT, canvas,
-    check_build, in_level_1, is_test_stop, location_in_ram, to_level_1_input,
+    ForestDumb, LOAD_WORLD, Location, Recording, StartPoint, TO_LEVEL_1_FRAMES, ZIP_SCREENSHOT,
+    canvas, check_build, is_test_stop, location_in_ram, start_reached, to_level_1_input,
+    world_start_bytes,
 };
 use fd_core::{Event, Game, GameData, Mem, Start, Transplant, Var, layout_var};
 
@@ -91,11 +93,14 @@ pub struct TranslatedReplay {
     /// the end. A recording's test stop (`fd-app --stop-after`) is raised again at its end, as the
     /// app raised it, when the program has not stopped by itself first.
     pub stop: Option<(usize, String)>,
-    /// Where play was after the last frame: the character's cell in level 1, else `None`.
+    /// Where play was after the last frame: the character's cell in the level played, `None` on
+    /// the title.
     pub location: Option<Location>,
     /// The last frame's picture through the app's window (`fd_core::recording::CANVAS`): what the
     /// app showed, and saved as the screenshot.
     pub last: Picture,
+    /// Chip RAM then slow RAM after the last frame (empty when no frame ran).
+    pub ram: Vec<u8>,
 }
 
 /// Chip RAM's size: where slow RAM starts in [`TranslatedEngine::mem`].
@@ -103,8 +108,9 @@ const CHIP: usize = 512 << 10;
 
 /// `rec` played on the translated program as `fd-app` played it (translator T39): `disks` (1 and
 /// 2) loaded at power-on, level 1's hand engine mounted from `data`, run through the title on
-/// `to_level_1_input` until level 1 for a `level-1` start, then one frame an input. `Err` when the
-/// level-1 start does not reach level 1, which the app would have refused too.
+/// `to_level_1_input` until the start's level for a `level-1` or `world` start (a world start's
+/// `world_start_bytes` written as `load_world` is entered), then one frame an input. `Err` when
+/// the start does not reach its level, which the app would have refused too.
 pub fn replay_translated(
     disks: &[Vec<u8>],
     data: Arc<GameData>,
@@ -118,25 +124,30 @@ pub fn replay_translated(
         let m = e.mem();
         (m[..CHIP.min(m.len())].to_vec(), m[CHIP.min(m.len())..].to_vec())
     };
-    if rec.start == StartPoint::Level1 {
+    if let StartPoint::World { level, cheat } = rec.start {
+        for (addr, bytes) in world_start_bytes(level, cheat) {
+            FrameEngine::write_at(&mut e, LOAD_WORLD, addr, &bytes)?;
+        }
+    }
+    if let Some(level) = rec.start.level() {
         let mut reached = false;
         for n in 0..TO_LEVEL_1_FRAMES {
             e.frame(to_level_1_input(n));
             if let Some(s) = FrameEngine::stopped(&e) {
                 return Err(format!(
-                    "the translated program stopped on its way to level 1, frame {}: {s}",
+                    "the translated program stopped on its way to {level}, frame {}: {s}",
                     n + 1
                 ));
             }
             let (chip, slow) = ram(&e);
-            if in_level_1(&chip, &slow) {
+            if start_reached(rec.start, &chip, &slow) {
                 reached = true;
                 break;
             }
         }
         if !reached {
             return Err(format!(
-                "the translated program did not reach level 1 in {TO_LEVEL_1_FRAMES} frames"
+                "the translated program did not reach {level} in {TO_LEVEL_1_FRAMES} frames"
             ));
         }
     }
@@ -169,6 +180,7 @@ pub fn replay_translated(
         stop,
         location,
         last,
+        ram: e.mem().to_vec(),
     })
 }
 
@@ -816,6 +828,19 @@ mod tests {
                 .unwrap_err()
                 .starts_with("not a bug zip")
         );
+    }
+
+    /// A world start's writes are made where `re/symbols.toml` says `load_world` is entered.
+    #[test]
+    fn a_world_start_writes_at_load_world_s_entry() {
+        let path = crate::code_seen::re_dir().join("symbols.toml");
+        let text = std::fs::read_to_string(&path).unwrap();
+        let syms = crate::code_seen::parse_symbols(&text).unwrap();
+        let s = syms
+            .iter()
+            .find(|s| s.name == "load_world" && s.kind == "func")
+            .expect("load_world in re/symbols.toml");
+        assert_eq!((s.hunk as u8, s.offset), LOAD_WORLD);
     }
 
     /// A 1x1 PNG, as the conformance harness writes one.
