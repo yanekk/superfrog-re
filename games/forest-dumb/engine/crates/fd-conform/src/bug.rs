@@ -116,10 +116,7 @@ pub fn replay_translated(
     e.mount_level_1(data);
     let ram = |e: &TranslatedEngine| {
         let m = e.mem();
-        (
-            m[..CHIP.min(m.len())].to_vec(),
-            m[CHIP.min(m.len())..].to_vec(),
-        )
+        (m[..CHIP.min(m.len())].to_vec(), m[CHIP.min(m.len())..].to_vec())
     };
     if rec.start == StartPoint::Level1 {
         let mut reached = false;

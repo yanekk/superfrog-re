@@ -22,12 +22,7 @@ fn every_case_passes_on_the_hand_engine_as_before() {
         .map(|p| Case::load(p).unwrap_or_else(|e| panic!("{e}")))
         .filter(|c| !c.by_loads())
         .collect();
-    assert!(
-        cases.len() >= 43,
-        "{} cases in {}",
-        cases.len(),
-        dir.display()
-    );
+    assert!(cases.len() >= 43, "{} cases in {}", cases.len(), dir.display());
     let workers = std::thread::available_parallelism().map_or(4, |n| n.get());
     let next = std::sync::atomic::AtomicUsize::new(0);
     let rows: Vec<std::sync::Mutex<Option<Row>>> =
@@ -45,10 +40,7 @@ fn every_case_passes_on_the_hand_engine_as_before() {
     });
     let reading = Reading {
         engine: "hand",
-        rows: rows
-            .into_iter()
-            .map(|r| r.into_inner().unwrap().unwrap())
-            .collect(),
+        rows: rows.into_iter().map(|r| r.into_inner().unwrap().unwrap()).collect(),
     };
     let failed: Vec<String> = reading
         .rows
@@ -56,10 +48,5 @@ fn every_case_passes_on_the_hand_engine_as_before() {
         .filter(|r| !r.passed())
         .map(|r| format!("{}: {}", r.case, r.result()))
         .collect();
-    assert!(
-        failed.is_empty(),
-        "{}\n{}",
-        reading.summary(),
-        failed.join("\n")
-    );
+    assert!(failed.is_empty(), "{}\n{}", reading.summary(), failed.join("\n"));
 }

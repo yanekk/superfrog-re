@@ -75,10 +75,7 @@ fn a_marked_custom_write_with_nothing_to_match_is_counted_as_written() {
     let settled = leftover_counted(&ours, &theirs);
     assert_eq!(settled, vec![(0x088, 0x4EB9), (0x088, 0)]);
     let d = custom_difference(&settled, &theirs).expect("differs");
-    assert_eq!(
-        (d.reg, d.value, d.original, d.engine),
-        (0x088, 0x4EB9, 0, 1)
-    );
+    assert_eq!((d.reg, d.value, d.original, d.engine), (0x088, 0x4EB9, 0, 1));
     // An original write ours already made unmarked is not taken twice.
     let theirs = [(0x088, 0), (0x088, 0)];
     let ours = [(0x088 | L, 0x4EB9), (0x088, 0), (0x088, 0)];

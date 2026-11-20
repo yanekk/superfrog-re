@@ -209,23 +209,14 @@ fn a_load_fifty_frames_longer_on_the_original_aligns_and_passes() {
     let v = run_stand_in(None);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert_eq!(v.loads, 1, "read_marker's load lined up: {v}");
-    assert_eq!(
-        v.load_frames, SHORT,
-        "the original's extra frames skipped: {v}"
-    );
+    assert_eq!(v.load_frames, SHORT, "the original's extra frames skipped: {v}");
     assert_eq!(v.entry.map(|e| e.0), Some(3461), "{v}");
     // Every frame outside the load: the prompt's 240 up to fire at 3700, then those after the
     // program takes the machine at 3968 (260 measured): the OS's stretch from the return at
     // 3889 is the load's (owner, T51).
-    assert!(
-        v.aligned_frames >= 255 && v.memory_frames == v.aligned_frames,
-        "{v}"
-    );
+    assert!(v.aligned_frames >= 255 && v.memory_frames == v.aligned_frames, "{v}");
     assert!(v.tail_frames > 0, "the OS's stretch after the load: {v}");
-    assert!(
-        v.os_frames < v.aligned_frames,
-        "the program's own frames' writes compared: {v}"
-    );
+    assert!(v.os_frames < v.aligned_frames, "the program's own frames' writes compared: {v}");
 }
 
 #[test]
@@ -235,10 +226,7 @@ fn a_difference_just_after_the_program_takes_the_machine_fails_there() {
     match &v.outcome {
         Outcome::Differs { var, frame, .. } => {
             assert!(var.starts_with("h0+$7cde (1 bytes"), "{v}");
-            assert_eq!(
-                *frame, 3968,
-                "the first frame the program has the machine: {v}"
-            );
+            assert_eq!(*frame, 3968, "the first frame the program has the machine: {v}");
         }
         other => panic!("expected a memory difference, got {other}"),
     }
@@ -263,10 +251,7 @@ fn every_channel_goes_on_past_the_first_difference() {
     );
     assert_eq!(v.firsts.len(), 1, "only memory differs: {v}");
     assert_eq!(v.loads, 1, "{v}");
-    assert!(
-        v.aligned_frames >= 255,
-        "every frame outside the load compared: {v}"
-    );
+    assert!(v.aligned_frames >= 255, "every frame outside the load compared: {v}");
     assert!(v.pictures >= 255, "the picture judged on to the end: {v}");
 }
 

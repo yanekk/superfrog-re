@@ -228,12 +228,7 @@ fn the_frame_mount_passes_against_the_translated_game_frame_on_2000_states() {
     assert_eq!((r.passed, r.replaced_stopped), (2000, 0), "{r:?}");
     // A mount that fell through to the translated routine would pass against itself: the hand
     // engine must have played every state (T36 review).
-    assert_eq!(
-        level.passes(),
-        2000,
-        "the hand engine played {} passes",
-        level.passes()
-    );
+    assert_eq!(level.passes(), 2000, "the hand engine played {} passes", level.passes());
 }
 
 /// Without level 1's engine the frame mount stops, naming what is missing, rather than run the

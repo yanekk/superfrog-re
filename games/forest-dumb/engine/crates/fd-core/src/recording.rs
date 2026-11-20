@@ -198,9 +198,7 @@ impl core::str::FromStr for StartPoint {
         match s {
             "level-1" => Ok(StartPoint::Level1),
             "power-on" => Ok(StartPoint::PowerOn),
-            _ => Err(format!(
-                "start `{s}` is not one a recording names (level-1, power-on)"
-            )),
+            _ => Err(format!("start `{s}` is not one a recording names (level-1, power-on)")),
         }
     }
 }
@@ -230,9 +228,7 @@ impl core::str::FromStr for EngineKind {
         match s {
             "hand" => Ok(EngineKind::Hand),
             "translated" => Ok(EngineKind::Translated),
-            _ => Err(format!(
-                "engine `{s}` is not one a recording names (hand, translated)"
-            )),
+            _ => Err(format!("engine `{s}` is not one a recording names (hand, translated)")),
         }
     }
 }
@@ -644,20 +640,12 @@ mod tests {
         assert_eq!(rec.note, "old");
         assert_eq!(rec.stopped_at.unwrap().to_string(), "W1-1:7,7");
         // Written again, it is version 2.
-        assert!(
-            rec.to_text()
-                .starts_with("forest-dumb recording 2\nbuild b\nstart level-1\n")
-        );
+        assert!(rec.to_text().starts_with("forest-dumb recording 2\nbuild b\nstart level-1\n"));
     }
 
     #[test]
     fn a_translated_stop_reads_back_with_its_start_and_no_place() {
-        let mut r = recorder_from(
-            StartPoint::PowerOn,
-            EngineKind::Translated,
-            LevelId::W1_1,
-            "b",
-        );
+        let mut r = recorder_from(StartPoint::PowerOn, EngineKind::Translated, LevelId::W1_1, "b");
         r.step(FrameInput::NONE);
         r.step(FrameInput::joy(Joy::FIRE));
         let mut rec = r.finish(None, String::new()).unwrap();
@@ -725,10 +713,7 @@ mod tests {
         put(&mut chip, &mut slow, "char_x", 669);
         put(&mut chip, &mut slow, "char_y", 553);
         assert!(in_level_1(&chip, &slow));
-        assert_eq!(
-            location_in_ram(&chip, &slow).unwrap().to_string(),
-            "W1-1:42,35"
-        );
+        assert_eq!(location_in_ram(&chip, &slow).unwrap().to_string(), "W1-1:42,35");
         put(&mut chip, &mut slow, "world_index", 1);
         assert!(!in_level_1(&chip, &slow), "world 2 is not level 1");
         assert_eq!(location_in_ram(&chip, &slow), None);
@@ -736,12 +721,7 @@ mod tests {
 
     #[test]
     fn the_canvas_holds_every_window_the_program_shows() {
-        for (left, top, w, h) in [
-            (129, 64, 320, 200),
-            (129, 42, 320, 238),
-            (129, 42, 320, 255),
-            (129, 47, 320, 250),
-        ] {
+        for (left, top, w, h) in [(129, 64, 320, 200), (129, 42, 320, 238), (129, 42, 320, 255), (129, 47, 320, 250)] {
             let (cl, ct, cw, ch) = CANVAS;
             assert!(left >= cl && left + w <= cl + cw as i32, "{left} {w}");
             assert!(top >= ct && top + h <= ct + ch, "{top} {h}");

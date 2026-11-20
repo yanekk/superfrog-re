@@ -545,12 +545,7 @@ fn generated_tree(fd_translated: Option<&str>, game: &Path) -> Option<PathBuf> {
 
 #[test]
 fn the_generated_tree_passes() {
-    let game = crates_dir()
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
+    let game = crates_dir().parent().unwrap().parent().unwrap().to_path_buf();
     let var = std::env::var("FD_TRANSLATED").ok();
     let Some(tree) = generated_tree(var.as_deref(), &game) else {
         // The stub fd-translated builds in instead holds no table (`buildscripts/fd_translated.rs`).
@@ -572,11 +567,7 @@ fn the_generated_tree_passes() {
         let src = std::fs::read_to_string(f).unwrap_or_else(|e| panic!("{}: {e}", f.display()));
         violations.extend(scan_generated(&f.display().to_string(), &src));
     }
-    println!(
-        "scanned {} generated files in {}",
-        files.len(),
-        tree.display()
-    );
+    println!("scanned {} generated files in {}", files.len(), tree.display());
     assert!(
         violations.is_empty(),
         "{}\nThe generated tree holds instructions only (DESIGN §2.11): fix pcode_rust.py, never the tree.",
@@ -787,10 +778,7 @@ fn a_second_long_list_beside_the_code_ranges_still_fails() {
 fn code_of_any_other_shape_still_fails() {
     let pairs: String = (0..17).map(|i| format!("({i}, {i}),")).collect();
     let quads: String = (0..17).map(|i| format!("(0, {i}, {i}, 1),")).collect();
-    let mixed: String = (0..17)
-        .map(|i| format!("(0, {i}, 0x{i:x}),"))
-        .collect::<String>()
-        + "(0, 1, -2),";
+    let mixed: String = (0..17).map(|i| format!("(0, {i}, 0x{i:x}),")).collect::<String>() + "(0, 1, -2),";
     let cases = [
         format!("pub const CODE: &[u32] = &{SEVENTEEN};"),
         format!("pub const CODE: &[(u32, u32)] = &[{pairs}];"),
@@ -802,25 +790,13 @@ fn code_of_any_other_shape_still_fails() {
         format!("pub const RANGES: &[(u32, u32, u32)] = &[{}];", ranges(17)),
         format!("pub const CODE: &[(u32, u32, u32)] = &[{}]", ranges(17)),
         // A non-integer in any slot ends the exemption, so the usual scan sees the float.
-        format!(
-            "pub const CODE: &[(u32, u32, u32)] = &[{}(1.5, 0, 1)];",
-            ranges(17)
-        ),
-        format!(
-            "pub const CODE: &[(u32, u32, u32)] = &[{}(0, 1.5, 1)];",
-            ranges(17)
-        ),
-        format!(
-            "pub const CODE: &[(u32, u32, u32)] = &[{}(0, 0, 1.5)];",
-            ranges(17)
-        ),
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(1.5, 0, 1)];", ranges(17)),
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(0, 1.5, 1)];", ranges(17)),
+        format!("pub const CODE: &[(u32, u32, u32)] = &[{}(0, 0, 1.5)];", ranges(17)),
     ];
     for c in &cases {
         let src = format!("{HEADER}{c}\n");
-        assert!(
-            !scan_generated("tree/mod.rs", &src).is_empty(),
-            "not flagged: {c}"
-        );
+        assert!(!scan_generated("tree/mod.rs", &src).is_empty(), "not flagged: {c}");
     }
 }
 
@@ -829,10 +805,7 @@ fn a_hex_literal_ending_in_f32_or_f64_is_an_integer() {
     // The generated tree's block addresses, `pc = (4, 0x18f32)`: hex digits, no float suffix.
     let src = "fn f() { let pc = (4, 0x18f32); let q = (0, 0x6f64); }\n";
     assert!(scan_generated("tree/p01.rs", src).is_empty());
-    assert_eq!(
-        scan("fd-core/src/x.rs", "const X: f32 = 1f32 + 2f64;\n").len(),
-        3
-    );
+    assert_eq!(scan("fd-core/src/x.rs", "const X: f32 = 1f32 + 2f64;\n").len(), 3);
 }
 
 #[test]

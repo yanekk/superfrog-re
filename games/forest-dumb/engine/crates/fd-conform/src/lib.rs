@@ -44,7 +44,8 @@ use fd_core::level::{AddCut, EdgesCut};
 use fd_core::render::objects::CUT_ROWS;
 use fd_core::render::playfield::{SCREEN, Scroll};
 use fd_core::{
-    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var, layout_var,
+    Event, Game, GameData, Mem, PORTED, Ported, Start, TitleScene, Transplant, Var,
+    layout_var,
 };
 
 pub use case::{Case, Compare, Exclusion, Goal, Swap};

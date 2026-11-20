@@ -109,7 +109,6 @@ const HEARS: [(&str, &str); 25] = [
     ("route-both-W1-1", "item, stomp, slide"),
 ];
 
-
 fn cases_dir() -> std::path::PathBuf {
     fd_conform::conform_dir().join("cases")
 }

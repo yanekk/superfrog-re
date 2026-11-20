@@ -37,7 +37,8 @@ use pcode_rt::Stop;
 
 use crate::frames::{FrameEngine, run_frames};
 use crate::{
-    Case, Compare, Engine, HUNK_BASES, Inputs, Options, OracleMem, PASS_END, Verdict, disks, sync,
+    Case, Compare, Engine, HUNK_BASES, Inputs, Options, OracleMem, PASS_END, Verdict,
+    disks, sync,
 };
 
 /// Chip RAM's size on the oracle's A500, where slow RAM starts in a snapshot's bytes.
@@ -120,14 +121,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         last = input;
     }
     if !level {
-        return Ok(snapshot(
-            &am,
-            regs,
-            (dmacon, intena, intreq),
-            disk2,
-            0,
-            last,
-        ));
+        return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, 0, last));
     }
     // A level case's rows have no `when` (Case::parse): all at the sync point.
     for s in &case.set {
@@ -141,14 +135,7 @@ pub fn case_start(case: &Case) -> Result<CaseStart, String> {
         collect(&am);
         if let Some(mem) = am.watched_memory() {
             let pass = OracleMem(&mem).value(irq_count);
-            return Ok(snapshot(
-                &am,
-                regs,
-                (dmacon, intena, intreq),
-                disk2,
-                pass,
-                input,
-            ));
+            return Ok(snapshot(&am, regs, (dmacon, intena, intreq), disk2, pass, input));
         }
     }
     Err(format!(

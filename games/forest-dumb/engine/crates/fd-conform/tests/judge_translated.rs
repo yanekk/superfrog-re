@@ -160,21 +160,12 @@ fn a_store_into_code_and_the_step_cap_are_stops_counted_by_kind() {
 
     let j = judge(&mut r, 10, Some(never_ends), CODE);
     assert_eq!(j.verdict.unwrap_err().failures, 10);
-    assert_eq!(
-        (j.stops.hangs, j.stops.first.as_str()),
-        (10, "hang (steps)")
-    );
+    assert_eq!((j.stops.hangs, j.stops.first.as_str()), (10, "hang (steps)"));
 
     let j = judge(&mut r, 10, Some(recurses), CODE);
     assert_eq!(j.verdict.unwrap_err().failures, 10);
-    assert_eq!(
-        (j.stops.hangs, j.stops.first.as_str()),
-        (10, "hang (depth)")
-    );
-    assert!(
-        DEPTH_CAP as usize * (128 << 10) > 2 << 20,
-        "the frames outgrow a test thread"
-    );
+    assert_eq!((j.stops.hangs, j.stops.first.as_str()), (10, "hang (depth)"));
+    assert!(DEPTH_CAP as usize * (128 << 10) > 2 << 20, "the frames outgrow a test thread");
     assert!(DEPTH_CAP as usize * (256 << 10) <= translated::RUN_STACK);
 }
 

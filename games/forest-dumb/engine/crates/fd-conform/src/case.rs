@@ -933,13 +933,7 @@ mod tests {
         let c = Case::parse("p", ENTRY).unwrap();
         assert!(c.is_entry() && !c.is_level());
         assert_eq!((c.start, c.align), (StartAt::Entry, Align::Loads));
-        assert_eq!(
-            c.swap,
-            Some(Swap {
-                frame: 3600,
-                disk: 2
-            })
-        );
+        assert_eq!(c.swap, Some(Swap { frame: 3600, disk: 2 }));
         assert_eq!(
             c.compare,
             Compare {
@@ -953,36 +947,11 @@ mod tests {
 
     #[test]
     fn what_the_power_on_format_does_not_say_is_refused() {
-        refused(
-            ENTRY,
-            "align = \"loads\"\n",
-            "",
-            "needs `align = \"loads\"`",
-        );
-        refused(
-            ENTRY,
-            "frame = 0 }",
-            "frame = 10 }",
-            "runs from power-on, frame 0",
-        );
-        refused(
-            ENTRY,
-            "start = \"entry\"",
-            "start = \"title\"",
-            "or at \"entry\"",
-        );
-        refused(
-            ENTRY,
-            "align = \"loads\"",
-            "align = \"passes\"",
-            "or by \"loads\"",
-        );
-        refused(
-            ENTRY,
-            "frame = 3600",
-            "frame = 6500",
-            "past the case's last frame",
-        );
+        refused(ENTRY, "align = \"loads\"\n", "", "needs `align = \"loads\"`");
+        refused(ENTRY, "frame = 0 }", "frame = 10 }", "runs from power-on, frame 0");
+        refused(ENTRY, "start = \"entry\"", "start = \"title\"", "or at \"entry\"");
+        refused(ENTRY, "align = \"loads\"", "align = \"passes\"", "or by \"loads\"");
+        refused(ENTRY, "frame = 3600", "frame = 6500", "past the case's last frame");
         refused(
             ENTRY,
             "goal = { all = [{ var = \"irq_count\", value = 100 }], by_frame = 6500 }",
@@ -1051,18 +1020,8 @@ mod tests {
             " }",
             "`set` world_index: a case lined up by loads sets a variable `when`",
         );
-        refused(
-            WORLD,
-            "\"load_world\"",
-            "\"no_such_routine\"",
-            "not a func of re/symbols.toml",
-        );
-        refused(
-            WORLD,
-            "\"load_world\"",
-            "\"world_index\"",
-            "not a func of re/symbols.toml",
-        );
+        refused(WORLD, "\"load_world\"", "\"no_such_routine\"", "not a func of re/symbols.toml");
+        refused(WORLD, "\"load_world\"", "\"world_index\"", "not a func of re/symbols.toml");
         refused(
             WORLD,
             "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }",

@@ -92,10 +92,7 @@ fn camera_update_covers_t36s_28_branches_both_ways() {
     let mut r = Rig::new().unwrap_or_else(|e| panic!("{e}"));
     let generator = generators::generator("camera_update").unwrap();
     let c = r.coverage("camera_update", CASES, h(0, 0x4d7e), &generator);
-    assert_eq!(
-        (c.report.passed, c.report.hangs, c.report.faults),
-        (CASES, 0, 0)
-    );
+    assert_eq!((c.report.passed, c.report.hangs, c.report.faults), (CASES, 0, 0));
     let mut want: Vec<u32> = CAMERA_UPDATE.iter().map(|&o| h(0, o)).collect();
     want.sort();
     let got: Vec<u32> = c.branches.iter().map(|b| b.at).collect();
@@ -104,13 +101,7 @@ fn camera_update_covers_t36s_28_branches_both_ways() {
     assert!(uncovered.is_empty(), "uncovered: {uncovered:?}");
     // What it reads is what T36 found by hand (`tests/gen_camera.rs`, `reads`).
     use camera::*;
-    let mut spans = vec![
-        (CHAR_X, 4),
-        (CHAR_Y, 4),
-        (CAMERA_X, 2),
-        (CAMERA_Y, 2),
-        (FLAGS, 4),
-    ];
+    let mut spans = vec![(CHAR_X, 4), (CHAR_Y, 4), (CAMERA_X, 2), (CAMERA_Y, 2), (FLAGS, 4)];
     spans.extend(LATCHES.iter().map(|&l| (l, 2)));
     let want: BTreeSet<u32> = spans
         .into_iter()

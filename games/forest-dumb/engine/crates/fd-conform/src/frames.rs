@@ -370,10 +370,7 @@ impl<'a> Judge<'a> {
         if self.live[1] && writes {
             let theirs: Vec<(u16, u16)> = capture.paula.iter().map(|w| (w.reg, w.value)).collect();
             let ours: Vec<(u16, u16)> = engine.paula().iter().map(|w| (w.reg, w.value)).collect();
-            match paula(
-                &as_paula(&leftover_in_order(&ours, &theirs)),
-                &capture.paula,
-            ) {
+            match paula(&as_paula(&leftover_in_order(&ours, &theirs)), &capture.paula) {
                 Some(why) => differs.push((1, Outcome::WritesDiffer { pass, frame, why })),
                 None => {
                     verdict.writes += capture.paula.len() as u32;
@@ -502,11 +499,9 @@ impl<'a> Judge<'a> {
         for ram in ours {
             self.ours_ends.add(frame, ram_value(ram, irq), ram.clone());
         }
-        while let Some((k, (at, theirs), (ours_at, ours))) = pair_ends(
-            &mut self.theirs_ends,
-            &mut self.ours_ends,
-            &mut verdict.unseen,
-        ) {
+        while let Some((k, (at, theirs), (ours_at, ours))) =
+            pair_ends(&mut self.theirs_ends, &mut self.ours_ends, &mut verdict.unseen)
+        {
             if let Some(o) = too_far(k, at, ours_at, &format!("memory at irq_count {k}")) {
                 return Some(o);
             }
@@ -546,11 +541,7 @@ impl<'a> Judge<'a> {
             if let Some(o) = too_far(n, at, ours_at, "custom writes") {
                 return Some(o);
             }
-            match custom_carried(
-                &mut self.carried,
-                &leftover_counted(&ours, &theirs),
-                &theirs,
-            ) {
+            match custom_carried(&mut self.carried, &leftover_counted(&ours, &theirs), &theirs) {
                 Some(d) => {
                     return Some(Outcome::CustomWritesDiffer {
                         pass: n,
@@ -761,10 +752,7 @@ pub fn run_frames_inputs(
                     differs.push((1, o));
                     break;
                 }
-                match paula(
-                    &as_paula(&leftover_in_order(&ours, &theirs)),
-                    &as_paula(&theirs),
-                ) {
+                match paula(&as_paula(&leftover_in_order(&ours, &theirs)), &as_paula(&theirs)) {
                     Some(why) => {
                         differs.push((
                             1,
@@ -1069,10 +1057,7 @@ pub fn run_entry_frames(
     // Memory in play is judged at pass ends (T53).
     am.watch_write(Some(PASS_END));
     for s in &case.set {
-        let w = s
-            .when
-            .as_ref()
-            .ok_or("a `set` lined up by loads has a `when`")?;
+        let w = s.when.as_ref().ok_or("a `set` lined up by loads has a `when`")?;
         let (bytes, addr) = (s.bytes(), s.address()?);
         am.poke_at(h(w.at), addr, &bytes);
         engine.write_at(w.at, addr, &bytes)?;
@@ -1236,13 +1221,7 @@ pub fn run_entry_frames(
         let sets: Vec<String> = case
             .set
             .iter()
-            .map(|s| {
-                format!(
-                    "{} at {}",
-                    s.var,
-                    s.when.as_ref().map_or("?", |w| &w.routine)
-                )
-            })
+            .map(|s| format!("{} at {}", s.var, s.when.as_ref().map_or("?", |w| &w.routine)))
             .collect();
         verdict.firsts.push(Outcome::ComparedNothing {
             what: format!(
@@ -1413,7 +1392,9 @@ fn left_out(hunk: usize, off: u32) -> bool {
 /// `v`'s value in `ram` (chip RAM then slow RAM, as the original's is laid out), zero-extended.
 fn ram_value(ram: &[u8], v: &Var) -> u32 {
     let at = HUNK_BASES[v.hunk as usize] + v.offset;
-    (0..v.width.bytes() as u32).fold(0, |acc, k| acc << 8 | byte_ours(ram, CHIP, at + k) as u32)
+    (0..v.width.bytes() as u32).fold(0, |acc, k| {
+        acc << 8 | byte_ours(ram, CHIP, at + k) as u32
+    })
 }
 
 /// The A500's chip RAM, which an engine's RAM holds before slow RAM.
