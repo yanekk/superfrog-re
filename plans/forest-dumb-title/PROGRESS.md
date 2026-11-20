@@ -5,9 +5,9 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 1 decided with the user
 
-**Status:** building; T01, T02, T08, T09 done, T05 awaiting review.
+**Status:** building; T01, T02, T05, T08, T09 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T05; T03, T04, T06 and T10 can run beside it, then T07 fixes
+**Next `pir-work` will:** build T03, T04, T06 and T10, then T07 fixes
 title-esc's frame-late quit with the other cases' failures.
 
 ## Tasks
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | case-goals | — | ✅ | |
 | T03 | title-idle-rows-cases | T01, T02 | ⬜ | |
 | T04 | title-code-cases | T01, T02 | ⬜ | |
-| T05 | title-quit-cases | T01, T02 | 🔍 | title-koniec passes translated (exit 5063); title-esc differs, a frame late (original exits 5012, translated 5013, first Paula at 5011), for T07. title_quit_cases.rs, 2 full tests. Deviation: both cases added to mount_level_1.rs's lists, whose smoke test holds every case file. |
+| T05 | title-quit-cases | T01, T02 | ✅ | Review: one fix commit, a stale KONIEC release frame in a comment and the mounted case count. Probed both cases by the CLI, translated and mounted (koniec same, exit 5063; esc a frame late). Mutated a goal frame and Esc's input: both tests red. Esc for T07. |
 | T06 | game-over-cases | T01, T02 | ⬜ | |
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
 | T08 | world-start-recording | — | ✅ | |
@@ -29,7 +29,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |
 
-**Review queue:** T05
+**Review queue:** —
 
 ## Blocked on the user
 
