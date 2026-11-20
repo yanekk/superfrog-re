@@ -177,7 +177,7 @@ const tok = n => C.getPropertyValue(n).trim();
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
 // ---------- per-route state, rebuilt by show() ----------
-let D = null, W = 0, H = 0, END = 0, ROUTED = true,   // END is -1 for a map-only level
+let D = null, Did = null, W = 0, H = 0, END = 0, ROUTED = true,   // END is -1 for a map-only level
     map = null, objAt = new Map(), VAL = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
 const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
 
@@ -313,12 +313,19 @@ function draw() {
     if (took) { cx.globalAlpha = .28; cx.fill(); cx.globalAlpha = 1; cx.stroke(); }
     else if (!['coin', 'enemy', 'pickup'].includes(cat)) { cx.globalAlpha = .9; cx.stroke(); cx.globalAlpha = 1; }
     else { cx.fill(); cx.strokeStyle = 'rgba(0,0,0,.7)'; cx.stroke(); }
-    if (cat === 'exit' && name === 'level exit') { cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.fillText('EXIT', x - 11*u, y - S - 3*u); }
+    // One label a block of exit cells, centred over its top row: on its top-left cell alone.
+    const isExit = (c, r) => { const e = objAt.get(c + ',' + r); return !!e && e[3] === 'exit' && e[4] === 'level exit'; };
+    if (cat === 'exit' && name === 'level exit' && !isExit(c-1, r) && !isExit(c, r-1)) {
+      let w = 1; while (isExit(c+w, r)) w++;
+      cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.textAlign = 'center';
+      cx.fillText('EXIT', c*CELL_W + w*CELL_W/2, y - S - 3*u); cx.textAlign = 'start';
+    }
   };
   // In live play a cell the game changed is drawn with its current value, 0 being gone.
   const here = liveHere() && LAYERS.play.on, lc = new Map();
   if (here) for (const [c, r, v] of LF.cells || []) lc.set(c + ',' + r, v);
-  for (const o of D.objects) if (!lc.has(o[0] + ',' + o[1])) drawObj(o);
+  // An object of value 0 (a secret) has no object-map value for the game to change: always drawn.
+  for (const o of D.objects) if (!o[2] || !lc.has(o[0] + ',' + o[1])) drawObj(o);
   for (const [k, v] of lc) if (v) { const [c, r] = k.split(',').map(Number); drawObj([c, r, v, ...(VAL.get(v) || ['other', 'other ' + v])]); }
 
   // route line, coloured from start (blue) to end (gold); the part not yet played is faint
@@ -585,7 +592,7 @@ async function select(id) {
   if (current !== e.id) return;
   ld.hidden = true;
   // An empty track is a map-only level: no character, route, timeline or events.
-  D = data; W = D.cols * CELL_W; H = D.rows * CELL_H; D.track = D.track || []; ROUTED = D.track.length > 0; END = D.track.length - 1;
+  D = data; Did = e.id; W = D.cols * CELL_W; H = D.rows * CELL_H; D.track = D.track || []; ROUTED = D.track.length > 0; END = D.track.length - 1;
   scrub.max = Math.max(0, END); frame = 0;
   for (const id of ['play', 'speed', 'scrub', 'evcard']) document.getElementById(id).hidden = !ROUTED;
   document.getElementById('zfollow').hidden = !ROUTED && !LV;
@@ -610,7 +617,8 @@ async function select(id) {
 // so it is re-read by inserting a script tag, which sets window.LIVE. A missing file, or a frame
 // older than stale_ms by this page's clock, is "App not running": an old position is never drawn.
 let LF = null, liveLevel = null, followZoom = true, pending = false;
-function liveHere() { return !!(LV && LF && LF.playing && D && LF.level === current); }
+// Only once the level's data is in: while a switch loads, D is still the old level's.
+function liveHere() { return !!(LV && LF && LF.playing && D && Did === current && LF.level === current); }
 function liveDot() { return liveHere() && LAYERS.play.on && LF.actor ? LF.actor : null; }
 function dotInView([x, y]) { const sx = x*scale+ox, sy = y*scale+oy, mx = box.clientWidth * .15, my = box.clientHeight * .15; return sx > mx && sy > my && sx < box.clientWidth-mx && sy < box.clientHeight-my; }
 // Follow: on entering it (load, a level switch, a click) zoom in and centre; then re-centre only
@@ -638,7 +646,7 @@ function gotLive(f) {
   // The page goes where play goes; a level picked by hand holds until play changes level again.
   if (LF && LF.playing && LF.level != null && LF.level !== liveLevel) {
     liveLevel = LF.level;
-    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; tip.hidden = true; liveStatus(); select(LF.level); return; }
+    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; tip.hidden = true; select(LF.level); liveStatus(); draw(); return; }
   }
   liveStatus(); liveFollow(); draw();
 }
@@ -647,7 +655,9 @@ function poll() {
   pending = true; window.LIVE = undefined;
   const s = document.createElement('script');
   s.src = LV.file + '?t=' + Date.now();
-  const fin = ok => { s.remove(); pending = false; gotLive(ok ? window.LIVE : null); };
+  // A file that ran but set no frame was read half replaced (Chrome does, now and then, despite
+  // the rename): keep the last frame, which gotLive still drops once it is stale.
+  const fin = ok => { s.remove(); pending = false; gotLive(ok ? window.LIVE || LF : null); };
   s.onload = () => fin(true); s.onerror = () => fin(false);
   document.head.appendChild(s);
 }

@@ -21,6 +21,8 @@ struct Level {
     id: &'static str,
     cols: usize,
     rows: usize,
+    /// More objects, each `,[c,r,value,"cat","name"]`.
+    extra: &'static str,
 }
 
 impl LevelDump for Level {
@@ -32,11 +34,12 @@ impl LevelDump for Level {
         let tiles: String = (0..64).map(|i| if (i / 8 + i) % 2 == 0 { "00" } else { "01" }).collect();
         write!(
             out,
-            r##"{{"level":"{}","cols":{},"rows":{},"palette":["#404040","#808080"],"tiles":{{"0":"{tiles}"}},"body":[{}],"objects":[[12,5,32,"coin","coin"],[14,5,32,"coin","coin"],[16,5,7,"enemy","creature"]],"track":[],"coins_needed":2}}"##,
+            r##"{{"level":"{}","cols":{},"rows":{},"palette":["#404040","#808080"],"tiles":{{"0":"{tiles}"}},"body":[{}],"objects":[[12,5,32,"coin","coin"],[14,5,32,"coin","coin"],[16,5,7,"enemy","creature"]{}],"track":[],"coins_needed":2}}"##,
             self.id,
             self.cols,
             self.rows,
-            vec!["0"; self.cols * self.rows].join(",")
+            vec!["0"; self.cols * self.rows].join(","),
+            self.extra
         )
     }
 
@@ -77,14 +80,19 @@ fn spec(live: bool) -> PageSpec {
 }
 
 fn site(name: &str, live: bool) -> PathBuf {
+    site_with(name, live, "", "")
+}
+
+/// The two-level site, L1 holding `extra` objects too, and `script` run before the page's own.
+fn site_with(name: &str, live: bool, extra: &'static str, script: &str) -> PathBuf {
     let root = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(name);
     let _ = std::fs::remove_dir_all(&root);
-    let l1 = Level { id: "L1", cols: 300, rows: 40 };
-    let l2 = Level { id: "L2", cols: 40, rows: 20 };
+    let l1 = Level { id: "L1", cols: 300, rows: 40, extra };
+    let l2 = Level { id: "L2", cols: 40, rows: 20, extra: "" };
     write_site(&root, &spec(live), &[&l1, &l2]).unwrap();
     let index = root.join("index.html");
     let html = std::fs::read_to_string(&index).unwrap();
-    std::fs::write(&index, html.replacen("<body>", &format!("<body>{CATCH}"), 1)).unwrap();
+    std::fs::write(&index, html.replacen("<body>", &format!("<body>{CATCH}{script}"), 1)).unwrap();
     root
 }
 
@@ -362,4 +370,123 @@ fn follow_with_nothing_playing_on_a_map_only_level() {
     write_live(&root, &at("L1", 210)).unwrap();
     wait_rgb(&mut b, cell_mid(210, 5), Some(GREEN), "Follow went to the first dot");
     assert_eq!(errors(&mut b), Vec::<String>::new());
+}
+
+/// Holds back the page's insertion of L2's data script by 1.5 s, as a big level's data takes a
+/// while to load beside a running app (map page T12's drill: W2-1 beside the translated app).
+const SLOW_L2: &str = "<script>{const ap=Node.prototype.appendChild;Node.prototype.appendChild=function(n){\
+if(n.tagName==='SCRIPT'&&/L2\\.js$/.test(n.src)&&!n.dataset.late){n.dataset.late=1;setTimeout(()=>ap.call(this,n),1500);return n}\
+return ap.call(this,n)}}</script>";
+
+/// Play moves to a level whose data is still loading while more frames arrive (map page T12's
+/// drill): nothing of the new level is drawn over the old map meanwhile, and once it is shown the
+/// view is zoomed in on the character as at load, not left at the whole level.
+#[test]
+fn a_live_switch_draws_nothing_on_the_old_map_and_zooms_in_once_loaded() {
+    let root = site_with("routeview-live-slow-switch", true, "", SLOW_L2);
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    open_playing(&mut b, &root, (1280, 800));
+    // L2's dot at cell (3,5), which is also a point of L1's map, where the old view is centred.
+    let p = cell_mid(3, 5);
+    let until = std::time::Instant::now() + Duration::from_secs(6);
+    let mut loading_seen = 0;
+    loop {
+        write_live(&root, &at("L2", 3)).unwrap();
+        let loading = !b.eval("document.getElementById('loading').hidden").unwrap().as_bool().unwrap();
+        if loading {
+            loading_seen += 1;
+            let shown = b.eval("ROUTEVIEW.view().current").unwrap();
+            assert_eq!(shown.as_str(), Some("L2"), "switching");
+            assert_ne!(rgb(&mut b, p), Some(GREEN), "L2's character drawn on L1's map while L2 loads");
+        } else if loading_seen > 0 {
+            break;
+        }
+        assert!(std::time::Instant::now() < until, "L2 never loaded");
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    assert!(loading_seen >= 5, "{loading_seen} looks at the loading level: the test proves nothing");
+    wait_level(&mut b, "Map L2");
+    write_live(&root, &at("L2", 3)).unwrap();
+    wait_rgb(&mut b, p, Some(GREEN), "the dot on L2");
+    let scale = b.eval("ROUTEVIEW.view().scale").unwrap().as_f64().unwrap();
+    assert!(scale >= 1.5, "after a live switch the view is at {scale}, not zoomed in on the character");
+    // Ten writes a second can be read torn (`a_torn_read_…`), which raises only this.
+    let errs = errors(&mut b);
+    assert!(errs.iter().all(|e| e == "\"Script error.\""), "{errs:?}");
+}
+
+/// Counts the canvas's pixels near `rgb` over level pixels `x0..x1`, `y0..y1`.
+fn count_rgb(b: &mut Browser, (x0, y0, x1, y1): (i32, i32, i32, i32), (r, g, bl): (u8, u8, u8)) -> i64 {
+    b.eval(&format!(
+        "(() => {{ const v = ROUTEVIEW.view(), c = document.getElementById('cv'), d = devicePixelRatio || 1; \
+         const sx = p => Math.round((p * v.scale + v.ox) * d), sy = p => Math.round((p * v.scale + v.oy) * d); \
+         const a = Math.max(0, sx({x0})), t = Math.max(0, sy({y0})), z = Math.min(c.width, sx({x1})), w = Math.min(c.height, sy({y1})); \
+         if (z <= a || w <= t) return -1; \
+         const px = c.getContext('2d').getImageData(a, t, z - a, w - t).data; let n = 0; \
+         for (let i = 0; i < px.length; i += 4) if (Math.abs(px[i] - {r}) < 8 && Math.abs(px[i+1] - {g}) < 8 && Math.abs(px[i+2] - {bl}) < 8) n++; return n; }})()"
+    ))
+    .unwrap()
+    .as_i64()
+    .unwrap()
+}
+
+/// A secret (value 0: no object-map value of its own) on a cell whose object the game took: the
+/// game's change hides the object, never the secret's mark (map page T09's finding, W3-1 41,78).
+#[test]
+fn a_secret_keeps_its_mark_when_the_object_on_its_cell_is_taken() {
+    let root = site_with("routeview-live-secret", true, r#",[12,5,0,"secret","hidden passage"]"#, "");
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    open_playing(&mut b, &root, (1280, 800));
+    const SECRET: (u8, u8, u8) = (0xc7, 0x92, 0xff);
+    let cell = (12 * CELL, 5 * CELL, 13 * CELL, 6 * CELL);
+    let before = count_rgb(&mut b, cell, SECRET);
+    assert!(before > 0, "no secret mark drawn at all: the test proves nothing");
+    let mut f = at("L1", 10);
+    f.cells = vec![(12, 5, 0)];
+    write_live(&root, &f).unwrap();
+    wait_not_rgb(&mut b, cell_mid(12, 5), MAGENTA, "the taken coin");
+    let after = count_rgb(&mut b, cell, SECRET);
+    assert!(after * 2 >= before, "the secret's mark went with the coin: {before} pixels before, {after} after");
+    assert_eq!(errors(&mut b), Vec::<String>::new());
+}
+
+/// An exit of 2×3 cells is labelled EXIT once, not once a cell (map page T08's drill: six labels
+/// overlapping into one smudge).
+#[test]
+fn an_exit_block_is_labelled_once() {
+    let exit = r#",[20,2,255,"exit","level exit"],[21,2,255,"exit","level exit"],[20,3,255,"exit","level exit"],[21,3,255,"exit","level exit"],[20,4,255,"exit","level exit"],[21,4,255,"exit","level exit"]"#;
+    let count = "<script>window.TEXTS=[];{const ft=CanvasRenderingContext2D.prototype.fillText;\
+CanvasRenderingContext2D.prototype.fillText=function(t,...a){TEXTS.push(t);return ft.call(this,t,...a)}}</script>";
+    let root = site_with("routeview-exit-label", true, exit, count);
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    open_playing(&mut b, &root, (1280, 800));
+    b.eval("TEXTS.length = 0").unwrap();
+    click(&mut b, "document.getElementById('zin')");
+    let labels = b.eval("TEXTS.filter(t => t === 'EXIT').length").unwrap().as_i64().unwrap();
+    assert_eq!(labels, 1, "one draw labelled the 2×3 exit {labels} times");
+    assert_eq!(errors(&mut b), Vec::<String>::new());
+}
+
+/// A read of `live.js` that runs but sets no frame: Chrome now and then reads the file half
+/// replaced despite the rename (map page T12: 1 read in about 950 with a writer replacing it
+/// thousands of times a second), a syntax error the page cannot catch. The last frame stays until
+/// it is stale; it is not "App not running" for a poll.
+#[test]
+fn a_torn_read_of_the_live_file_keeps_the_last_frame_until_it_is_stale() {
+    let root = site("routeview-live-torn", true);
+    let mut b = Browser::launch(Opts::default()).unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    open_playing(&mut b, &root, (1280, 800));
+    let tmp = root.join("live.js.tmp");
+    std::fs::write(&tmp, "window.LIVE = {\"t\":").unwrap();
+    std::fs::rename(&tmp, root.join("live.js")).unwrap();
+    b.wait_for("ERRS.length > 0", Duration::from_secs(3)).expect("the torn file was never read");
+    std::thread::sleep(Duration::from_millis(600));
+    let s = status(&mut b);
+    assert!(s.contains("hero at cell 10,5"), "a torn read dropped the frame: {s:?}");
+    assert_eq!(rgb(&mut b, cell_mid(10, 5)), Some(GREEN), "the dot went with a torn read");
+    // Still only the last frame: once its stamp is past 3 s, the app is gone.
+    wait_status(&mut b, "App not running", Duration::from_secs(4));
+    assert_ne!(rgb(&mut b, cell_mid(10, 5)), Some(GREEN), "an old position drawn as current");
+    let errs = errors(&mut b);
+    assert!(errs.iter().all(|e| e == "\"Script error.\""), "{errs:?}");
 }
