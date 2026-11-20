@@ -1,0 +1,17 @@
+# Power-on to the idle title as boot-to-level1 (the title idles from frame 4922), then KONIEC:
+# Down twice from START, through KODY, and fire on it. The original returns to AmigaDOS from
+# quit_to_dos in step 5073 (measured 2026-11-20, title T02). The stand-in tests of the `exited`
+# goal (fd-conform tests/case_goals.rs) run it from power-on and from frame 4990.
+0: -
+800: K45     # Esc: `Show` leaves its picture only on Esc
+811: -
+1300: M      # left mouse: leaves the crack intro
+1311: -
+3700: F      # fire: past the insert-disk-2 prompt, after the swap
+3711: -
+5000: D      # KODY
+5011: -
+5030: D      # KONIEC
+5041: -
+5060: F      # fire on KONIEC: quit_to_dos
+5071: -

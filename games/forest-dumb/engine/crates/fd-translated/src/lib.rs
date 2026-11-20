@@ -15,7 +15,7 @@
 //! A function returning to its real Rust caller never reaches that loop: only the frames the
 //! snapshot was taken inside do.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
 use pcode_machine::mem::SLOW_BASE;
@@ -170,6 +170,9 @@ pub struct FrameOut<'a> {
     pub inside: Vec<(u32, u32)>,
     /// How many [`TranslatedGame::write_at`] writes the program has not reached by the frame's end.
     pub writes_at_pending: usize,
+    /// The routines of [`TranslatedGame::watch_entries`] entered in the frame, in order, each as
+    /// (hunk, offset) of its entry, once an entry.
+    pub entries: Vec<(u32, u32)>,
 }
 
 /// A write waiting for the program to enter a routine ([`TranslatedGame::write_at`]).
@@ -194,7 +197,7 @@ pub struct TranslatedGame {
     stopped: Option<Stop>,
     /// Where the program goes when it returns from its power-on entry, and its stack pointer
     /// then: the return address the start left at [`POWER_ON_STACK`] and the word above it.
-    /// `None` from a snapshot, whose entry is not known.
+    /// `None` from a snapshot until [`TranslatedGame::exit_to`] gives the original's.
     exit_to: Option<(u32, u32)>,
     /// The program returned to [`TranslatedGame::exit_to`]: it ended itself.
     exited: bool,
@@ -206,6 +209,8 @@ pub struct TranslatedGame {
     watched: Vec<(u32, u32)>,
     /// Writes waiting for their routine's entry ([`TranslatedGame::write_at`]).
     writes_at: Vec<WriteAt>,
+    /// The routines whose entries each frame reports ([`FrameOut::entries`]).
+    entries: Vec<(u32, u32)>,
     /// Level 1's hand engine for the frame mount ([`TranslatedGame::mount_level_1`]), handed to it
     /// through `Bus::mount_data`.
     level_1: Option<Arc<Level1>>,
@@ -333,8 +338,25 @@ impl TranslatedGame {
             seam: Seam::new(),
             watched: Vec::new(),
             writes_at: Vec::new(),
+            entries: Vec::new(),
             level_1: None,
         }
+    }
+
+    /// The program's exit from a snapshot start: where its power-on entry returns to and the
+    /// stack pointer that `rts` leaves, as the original's caller pushed them (read off the
+    /// original by the case runner, title T02). A power-on start sets its own; a snapshot knows no
+    /// entry, so without this every return to AmigaDOS stops `untranslated`.
+    pub fn exit_to(&mut self, back: u32, sp: u32) {
+        self.exit_to = Some((back & 0xFF_FFFF, sp));
+    }
+
+    /// Report each entry into the routines at `addrs` (hunk, offset) in the frame it happened in
+    /// ([`FrameOut::entries`]): a case's `enters` goal (title T02). The same hook as
+    /// [`TranslatedGame::write_at`]: only an entry through the routine's own function counts,
+    /// mounted or not.
+    pub fn watch_entries(&mut self, addrs: &[(u8, u32)]) {
+        self.entries = addrs.iter().map(|&(h, o)| (h as u32, o)).collect();
     }
 
     /// Run `f` in place of the translated routine at `addr` (hunk, offset) from the next run on.
@@ -430,6 +452,8 @@ impl TranslatedGame {
             exited: false,
             watched: &self.watched,
             writes_at: &mut self.writes_at,
+            watched_entries: &self.entries,
+            entries: RefCell::new(Vec::new()),
             write_due: Cell::new(None),
             entered: Cell::new(None),
             inside: Vec::new(),
@@ -490,6 +514,7 @@ impl TranslatedGame {
             returns: std::mem::take(&mut host.returns),
             inside: host.inside.iter().map(|&(k, _)| k).collect(),
             writes_at_pending: host.writes_at.len(),
+            entries: host.entries.take(),
         };
         (host.each)(&out);
         if host.exited {
@@ -518,6 +543,10 @@ struct Host<'a, 'b> {
     watched: &'a [(u32, u32)],
     /// Writes waiting for their routine's entry.
     writes_at: &'a mut Vec<WriteAt>,
+    /// Routines whose entries are reported, (hunk, offset), and those entered since the last
+    /// frame's end (`mounted` has `&self` only).
+    watched_entries: &'a [(u32, u32)],
+    entries: RefCell<Vec<(u32, u32)>>,
     /// A routine with a waiting write was just entered: its writes are made at the first block's
     /// `poll`, before any instruction (`mounted` has `&self` only).
     write_due: Cell<Option<(u32, u32)>>,
@@ -591,6 +620,7 @@ impl Host<'_, '_> {
             returns: std::mem::take(&mut self.returns),
             inside: self.inside.iter().map(|&(k, _)| k).collect(),
             writes_at_pending: self.writes_at.len(),
+            entries: self.entries.take(),
         };
         let next = (self.each)(&out);
         *self.picture = out.picture;
@@ -666,6 +696,9 @@ impl Bus for Host<'_, '_> {
     fn mounted(&self, k: (u32, u32)) -> Option<Mounted> {
         if self.writes_at.iter().any(|w| w.at == k) {
             self.write_due.set(Some(k));
+        }
+        if self.watched_entries.contains(&k) {
+            self.entries.borrow_mut().push(k);
         }
         if !self.watched.is_empty() {
             self.entered

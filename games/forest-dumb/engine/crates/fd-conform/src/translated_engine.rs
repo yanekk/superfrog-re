@@ -202,6 +202,10 @@ struct Frame {
     loads: (u32, bool),
     /// `write_at` writes not made by the frame's end.
     writes_at_pending: usize,
+    /// The watched routine was entered in the frame (`FrameOut::entries`).
+    entered: bool,
+    /// The program returned from its entry in the frame (`FrameOut::exited`).
+    exited: bool,
 }
 
 /// Where the game thread starts.
@@ -218,6 +222,15 @@ enum Begin {
 
 /// A write the program makes as it enters a routine: (routine's hunk and offset, address, bytes).
 type WriteAt = ((u8, u32), u32, Vec<u8>);
+
+/// What the runner hands the game before its first frame: the writes at routines, the routine
+/// whose entries it reports, and a snapshot start's exit (title T02).
+#[derive(Default)]
+struct Hooks {
+    writes_at: Vec<WriteAt>,
+    entry: Option<(u8, u32)>,
+    exit_to: Option<(u32, u32)>,
+}
 
 struct Link {
     to: Option<Sender<Input>>,
@@ -241,10 +254,14 @@ pub struct TranslatedEngine {
     stop: Option<(u32, Stop)>,
     passes: u32,
     loads: (u32, bool),
-    /// Writes handed to the game as it starts ([`FrameEngine::write_at`]), and those it has not
-    /// made by the last frame's end.
-    writes_at: Vec<WriteAt>,
+    /// What is handed to the game as it starts ([`FrameEngine::write_at`],
+    /// [`FrameEngine::watch_entry`], [`FrameEngine::exit_to`]).
+    hooks: Hooks,
+    /// The `write_at` writes not made by the last frame's end.
     writes_at_pending: usize,
+    /// The last frame entered the watched routine; the program returned from its entry.
+    entered: bool,
+    exited: bool,
     /// Level 1's data when its hand engine is mounted (`--mount level-1`, T36).
     level_1: Option<Arc<GameData>>,
 }
@@ -269,8 +286,10 @@ impl TranslatedEngine {
             stop: None,
             passes: 0,
             loads: (0, false),
-            writes_at: Vec::new(),
+            hooks: Hooks::default(),
             writes_at_pending: 0,
+            entered: false,
+            exited: false,
             level_1: None,
         }
     }
@@ -296,8 +315,10 @@ impl TranslatedEngine {
             passes: 0,
             pass_ends: Vec::new(),
             loads: (0, false),
-            writes_at: Vec::new(),
+            hooks: Hooks::default(),
             writes_at_pending: 0,
+            entered: false,
+            exited: false,
             level_1: None,
         })
     }
@@ -320,7 +341,7 @@ impl TranslatedEngine {
     fn spawn(
         start: Begin,
         first: Input,
-        writes_at: Vec<WriteAt>,
+        hooks: Hooks,
         level_1: Option<Arc<GameData>>,
     ) -> Link {
         let (to, inputs) = channel::<Input>();
@@ -340,6 +361,10 @@ impl TranslatedEngine {
                             },
                         });
                         g.held_at_start(&Input::from(start.input));
+                        // Read off the original's entry: a snapshot knows none (title T02).
+                        if let Some((back, sp)) = hooks.exit_to {
+                            g.exit_to(back, sp);
+                        }
                         // A case lined up by loads from a snapshot counts them as power-on's does
                         // (T33); elsewhere only observed.
                         g.watch_returns(&sync::LOAD_ROUTINES);
@@ -362,9 +387,10 @@ impl TranslatedEngine {
                 if let Some(data) = level_1 {
                     g.mount_level_1(data);
                 }
-                for (at, addr, bytes) in &writes_at {
+                for (at, addr, bytes) in &hooks.writes_at {
                     g.write_at(*at, *addr, bytes);
                 }
+                g.watch_entries(&hooks.entry.into_iter().collect::<Vec<_>>());
                 g.set_input(first);
                 g.watch_write(Some(PASS_END));
                 g.run(&mut |out| {
@@ -402,8 +428,8 @@ impl TranslatedEngine {
                         paula,
                         custom,
                         // The program ending itself (KONIEC's return to AmigaDOS) is no stop to the
-                        // app (translator T41), but a case never asks for it: it ends the run as
-                        // one, by name, so a case reaching it fails there.
+                        // app (translator T41); to a case it ends the run as one, by name, so a
+                        // case reaching it fails there unless its goal is `exited` (title T02).
                         stop: out.stop.clone().or_else(|| {
                             out.exited.then(|| {
                                 Stop::Os("exit: the program returned from its entry".into())
@@ -413,6 +439,8 @@ impl TranslatedEngine {
                         loads: (out.returns.len() as u32, !out.inside.is_empty()),
                         pass_ends: out.watched.clone(),
                         writes_at_pending: out.writes_at_pending,
+                        entered: !out.entries.is_empty(),
+                        exited: out.exited,
                     });
                     // The engine dropped: nobody wants the next frame.
                     match (sent, inputs.recv()) {
@@ -499,8 +527,8 @@ impl TranslatedEngine {
         let input = Input::from(input);
         match self.start.take() {
             Some(start) => {
-                let writes = std::mem::take(&mut self.writes_at);
-                self.link = Some(Self::spawn(start, input, writes, self.level_1.clone()));
+                let hooks = std::mem::take(&mut self.hooks);
+                self.link = Some(Self::spawn(start, input, hooks, self.level_1.clone()));
             }
             None => {
                 let link = self.link.as_ref().expect("started");
@@ -517,6 +545,8 @@ impl TranslatedEngine {
         self.loads = f.loads;
         self.pass_ends = f.pass_ends;
         self.writes_at_pending = f.writes_at_pending;
+        self.entered = f.entered;
+        self.exited = f.exited;
         if let Some(s) = f.stop {
             self.stop = Some((self.passes, s));
         }
@@ -584,13 +614,33 @@ impl FrameEngine for TranslatedEngine {
         if self.start.is_none() {
             return Err("a write at a routine is handed over before the first frame".into());
         }
-        self.writes_at.push((at, addr, bytes.to_vec()));
-        self.writes_at_pending = self.writes_at.len();
+        self.hooks.writes_at.push((at, addr, bytes.to_vec()));
+        self.writes_at_pending = self.hooks.writes_at.len();
         Ok(())
     }
 
     fn writes_at_pending(&self) -> usize {
         self.writes_at_pending
+    }
+
+    fn watch_entry(&mut self, at: (u8, u32)) -> Result<(), String> {
+        if self.start.is_none() {
+            return Err("a routine's entry is watched from before the first frame".into());
+        }
+        self.hooks.entry = Some(at);
+        Ok(())
+    }
+
+    fn entered(&self) -> bool {
+        self.entered
+    }
+
+    fn exit_to(&mut self, back: u32, sp: u32) {
+        self.hooks.exit_to = Some((back, sp));
+    }
+
+    fn exited(&self) -> bool {
+        self.exited
     }
 }
 

@@ -33,6 +33,10 @@ workspace = "engine"
 # to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
 # cases on it: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/world_starts.rs" = "full"
+# Title T02: the `enters` and `exited` goals against stand-in copies of the original (nine runs from
+# power-on, about 80 s) and on the translated program (about 40 s): the disks, Kickstart and the
+# tree's build put them in full. The parser's own tests are in the crate's src.
+"crates/fd-conform/tests/case_goals.rs" = "full"
 # forest-dumb-title T01: the title's read held on the original from a snapshot of the idle title, every
 # code, a wrong one, the rows, Esc, KONIEC, game over and a name to the title, the song's loop: about 30 s.
 "crates/fd-conform/tests/title_codes.rs" = "full"

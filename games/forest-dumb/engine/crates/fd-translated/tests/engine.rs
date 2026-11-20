@@ -641,3 +641,72 @@ fn only_the_entrys_own_return_to_zero_is_the_exit() {
         assert_eq!((stop, g.exited()), (want, exits), "exits: {exits}");
     }
 }
+
+/// From a snapshot the program's exit is the one the case runner reads off the original
+/// (`TranslatedGame::exit_to`, title T02): the same return to 0 as above ends the run with no stop
+/// once it is given with the stack its `rts` leaves, and still stops `untranslated` given another.
+#[test]
+fn a_snapshot_given_the_entrys_return_exits_there_and_only_there() {
+    let (mem, _) = memory();
+    let sp = fd_translated::POWER_ON_STACK;
+    for (exit_sp, exits) in [(sp + 4, true), (sp, false)] {
+        let mut g = TranslatedGame::with_program(
+            shared_call_prog(),
+            &[BASE],
+            Start::Snapshot {
+                mem: &mem,
+                regs: Regs68k {
+                    pc: BASE,
+                    sr: 0,
+                    usp: sp,
+                    ssp: STACK,
+                    a: [0, 0, 0, 0, 0, 0, 0, sp],
+                    ..Regs68k::default()
+                },
+                custom: &[0; 256],
+                disks: Disks::default(),
+            },
+        );
+        g.exit_to(0, exit_sp);
+        let mut last = Vec::new();
+        let stop = g.run(&mut |out| {
+            last.push((out.stop.is_some(), out.exited));
+            Control::Next(Input::default())
+        });
+        let want = (!exits).then(|| Stop::Untranslated("$000000".into()));
+        assert_eq!((stop, g.exited()), (want, exits), "exit stack {exit_sp:#x}");
+        assert_eq!(last, [(!exits, exits)], "exit stack {exit_sp:#x}");
+    }
+}
+
+/// A case's `enters` goal (title T02): the handler `h0+$40`, entered once a frame, is reported in
+/// each frame; the foreground, resumed from the snapshot's PC and never entered through its entry,
+/// is not; nothing is reported unwatched.
+#[test]
+fn watched_entries_are_reported_in_their_frame() {
+    let (mem, custom) = memory();
+    for watch in [&[(0u8, 0x40u32), (0, 0x0)][..], &[]] {
+        let mut g = TranslatedGame::with_program(
+            PROG,
+            &[BASE],
+            Start::Snapshot {
+                mem: &mem,
+                regs: regs(BASE, 0xFFFF, STACK),
+                custom: &custom,
+                disks: Disks::default(),
+            },
+        );
+        g.watch_entries(watch);
+        let mut seen = Vec::new();
+        g.run(&mut |out| {
+            seen.push(out.entries.clone());
+            if seen.len() == 3 {
+                Control::Stop
+            } else {
+                Control::Next(Input::default())
+            }
+        });
+        let want = if watch.is_empty() { vec![] } else { vec![(0, 0x40)] };
+        assert_eq!(seen, vec![want; 3], "watching {watch:?}");
+    }
+}

@@ -72,7 +72,7 @@ impl StandIn {
         // Its loads end `SHORT` frames early, so it runs that far past the case's last frame.
         let mut longer = case.clone();
         longer.frames += SHORT;
-        let (am, _) = sync::reach_entry(&longer, &inputs, &watch).unwrap_or_else(|e| panic!("{e}"));
+        let (am, _, _) = sync::reach_entry(&longer, &inputs, &watch).unwrap_or_else(|e| panic!("{e}"));
         let mut s = StandIn {
             am,
             inputs,
