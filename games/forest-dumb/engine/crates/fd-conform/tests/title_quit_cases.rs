@@ -14,8 +14,8 @@ use fd_conform::{Case, Options, Outcome, Verdict};
 use fd_translated::TranslatedGame;
 
 /// Cases equal to the original on the translated program, and the oracle frame their goal is met.
-/// KONIEC: fire released at 5070 after `title_selected` in step 5060; `quit_to_dos` returns in
-/// the step ending at 5063 (measured 2026-11-20, T05).
+/// KONIEC: fire released at the script's frame 70 (oracle 5060), `title_selected` in step 5060;
+/// `quit_to_dos` returns in the step ending at 5063 (measured 2026-11-20, T05).
 const PASSING: &[(&str, u32)] = &[("title-koniec", 5063)];
 
 /// Cases that differ on the translated program, and the start of their first difference
