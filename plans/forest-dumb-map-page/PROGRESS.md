@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | items-needed-source | — | ✅ | |
 | T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
-| T03 | chrome-rig | — | ⬜ | |
+| T03 | chrome-rig | — | ✅ | |
 | T04 | page-map-only | T03 | ⬜ | |
 | T05 | page-live | T04 | ⬜ | |
 | T06 | live-reader | — | ⬜ | |
