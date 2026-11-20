@@ -637,7 +637,7 @@ function gotLive(f) {
   // The page goes where play goes; a level picked by hand holds until play changes level again.
   if (LF && LF.playing && LF.level != null && LF.level !== liveLevel) {
     liveLevel = LF.level;
-    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; liveStatus(); select(LF.level); return; }
+    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; tip.hidden = true; liveStatus(); select(LF.level); return; }
   }
   liveStatus(); liveFollow(); draw();
 }

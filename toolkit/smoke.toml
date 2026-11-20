@@ -44,6 +44,11 @@ workspace = "."
 "crates/amiga-routeview/tests/made_up_level.rs" = "smoke"
 # Two Chrome sessions at 1280×800 and 800×600, about 3 s (map-page plan T04).
 "crates/amiga-routeview/tests/page_chrome.rs" = "smoke"
+# The live file's text and a reader beside 1 000 renames, about 0.2 s (map-page plan T05).
+"crates/amiga-routeview/tests/live.rs" = "smoke"
+# One Chrome session drawing one live frame and a page with no live mode, about 1.2 s; the three
+# sizes driven through every live state (about 37 s) stay in full.
+"crates/amiga-routeview/tests/live_chrome.rs" = ["a_live_frame_draws_the_character_and_a_page_without_live_asks_for_nothing"]
 "crates/amiga-paula/tests/unit.rs" = "smoke"
 "crates/amiga-record/tests/round_trip.rs" = "smoke"
 "crates/dry-fit/tests/deps.rs" = "smoke"
@@ -129,3 +134,13 @@ covers = [
 [[area]]
 name = "the route page's map-only levels"
 covers = ["crates/amiga-routeview/tests/page_chrome.rs"]
+
+# About 1.5 s: the route page's live mode, the file a running game rewrites and the page drawing
+# its character from it; a page without live mode never asks for the file. Every game's live map
+# draws through it.
+[[area]]
+name = "the route page's live mode"
+covers = [
+    "crates/amiga-routeview/tests/live.rs",
+    "crates/amiga-routeview/tests/live_chrome.rs::a_live_frame_draws_the_character_and_a_page_without_live_asks_for_nothing",
+]
