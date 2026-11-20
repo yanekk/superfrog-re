@@ -72,9 +72,9 @@ const SLIDE_FAST: u32 = 0x40cb;
 /// `char_probe`'s points: (x from `char_x - $10`, y from `char_y`, (window bit, sample) pairs), in
 /// the listing's order.
 /// One probe point: x and y offsets, then (window bit, sample) pairs.
-type Point = (u32, u32, &'static [(u32, usize)]);
+pub type Point = (u32, u32, &'static [(u32, usize)]);
 
-const POINTS: [Point; 9] = [
+pub const POINTS: [Point; 9] = [
     (0x18, 0x28, &[(15, 0), (13, 1), (11, 2)]),
     (0x18, 0x2c, &[(13, 15)]),
     (0x18, 0x27, &[(14, 3), (12, 4)]),
@@ -112,8 +112,9 @@ pub struct Character<'a> {
 impl Character<'_> {
     /// A table byte at `h0+off`. Past a table's end a read can reach the game's own variables
     /// (`h0+$40cb + $3d` is `char_slide_t`); the original reads their value now, so a byte of a
-    /// variable the state models comes from the state, the rest from the program.
-    fn table(&self, off: u32) -> u8 {
+    /// variable the state models comes from the state, the rest from the program. Public for the
+    /// translated program's timing rule (`fd-translated`'s `seam::rules`, translator T58).
+    pub fn table(&self, off: u32) -> u8 {
         for v in crate::LAYOUT.iter().filter(|v| v.hunk == 0) {
             let k = off.wrapping_sub(v.offset);
             let n = v.width.bytes() as u32;
@@ -540,6 +541,11 @@ impl Character<'_> {
     /// the slide; else the run ends.
     pub fn idle(&mut self) {
         self.land_or_fall();
+        self.idle_landed();
+    }
+
+    /// [`Character::idle`] after its `h0_410c`: the slide or the run's end.
+    pub fn idle_landed(&mut self) {
         let (p1, p2) = (self.state.anim.probe_1, self.state.anim.probe_2);
         let m = self.state.motion;
         if p2 == 0 && p1 == 1 {

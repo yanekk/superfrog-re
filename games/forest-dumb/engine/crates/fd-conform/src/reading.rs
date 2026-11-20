@@ -235,7 +235,12 @@ impl Reading {
         }
         out += "## First differences\n\n| First difference | Cases | Which |\n|---|---|---|\n";
         for (k, cases) in &kinds {
-            out += &format!("| {} | {} | {} |\n", one_line(k), cases.len(), cases.join(", "));
+            out += &format!(
+                "| {} | {} | {} |\n",
+                one_line(k),
+                cases.len(),
+                cases.join(", ")
+            );
         }
         let mut tasks: BTreeMap<&str, Vec<&Row>> = BTreeMap::new();
         for r in &self.rows {

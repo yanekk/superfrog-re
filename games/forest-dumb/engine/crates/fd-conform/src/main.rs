@@ -58,8 +58,8 @@
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use fd_conform::reading::{EngineKind, run_mounted};
 use fd_conform::Case;
+use fd_conform::reading::{EngineKind, run_mounted};
 
 const USAGE: &str = "usage: fd-conform run <case.toml> [--engine hand|translated] [--mount level-1] | run-all [--engine hand|translated] [--mount level-1] [--cases <glob>] [--report FILE] | bug replay <zip> [--out DIR] [--engine hand|translated] | bug compare <zip> [--out DIR] | code-writes [--cases <glob>] [--max-frames N] [--all] | code-seen [--cases DIR] [--power-on-frames N] [--worlds 2,3,4,5,6] [--out FILE] | os-surface [--frames N] [--worlds 1,2] [--out FILE]";
 
@@ -268,7 +268,8 @@ fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
             zip.display()
         ));
     }
-    let place = |l: Option<fd_core::recording::Location>| l.map_or("-".to_string(), |l| l.to_string());
+    let place =
+        |l: Option<fd_core::recording::Location>| l.map_or("-".to_string(), |l| l.to_string());
     let (location, last, stop) = match engine {
         Played::Hand => {
             let r = bug::replay(fd_conform::game_data()?, &rec, |_, _, _| {});

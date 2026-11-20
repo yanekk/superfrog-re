@@ -56,6 +56,9 @@ const GAME_FRAME_AT: (u32, u32) = (GAME_FRAME.0 as u32, GAME_FRAME.1);
 /// `read_joystick`, whose branches hang on JOY1DAT ([`rules::after_joy1dat`]).
 const READ_JOYSTICK: u32 = 0x8dfc;
 
+/// `char_hit_check`, whose branches hang on CLXDAT ([`rules::after_clxdat`]).
+const CHAR_HIT_CHECK: u32 = 0x3b2a;
+
 /// `world_index` (`h0+$6dfe`, a long): 0 in world 1, where the hand engine plays.
 const WORLD_INDEX: u32 = 0x6dfe;
 
@@ -140,6 +143,7 @@ pub fn game_frame(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), St
             walk: Walk::new(GAME_FRAME_AT, crate::tree::shapes),
             walked: false,
             log_full: false,
+            hit_path: Vec::new(),
             stop: None,
         };
         // CLXDAT is read at `char_hit_check`, through `Pass::clxdat`.
@@ -188,6 +192,12 @@ pub fn time_alone(offset: u32, r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> 
             w.decide(rules::after_joy1dat(v, full));
         }
     }
+    if offset == CHAR_HIT_CHECK {
+        let contact = g.level(rules::hit_check);
+        if let Event::Read(_, v) = w.run(bus, r, img, Until::Read(0x00e))? {
+            w.decide(rules::after_clxdat(v, &contact));
+        }
+    }
     w.run(bus, r, img, Until::End)?;
     let (d, _) = w.left();
     if d > 0 {
@@ -229,6 +239,8 @@ struct BusPass<'m, 'a, 'b> {
     walked: bool,
     /// `read_joystick` found `input_log` full ([`rules::log_full`]).
     log_full: bool,
+    /// `char_hit_check`'s path with contact, from the level it found ([`rules::hit_check`]).
+    hit_path: Vec<Decision>,
     /// What stopped the run inside the pass (a hang, a fault the bus reported): the pass ticks
     /// nothing more and the mount returns it.
     stop: Option<Stop>,
@@ -253,7 +265,7 @@ struct Cost {
     per_blit: u32,
 }
 
-const COSTS: [Cost; 20] = [
+const COSTS: [Cost; 18] = [
     Cost {
         at: 0x9b06,
         base: 3232,
@@ -326,11 +338,6 @@ const COSTS: [Cost; 20] = [
         per_blit: 0,
     },
     Cost {
-        at: 0x3b2a,
-        base: 98,
-        per_blit: 0,
-    },
-    Cost {
         at: 0x20b0,
         base: 92,
         per_blit: 0,
@@ -338,11 +345,6 @@ const COSTS: [Cost; 20] = [
     Cost {
         at: 0x24ce,
         base: 44,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x3e0c,
-        base: 15968,
         per_blit: 0,
     },
     Cost {
@@ -817,6 +819,9 @@ impl Pass for BusPass<'_, '_, '_> {
         if offset == READ_JOYSTICK {
             self.log_full = rules::log_full(l);
         }
+        if offset == CHAR_HIT_CHECK {
+            self.hit_path = rules::hit_check(l);
+        }
         let path = {
             let (mem, img) = (&*self.mem, self.img);
             rules::path(offset, l, &|h, o| mem.read_at(img.h(h, o)))
@@ -898,7 +903,9 @@ impl Pass for BusPass<'_, '_, '_> {
     }
     fn clxdat(&mut self, _: u16) -> u16 {
         if self.walked {
-            return self.walk_read(0x00e);
+            let v = self.walk_read(0x00e);
+            self.walk.decide(rules::after_clxdat(v, &self.hit_path));
+            return v;
         }
         // `char_hit_check`'s first instruction, `move.w $dff00e, clxdat_copy`.
         self.insn(

@@ -224,7 +224,10 @@ fn world_2_short(when: &str) -> Case {
     let text = std::fs::read_to_string(fd_conform::conform_dir().join("cases/world-2-start.toml"))
         .unwrap()
         .replace("frames = 1480", "frames = 1200")
-        .replace("value = 300 }], by_frame = 6470", "value = 30 }], by_frame = 6190")
+        .replace(
+            "value = 300 }], by_frame = 6470",
+            "value = 30 }], by_frame = 6190",
+        )
         .replace("when = \"load_world\"", &format!("when = \"{when}\""));
     Case::parse("world-2-short", &text).unwrap_or_else(|e| panic!("{e}"))
 }
@@ -255,7 +258,11 @@ fn a_play_frame_ending_mid_pass_apart_from_the_original_passes_judged_at_pass_en
     let case = world_2_short("load_world");
     let (v, s) = stand_in_playing(&case, Write::AtRoutine, Play::FrameEndsAtPassEnd);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
-    assert!(s.moved >= 20, "frame ends apart in play: {} frames", s.moved);
+    assert!(
+        s.moved >= 20,
+        "frame ends apart in play: {} frames",
+        s.moved
+    );
     assert!(v.memory_passes >= 25, "pass ends compared in play: {v}");
     assert!(v.goal_met.is_some(), "{v}");
 }
@@ -289,13 +296,19 @@ fn a_set_made_on_both_sides_as_load_world_is_entered_loads_the_same_world() {
     let (v, world) = stand_in(&case, Write::AtRoutine);
     assert_eq!(v.outcome, Outcome::Same, "{v}");
     assert_eq!(world, 1, "{v}");
-    assert_eq!(v.loads, 13, "world 2's load list, title's loads not among them: {v}");
+    assert_eq!(
+        v.loads, 13,
+        "world 2's load list, title's loads not among them: {v}"
+    );
     // In play memory is judged at the pass ends instead of the frames' (T53).
     assert!(
         v.memory_frames + v.memory_passes >= 150,
         "the frames outside the load compared: {v}"
     );
-    assert!(v.goal_met.is_some(), "world_index 1 and 30 passes on both sides: {v}");
+    assert!(
+        v.goal_met.is_some(),
+        "world_index 1 and 30 passes on both sides: {v}"
+    );
 }
 
 /// The same write made between frames, at the stand-in's start, is seen at once (world_index's
@@ -315,7 +328,10 @@ fn the_same_set_made_between_frames_is_lost_and_fails() {
         }
         other => panic!("expected world_index apart at once, got {other}"),
     }
-    assert!(v.firsts.len() >= 3, "a different world's load and screen: {v}");
+    assert!(
+        v.firsts.len() >= 3,
+        "a different world's load and screen: {v}"
+    );
     assert_eq!(world, 0, "title_code_world's 0 on the stand-in: {v}");
 }
 
@@ -368,7 +384,8 @@ fn each_world_plays_300_passes_on_the_translated_program_with_no_stop() {
                 let mut e = TranslatedEngine::new(case_start(&c).unwrap());
                 for set in &c.set {
                     let at = set.when.as_ref().unwrap().at;
-                    e.write_at(at, set.address().unwrap(), &set.bytes()).unwrap();
+                    e.write_at(at, set.address().unwrap(), &set.bytes())
+                        .unwrap();
                 }
                 let mut passes = 0;
                 for k in 1..=c.frames {
@@ -379,7 +396,10 @@ fn each_world_plays_300_passes_on_the_translated_program_with_no_stop() {
                         break;
                     }
                 }
-                assert!(passes >= 300, "world {w}: {passes} passes by the case's end");
+                assert!(
+                    passes >= 300,
+                    "world {w}: {passes} passes by the case's end"
+                );
                 assert_eq!(e.writes_at_pending(), 0, "world {w}");
                 assert_eq!(e.probe(world_index), w - 1, "world {w}");
             });

@@ -57,8 +57,12 @@ fn built_in(var: &str, out: &Path, stub: &str) {
             // Cargo watches a directory's files, so a regenerated part rebuilds.
             println!("cargo:rerun-if-changed={p}");
             let root = Path::new(&p).join("mod.rs");
-            let root = fs::canonicalize(&root).unwrap_or_else(|e| panic!("{var}={p}: {}: {e}", root.display()));
-            format!("#[path = {:?}]\nmod generated;\npub use generated::*;\n", root.display().to_string())
+            let root = fs::canonicalize(&root)
+                .unwrap_or_else(|e| panic!("{var}={p}: {}: {e}", root.display()));
+            format!(
+                "#[path = {:?}]\nmod generated;\npub use generated::*;\n",
+                root.display().to_string()
+            )
         }
         Ok(p) if !p.is_empty() => {
             println!("cargo:rerun-if-changed={p}");
