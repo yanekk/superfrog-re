@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20 (T04 reviewed)
-**Next `pir-work` will:** T05 (page-live), now unblocked; T02, T06 and T07 can run beside it.
+**Next `pir-work` will:** T05 (page-live), now unblocked; T02 and T07 can run beside it.
 
 ## Tasks
 
