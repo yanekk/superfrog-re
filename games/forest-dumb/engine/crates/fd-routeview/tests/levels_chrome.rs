@@ -523,7 +523,8 @@ fn stat(b: &mut Browser, name: &str) -> String {
 
 /// T09: the Secrets layer at 1280×800. Off at load, so no secret is drawn; switched on, each of
 /// W1-1's hidden passages is drawn at its cell, and a click (which moves the pointer there first)
-/// names it "hidden passage" in the tip; W2-1, which has none, lists the layer with 0.
+/// names it "hidden passage" in the tip; W2-1, which has none, lists the layer with 0. The Level
+/// summary and the heading count the secrets only while the layer is on (owner, T12's drill).
 #[test]
 fn secrets_layer_off_at_load_then_drawn_at_its_cells() {
     let root = site("secrets");
@@ -553,7 +554,9 @@ fn secrets_layer_off_at_load_then_drawn_at_its_cells() {
         .map(|c| (c[0].as_i64().unwrap(), c[1].as_i64().unwrap()))
         .collect();
     assert_eq!(cells.len(), 133, "W1-1's hidden passages (docs/17)");
-    assert_eq!(stat(&mut b, "Secrets"), "133");
+    assert_eq!(stat(&mut b, "Secrets"), "none", "Secrets counted while off");
+    let sub = |b: &mut Browser| eval_str(b, "document.getElementById('sub').textContent");
+    assert_eq!(sub(&mut b), "map only · 1023 objects", "the heading counts the secrets while off");
     let cell = |c: i64, r: i64| {
         (
             (c * 16) as i32,
@@ -567,6 +570,8 @@ fn secrets_layer_off_at_load_then_drawn_at_its_cells() {
     b.screenshot(&root.join("secrets-off.png")).unwrap();
     click(&mut b, &chip("Secrets"));
     b.screenshot(&root.join("secrets-on.png")).unwrap();
+    assert_eq!(stat(&mut b, "Secrets"), "133");
+    assert_eq!(sub(&mut b), "map only · 1156 objects");
     // At the fitted view an object's mark is wider than its cell (a bonus beside W1-1's 159,91
     // covers it), so each cell is judged with the other layers off.
     let others = ["Coins", "Creatures", "Bonuses", "Water", MISC];
@@ -607,6 +612,7 @@ fn secrets_layer_off_at_load_then_drawn_at_its_cells() {
         "[...document.querySelectorAll('#worlds .rt')].find(e => e.textContent.endsWith('W2-1'))",
     );
     wait_level(&mut b, "W2-1");
+    click(&mut b, &chip("Secrets"));
     assert_eq!(stat(&mut b, "Secrets"), "0", "W2-1 has none");
     assert!(
         b.eval(&format!("!!{}", chip("Secrets")))

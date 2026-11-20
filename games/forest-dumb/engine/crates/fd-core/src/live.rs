@@ -4,8 +4,8 @@
 //!
 //! Two sources, one value: the translated program's RAM ([`live_from_ram`]), which holds the truth
 //! with level 1's hand engine mounted too since the seam writes back what it computes, and the hand
-//! engine's [`Game`] under `--engine hand` ([`live_from_game`]). Pure: the previous sample's
-//! `irq_count` and the level file's map arrive as arguments.
+//! engine's [`Game`] under `--engine hand` ([`live_from_game`]). Pure: the previous sample
+//! ([`Prev`]) and the level file's map arrive as arguments.
 
 use fd_assets::{LEVEL_ROWS, OBJECT_COLUMNS};
 
@@ -31,8 +31,35 @@ pub struct Live {
     /// The object cells whose value differs from the level file's: column, row, value now (0: gone).
     /// Empty when not playing or when there is no level file for the world.
     pub changed: Vec<(u16, u16, u8)>,
-    /// `irq_count`, the next call's `prev_irq`.
+    /// `irq_count`, read whether playing or not.
     pub irq: u16,
+    /// `world_index` as memory holds it, read whether playing or not.
+    pub world_index: u32,
+}
+
+/// What one sample hands the next ([`Live::prev`]): its `irq_count`, and its `world_index` when
+/// known (`None`: any world, for a caller that only wants a sample read as play).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Prev {
+    pub irq: u16,
+    pub world_index: Option<u32>,
+}
+
+impl Prev {
+    /// A previous `irq_count` alone, the world not compared.
+    pub fn irq(irq: u16) -> Prev {
+        Prev { irq, world_index: None }
+    }
+}
+
+impl Live {
+    /// This sample as the next one's [`Prev`].
+    pub fn prev(&self) -> Prev {
+        Prev {
+            irq: self.irq,
+            world_index: Some(self.world_index),
+        }
+    }
 }
 
 /// Bytes the object map takes in memory: the game's whole buffer, whatever the level's width.
@@ -90,24 +117,30 @@ fn world_of(world_index: u32) -> u8 {
 }
 
 /// The live sample from chip RAM and slow RAM at a frame's end. Play is `irq_count` having moved
-/// since `prev_irq` (DESIGN §2.7: it stands still, not at 0, at the game over screen and the SCENA
-/// screens once a level was played, and counts while paused); the first sample (`None`) is not play.
+/// since `prev` (DESIGN §2.7: it stands still, not at 0, at the game over screen and the SCENA
+/// screens once a level was played, and counts while paused), in the same world: the step a level
+/// ends sets the next `world_index` while the character, items left and objects are still the
+/// ended level's (map page T12's drill: W2-1 with W1-1's exit spot and 0 items left), and
+/// `irq_count` stands still from there through the next level's load. The first sample (`None`)
+/// is not play.
 /// `start(world)` is the level file's object map for that world, column-major as RAM holds it.
 pub fn live_from_ram(
     chip: &[u8],
     slow: &[u8],
-    prev_irq: Option<u16>,
+    prev: Option<Prev>,
     start: &dyn Fn(u8) -> Option<Vec<u8>>,
 ) -> Live {
     let var = |name: &str| ram_var(chip, slow, name);
     let irq = var("irq_count") as u16;
-    if prev_irq.is_none_or(|p| p == irq) {
+    let world_index = var("world_index");
+    if prev.is_none_or(|p| p.irq == irq || p.world_index.is_some_and(|w| w != world_index)) {
         return Live {
             irq,
+            world_index,
             ..Live::default()
         };
     }
-    let world = world_of(var("world_index"));
+    let world = world_of(world_index);
     let creatures = (0..SLOTS)
         .filter_map(|i| {
             let [active, xy, kind] = slot_vars(i);
@@ -136,6 +169,7 @@ pub fn live_from_ram(
         creatures,
         changed,
         irq,
+        world_index,
     }
 }
 
@@ -145,9 +179,11 @@ pub fn live_from_ram(
 pub fn live_from_game(g: &Game, start: &[u8]) -> Live {
     let s = g.state();
     let irq = s.irq_count;
+    let world_index = s.world_index;
     if !matches!(g.scene(), Scene::Level) {
         return Live {
             irq,
+            world_index,
             ..Live::default()
         };
     }
@@ -167,6 +203,7 @@ pub fn live_from_game(g: &Game, start: &[u8]) -> Live {
         creatures,
         changed: differences(s.object_map.iter().copied(), start),
         irq,
+        world_index,
     }
 }
 

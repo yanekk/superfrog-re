@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use amiga_disk::ofs::OfsImage;
 use amiga_routeview::live::{LIVE_FILE, LiveFrame, write_live};
 use fd_assets::{AssetError, Files};
-use fd_core::live::{Live, live_from_ram, live_ranges};
+use fd_core::live::{Live, Prev, live_from_ram, live_ranges};
 
 /// Steps between two samples: about four a second at 50 a second (DESIGN §2.5).
 pub const LIVE_EVERY: u32 = 12;
@@ -81,11 +81,11 @@ pub fn copy_ranges(chip: &[u8], slow: &[u8], ranges: &[(u32, u32)]) -> LiveBytes
 
 /// The translated program's samples, put back together on the app's side: the copied ranges laid
 /// into RAM-shaped buffers (every other byte 0, which the reader never reads) and the last
-/// sample's `irq_count`, the next one's `prev_irq` (DESIGN §2.7).
+/// sample, the next one's `prev` (DESIGN §2.7).
 pub struct RamSampler {
     chip: Vec<u8>,
     slow: Vec<u8>,
-    prev_irq: Option<u16>,
+    prev: Option<Prev>,
 }
 
 impl RamSampler {
@@ -102,7 +102,7 @@ impl RamSampler {
         RamSampler {
             chip: vec![0; end(false)],
             slow: vec![0; end(true)],
-            prev_irq: None,
+            prev: None,
         }
     }
 
@@ -115,8 +115,8 @@ impl RamSampler {
             };
             mem[at..at + b.len()].copy_from_slice(b);
         }
-        let live = live_from_ram(&self.chip, &self.slow, self.prev_irq, start);
-        self.prev_irq = Some(live.irq);
+        let live = live_from_ram(&self.chip, &self.slow, self.prev, start);
+        self.prev = Some(live.prev());
         live
     }
 }
@@ -344,6 +344,7 @@ mod tests {
             creatures: vec![(200, 336, 4), (-16, 48, 7)],
             changed: vec![(3, 4, 0)],
             irq: 41,
+            world_index: 1,
         };
         let f = frame(&live, 99);
         assert_eq!(f.t_ms, 99);
@@ -371,9 +372,9 @@ mod tests {
         let ranges = live_ranges();
         let bytes = copy_ranges(&chip, &slow, &ranges);
         let none = |_: u8| None;
-        let whole = live_from_ram(&chip, &slow, Some(0), &none);
+        let whole = live_from_ram(&chip, &slow, Some(Prev::irq(0)), &none);
         let mut s = RamSampler::new();
-        s.prev_irq = Some(0);
+        s.prev = Some(Prev::irq(0));
         assert_eq!(s.live(&bytes, &none), whole);
     }
 

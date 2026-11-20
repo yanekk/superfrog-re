@@ -261,7 +261,7 @@ fn a_scripted_translated_run_in_w1_1_writes_where_its_ram_says() {
         if n % 12 == 0 {
             let m = e.ram().unwrap();
             let l = live_from_ram(&m[..CHIP], &m[CHIP..], prev, &start);
-            prev = Some(l.irq);
+            prev = Some(l.prev());
             want = Some(l);
         }
     }
@@ -272,7 +272,7 @@ fn a_scripted_translated_run_in_w1_1_writes_where_its_ram_says() {
     assert_eq!(field(&text, "level"), "\"W1-1\"", "{text}");
     assert_eq!(field(&text, "cell"), format!("[{},{}]", at.col, at.row), "{text}");
     // Any earlier `irq_count` marks it play; the sample's other fields do not depend on it.
-    let items = live_from_ram(&m[..CHIP], &m[CHIP..], Some(0), &|_| None).items_left;
+    let items = live_from_ram(&m[..CHIP], &m[CHIP..], Some(fd_core::live::Prev::irq(0)), &|_| None).items_left;
     assert_eq!(field(&text, "items_left"), items.unwrap().to_string(), "{text}");
     let cells = want.changed.iter().map(|(c, r, v)| format!("[{c},{r},{v}]"));
     assert_eq!(field(&text, "cells"), format!("[{}]", cells.collect::<Vec<_>>().join(",")));
