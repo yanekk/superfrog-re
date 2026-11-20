@@ -54,11 +54,33 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
     Some(d)
 }
 
-/// The routines with a rule.
-pub const RULED: [u32; 20] = [
-    0x2698, 0x62b6, 0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754,
-    0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c, 0x3b2a, 0x3e0c,
-];
+/// Whether the routine at hunk 0 `offset` has a rule in [`path`]. A match, not a list: the pure
+/// crates carry no integer table over 16 numbers (fd-conform's purity test).
+pub fn ruled(offset: u32) -> bool {
+    matches!(
+        offset,
+        0x2698
+            | 0x62b6
+            | 0x2fae
+            | 0x2dd6
+            | 0x3698
+            | 0x24ce
+            | 0x9b06
+            | 0x94ba
+            | 0x4d7e
+            | 0x513c
+            | 0x5462
+            | 0x9754
+            | 0x8dfc
+            | 0x20b0
+            | 0x2104
+            | 0x21c0
+            | 0x2c7e
+            | 0x2d4c
+            | 0x3b2a
+            | 0x3e0c
+    )
+}
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
 /// and `#1` of `v`, `#8` and `#0` of `v ^ v >> 1`), then, unless `input_log` is full, a test of each

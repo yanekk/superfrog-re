@@ -225,17 +225,17 @@ fn vhposr_after_n_cycles_is_the_313_line_frames_beam() {
 #[test]
 fn a_beam_read_is_five_slots_ahead_with_the_old_line_in_slots_0_and_1() {
     let mut m = machine();
-    for ((line, h), read) in [
-        ((0x50u16, 221u16), 0x50E2u16),
-        ((0x50, 222), 0x5000),
-        ((0x50, 223), 0x5001),
-        ((0x50, 224), 0x5102),
-        ((0xFF, 224), 0x0002),
-        ((312, 224), 0x0002),
-    ] {
+    // One check a case, not a table: the pure crates carry no integer table over 16 numbers.
+    let mut reads = |line: u16, h: u16, read: u16| {
         at_cycles(&mut m, beam::offset(line, h));
         assert_eq!(m.rw(0xDF_F006), read, "({line}, {h})");
-    }
+    };
+    reads(0x50, 221, 0x50E2);
+    reads(0x50, 222, 0x5000);
+    reads(0x50, 223, 0x5001);
+    reads(0x50, 224, 0x5102);
+    reads(0xFF, 224, 0x0002);
+    reads(312, 224, 0x0002);
     // VPOSR's V8 follows the same rule: line 255's last slots still read line 255.
     at_cycles(&mut m, beam::offset(255, 223));
     assert_eq!(m.rw(0xDF_F004) & 1, 0);

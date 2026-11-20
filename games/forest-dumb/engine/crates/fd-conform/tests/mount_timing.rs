@@ -12,7 +12,7 @@ use fd_conform::generators::{self, Gen, Generator, Setup};
 use fd_conform::judge::seam;
 use fd_conform::routine::{Rig, h};
 use fd_translated::seam::frame::time_alone;
-use fd_translated::seam::rules::RULED;
+use fd_translated::seam::rules::ruled;
 
 /// Each ruled routine and the routine judge's generator for it.
 /// A routine with no generator of its own is checked on [`varied`]: `game_frame`'s states, which
@@ -47,8 +47,8 @@ const STATES: usize = 2000;
 fn every_ruled_routine_is_checked() {
     let mut checked: Vec<u32> = CHECKED.iter().map(|c| c.1).collect();
     checked.sort();
-    let mut ruled = RULED.to_vec();
-    ruled.sort();
+    // Every even offset of hunk 0 (`$9b06` is the highest ruled; hunk 0 is under 1 MB).
+    let ruled: Vec<u32> = (0..0x10_0000).step_by(2).filter(|&o| ruled(o)).collect();
     assert_eq!(checked, ruled);
 }
 

@@ -92,15 +92,14 @@ pub fn marked(lines: &[Option<SpriteLine>; 8], p: usize, at: i32, px: u8, priori
     }
 }
 
-/// Sprite against sprite: CLXDAT's bit for groups `a < b`.
-const S2S: [((usize, usize), u16); 6] = [
-    ((0, 1), 9),
-    ((0, 2), 10),
-    ((0, 3), 11),
-    ((1, 2), 12),
-    ((1, 3), 13),
-    ((2, 3), 14),
-];
+/// Sprite against sprite: CLXDAT's bit for groups `a < b`, bits 9 to 14 in the pairs' order
+/// (0,1) (0,2) (0,3) (1,2) (1,3) (2,3). Computed, not listed: the pure crates carry no integer
+/// table over 16 numbers (fd-conform's purity test).
+fn s2s_bit(a: usize, b: usize) -> u16 {
+    // Pairs before group a's: 3 + 2 + 1 for a = 0, 1, 2.
+    let before = [0, 3, 5][a];
+    9 + (before + b - a - 1) as u16
+}
 
 /// The sprite and playfield collision bits one line sets: `pf` the playfield bits of each pixel
 /// of the picture's row (window position `left + x`), `inside` whether pixel `x` lies in the
@@ -168,9 +167,11 @@ pub fn sprites(
                 }
             }
         }
-        for ((a, b), bit) in S2S {
-            if groups >> a & 1 != 0 && groups >> b & 1 != 0 {
-                clx |= 1 << bit;
+        for a in 0..4 {
+            for b in a + 1..4 {
+                if groups >> a & 1 != 0 && groups >> b & 1 != 0 {
+                    clx |= 1 << s2s_bit(a, b);
+                }
             }
         }
     }
@@ -180,6 +181,17 @@ pub fn sprites(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The formula gives the list it replaced, pair by pair (HRM, CLXDAT bits 9 to 14).
+    #[test]
+    fn the_sprite_pair_bits_are_the_hardwares() {
+        assert_eq!(s2s_bit(0, 1), 9);
+        assert_eq!(s2s_bit(0, 2), 10);
+        assert_eq!(s2s_bit(0, 3), 11);
+        assert_eq!(s2s_bit(1, 2), 12);
+        assert_eq!(s2s_bit(1, 3), 13);
+        assert_eq!(s2s_bit(2, 3), 14);
+    }
 
     /// CLXCON `$37dd`: sprites 1 and 3 OR'd in, planes 1 to 5 compared with 1, 0, 1, 1, 1.
     const PLAY: Compare = Compare {

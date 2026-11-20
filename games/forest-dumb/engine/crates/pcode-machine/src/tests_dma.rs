@@ -33,8 +33,15 @@ const MOVES: Body = &[(12, 0, 0); 8];
 const SHIFTS: Body = &[(24, 20, 0), (24, 20, 0), (24, 20, 0), (24, 20, 0), (12, 0, 0)];
 /// `main_loop`'s wait for the interrupt count (`h0+$252`..`$2aa`, T54) as the oracle's `SPIN` has
 /// it: `move.w abs.l,d4` 16, `andi.l #$1f,d4` 16 (4 after its accesses), `bne.w` taken 10 (2
-/// before), `tst.w abs.l` 16, `bne.w` not taken 12 (4 before), `bra.w` 10 (2 before).
-const SPIN: Body = &[(16, 0, 0), (16, 4, 0), (10, 2, 2), (16, 0, 0), (12, 4, 4), (10, 2, 2)];
+/// before), `tst.w abs.l` 16, `bne.w` not taken 12 (4 before), `bra.w` 10 (2 before). Named one
+/// by one: the pure crates carry no integer table over 16 numbers (fd-conform's purity test).
+const SPIN: Body = &[MOVE_W_ABS, ANDI_L, BNE_TAKEN, TST_W_ABS, BNE_NOT_TAKEN, BRA_W];
+const MOVE_W_ABS: (u32, u32, u32) = (16, 0, 0);
+const ANDI_L: (u32, u32, u32) = (16, 4, 0);
+const BNE_TAKEN: (u32, u32, u32) = (10, 2, 2);
+const TST_W_ABS: (u32, u32, u32) = (16, 0, 0);
+const BNE_NOT_TAKEN: (u32, u32, u32) = (12, 4, 4);
+const BRA_W: (u32, u32, u32) = (10, 2, 2);
 /// `lsl.l #8,d4` and `move.w (a1),(a2)` in turn, 30 times: 61 instructions with the `dbf`.
 const LONG: Body = &{
     let mut body = [(12, 0, 0); 60];
