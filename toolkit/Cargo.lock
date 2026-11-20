@@ -198,6 +198,9 @@ dependencies = [
 [[package]]
 name = "amiga-routeview"
 version = "0.1.0"
+dependencies = [
+ "amiga-browser",
+]
 
 [[package]]
 name = "android-activity"

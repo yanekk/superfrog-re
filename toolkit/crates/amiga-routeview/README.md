@@ -1,6 +1,6 @@
 # amiga-routeview
 
-The route viewer's game-free half: it writes a static web page (`index.html` plus `data/<id>.js` per route) that draws a game's routes over its level maps, with a switcher over the routes and their verdicts. A game's own tool replays each route on its engine and hands every level's data over as a `LevelDump`; this crate writes the page around them and decides each route's verdict from plain facts the game reads off its replay, so no game type enters it. A shell crate (it writes files) with no dependencies: its JSON is written by hand. It runs nothing itself, neither engine nor oracle, and a shipped app has no use for it.
+The route viewer's game-free half: it writes a static web page (`index.html` plus `data/<id>.js` per route) that draws a game's routes over its level maps, with a switcher over the routes and their verdicts. A game's own tool replays each route on its engine and hands every level's data over as a `LevelDump`; this crate writes the page around them and decides each route's verdict from plain facts the game reads off its replay, so no game type enters it. A shell crate (it writes files) with no dependencies (its tests use `amiga-browser`): its JSON is written by hand. It runs nothing itself, neither engine nor oracle, and a shipped app has no use for it.
 
 ## Start here
 
@@ -25,6 +25,8 @@ The page loads data by script tag, not fetch, so `index.html` opens straight fro
 
 `write_js` must write the keys the page reads: `level`, `cols`, `rows`, `seed`, `timing`, `palette`, `tiles`, `body`, `objects`, `track`, `inputs`, `live`, `events`, `notes`, `coins_needed`, `end`, `inputs_end`, and optionally `guide`. Build it with `json::Json`.
 
+A map-only level (no route replayed) writes `"track": []` and its entry's `verdict: None`. Its data needs only `level`, `cols`, `rows`, `palette`, `tiles`, `body`, `objects` and `track`, and optionally `coins_needed` and `notes`. The page shows "Map only" in the verdict's place, draws the map and its object layers with no character, route line, timeline, Follow button or events list, hides its own route layers' chips (route, guide, heat, live, events), and its readout names the cell under the pointer.
+
 Verdict: fill `verdict::Outcome` (and `Bench` when the route is the planner's), call `verdict::verdict`, then add `progress(&events, &facts)` stalls' `fact` strings to `info` for a route that reaches no exit.
 
 ## API by job
@@ -32,7 +34,7 @@ Verdict: fill `verdict::Outcome` (and `Bench` when the route is the planner's), 
 Page (`site`, re-exported)
 - `PageSpec { title, cell_size, categories, actor, anchor, cell_origin, live_box }`: `anchor` is added to a track position to draw the line; `cell_origin` is added before dividing by the cell size to get the planner's cell.
 - `Category::new(key: &str, name: &str, color: &str, on: bool, cats: &[&str]) -> Category`: `key` is `[a-z]+` and not `route`, `guide`, `heat`, `live` or `events`; an object goes on the first layer listing its cat, else the first with empty `cats`. Cats `coin`, `enemy`, `pickup`, `hazard`, `secret` get their own shapes.
-- `Entry { id, label, group, route_file, verdict, wall_s, ref_frames }`.
+- `Entry { id, label, group, route_file, verdict: Option<Verdict>, wall_s, ref_frames }`: `None` is a map-only level, the manifest's `status` `map`, with no faults.
 - `trait LevelDump { fn level_id(&self) -> &str; fn write_js(&self, out: &mut dyn Write) -> io::Result<()>; fn entry(&self) -> Entry }`, `entry` defaulting to a clean verdict named by the id.
 - `write_site(root: &Path, spec: &PageSpec, levels: &[&dyn LevelDump]) -> io::Result<()>`; parts: `site::write_level`, `site::write_data(out, id, json)`, `site::write_index(out, spec, entries, bare: bool) -> io::Result<PathBuf>` (`bare` drops the `<!doctype>`/`<head>` skeleton for a host that adds its own), `site::id_of(name) -> String`.
 
@@ -47,4 +49,4 @@ Helpers
 
 ## Where the details are
 
-`src/site.rs` (the page and its embedded viewer), `src/verdict.rs`, `src/json.rs`, `src/guide.rs`; `tests/made_up_level.rs`. Routes come from `amiga-plan`.
+`src/site.rs` (the page and its embedded viewer), `src/verdict.rs`, `src/json.rs`, `src/guide.rs`; `tests/made_up_level.rs`; `tests/page_chrome.rs` drives the page in headless Chrome (`amiga-browser`, a dev-dependency) at 1280×800 and 800×600 and leaves its screens in `target/tmp/routeview-chrome/`. Routes come from `amiga-plan`.
