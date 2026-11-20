@@ -77,7 +77,7 @@ for comparison. A stop of the translated program freezes the picture, names the 
 saves a bug zip of the play from its start (`docs/BUG-FIX.md`, "A stop zip"). The translation is generated on this machine (`python3 -I
 games/forest-dumb/tools/translate.py --build`); without it the app says so and exits 1. In a fresh
 worktree run `fd-tools extract` first, and if the app still finds no translation, `touch
-engine/buildscripts/fd_translated.rs`: the build keeps its cached stub.
+games/forest-dumb/engine/buildscripts/fd_translated.rs`: the build keeps its cached stub.
 Keys: Up (jump) on Space, Fire on Left Option, the arrows; Game ▸ Controls… rebinds them and a game pad.
 Esc or ⌘Q quits. The disks are found as above, or `--disks DIR`; settings are in
 `~/Library/Application Support/Forest-Dumb-RE/settings.toml` (`--home DIR` or `FOREST_DUMB_HOME`

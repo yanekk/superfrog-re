@@ -394,7 +394,7 @@ that found it.
   `re_listing.py`, `translate_batch.py`, `translator_trial.py`; `load_symbols` and `load_entries`
   give a bare `KeyError` on a row missing a key (T03, T04 reviews).
 - A fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch
-  engine/buildscripts/fd_translated.rs`, or the build keeps the cached stub (T38).
+  games/forest-dumb/engine/buildscripts/fd_translated.rs`, or the build keeps the cached stub (T38).
 - The toolkit's `toolkit-checks/tests/purity.rs:162` and Superfrog's `sf-conform/tests/purity.rs:183`
   lex `0x18f32` as a float literal (fixed in fd-conform's copy, T34 review).
 - The toolkit's `LineSample::owners` doc (`amiga-oracle/src/amiga.rs`) omits that owners are the line
