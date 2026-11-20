@@ -19,8 +19,9 @@ use pcode_machine::{Disks, Input};
 use pcode_rt::{Image, Regs, Stop};
 
 /// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19; the eight
-/// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20).
-const PASS_MOUNTED: [&str; 49] = [
+/// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20;
+/// `title-koniec`, title T05, 2026-11-20).
+const PASS_MOUNTED: [&str; 50] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -70,11 +71,13 @@ const PASS_MOUNTED: [&str; 49] = [
     "mechanic-vanish",
     "route-W1-1",
     "route-both-W1-1",
+    "title-koniec",
 ];
 
 /// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated
-/// program alone from frame 6301 (T53; measured again 2026-11-20, T58).
-const DIFFER: [&str; 1] = ["power-on-level-1"];
+/// program alone from frame 6301 (T53; measured again 2026-11-20, T58). `title-esc` quits a frame
+/// late on the translated program alone, the same mounted (title T05, 2026-11-20; left for T07).
+const DIFFER: [&str; 2] = ["power-on-level-1", "title-esc"];
 
 /// The level 1 cases that hear a sound effect on the original whose Paula writes are the
 /// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
