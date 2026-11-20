@@ -8,6 +8,9 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 🔄 | Owner confirmed (T10 review): `title_paths_short.rs` and `title_paths.rs` are full with no `[[area]]`, against T10's smoke label, as every generated-tree test is. |
+| 2026-11-20 | 🐞 | HELP held 5+ steps under the cheat stops the translated program as the level ends: the release byte arrives in `load_world`'s OS time (`OS's level 2 interrupt handler, not modelled`). T10 taps 2 steps. DESIGN §2.4: owner's choice. |
+| 2026-11-20 | 📌 | Esc on the title, translated: `quit_flag` the step after the press, the return the step after that (press at 301, exit 303); docs/16 has `quit_flag` in the press step on the original. T05's case judges it. |
 | 2026-11-20 | 📌 | `scripts/title-esc.txt` (T01) says the return is in 5011; the exit goal measures the original's return at 5012, its sound shut down at 5011 (T05 review). Comment left alone. |
 | 2026-11-20 | 🐞 | **title-esc fails translated**: the program quits a frame after the original (original returns at 5012, translated 5013; first difference Paula's AUD0PER at 5011). KONIEC passes. Mounted the same (T05, for T07). |
 | 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
