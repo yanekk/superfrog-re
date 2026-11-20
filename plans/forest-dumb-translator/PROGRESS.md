@@ -4,9 +4,9 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
-**Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Status:** every task ✅ but T42 (🔍).
+**Last updated:** 2026-11-20
+**Next `pir-work` will:** review T42, the last task.
 
 ## Tasks
 
@@ -56,7 +56,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T39 | app-stop | T37 | ✅ | |
 | T40 | app-e2e | T33, T38, T39 | ✅ | |
 | T41 | app-drill | T40 | ✅ | |
-| T42 | close | T21, T33, T34, T41 | ⬜ | |
+| T42 | close | T21, T33, T34, T41 | 🔍 | Readings in docs/14-translator.md with result table and Open after the plan; game CLAUDE.md, ROADMAP, brief updated; porting-routines §6 and learned-on lines; FINDINGS 58 to 10 rows. No tests (docs only); tier and label checks pass. Deviation: smoke not run, worker rule (pir runs it); growth estimated from labels. |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
 | T44 | haiku-decision | T19; blocks T42 | ✅ | |
 | T45 | custom-writes-compared | T29; blocks T30, T31, T32 | ✅ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T42
 
 ## Blocked on the user
 
