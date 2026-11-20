@@ -144,7 +144,7 @@
 
 Nobody has played the translated app but a worker session driving it by script. It is yours to look at and listen to.
 
-First build the translation on your machine (once): `python3 -I games/forest-dumb/tools/translate.py --build`. Then, from `games/forest-dumb/engine`: `cargo run --release -p fd-app`.
+First, once on your machine, extract the disks (from `games/forest-dumb/engine`: `cargo run -p fd-tools -- extract`) and build the translation (from the repo root: `python3 -I games/forest-dumb/tools/translate.py --build`). Then, from `games/forest-dumb/engine`: `cargo run --release -p fd-app`.
 
 - **The start**: the disk prompt, then fire. The title should look and sound as on the Amiga, and the menus work.
 - **Level 1**: press Start. Play a little. **Listen for the sound effects** (jumping, coins, enemies). The automatic check for level 1's sound is weak: it counts any sound at all, and passes even when no effect plays, so your ears are the real test here.

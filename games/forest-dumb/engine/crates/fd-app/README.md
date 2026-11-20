@@ -16,6 +16,9 @@ through `fd-e2e`, not by calling its code; the library exports the state hashes,
 
 From `games/forest-dumb/engine/`:
 
+0. Once per machine or fresh worktree: extract the disks (`cargo run -p fd-tools -- extract`), then
+   generate the translation (`python3 -I games/forest-dumb/tools/translate.py --build` from the repo
+   root). Without the extract, `translate.py` stops with "no program at …".
 1. Play: `cargo run --release -p fd-app` (power-on; `-- --level 1` opens in level 1, `-- --engine hand`
    the hand engine). Esc or ⌘Q quits.
 2. A bounded scripted run with a capture:
