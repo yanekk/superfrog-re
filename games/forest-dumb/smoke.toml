@@ -338,6 +338,10 @@ workspace = "engine"
 # level 1's load with resizes and a lost focus, the stop band at 2× and 1000×700 with its zip
 # replayed. Four launches, about 34 s, and the generated tree.
 "crates/fd-e2e/tests/translated_drill.rs" = "full"
+# Map page T10: the app writing live.js. A 120-step hand run, about 4 s warm, in smoke; the route's 600
+# steps (6 s), the read-only folder, the title and W1-1 on the translated program (about 30 s and the
+# generated tree) full.
+"crates/fd-e2e/tests/live.rs" = ["a_short_hand_run_writes_live_js_into_its_home"]
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
@@ -783,3 +787,7 @@ covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_th
 [[area]]
 name = "the map page's levels: every world's objects, exit and items needed read from its files"
 covers = ["crates/fd-map/tests/levels.rs::each_real_world_matches_its_object_file"]
+
+[[area]]
+name = "the app writing the map page's live file while it plays, into a scripted run's own home"
+covers = ["crates/fd-e2e/tests/live.rs::a_short_hand_run_writes_live_js_into_its_home"]
