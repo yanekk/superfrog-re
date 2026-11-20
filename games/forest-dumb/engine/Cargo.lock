@@ -993,6 +993,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fd-map"
+version = "0.1.0"
+dependencies = [
+ "amiga-routeview",
+ "fd-assets",
+ "fd-tools",
+]
+
+[[package]]
 name = "fd-plan"
 version = "0.1.0"
 dependencies = [
