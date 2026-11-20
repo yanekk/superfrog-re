@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T03 implemented 2026-11-20.
+**Status:** Building; T03 reviewed ✅ 2026-11-20.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T03 (chrome-rig); T04 follows it. T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** T04 (page-map-only), now unblocked; T00, T01, T06 and T07 can run beside it.
 
 ## Tasks
 
@@ -19,7 +19,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T00 | items-needed-source | — | ⬜ | |
 | T01 | objects-all-worlds | — | ⬜ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
-| T03 | chrome-rig | — | 🔍 | Built `amiga-browser`: Chrome over the DevTools pipe, Fetch blocks non-file requests, loads tracked by loaderId, session limit plus backstop kill, group killed and profile removed on drop. 5 Chrome tests, 3 unit; click test in smoke (1 s). Deviations: added `pid()`, `profile()`, `truthy`, `file_url` for tests; README index line in toolkit/CLAUDE.md. |
+| T03 | chrome-rig | — | ✅ | Built `amiga-browser`, Chrome over the DevTools pipe; click test in smoke. Review clean, no fix commit. Ran drive.rs five times; probed reopen, missing file, promises, rejections, a network image (blocked), a bad `CHROME`. Mutations: no Fetch block (font red), no group kill (drop hangs). Pipe-inheritance race not reproduced with a widened window. |
 | T04 | page-map-only | T03 | ⬜ | |
 | T05 | page-live | T04 | ⬜ | |
 | T06 | live-reader | — | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T03
+**Review queue:** (empty)
 
 ## Blocked on the user
 
