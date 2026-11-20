@@ -6,7 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
-| 2026-11-20 | 📌 | **T40:** `translated_whole.rs` passes in 503 s (load 3): level 1 begins at step 620, ends at 23 084; world 2 loads, then waits for fire on its SCENA screen with `irq_count` standing still; play from 23 414. |
+| 2026-11-20 | 📌 | **T40:** `translated_whole.rs` passes in 503 s, review rerun 500 s: level 1 steps 620 to 23 084, world 2 play from 23 414. Its SCENA screen waits for fire: unpressed, `irq_count` stood 1 500 steps (review probe).
 | 2026-11-20 | 📌 | **T58 merge, left alone:** with `COSTS` gone every callee is walked, so `frame.rs`'s unwalked path (`owed`, `settle`, `pay`, `LUMP`, the `!self.walked` branches of `clxdat` and the sound writes) is dead code. |
 | 2026-11-20 | 📌 | **T58 review, open:** `game_frame_costs --passes --mounted enemy-contact`: CLXDAT, JOY1DAT and pass entries on the translated cycles; 422 of 1 299 passes run 2 to 8 cycles longer, all bus waits. Unlocated. |
 | 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25 (item, stomp, slide, hurt, spring; no time bonus in W1-1), `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. |
