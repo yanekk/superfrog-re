@@ -250,10 +250,22 @@ fn a_scripted_translated_run_in_w1_1_writes_where_its_ram_says() {
     let hashes = common::hashes(&c);
     assert_eq!(memory_hash(&e), hashes[0], "level 1's first frame");
     let fed = common::inputs(&c);
+    // The headless RAM sampled on the app's steps, against W1-1's object file, is what the app's
+    // copied ranges and its world-to-file lookup must reproduce.
+    let file = common::data().level.objects.cells.clone();
+    let start = move |w: u8| (w == 1).then(|| file.clone());
+    let (mut prev, mut want) = (None, None);
     for n in 1..=STEPS {
         e.frame(fed.get(&n).copied().unwrap_or_default());
         assert_eq!(memory_hash(&e), hashes[n as usize], "the state after step {n}");
+        if n % 12 == 0 {
+            let m = e.ram().unwrap();
+            let l = live_from_ram(&m[..CHIP], &m[CHIP..], prev, &start);
+            prev = Some(l.irq);
+            want = Some(l);
+        }
     }
+    let want = want.unwrap();
     let m = e.ram().unwrap();
     let at = fd_app::location_in_ram(&m[..CHIP], &m[CHIP..]).expect("in level 1");
     assert_eq!(field(&text, "playing"), "true", "{text}");
@@ -262,4 +274,10 @@ fn a_scripted_translated_run_in_w1_1_writes_where_its_ram_says() {
     // Any earlier `irq_count` marks it play; the sample's other fields do not depend on it.
     let items = live_from_ram(&m[..CHIP], &m[CHIP..], Some(0), &|_| None).items_left;
     assert_eq!(field(&text, "items_left"), items.unwrap().to_string(), "{text}");
+    let cells = want.changed.iter().map(|(c, r, v)| format!("[{c},{r},{v}]"));
+    assert_eq!(field(&text, "cells"), format!("[{}]", cells.collect::<Vec<_>>().join(",")));
+    assert!(!want.changed.is_empty(), "the route takes items by step {STEPS}");
+    let actors = want.creatures.iter().map(|(x, y, _)| format!("[{x},{y},\"enemy\"]"));
+    assert_eq!(field(&text, "actors"), format!("[{}]", actors.collect::<Vec<_>>().join(",")));
 }
+
