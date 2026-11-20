@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | title-idle-rows-cases | T01, T02 | ✅ | |
 | T04 | title-code-cases | T01, T02 | ✅ | |
 | T05 | title-quit-cases | T01, T02 | ✅ | |
-| T06 | game-over-cases | T01, T02 | ⬜ | |
+| T06 | game-over-cases | T01, T02 | ✅ | |
 | T07 | title-fixes | T03, T04, T05, T06 | ⬜ | |
 | T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ✅ | |
