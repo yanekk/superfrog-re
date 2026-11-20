@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T10 review: in `--level 1` after 240 route steps the translated app and a hand `Game` from W1-1's start disagree: one more creature in view, another 8 px apart. Items left and taken cells agree. Not investigated. |
 | 2026-11-20 | 🐞 | T05 drill, worker-driven at three sizes: after the page switched level by itself the last hover's tip still named a cell of the old level; hidden on a live switch, asserted in `live_chrome.rs`. |
 | 2026-11-20 | 📌 | T07 review: the character stood in 34 listed passage cells across 9 of 11 groups on the original; W1-1's tower `121,79` and W3-1's `164,53` group were not probed. docs/17's group extents were measured and corrected. |
 | 2026-11-20 | 📌 | Collision is `collision_map` from shapes and vanishing blocks; tiles reach only the screen. Hidden passages: W1-1 133, W3-1 292, W4-1 63 cells (docs/17). Per-tile majority misses W1-1's tunnel, built mostly of tiles 301 to 310. |
