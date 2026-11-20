@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | From power-on the translated program reads each route step on its own frame: a `Game` stepped alone on the same steps is a pass off in `irq_count` and a pixel off by step 590 (T06 `live_reader.rs`). |
 | 2026-11-20 | 🐞 | `tools/smoke.sh` in a fresh worktree hit its 1200 s limit at plan review: Forest Dumb done at 820 s, 20 Superfrog entries unrun, another smoke beside it. Four afternoon runs hit it too. |
 | 2026-11-20 | 📌 | Headless Chrome 157 answers over `--remote-debugging-pipe` (fds 3 and 4, NUL-separated). Move the pipe ends above fd 4 before `dup2`, else Chrome's end is closed and the first write breaks (plan review probe). |
 | 2026-11-20 | 🐞 | DESIGN §2.7 had play as `irq_count != 0`, but it stands still, not at 0, at game over (docs/09) and SCENA (docs/14 T40). Plan review: play is `irq_count` advancing between samples (T06). |
