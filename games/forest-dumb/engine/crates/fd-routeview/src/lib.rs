@@ -32,12 +32,9 @@ pub const MAX_FRAMES: u32 = 50 * 60 * 30;
 /// (fd-core `recording.rs`: `char_x + $e`, `char_y + 9`); the page draws the character there too.
 const SPOT: (i32, i32) = (0xe, 9);
 
-/// The page's text for W1-1's objects: `re/objects-W1-1.toml`, a value and its group each.
-const OBJECTS: &str = include_str!("../../../../re/objects-W1-1.toml");
-
 /// What Forest Dumb's page knows of the game: 16-pixel cells, the character drawn and placed at its
 /// spot, an object in play boxed over the cell it stands on, and a layer per object group of
-/// `re/objects-W1-1.toml` ([`object_name`]).
+/// `re/objects-*.toml` ([`object_name`]).
 pub fn spec() -> PageSpec {
     PageSpec {
         title: "Forest Dumb Forever".into(),
@@ -62,50 +59,8 @@ pub fn spec() -> PageSpec {
     }
 }
 
-/// An object value's layer and name: its group in `re/objects-W1-1.toml` (the page's cats `coin`,
-/// `enemy`, `pickup` and `hazard` draw in their own shapes), or `other` for a value the file lacks.
-pub fn object_name(value: u8) -> (&'static str, String) {
-    let group = groups().into_iter().find(|g| g.0 == value).map(|g| g.1);
-    let cat = match group.as_deref() {
-        // The page's summary counts the objects named `coin`; docs/10: `$20`..`$23` are coins.
-        Some("item") => return ("coin", "coin".into()),
-        Some("creature") => "enemy",
-        Some("bonus") => "pickup",
-        Some("water") => "hazard",
-        Some("spring") => "spring",
-        Some("vanishing-block") => "block",
-        // The page labels an object named `level exit` EXIT.
-        Some("exit") => return ("exit", "level exit".into()),
-        _ => "other",
-    };
-    let name = match group {
-        Some(g) => format!("{g} ${value:02x}"),
-        None => format!("object ${value:02x}"),
-    };
-    (cat, name)
-}
-
-/// (value, group) per `[[value]]` of `re/objects-W1-1.toml`, read by hand: two keys of a flat file.
-fn groups() -> Vec<(u8, String)> {
-    let mut out = Vec::new();
-    let mut value = None;
-    for line in OBJECTS.lines() {
-        let Some((k, v)) = line.split_once('=') else {
-            continue;
-        };
-        let v = v.trim();
-        match k.trim() {
-            "value" => value = u8::from_str_radix(v.trim_start_matches("0x"), 16).ok(),
-            "group" => {
-                if let Some(n) = value.take() {
-                    out.push((n, v.trim_matches('"').to_string()));
-                }
-            }
-            _ => {}
-        }
-    }
-    out
-}
+/// An object value's layer and name: `fd_map::object_name`, from every `re/objects-*.toml`.
+pub use fd_map::object_name;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Object {
@@ -477,9 +432,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_group_of_the_object_file_has_a_layer() {
-        let g = groups();
-        assert_eq!(g.len(), 24, "{g:?}");
+    fn every_group_of_the_object_files_has_a_layer() {
+        let g: Vec<(u8, String)> = fd_map::groups()
+            .iter()
+            .map(|(&v, g)| (v, g.clone()))
+            .collect();
+        // W1-1's 24 values and the flame.
+        assert!(g.len() >= 25, "{g:?}");
         assert_eq!(object_name(0x20), ("coin", "coin".into()));
         assert_eq!(object_name(0x01).0, "enemy");
         assert_eq!(object_name(0xff), ("exit", "level exit".into()));
