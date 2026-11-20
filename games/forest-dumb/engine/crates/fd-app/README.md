@@ -10,7 +10,7 @@ instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Eith
 (run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level…, the bug recorder and View ▸ Scale, Fullscreen and Filter (the toolkit's `amiga_app::view_menu`; no Widescreen, as the original has no wider view).
 Its game-free parts (pacing, pads, video, capture, lock, keys, settings, windows, a script's
 game-free lines) are `toolkit/crates/amiga-app`. It never links an emulator or test tooling (`tests/deps.rs`). Tests drive it
-through `fd-e2e`, not by calling its code; the library exports the state hashes, the translated program's window (`CANVAS`) and `--level 1`'s way through the title.
+through `fd-e2e`, not by calling its code; the library exports the state hashes, the translated program's window (`CANVAS`) and `--level N`'s way through the title.
 
 ## Start here
 
@@ -19,7 +19,7 @@ From `games/forest-dumb/engine/`:
 0. Once per machine or fresh worktree: extract the disks (`cargo run -p fd-tools -- extract`), then
    generate the translation (`python3 -I games/forest-dumb/tools/translate.py --build` from the repo
    root). Without the extract, `translate.py` stops with "no program at …".
-1. Play: `cargo run --release -p fd-app` (power-on; `-- --level 1` opens in level 1, `-- --engine hand`
+1. Play: `cargo run --release -p fd-app` (power-on; `-- --level 1` opens in level 1, `-- --level 3 --cheat` in world 3 with the cheat on, `-- --engine hand`
    the hand engine). Esc or ⌘Q quits. View ▸ Scale, Fullscreen (⌃⌘F) and Filter apply at once and are saved in `settings.toml` for the next launch.
 2. A bounded scripted run with a capture:
    `cargo run -p fd-app -- --home /tmp/h --script run.txt --capture /tmp/cap --max-frames 240 --bugs-dir /tmp/bugs`
@@ -28,7 +28,7 @@ From `games/forest-dumb/engine/`:
 
 ## Flags (`src/args.rs`)
 
-`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] [--stop-after N] [--allow-fullscreen]`
+`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1-6 [--cheat]] [--stop-after N] [--allow-fullscreen]`
 
 - `--home DIR`: app-data folder; else `FOREST_DUMB_HOME`, else `~/Library/Application Support/Forest-Dumb-RE`. One copy runs per home (a second is refused, "already running").
 - `--disks DIR`: the folder of both zips; else `fd_tools::disk_dir()` (`FOREST_DUMB_DISKS`, then the main checkout). Missing disks: a plain message and exit 1.
@@ -41,7 +41,9 @@ From `games/forest-dumb/engine/`:
 - `--bugs-dir DIR`: where bug zips go; else `<home>/bugs` for a scripted run, else `games/forest-dumb/bugs/` of the main checkout, else `~/Documents/Forest Dumb Bugs/`. Zips are `bug-<level>-<YYYY-MM-DD-HHMM>.zip`, `-2`, `-3` on a clash.
 
 - `--engine translated|hand`: the translated program (default) or level 1's hand engine alone, as before the translator plan. Tests that run without a generated tree pass `hand` (`fd_e2e::App::launch` does).
-- `--level 1`: the translated program run headless from power-on through the title with fire pressed ten frames in twenty (`to_level_1_input`, at most `TO_LEVEL_1_FRAMES`), so the window opens on level 1's first frame (about 500 frames). Game ▸ Start Level… starts the same way, its recorder on the translated program too (translator T39).
+- `--level N`, 1 to 6 (title plan T09): the translated program run headless from power-on through the title with fire pressed ten frames in twenty (`to_level_1_input`, at most `TO_LEVEL_1_FRAMES`), so the window opens on world N's first frame (about 500 frames). Worlds 2 to 6, and any world with `--cheat`, get `world_index` and `cheat_flag` written as `load_world` is entered (`world_start_bytes`; `Translated::to_world`); `--level 1` alone makes no write, as before. World 1 plays on level 1's hand engine through the seam. `--engine hand` takes `--level 1` only.
+- `--cheat`: the cheat on for `--level N`'s start; refused without `--level` and with `--engine hand`.
+- Game ▸ Start Level… on the translated program offers W1-1 to W6-1, "Cheat on" (off) and "Enable recorder?" (on), and starts the choice as `--level N [--cheat]` does; its recordings name the start (`start world`, `level`, `cheat`; W1-1 with the cheat off stays `start level-1`). On `--engine hand` it offers W1-1 and the recorder only.
 - `--stop-after N`: a test's hook (translator T39): the translated program stops at step N with `test-stop: --stop-after N`, so the stop path runs with no defect behind it. Refused with `--engine hand` and for 0.
 
 Bad arguments: exit 2 with the usage.
@@ -88,7 +90,7 @@ This game's lines:
 Answers to the recorder's windows hold no frame and are used in order whenever a window shows; with none
 left a window is cancelled, or the save window discarded:
 
-- `form level W1-1`, `form record on|off`, then `form start` or `form cancel` (every `form` run must close).
+- `form level W3-1` (W1-1 to W6-1; `--engine hand`: W1-1), `form cheat on|off` (translated only), `form record on|off`, then `form start` or `form cancel` (every `form` run must close). A line the run's window lacks is a script error, exit 2.
 - `answer-recording save|discard|cancel`: "Recording in progress".
 - `note <text>`: the save window's note and Save; `note` alone an empty note; `note discard` Discard.
 
@@ -108,7 +110,7 @@ never reaches the game; ⌘ plus a key is the app's.
 
 `--capture` writes the files `amiga_app::capture` lists (`frame-NNNNN.png`, `inputs.txt`,
 `window-NNNNN.png`, `prompts.txt`, …) plus `hashes.txt`: `N hash` in hex a frame, frame 0 the start.
-stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`, `fullscreen refused: …`, `staying windowed: …`, `could not save the settings: …`,
+stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames` (`W3-1 reached headless after N frames from power-on, cheat on` for another start), `started W3-1 after step N[, cheat on][, recording]`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`, `fullscreen refused: …`, `staying windowed: …`, `could not save the settings: …`,
 `game over`, `level 1 complete`, `quit after step N`).
 
 ## Library API (`src/lib.rs`)
@@ -119,7 +121,7 @@ stable within one build only); `hash_line(n: u64, g: &Game) -> String`. For the 
 every screen is shown through), `memory_hash`, `memory_hash_line`, `to_level_1_input(n)`,
 `TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`, `level_in_ram`, `location_in_ram`; a world start (title
 plan T08) adds `LOAD_WORLD`, `world_start_writes(level, cheat)`, `world_start_bytes(level, cheat)` and
-`start_reached(start, chip, slow)`, the start path `fd-conform bug replay` shares. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
+`start_reached(start, chip, slow)`, the start path `fd-conform bug replay` shares; `world_start(level, cheat)` (T09) the `StartPoint` a start records. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
 `frame_out(&FrameOut, &mut out)`; `audio::SILENT_RATE` (48 000, a scripted run's and the capture's rate).
 
 ## Where the details are

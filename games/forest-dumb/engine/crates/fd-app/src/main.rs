@@ -110,7 +110,7 @@ fn main() {
     let script = args.script.as_ref().map(|path| {
         std::fs::read_to_string(path)
             .map_err(|e| format!("{}: {e}", path.display()))
-            .and_then(|t| script::parse(&t).map_err(String::from))
+            .and_then(|t| script::parse(&t, args.engine).map_err(String::from))
             .unwrap_or_else(|e| {
                 eprintln!("fd-app: {e}");
                 std::process::exit(2);
@@ -138,12 +138,13 @@ fn main() {
     });
     let ui: Box<dyn Ui> = match &script {
         Some(s) => Box::new(ScriptedUi::new(
+            args.engine,
             s.answers.clone(),
             args.capture
                 .as_ref()
                 .map(|d| d.join(amiga_app::capture::PROMPTS)),
         )),
-        None => Box::new(NativeUi::default()),
+        None => Box::new(NativeUi::new(args.engine)),
     };
     let bugs_dir = recorder::bugs_dir(args.bugs_dir.as_deref(), script.is_some(), &home);
     let mut app = App {
@@ -229,11 +230,12 @@ impl Engine {
     }
 }
 
-/// The translated program from power-on, its sound at `rate`, and, for `--level 1` and Start
-/// Level…, run headless to level 1's first frame (its sound mixed and not played).
+/// The translated program from power-on, its sound at `rate`, and, for `--level N` and Start
+/// Level… (`world`: the level and the cheat), run headless to the level's first frame (its sound
+/// mixed and not played).
 fn translated(
     d: &disks::Disks,
-    level_1: bool,
+    world: Option<(LevelId, bool)>,
     hashes: bool,
     rate: u32,
 ) -> Result<Translated, String> {
@@ -244,9 +246,16 @@ fn translated(
         hashes,
         rate,
     );
-    if level_1 {
-        let n = t.to_level_1()?;
-        eprintln!("fd-app: level 1 reached headless after {n} frames from power-on");
+    if let Some((level, cheat)) = world {
+        let n = t.to_world(level, cheat)?;
+        let name = match level {
+            LevelId::W1_1 => "level 1".to_string(),
+            l => l.to_string(),
+        };
+        eprintln!(
+            "fd-app: {name} reached headless after {n} frames from power-on{}",
+            cheat_words(cheat)
+        );
     }
     Ok(t)
 }
@@ -301,7 +310,13 @@ struct Run {
 
 /// The translated program's recording from `start`, by this build.
 fn translated_recorder(start: StartPoint) -> Recorder {
-    recorder_from(start, EngineKind::Translated, LevelId::W1_1, fd_tools::ENGINE_BUILD)
+    let level = start.level().unwrap_or_default();
+    recorder_from(start, EngineKind::Translated, level, fd_tools::ENGINE_BUILD)
+}
+
+/// What the log adds to a start's line for the cheat.
+fn cheat_words(cheat: bool) -> &'static str {
+    if cheat { ", cheat on" } else { "" }
 }
 
 impl Run {
@@ -368,14 +383,18 @@ impl App {
         let (engine, playing) = match self.args.engine {
             EngineChoice::Hand => (
                 Engine::Hand(Game::new(disks.data.clone(), Start::Level1)),
-                "W1-1",
+                "W1-1".to_string(),
             ),
             EngineChoice::Translated => {
-                match translated(&disks, self.args.level_1, self.args.capture.is_some(), rate) {
-                    Ok(t) if self.args.level_1 => {
-                        (Engine::Translated(t), "the translated program from W1-1")
-                    }
-                    Ok(t) => (Engine::Translated(t), "the translated program from power-on"),
+                let world = self.args.level.map(|l| (l, self.args.cheat));
+                match translated(&disks, world, self.args.capture.is_some(), rate) {
+                    Ok(t) => (Engine::Translated(t), match world {
+                        Some((level, cheat)) => format!(
+                            "the translated program from {level}{}",
+                            cheat_words(cheat)
+                        ),
+                        None => "the translated program from power-on".to_string(),
+                    }),
                     Err(e) => return self.fail(event_loop, &e),
                 }
             }
@@ -469,10 +488,10 @@ impl App {
             bar: None,
             trail: match self.args.engine {
                 EngineChoice::Hand => Recorder::Off,
-                EngineChoice::Translated if self.args.level_1 => {
-                    translated_recorder(StartPoint::Level1)
-                }
-                EngineChoice::Translated => translated_recorder(StartPoint::PowerOn),
+                EngineChoice::Translated => translated_recorder(match self.args.level {
+                    Some(l) => fd_app::world_start(l, self.args.cheat),
+                    None => StartPoint::PowerOn,
+                }),
             },
             stopped: None,
             window_bar: false,
@@ -633,30 +652,35 @@ impl App {
         }
     }
 
-    /// Game → Start Level…: the window, then W1-1 started afresh, recording from its first frame
-    /// when the recorder was on. Cancelled, the game carries on.
+    /// Game → Start Level…: the window, then the chosen level started afresh, the cheat as ticked,
+    /// recording from its first frame when the recorder was on (title plan DESIGN §2.5). On the
+    /// translated program any world 1 to 6, as `--level N [--cheat]` starts it; on the hand engine
+    /// W1-1, its window's one level. Cancelled, the game carries on.
     fn start_level(&mut self) {
         let answer = self.ui.start_level();
         self.after_panel();
-        let Some((level, record)) = answer else {
+        let Some((level, cheat, record)) = answer else {
             return;
         };
         let run = self.run.as_mut().expect("running");
-        // The one level the window offers today (`recorder::OFFERED`), started as the app starts it.
-        assert_eq!(level, LevelId::W1_1, "the Start Level window offers W1-1 only");
+        let start = fd_app::world_start(level, cheat);
         match &mut run.engine {
-            Engine::Hand(g) => *g = Game::new(g.data().clone(), Start::Level1),
-            // As `--level 1` starts it (owner, T37): one start path.
+            Engine::Hand(g) => {
+                // The hand engine's window offers W1-1 and no cheat (`recorder::spec`).
+                assert_eq!((level, cheat), (LevelId::W1_1, false), "the hand engine's window");
+                *g = Game::new(g.data().clone(), Start::Level1)
+            }
+            // As `--level N [--cheat]` starts it (owner, T37; title plan §2.5): one start path.
             Engine::Translated(_) => {
                 let hashes = run.capture.is_some();
-                let made = translated(&run.disks, true, hashes, run.rate);
+                let made = translated(&run.disks, Some((level, cheat)), hashes, run.rate);
                 // The notice and the run through the title held the main thread for a second or
                 // more: play carries on from now, not in a burst catching up on it.
                 run.pacer.skip_to(run.now());
                 match made {
                     Ok(t) => {
                         run.engine = Engine::Translated(t);
-                        run.trail = translated_recorder(StartPoint::Level1);
+                        run.trail = translated_recorder(start);
                         run.stopped = None;
                     }
                     Err(e) => {
@@ -669,15 +693,16 @@ impl App {
         run.recorder = match (record, &run.engine) {
             (false, _) => Recorder::Off,
             (true, Engine::Hand(_)) => start_recording(level, fd_tools::ENGINE_BUILD),
-            (true, Engine::Translated(_)) => translated_recorder(StartPoint::Level1),
+            (true, Engine::Translated(_)) => translated_recorder(start),
         };
         // The level's first frame at once: the picture a Stop before any step saves.
         let (size, rgba) = run.engine.frame();
         run.shown.completed((run.steps, size, rgba));
         let recording = if record { ", recording" } else { "" };
         eprintln!(
-            "fd-app: started {level} after step {}{recording}",
-            run.steps
+            "fd-app: started {level} after step {}{}{recording}",
+            run.steps,
+            cheat_words(cheat)
         );
         self.show_newest();
     }
@@ -862,7 +887,7 @@ impl App {
         let game = match &mut run.engine {
             Engine::Hand(g) => g,
             Engine::Translated(t) => {
-                let was_level_1 = t.frame().level_1;
+                let was_level_1 = t.frame().level_1();
                 let was_exited = t.frame().exited;
                 t.step(input);
                 if stop_after == Some(n) {
@@ -872,7 +897,7 @@ impl App {
                 // Only the frame it ended on: the frozen frames after it keep `exited`, and a
                 // Quit cancelled at "Recording in progress" is not asked again every step.
                 let exited = f.exited && !was_exited;
-                if f.level_1 && !was_level_1 {
+                if f.level_1() && !was_level_1 {
                     eprintln!("fd-app: level 1 begins at step {n}");
                 }
                 if let Some(s) = f.stop.clone() {

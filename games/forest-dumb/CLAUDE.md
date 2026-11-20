@@ -78,8 +78,9 @@ The first time on a machine, or in a fresh worktree, three steps in this order (
 
 `cd games/forest-dumb/engine && cargo run --release -p fd-app` runs the translated program from power-on,
 with sound (level 1 has only effects, no music): the disk 2 prompt (fire), the title (fire is Start), the menus, the levels, level 1 on its hand
-engine through the seam. `-- --level 1` opens on level 1's first frame, reached by running the program
-headless through the title; `-- --engine hand` opens straight in `W1-1` on the hand engine, as before,
+engine through the seam. `-- --level N` (1 to 6) opens on world N's first frame, reached by running the
+program headless through the title, `-- --level N --cheat` with the cheat on; Game ▸ Start Level… offers the
+same six worlds and a "Cheat on" box; `-- --engine hand` opens straight in `W1-1` on the hand engine, as before,
 for comparison. A stop of the translated program freezes the picture, names the stop over it and
 saves a bug zip of the play from its start (`docs/BUG-FIX.md`, "A stop zip"). The translation is generated on this machine (`python3 -I
 games/forest-dumb/tools/translate.py --build`); without it the app says so and exits 1. If the app

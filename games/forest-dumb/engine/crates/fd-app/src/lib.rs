@@ -44,6 +44,18 @@ pub use fd_core::recording::{
     start_reached, to_level_1_input, world_start_bytes, world_start_writes,
 };
 
+/// Where a start of `level` with the cheat as given begins, as a recording names it: W1-1 with the
+/// cheat off is level 1's old start, no write at `load_world` (what `--level 1` was before the
+/// title plan, so its recordings read and compare as before); any other is a world start, its
+/// writes made as `load_world` is entered ([`world_start_bytes`]).
+pub fn world_start(level: fd_core::recording::LevelId, cheat: bool) -> fd_core::recording::StartPoint {
+    use fd_core::recording::{LevelId, StartPoint};
+    match (level, cheat) {
+        (LevelId::W1_1, false) => StartPoint::Level1,
+        _ => StartPoint::World { level, cheat },
+    }
+}
+
 /// The translated program's state as a number: chip RAM then slow RAM at a frame's end, what a
 /// headless run of `fd-translated` holds at the same frame. Stable within one build.
 pub fn memory_hash(chip: &[u8], slow: &[u8]) -> u64 {
@@ -61,6 +73,20 @@ pub fn memory_hash_line(n: u64, chip: &[u8], slow: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn world_1_without_the_cheat_is_level_1_s_old_start_and_every_other_a_world_start() {
+        use fd_core::recording::{LevelId, StartPoint};
+        assert_eq!(world_start(LevelId::W1_1, false), StartPoint::Level1);
+        for l in LevelId::ALL {
+            assert_eq!(world_start(l, true), StartPoint::World { level: l, cheat: true });
+            assert_eq!(world_start(l, false).level(), Some(l));
+        }
+        assert_eq!(
+            world_start(LevelId::W4_1, false),
+            StartPoint::World { level: LevelId::W4_1, cheat: false }
+        );
+    }
 
     #[test]
     fn the_message_names_the_command_that_generates_the_tree() {

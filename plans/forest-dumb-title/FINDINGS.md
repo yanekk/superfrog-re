@@ -11,6 +11,8 @@ changed.
 | 2026-11-20 | 🔄 | Owner confirmed (T10 review): `title_paths_short.rs` and `title_paths.rs` are full with no `[[area]]`, against T10's smoke label, as every generated-tree test is. |
 | 2026-11-20 | 🐞 | HELP held 5+ steps under the cheat stops the translated program as the level ends: the release byte arrives in `load_world`'s OS time (`OS's level 2 interrupt handler, not modelled`). T10 taps 2 steps. DESIGN §2.4: owner's choice. |
 | 2026-11-20 | 📌 | Esc on the title, translated: `quit_flag` the step after the press, the return the step after that (press at 301, exit 303); docs/16 has `quit_flag` in the press step on the original. T05's case judges it. |
+| 2026-11-20 | 📌 | `cargo fmt -p fd-conform` rewrites about 17 files outside any task (the crate is not fmt-clean); found in T02 review, left alone. |
+| 2026-11-20 | 📌 | KONIEC from the 4990 snapshot (Down 5000, Down 5030, fire 5060, `scripts/case-goals-koniec.txt`): the original quits in step 5073 to `$FF492E`, and the translated program exits with it, every channel equal (`tests/case_goals.rs`). |
 | 2026-11-20 | 📌 | **Codes reach worlds 1, 3 and 5 only** (0556, 2424, 7531) plus 2400, world 1 with `cheat_flag`; worlds 2, 4 and 6 have none, so `title-code-wN` exists for N 1, 3, 5 (T01, docs/16). |
 | 2026-11-20 | 🐞 | Esc on the title quits to AmigaDOS in the step it is pressed (`title_codes.rs`); docs/07 read it as dead. `title-esc` judges a quit, as `title-koniec` does. |
 | 2026-11-20 | 📌 | `level2_handler` runs on keys at the title: `last_key_byte` follows them (T01). docs/15's "none taken" for level 2 there pressed no key. KODY and Esc need the machine to take it. |

@@ -53,6 +53,12 @@ let stop = g.run(&mut |frame| {
   the bytes into RAM as the routine at that entry is entered, before its first instruction, once;
   each frame's `writes_at_pending` counts those not made yet. The oracle's `Amiga::poke_at` at the
   routine's first instruction is the same write: a case's `set` with `when` makes both.
+- **Watched entries** (title T02): `g.watch_entries(&[(hunk, offset), ..])` before the run, and each
+  frame's `entries` lists the watched routines entered in it, by the same hook as `write_at`: a
+  case's `enters` goal.
+- **A snapshot's exit** (title T02): `g.exit_to(back, sp)` makes a return to `back` with a7 = `sp`
+  in user mode the program's exit, as the power-on start's own; the case runner reads both off the
+  original's entry. Without it a snapshot's return to AmigaDOS stops `untranslated`.
 - **Snapshot**: the original's RAM, registers and custom registers (as `Machine::from_snapshot`
   reads them); CIA-A's mask is set to the keyboard's (`$08`), which the oracle does not expose. The PC
   and every return address on the stack may be any instruction: the run enters through the tree's

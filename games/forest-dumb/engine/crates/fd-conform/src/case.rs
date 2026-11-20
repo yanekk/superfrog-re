@@ -78,6 +78,19 @@ pub enum Goal {
     /// engine enters [`fd_core::Scene::LevelEnd`], `world_index` 1 on both (T26), at or before
     /// oracle frame `by_frame`. The comparison ends there (`crate::AFTER_NEXT_WORLD`).
     LevelEnd { by_frame: u32 },
+    /// `enters = "ROUTINE"` (title T02), a case lined up by loads: both sides enter `ROUTINE` (a
+    /// `func` of `re/symbols.toml`, its entry `at`) in the same aligned frame, at or before oracle
+    /// frame `by_frame`. The original's entry is its first instruction run (`Amiga::watch_pcs`),
+    /// the engine's [`crate::frames::FrameEngine::watch_entry`]. The comparison ends there.
+    Enters {
+        routine: String,
+        at: (u8, u32),
+        by_frame: u32,
+    },
+    /// `exited = true` (title T02), a case lined up by loads: both sides return from the program's
+    /// entry to its caller in the same aligned frame, at or before oracle frame `by_frame`, as KONIEC's
+    /// `quit_to_dos` does; any other jump there is a stop (translator T41). The comparison ends there.
+    Exited { by_frame: u32 },
 }
 
 /// Picture rows, a box of them, or a variable, whose differences a case does not fail on, and the
@@ -287,6 +300,14 @@ impl Case {
             Some(v) => sets(v)?,
             None => Vec::new(),
         };
+        // The two goals only the loads runner judges (title T02): it alone sees a routine entered
+        // and the program's return on both sides.
+        if !loads && matches!(goal, Some(Goal::Enters { .. } | Goal::Exited { .. })) {
+            return Err(
+                "goal `enters` or `exited` is for a case lined up by loads (`align = \"loads\"`)"
+                    .to_string(),
+            );
+        }
         if goal == Some(Goal::Idle) && !compare.vars {
             return Err(
                 "goal `idle = true` is judged on the case's `vars`, but `compare` has \
@@ -342,7 +363,7 @@ impl Case {
                         goal,
                         Some(Goal::Idle | Goal::GameOver { .. } | Goal::LevelEnd { .. })
                     ),
-                    "goal other than `all`",
+                    "goal other than `all`, `enters` or `exited`",
                 ),
             ] {
                 if taken {
@@ -365,7 +386,7 @@ impl Case {
                         goal,
                         Some(Goal::Idle | Goal::GameOver { .. } | Goal::LevelEnd { .. })
                     ),
-                    "goal other than `all`",
+                    "goal other than `all`, `enters` or `exited`",
                 ),
             ] {
                 if taken {
@@ -727,7 +748,15 @@ fn compare_list(v: &Value) -> Result<Compare, String> {
 fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
     let t = v.table(
         "goal",
-        &["all", "by_frame", "idle", "game_over", "level_end"],
+        &[
+            "all",
+            "by_frame",
+            "idle",
+            "game_over",
+            "level_end",
+            "enters",
+            "exited",
+        ],
     )?;
     if let Some((_, idle)) = t.iter().find(|(k, _)| k == "idle") {
         if t.len() != 1 || *idle != Value::Bool(true) {
@@ -746,9 +775,24 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
         }
         Ok(by_frame)
     };
+    if let Some((_, r)) = t.iter().find(|(k, _)| k == "enters") {
+        if t.iter().any(|(k, _)| k != "enters" && k != "by_frame") {
+            return Err("goal: `enters = \"ROUTINE\"` takes a `by_frame` and nothing else".into());
+        }
+        let routine = r.string("enters")?;
+        let at = routine_entry(&routine).map_err(|_| {
+            format!("goal enters = \"{routine}\": not a func of re/symbols.toml")
+        })?;
+        return Ok(Goal::Enters {
+            routine,
+            at,
+            by_frame: by_frame(t)?,
+        });
+    }
     for (key, scene) in [
         ("game_over", Goal::GameOver { by_frame: 0 }),
         ("level_end", Goal::LevelEnd { by_frame: 0 }),
+        ("exited", Goal::Exited { by_frame: 0 }),
     ] {
         if let Some((_, on)) = t.iter().find(|(k, _)| k == key) {
             if *on != Value::Bool(true) || t.iter().any(|(k, _)| k != key && k != "by_frame") {
@@ -759,6 +803,7 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
             let by_frame = by_frame(t)?;
             return Ok(match scene {
                 Goal::GameOver { .. } => Goal::GameOver { by_frame },
+                Goal::Exited { .. } => Goal::Exited { by_frame },
                 _ => Goal::LevelEnd { by_frame },
             });
         }
@@ -1004,6 +1049,72 @@ mod tests {
         );
         assert_eq!(c.set[0].bytes(), [0, 0, 0, 1], "world_index is a long");
         assert!(c.compare.memory);
+    }
+
+    /// The two goals of title T02, on a power-on case and on one from a snapshot.
+    #[test]
+    fn the_enters_and_exited_goals_parse_on_cases_lined_up_by_loads() {
+        let all = "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }";
+        let enters = WORLD.replace(all, "goal = { enters = \"title_screen\", by_frame = 7990 }");
+        assert_eq!(
+            Case::parse("w", &enters).unwrap().goal,
+            Some(Goal::Enters {
+                routine: "title_screen".into(),
+                at: (0, 0x6e06),
+                by_frame: 7990
+            })
+        );
+        let exited = WORLD.replace(all, "goal = { exited = true, by_frame = 7990 }");
+        assert_eq!(
+            Case::parse("w", &exited).unwrap().goal,
+            Some(Goal::Exited { by_frame: 7990 })
+        );
+        let all = "goal = { all = [{ var = \"irq_count\", value = 100 }], by_frame = 6500 }";
+        let entry = ENTRY.replace(all, "goal = { exited = true, by_frame = 6500 }");
+        assert_eq!(
+            Case::parse("p", &entry).unwrap().goal,
+            Some(Goal::Exited { by_frame: 6500 })
+        );
+    }
+
+    #[test]
+    fn what_the_enters_and_exited_goals_do_not_say_is_refused() {
+        let all = "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }";
+        for (to, says) in [
+            (
+                "goal = { enters = \"no_such_routine\", by_frame = 7990 }",
+                "enters = \"no_such_routine\": not a func",
+            ),
+            // A variable of re/symbols.toml is no routine.
+            (
+                "goal = { enters = \"irq_count\", by_frame = 7990 }",
+                "not a func",
+            ),
+            ("goal = { enters = \"title_screen\" }", "no `by_frame`"),
+            ("goal = { exited = true }", "no `by_frame`"),
+            ("goal = { exited = false, by_frame = 7990 }", "takes a `by_frame`"),
+            (
+                "goal = { exited = true, enters = \"title_screen\", by_frame = 7990 }",
+                "takes a `by_frame` and nothing else",
+            ),
+            ("goal = { exited = true, by_frame = 9000 }", "at most"),
+        ] {
+            refused(WORLD, all, to, says);
+        }
+        // Without `align = "loads"`: a level case and a title case.
+        let level = "goal = { all = [{ var = \"char_x\", value = 0x80 }], by_frame = 6400 }";
+        for to in [
+            "goal = { enters = \"title_screen\", by_frame = 6400 }",
+            "goal = { exited = true, by_frame = 6400 }",
+        ] {
+            refused(LEVEL, level, to, "is for a case lined up by loads");
+        }
+        refused(
+            TITLE,
+            "vars = [\"mt_counter\"]\n",
+            "vars = [\"mt_counter\"]\ngoal = { exited = true, by_frame = 9 }\n",
+            "is for a case lined up by loads",
+        );
     }
 
     #[test]

@@ -14,6 +14,7 @@ use std::thread::{self, JoinHandle};
 use amiga_input::FrameInput;
 use fd_app::audio::Sound;
 use fd_core::GameData;
+use fd_core::recording::{LevelId, StartPoint};
 use pcode_machine::Picture;
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
 use pcode_machine::{Disks, Input};
@@ -26,8 +27,8 @@ pub struct Frame {
     /// frames a capture writes ([`Frame::hash`]), since hashing a megabyte each frame of
     /// `--level 1`'s run through the title took 4 s unoptimised (T37).
     mem: Option<(Box<[u8]>, Box<[u8]>)>,
-    /// [`fd_app::in_level_1`] at the frame's end.
-    pub level_1: bool,
+    /// [`fd_app::level_in_ram`] at the frame's end: the level played, `None` on the title.
+    pub level: Option<LevelId>,
     /// How the program stopped, on its last frame.
     pub stop: Option<String>,
     /// The program ended itself on this frame, its last: KONIEC's return to AmigaDOS
@@ -40,19 +41,34 @@ pub struct Frame {
 }
 
 impl Frame {
+    /// Whether the frame is in level 1's play ([`fd_app::in_level_1`]).
+    pub fn level_1(&self) -> bool {
+        self.level == Some(LevelId::W1_1)
+    }
+
     /// [`fd_app::memory_hash`] of the frame's end, when hashes were asked for.
     pub fn hash(&self) -> Option<u64> {
         self.mem.as_ref().map(|(c, s)| fd_app::memory_hash(c, s))
     }
 }
 
+/// What the app hands the game's thread.
+enum Msg {
+    /// `TranslatedGame::write_at`, before the first frame: a world start's write.
+    WriteAt((u8, u32), u32, Vec<u8>),
+    /// The next frame's input.
+    Input(Input),
+}
+
 /// The translated program running on its thread.
 pub struct Translated {
-    to: Option<Sender<Input>>,
+    to: Option<Sender<Msg>>,
     from: Receiver<Frame>,
     thread: Option<JoinHandle<()>>,
     /// The newest frame: before the first step, the start's.
     frame: Frame,
+    /// Whether a frame has been asked for: a world start's writes must come before.
+    stepped: bool,
 }
 
 impl Translated {
@@ -66,7 +82,7 @@ impl Translated {
         hashes: bool,
         rate: u32,
     ) -> Translated {
-        let (to, inputs) = channel::<Input>();
+        let (to, inputs) = channel::<Msg>();
         let (frames, from) = channel::<Frame>();
         let thread = thread::Builder::new()
             .name("translated game".into())
@@ -83,7 +99,7 @@ impl Translated {
                 let start = Frame {
                     picture: Picture::blank(l, t, w, h),
                     mem: hashes.then(|| (chip.into(), slow.into())),
-                    level_1: fd_app::in_level_1(chip, slow),
+                    level: fd_app::level_in_ram(chip, slow),
                     stop: None,
                     exited: false,
                     place: fd_app::location_in_ram(chip, slow),
@@ -92,7 +108,15 @@ impl Translated {
                 if frames.send(start).is_err() {
                     return;
                 }
-                let Ok(first) = inputs.recv() else { return };
+                // A world start's writes come before the first input: `write_at` holds only for a
+                // run not yet begun.
+                let first = loop {
+                    match inputs.recv() {
+                        Ok(Msg::WriteAt(at, addr, bytes)) => g.write_at(at, addr, &bytes),
+                        Ok(Msg::Input(i)) => break i,
+                        Err(_) => return,
+                    }
+                };
                 g.set_input(first);
                 g.run(&mut |out| {
                     let mut samples = Vec::new();
@@ -100,7 +124,7 @@ impl Translated {
                     let frame = Frame {
                         picture: fd_app::canvas(&out.picture),
                         mem: hashes.then(|| (out.chip.into(), out.slow.into())),
-                        level_1: fd_app::in_level_1(out.chip, out.slow),
+                        level: fd_app::level_in_ram(out.chip, out.slow),
                         stop: out.stop.as_ref().map(|s| s.to_string()),
                         exited: out.exited,
                         place: fd_app::location_in_ram(out.chip, out.slow),
@@ -112,7 +136,8 @@ impl Translated {
                         return Control::Stop;
                     }
                     match inputs.recv() {
-                        Ok(i) => Control::Next(i),
+                        Ok(Msg::Input(i)) => Control::Next(i),
+                        Ok(Msg::WriteAt(..)) => unreachable!("to_world writes before the first step"),
                         Err(_) => Control::Stop,
                     }
                 });
@@ -126,6 +151,7 @@ impl Translated {
             from,
             thread: Some(thread),
             frame,
+            stepped: false,
         }
     }
 
@@ -138,7 +164,8 @@ impl Translated {
             return &self.frame;
         }
         // A send fails only when the thread has ended, which `receive` reports.
-        let _ = self.to.as_ref().expect("open").send(Input::from(input));
+        self.stepped = true;
+        let _ = self.to.as_ref().expect("open").send(Msg::Input(Input::from(input)));
         self.frame = self.receive();
         &self.frame
     }
@@ -153,24 +180,42 @@ impl Translated {
         &self.frame
     }
 
-    /// `--level 1`: from power-on to level 1's first frame on [`fd_app::to_level_1_input`],
-    /// the program's own way through the title. The frames it took, or why it did not get there
-    /// within [`fd_app::TO_LEVEL_1_FRAMES`].
-    pub fn to_level_1(&mut self) -> Result<u64, String> {
+    /// `--level N [--cheat]` and Start Level… (title plan DESIGN §2.5): from power-on to
+    /// `level`'s first frame on [`fd_app::to_level_1_input`], the program's own way through the
+    /// title, with [`fd_app::world_start_bytes`] written as `load_world` is entered unless the
+    /// start is level 1's old one ([`fd_app::world_start`]), as `fd-conform bug replay` starts it.
+    /// The frames it took, or why it did not get there within [`fd_app::TO_LEVEL_1_FRAMES`]. Only
+    /// on a run not yet stepped.
+    // Named by the plan (T09): it runs the program to a world, it converts nothing.
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_world(&mut self, level: LevelId, cheat: bool) -> Result<u64, String> {
+        if self.stepped {
+            return Err(format!("{level} is started from power-on, before the first step"));
+        }
+        let start = fd_app::world_start(level, cheat);
+        if let StartPoint::World { level, cheat } = start {
+            for (addr, bytes) in fd_app::world_start_bytes(level, cheat) {
+                let _ = self.to.as_ref().expect("open").send(Msg::WriteAt(
+                    fd_app::LOAD_WORLD,
+                    addr,
+                    bytes,
+                ));
+            }
+        }
         for n in 0..fd_app::TO_LEVEL_1_FRAMES {
             let f = self.step(fd_app::to_level_1_input(n));
             if let Some(s) = &f.stop {
                 return Err(format!(
-                    "the translated program stopped on its way to level 1, frame {}: {s}",
+                    "the translated program stopped on its way to {level}, frame {}: {s}",
                     n + 1
                 ));
             }
-            if f.level_1 {
+            if f.level == start.level() {
                 return Ok(n + 1);
             }
         }
         Err(format!(
-            "the translated program did not reach level 1 in {} frames",
+            "the translated program did not reach {level} in {} frames",
             fd_app::TO_LEVEL_1_FRAMES
         ))
     }

@@ -2,12 +2,14 @@
 //!
 //! ```text
 //! fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N]
-//!        [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1]
-//!        [--stop-after N] [--allow-fullscreen]
+//!        [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand]
+//!        [--level 1-6 [--cheat]] [--stop-after N] [--allow-fullscreen]
 //! ```
 
 use std::ffi::OsString;
 use std::path::PathBuf;
+
+use fd_core::recording::LevelId;
 
 /// `--timeout` under `--script` when none is given (DESIGN §5.2).
 pub const SCRIPT_TIMEOUT_S: u64 = 120;
@@ -17,8 +19,8 @@ pub const SCRIPT_TIMEOUT_S: u64 = 120;
 pub const FULLSCREEN_MAX_FRAMES: u64 = 300;
 
 pub const USAGE: &str = "usage: fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] \
-[--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] \
-[--stop-after N] [--allow-fullscreen]";
+[--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] \
+[--level 1-6 [--cheat]] [--stop-after N] [--allow-fullscreen]";
 
 /// Which engine plays (translator DESIGN §2.10).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -55,9 +57,12 @@ pub struct Args {
     pub bugs_dir: Option<PathBuf>,
     /// `--engine`.
     pub engine: EngineChoice,
-    /// `--level 1`: start at level 1's first frame, the translated program run headless through
-    /// the title with Start pressed. The hand engine always starts there.
-    pub level_1: bool,
+    /// `--level N`, 1 to 6: start at world N's first frame, the translated program run headless
+    /// through the title with Start pressed and the world set as `load_world` is entered (title
+    /// plan DESIGN §2.5). The hand engine always starts in W1-1, its one level.
+    pub level: Option<LevelId>,
+    /// `--cheat`: the cheat on for `--level N`'s start (`cheat_flag` set at `load_world`).
+    pub cheat: bool,
     /// `--stop-after N`, a test's seatbelt-style hook (translator T39): the translated program
     /// stops at step N as if it had reached a stop, so the app's stop path runs without a defect.
     pub stop_after: Option<u64>,
@@ -108,14 +113,14 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
                     }
                 }
             }
-            "--level" => match value("a level")?.to_string_lossy().as_ref() {
-                "1" => a.level_1 = true,
-                other => {
-                    return Err(format!(
-                        "--level {other:?}: only level 1 can be started\n{USAGE}"
-                    ));
-                }
-            },
+            "--level" => {
+                let v = value("a level")?.to_string_lossy().into_owned();
+                let world = v.parse::<usize>().ok().filter(|n| (1..=6).contains(n));
+                a.level = Some(world.map(|n| LevelId::ALL[n - 1]).ok_or_else(|| {
+                    format!("--level {v:?}: the level is a world from 1 to 6\n{USAGE}")
+                })?);
+            }
+            "--cheat" => a.cheat = true,
             "--stop-after" => a.stop_after = Some(number(&name, value("a number")?)?),
             "--max-frames" => a.max_frames = Some(number(&name, value("a number")?)?),
             "--timeout" => a.timeout_s = Some(number(&name, value("a number of seconds")?)?),
@@ -139,6 +144,25 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, String> {
     if a.stop_after.is_some() && a.engine == EngineChoice::Hand {
         return Err(format!(
             "--stop-after: only the translated program stops; drop --engine hand\n{USAGE}"
+        ));
+    }
+    if a.engine == EngineChoice::Hand
+        && let Some(l) = a.level.filter(|&l| l != LevelId::W1_1)
+    {
+        return Err(format!(
+            "--level {}: the hand engine has level 1 only; drop --engine hand\n{USAGE}",
+            l.world_index() + 1
+        ));
+    }
+    if a.cheat && a.engine == EngineChoice::Hand {
+        return Err(format!(
+            "--cheat: the hand engine has no title to set the cheat on; drop --engine hand\n{USAGE}"
+        ));
+    }
+    if a.cheat && a.level.is_none() {
+        return Err(format!(
+            "--cheat needs --level N: the cheat is set as a world starts, and power-on starts \
+             on the title, where its code is typed\n{USAGE}"
         ));
     }
     if a.allow_fullscreen && !a.max_frames.is_some_and(|n| n <= FULLSCREEN_MAX_FRAMES) {
@@ -259,20 +283,22 @@ mod tests {
     #[test]
     fn the_translated_program_plays_unless_the_hand_engine_is_asked_for() {
         let a = p(&[]).unwrap();
-        assert_eq!((a.engine, a.level_1), (EngineChoice::Translated, false));
+        assert_eq!((a.engine, a.level, a.cheat), (EngineChoice::Translated, None, false));
         assert_eq!(p(&["--engine", "hand"]).unwrap().engine, EngineChoice::Hand);
         assert_eq!(
             p(&["--engine", "translated"]).unwrap().engine,
             EngineChoice::Translated
         );
-        assert!(p(&["--level", "1"]).unwrap().level_1);
+        assert_eq!(p(&["--level", "1"]).unwrap().level, Some(LevelId::W1_1));
         assert_eq!(p(&["--stop-after", "120"]).unwrap().stop_after, Some(120));
         assert_eq!(p(&[]).unwrap().stop_after, None);
-        assert!(p(&["--engine", "hand", "--level", "1"]).unwrap().level_1);
+        assert_eq!(
+            p(&["--engine", "hand", "--level", "1"]).unwrap().level,
+            Some(LevelId::W1_1)
+        );
         for bad in [
             &["--engine", "oracle"][..],
             &["--engine"],
-            &["--level", "2"],
             &["--level"],
             &["--stop-after", "0"],
             &["--stop-after", "x"],
@@ -281,5 +307,28 @@ mod tests {
             let e = p(bad).unwrap_err();
             assert!(e.contains(USAGE), "{bad:?}: {e}");
         }
+    }
+
+    #[test]
+    fn level_takes_worlds_1_to_6_and_cheat_needs_a_translated_world_start() {
+        for (n, l) in LevelId::ALL.iter().enumerate() {
+            let a = p(&["--level", &(n + 1).to_string()]).unwrap();
+            assert_eq!((a.level, a.cheat), (Some(*l), false));
+        }
+        for bad in ["0", "7", "three", "-1", ""] {
+            let e = p(&["--level", bad]).unwrap_err();
+            assert!(e.contains("a world from 1 to 6") && e.contains(USAGE), "{bad}: {e}");
+        }
+        for n in 2..=6 {
+            let e = p(&["--engine", "hand", "--level", &n.to_string()]).unwrap_err();
+            assert!(e.contains(&format!("--level {n}: the hand engine has level 1 only")), "{e}");
+        }
+        let a = p(&["--level", "3", "--cheat"]).unwrap();
+        assert_eq!((a.level, a.cheat), (Some(LevelId::W3_1), true));
+        assert!(p(&["--cheat", "--level", "1"]).unwrap().cheat, "either order");
+        let e = p(&["--cheat"]).unwrap_err();
+        assert!(e.contains("--cheat needs --level N") && e.contains(USAGE), "{e}");
+        let e = p(&["--engine", "hand", "--level", "1", "--cheat"]).unwrap_err();
+        assert!(e.contains("the hand engine has no title"), "{e}");
     }
 }

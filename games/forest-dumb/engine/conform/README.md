@@ -71,6 +71,8 @@ frames = 130                 # oracle frames run after the sync point
 compare = ["vars", "picture"]
 vars = ["char_x", "camera_x"]                       # names in LAYOUT
 goal = { all = [{ var = "char_x", value = 0x1a3 }], by_frame = 6431 }   # or { idle = true }
+# goal = { enters = "title_screen", by_frame = 9000 }   # lined up by loads: both enter the routine
+# goal = { exited = true, by_frame = 5100 }             # lined up by loads: both quit to AmigaDOS
 exclude = [{ what = "rows 194..250", task = "T10" }, { what = "var hits_taken", task = "T70" }]  # optional
 set = [{ var = "cheat_flag", value = 1 }]            # optional, level cases: written at the sync point
 # set = [{ var = "world_index", value = 1, when = "load_world" }]   # lined up by loads: as the routine is entered
@@ -98,6 +100,21 @@ align = "loads"              # power-on cases: frames lined up at each load's re
   `level_end = true` (T26): both sides find the level's end in the same step, the original running
   `next_world` (`h0+$1ba`) and the engine entering its level end, `world_index` equal. Both take a
   `by_frame`.
+- **`enters` and `exited`** (title T02, DESIGN §2.3), for a case lined up by loads only (refused at
+  parse elsewhere); each takes a `by_frame` and ends the comparison when met. `enters = "ROUTINE"`
+  (a `func` of `re/symbols.toml`): both sides enter it in the same aligned frame, the original when
+  its first instruction runs (`Amiga::watch_pcs`), the engine by `FrameEngine::watch_entry` (the
+  translated program's `TranslatedGame::watch_entries`, `write_at`'s hook). `exited = true`: both
+  sides return from the program's entry to its caller in the same aligned frame, as KONIEC's
+  `quit_to_dos` does. The original's exit is read off its entry's step (`sync::entry_return`: in
+  the line samples, the long 16 above the entry's first call's return `h0+$a`, past the 15 saved
+  registers) and is met when that address runs; the translated program's is
+  `TranslatedGame::exited`, which a snapshot start is given from the original
+  (`FrameEngine::exit_to`, `TranslatedGame::exit_to`). Any other return there is a stop, and a
+  stop fails the case. An event in a load's skipped steps counts in the frame they are paired
+  with. One side's event without the other's fails as `scene differs`, naming both frames: the other
+  side runs on alone to `by_frame` to find its own. Neither by `by_frame` fails as the goal missed.
+  The stand-ins in `fd-conform/tests/case_goals.rs` show each.
 - **The comparison ends at `next_world`** (T26, DESIGN §2.5): world 2's load and screen are not built,
   so a level case stops in the step the original runs it, named in the report as `AFTER_NEXT_WORLD`
   (`fd-conform/src/lib.rs`). An engine that finds the level's end while the original runs a pass, or
