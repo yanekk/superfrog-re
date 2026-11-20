@@ -14,7 +14,7 @@ mod level;
 
 pub use level::{
     MapLevel, MapObject, WORLDS, groups, groups_of, items_needed, level_id, map_level, object_name,
-    palette,
+    palette, secret_name,
 };
 
 /// Every `re/objects-*.toml` as (`re/<file>`, text), sorted by name, gathered by `build.rs`.
@@ -54,7 +54,9 @@ impl MapLevel {
         j.raw("body", &list(self.body.iter().map(u16::to_string)));
         j.raw(
             "objects",
-            &list(self.objects.iter().map(|o| {
+            // Secrets first: the page keys a cell's hover and route events by the last object at
+            // that cell, so a coin inside a passage stays the coin.
+            &list(self.secrets.iter().chain(&self.objects).map(|o| {
                 format!(
                     "[{},{},{},\"{}\",\"{}\"]",
                     o.c,
@@ -107,7 +109,7 @@ const SPOT: (i32, i32) = (0xe, 9);
 
 /// What Forest Dumb's page knows of the game: 16-pixel cells, the character drawn and placed at its
 /// spot, an object in play boxed over the cell it stands on, a layer per object group of
-/// `re/objects-*.toml` ([`object_name`]), and live mode on with the items left (DESIGN §2.5).
+/// `re/objects-*.toml` ([`object_name`]), a Secrets layer off at load, and live mode on with the items left (DESIGN §2.5).
 pub fn spec() -> PageSpec {
     PageSpec {
         title: "Forest Dumb Forever".into(),
@@ -124,6 +126,8 @@ pub fn spec() -> PageSpec {
                 true,
                 &[],
             ),
+            // Off at load so the map does not spoil them (DESIGN §2.3).
+            Category::new("secrets", "Secrets", "--secret", false, &["secret"]),
         ],
         actor: "character".into(),
         anchor: SPOT,

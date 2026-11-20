@@ -126,21 +126,33 @@ pub fn replay(data: &Arc<GameData>, script: &InputScript, notes: Vec<String>) ->
             )
         })
         .collect();
-    let objects = (0..cols)
-        .flat_map(|c| (0..LEVEL_ROWS).map(move |r| (c, r)))
-        .filter_map(|(c, r)| {
-            let value = level.object(c, r);
-            (value != 0).then(|| {
-                let (cat, name) = object_name(value);
-                Object {
-                    c,
-                    r,
-                    value,
-                    cat,
-                    name,
-                }
-            })
-        })
+    // The hidden passages first, as `fd_map`'s map-only levels write them (T09): cat `secret`,
+    // value 0, so the page keys a cell's hover and route events by the real object there.
+    let secrets = fd_assets::secrets(level).into_iter().map(|s| Object {
+        c: s.c,
+        r: s.r,
+        value: 0,
+        cat: "secret",
+        name: fd_map::secret_name(s.kind).into(),
+    });
+    let objects = secrets
+        .chain(
+            (0..cols)
+                .flat_map(|c| (0..LEVEL_ROWS).map(move |r| (c, r)))
+                .filter_map(|(c, r)| {
+                    let value = level.object(c, r);
+                    (value != 0).then(|| {
+                        let (cat, name) = object_name(value);
+                        Object {
+                            c,
+                            r,
+                            value,
+                            cat,
+                            name,
+                        }
+                    })
+                }),
+        )
         .collect();
 
     let inputs_end = script.lines.last().map_or(0, |l| l.0);

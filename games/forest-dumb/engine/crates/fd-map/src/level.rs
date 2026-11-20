@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-use fd_assets::{LEVEL_ROWS, Level, loaded_hunk};
+use fd_assets::{LEVEL_ROWS, Level, SecretKind, loaded_hunk, secrets};
 
 /// The six worlds, one level each (docs/LEVEL-INDEX.md).
 pub const WORLDS: [u8; 6] = [1, 2, 3, 4, 5, 6];
@@ -63,6 +63,10 @@ pub struct MapLevel {
     pub tiles: Vec<(u16, [u8; 256])>,
     /// Every non-zero object cell over the used columns, column by column.
     pub objects: Vec<MapObject>,
+    /// The hidden features `fd_assets::secrets` lists (T07: only kinds confirmed on the original),
+    /// column by column: cat `secret`, value 0 (the object map holds nothing there for them), named
+    /// by kind ([`secret_name`]).
+    pub secrets: Vec<MapObject>,
     /// The `$ff` cells, column by column.
     pub exit: Vec<(u16, u16)>,
     /// `items_left` as `level_init` leaves it, decimal: the items the exit needs.
@@ -128,9 +132,27 @@ pub fn map_level(world: u8, level: &Level, program: &[u8]) -> Result<MapLevel, S
         body,
         tiles,
         objects,
+        secrets: secrets(level)
+            .into_iter()
+            .map(|s| MapObject {
+                c: s.c,
+                r: s.r,
+                value: 0,
+                cat: "secret",
+                name: secret_name(s.kind).into(),
+            })
+            .collect(),
         exit,
         items_needed: items_needed(&objects_file, &level.objects.cells)?,
     })
+}
+
+/// A secret kind's name on the page. A new `SecretKind` (T07 adds one only once the original
+/// confirmed it) fails to build here until it is named.
+pub fn secret_name(kind: SecretKind) -> &'static str {
+    match kind {
+        SecretKind::HiddenPassage => "hidden passage",
+    }
 }
 
 /// The items the exit needs, from the object map's bytes (`file` names it in an error): every
