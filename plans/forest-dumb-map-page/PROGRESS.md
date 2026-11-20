@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T06 awaiting review.
+**Status:** Building; T06 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01 and T07 can run beside it.
 
 ## Tasks
 
@@ -22,7 +22,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T03 | chrome-rig | — | ⬜ | |
 | T04 | page-map-only | T03 | ⬜ | |
 | T05 | page-live | T04 | ⬜ | |
-| T06 | live-reader | — | 🔍 | fd_core::live: Live, live_from_ram, live_from_game, live_ranges; 6 made-up-RAM tests (smoke), 4 headless (full, all pass). Deviations: layout.rs unchanged, the map is already level::redraw::OBJECT_MAP; live_from_game plays when its scene is Level; hand test transplants translated pass-end RAM into Game, since a Game stepped alone drifts a pass (FINDINGS); not playing leaves every field empty. |
+| T06 | live-reader | — | ✅ | Clean, no fix commit. Ran the 6 made-up-RAM tests, purity and all 4 headless tests green. Mutations caught: play rule, column/row swap, hand-side creature kind. Probed: world 2's first pass has 0 changed cells, all six level maps 38 400 bytes; a lone Game ends a pass and a pixel off (irq 601 vs 600), so the transplant deviation holds. |
 | T07 | secrets-research | — | ⬜ | |
 | T08 | map-command | T02, T05 | ⬜ | |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T06
+**Review queue:** empty
 
 ## Blocked on the user
 
