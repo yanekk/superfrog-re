@@ -6,6 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use crate::json::{Json, esc, list, strs};
+use crate::live::LiveSpec;
 use crate::verdict::{Status, Verdict};
 
 const PAGE: &str = include_str!("page.html");
@@ -30,13 +31,16 @@ pub struct PageSpec {
     pub cell_origin: (i32, i32),
     /// A live object's box from its position: x and y offsets, width and height.
     pub live_box: (i32, i32, u16, u16),
+    /// Live mode: the page re-reads a file the running game rewrites and draws where play is.
+    /// `None` leaves the page a viewer of what was written; it then never asks for the file.
+    pub live: Option<LiveSpec>,
 }
 
 /// One object layer in the legend.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Category {
     /// The layer's key (`[a-z]+`, not one of the page's own layers: route, guide, heat, live,
-    /// events).
+    /// events, play).
     pub key: String,
     pub name: String,
     /// A colour: `#rrggbb`, or a page colour token such as `--accent`, `--enemy`, `--pickup`,
@@ -174,6 +178,17 @@ fn spec_json(spec: &PageSpec) -> String {
     j.raw("cell_origin", &pair(spec.cell_origin));
     let (bx, by, bw, bh) = spec.live_box;
     j.raw("live_box", &format!("[{bx},{by},{bw},{bh}]"));
+    match &spec.live {
+        Some(l) => {
+            let mut o = Json::object();
+            o.str("file", &l.file);
+            o.num("poll_ms", l.poll_ms);
+            o.num("stale_ms", l.stale_ms);
+            o.raw("counters", &list(l.counter_labels.iter().map(|(k, n)| format!("[\"{}\",\"{}\"]", esc(k), esc(n)))));
+            j.raw("live", &o.finish());
+        }
+        None => j.raw("live", "null"),
+    }
     j.raw(
         "layers",
         &list(spec.categories.iter().map(|c| {
@@ -230,6 +245,7 @@ mod tests {
             anchor: (4, -6),
             cell_origin: (4, -12),
             live_box: (0, -8, 8, 8),
+            live: None,
         }
     }
 
@@ -259,6 +275,7 @@ mod tests {
         assert!(html.contains("<title>Made-up &lt;Game&gt; Route Viewer</title>"));
         assert!(html.contains(">Follow hero</button>"));
         assert!(html.contains(r#""actor":"hero","cell":[8,12],"anchor":[4,-6],"cell_origin":[4,-12],"live_box":[0,-8,8,8]"#));
+        assert!(html.contains(r#""live_box":[0,-8,8,8],"live":null,"layers""#));
         assert!(html.contains(r#"{"key":"gems","name":"Gems","color":"--accent","on":true,"cats":["coin"]}"#));
         assert!(!html.contains("__MANIFEST__") && !html.contains("__SPEC__") && !html.contains("__ACTOR__"));
         let bare = std::fs::read_to_string(write_index(&dir, &spec(), &[], true).unwrap()).unwrap();
@@ -266,6 +283,18 @@ mod tests {
         write_data(&dir, "L1", "{\"a\":1}").unwrap();
         let js = std::fs::read_to_string(dir.join("data/L1.js")).unwrap();
         assert_eq!(js, "window.ROUTE_DATA=window.ROUTE_DATA||{};ROUTE_DATA[\"L1\"]={\"a\":1};\n");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_live_spec_sits_in_the_page_spec() {
+        let dir = std::env::temp_dir().join(format!("amiga-routeview-live-spec-{}", std::process::id()));
+        let mut live = spec();
+        live.live = Some(LiveSpec::new(&[("items_left", "Items \"left\"")]));
+        let html = std::fs::read_to_string(write_index(&dir, &live, &[], false).unwrap()).unwrap();
+        assert!(html.contains(
+            r#""live":{"file":"live.js","poll_ms":250,"stale_ms":3000,"counters":[["items_left","Items \"left\""]]}"#
+        ));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

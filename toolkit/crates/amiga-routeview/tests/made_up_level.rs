@@ -67,6 +67,7 @@ fn a_made_up_level_makes_a_site() {
         anchor: (1, -1),
         cell_origin: (1, -2),
         live_box: (0, -2, 2, 2),
+        live: None,
     };
     let a = Level { id: "L1", faults: vec!["lost 1 heart".into()] };
     write_site(&root, &spec, &[&a, &Bare]).unwrap();
@@ -134,6 +135,7 @@ fn a_map_only_level_writes_with_an_empty_track_and_no_verdict() {
         anchor: (0, 0),
         cell_origin: (0, 0),
         live_box: (0, 0, 2, 2),
+        live: None,
     };
     write_site(&root, &spec, &[&MapOnly]).unwrap();
     let js = std::fs::read_to_string(root.join("data/M1.js")).unwrap();

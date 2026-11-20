@@ -103,6 +103,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .notes { color: var(--muted); font-size: 12px; font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .empty { color: var(--muted); font-size: 13px; margin: 0; }
+/* Live mode: what the running game is doing, above the map. */
+.livebar { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-family: var(--mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.livebar b { color: var(--fg); font-weight: 500; }
+.livebar[data-state="here"] { border-color: #7dff6a; }
+.livebar[data-state="unknown"] { border-color: var(--warn); }
 </style>
 
 <div class="wrap">
@@ -122,6 +127,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   <div class="verdict" id="verdict"></div>
 
   <div class="legend" id="legend"></div>
+
+  <div class="livebar" id="livebar" data-state="off" hidden><span id="livestat"></span><span id="livecount"></span></div>
 
   <div class="mapbox" id="mapbox">
     <canvas id="cv"></canvas>
@@ -171,7 +178,7 @@ const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>'
 
 // ---------- per-route state, rebuilt by show() ----------
 let D = null, W = 0, H = 0, END = 0, ROUTED = true,   // END is -1 for a map-only level
-    map = null, objAt = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
+    map = null, objAt = new Map(), VAL = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
 const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
 
 const EVT = {
@@ -197,6 +204,10 @@ Object.assign(LAYERS, {
   live:   { name: 'Live objects at frame', color: '#ff9db0', on: true },
   events: { name: 'Event marks', color: '#9fe8ff', on: true },
 });
+// Live mode's own layer: the running game's character, creatures and changed cells. Not `live`,
+// which is a route's objects in play at the scrubbed frame.
+const LV = SPEC.live;   // null: no live mode, and the live file is never asked for
+if (LV) LAYERS.play = { name: 'Live play', color: '#7dff6a', on: true };
 // An object's layer: the first listing its cat, else the first listing none.
 const CAT_LAYER = {};
 for (const l of SPEC.layers) for (const c of l.cats) if (!(c in CAT_LAYER)) CAT_LAYER[c] = l.key;
@@ -222,6 +233,8 @@ function buildMap() {
 
 function buildEvents() {
   objAt = new Map(); D.objects.forEach(o => objAt.set(o[0] + ',' + o[1], o));
+  // An object value's cat and name, from the first object holding it: how a live cell is drawn.
+  VAL = new Map(); for (const o of D.objects) if (!VAL.has(o[2])) VAL.set(o[2], [o[3], o[4]]);
   // A map-only level's data may leave out what only a replay has.
   for (const k of ['inputs', 'live', 'events', 'notes']) if (!D[k]) D[k] = [];
   done = new Map(); EV = [];
@@ -280,25 +293,33 @@ function draw() {
     for (let i = 0; i < heat.length; i++) if (heat[i]) { cx.fillStyle = `rgba(255,77,210,${(0.12 + 0.78 * Math.log(heat[i] + 1) / lm).toFixed(3)})`; cx.fillRect((i % D.cols) * CELL_W, Math.floor(i / D.cols) * CELL_H, CELL_W, CELL_H); }
   }
 
-  for (const o of D.objects) {
-    const [c, r, m, cat, name] = o, L = layerOf(cat);
-    if (!shown(cat)) continue;
-    const x = c*CELL_W+CELL_W/2, y = r*CELL_H+CELL_H/2, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
-    cx.lineWidth = Math.max(1, 1.4*u);
-    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*CELL_W, r*CELL_H, CELL_W, CELL_H); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*CELL_W+.5, r*CELL_H+.5, CELL_W-1, CELL_H-1); continue; }
-    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*CELL_W+1, r*CELL_H+1, CELL_W-2, CELL_H-2); cx.setLineDash([]); continue; }
-    const col = LAYERS[L].color;
-    cx.strokeStyle = col; cx.fillStyle = col;
+  const shape = (x, y, cat, name) => {
     cx.beginPath();
     if (cat === 'coin') { if (name === 'tile coin') cx.rect(x-S*.8, y-S*.8, S*1.6, S*1.6); else cx.arc(x, y, S, 0, 7); }
     else if (cat === 'enemy') { const s = S*1.5; cx.moveTo(x, y-s); cx.lineTo(x+s, y); cx.lineTo(x, y+s); cx.lineTo(x-s, y); cx.closePath(); }
     else if (cat === 'pickup') { const s = S*1.3; cx.moveTo(x, y-s); cx.lineTo(x+s*.95, y+s*.7); cx.lineTo(x-s*.95, y+s*.7); cx.closePath(); }
     else cx.rect(x-S, y-S, S*2, S*2);
+  };
+  const drawObj = o => {
+    const [c, r, m, cat, name] = o, L = layerOf(cat);
+    if (!shown(cat)) return;
+    const x = c*CELL_W+CELL_W/2, y = r*CELL_H+CELL_H/2, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
+    cx.lineWidth = Math.max(1, 1.4*u);
+    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*CELL_W, r*CELL_H, CELL_W, CELL_H); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*CELL_W+.5, r*CELL_H+.5, CELL_W-1, CELL_H-1); return; }
+    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*CELL_W+1, r*CELL_H+1, CELL_W-2, CELL_H-2); cx.setLineDash([]); return; }
+    const col = LAYERS[L].color;
+    cx.strokeStyle = col; cx.fillStyle = col;
+    shape(x, y, cat, name);
     if (took) { cx.globalAlpha = .28; cx.fill(); cx.globalAlpha = 1; cx.stroke(); }
     else if (!['coin', 'enemy', 'pickup'].includes(cat)) { cx.globalAlpha = .9; cx.stroke(); cx.globalAlpha = 1; }
     else { cx.fill(); cx.strokeStyle = 'rgba(0,0,0,.7)'; cx.stroke(); }
     if (cat === 'exit' && name === 'level exit') { cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.fillText('EXIT', x - 11*u, y - S - 3*u); }
-  }
+  };
+  // In live play a cell the game changed is drawn with its current value, 0 being gone.
+  const here = liveHere() && LAYERS.play.on, lc = new Map();
+  if (here) for (const [c, r, v] of LF.cells || []) lc.set(c + ',' + r, v);
+  for (const o of D.objects) if (!lc.has(o[0] + ',' + o[1])) drawObj(o);
+  for (const [k, v] of lc) if (v) { const [c, r] = k.split(',').map(Number); drawObj([c, r, v, ...(VAL.get(v) || ['other', 'other ' + v])]); }
 
   // route line, coloured from start (blue) to end (gold); the part not yet played is faint
   if (LAYERS.route.on && END > 0) {
@@ -342,6 +363,17 @@ function draw() {
     }
   }
 
+  if (here) {
+    // Creatures in view, each by its cat's shape in its layer's colour, then the character.
+    cx.lineWidth = Math.max(1, 1.4*u);
+    for (const [x, y, cat] of LF.actors || []) { cx.fillStyle = (LAYERS[layerOf(cat)] || LAYERS.play).color; shape(x, y, cat, ''); cx.fill(); cx.strokeStyle = '#000'; cx.stroke(); }
+    if (LF.actor) {
+      const [x, y] = LF.actor;
+      cx.beginPath(); cx.arc(x, y, Math.max(9, 12*u), 0, 7); cx.strokeStyle = LAYERS.play.color; cx.lineWidth = Math.max(1.5, 2.5*u); cx.stroke();
+      cx.beginPath(); cx.arc(x, y, Math.max(5, 7*u), 0, 7); cx.fillStyle = LAYERS.play.color; cx.fill(); cx.strokeStyle = '#000'; cx.lineWidth = Math.max(1, 2*u); cx.stroke();
+    }
+  }
+
   if (!ROUTED) return;
   const [fx, fy] = fp(frame);
   cx.fillStyle = '#7dff6a'; cx.strokeStyle = '#000'; cx.lineWidth = Math.max(1, 2*u);
@@ -358,13 +390,13 @@ box.addEventListener('pointermove', e => {
 });
 box.addEventListener('pointerup', e => { box.classList.remove('drag'); const d = drag; drag = null; if (d && !d.moved && D) clickAt(e); });
 box.addEventListener('pointerleave', () => { tip.hidden = true; });
-box.addEventListener('wheel', e => { e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+box.addEventListener('wheel', e => { e.preventDefault(); if (LV) setFollow(false); const r = box.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
 document.getElementById('zin').onclick = () => zoomAt(1.4, box.clientWidth/2, box.clientHeight/2);
 document.getElementById('zout').onclick = () => zoomAt(1/1.4, box.clientWidth/2, box.clientHeight/2);
 document.getElementById('zfit').onclick = () => { setFollow(false); fit(); };
 const fb = document.getElementById('zfollow');
 function setFollow(v) { follow = v; fb.setAttribute('aria-pressed', v); fb.style.borderColor = v ? 'var(--accent)' : ''; }
-fb.onclick = () => { setFollow(!follow); if (follow) { if (scale < 1.5) scale = 2; const [x,y] = fp(frame); centerOn(x,y); draw(); } };
+fb.onclick = () => { setFollow(!follow); if (follow) { if (scale < 1.5) scale = 2; const [x,y] = liveDot() || fp(frame); centerOn(x,y); draw(); } };
 
 const tip = document.getElementById('tip');
 const toLevel = e => { const r = box.getBoundingClientRect(); return [(e.clientX - r.left - ox)/scale, (e.clientY - r.top - oy)/scale, e.clientX - r.left, e.clientY - r.top]; };
@@ -402,7 +434,7 @@ function setFrame(k, fromPlay) {
   frame = Math.max(0, Math.min(END, k|0)); scrub.value = frame;
   const p = D.track[frame];
   readout.innerHTML = `frame <b>${frame}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${cellOf(p).join(',')}`;
-  if (follow || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
+  if (follow && !liveDot() || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
   draw(); markRow();
 }
 function inView() { const [x,y] = fp(frame), sx = x*scale+ox, sy = y*scale+oy; return sx > 30 && sy > 30 && sx < box.clientWidth-30 && sy < box.clientHeight-30; }
@@ -554,12 +586,13 @@ async function select(id) {
   // An empty track is a map-only level: no character, route, timeline or events.
   D = data; W = D.cols * CELL_W; H = D.rows * CELL_H; D.track = D.track || []; ROUTED = D.track.length > 0; END = D.track.length - 1;
   scrub.max = Math.max(0, END); frame = 0;
-  for (const id of ['play', 'speed', 'scrub', 'zfollow', 'evcard']) document.getElementById(id).hidden = !ROUTED;
+  for (const id of ['play', 'speed', 'scrub', 'evcard']) document.getElementById(id).hidden = !ROUTED;
+  document.getElementById('zfollow').hidden = !ROUTED && !LV;
   for (const k of ROUTE_LAYERS) layerChips[k].hidden = !ROUTED;
   document.getElementById('ctl').classList.toggle('maponly', !ROUTED);
   document.getElementById('statsh').textContent = ROUTED ? 'Route summary' : 'Level summary';
   document.getElementById('notesh').textContent = ROUTED ? 'Route file' : 'Notes';
-  if (!ROUTED) setFollow(false);
+  if (!ROUTED && !LV) setFollow(false);
   buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
   document.getElementById('sub').textContent = ROUTED
     ? `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '')
@@ -568,8 +601,59 @@ async function select(id) {
   // Open on the last frame, so the whole route and every event read at full strength at rest.
   if (ROUTED) setFrame(END, true);
   else readout.innerHTML = `${esc(D.level)} · point at the map for a cell`;
+  if (LV) { liveStatus(); liveFollow(); }
   draw();
 }
+// ---------- live play ----------
+// The running game rewrites LV.file (replaced whole by rename); a page opened from disk cannot fetch,
+// so it is re-read by inserting a script tag, which sets window.LIVE. A missing file, or a frame
+// older than stale_ms by this page's clock, is "App not running": an old position is never drawn.
+let LF = null, liveLevel = null, followZoom = true, pending = false;
+function liveHere() { return !!(LV && LF && LF.playing && D && LF.level === current); }
+function liveDot() { return liveHere() && LAYERS.play.on && LF.actor ? LF.actor : null; }
+function dotInView([x, y]) { const sx = x*scale+ox, sy = y*scale+oy, mx = box.clientWidth * .15, my = box.clientHeight * .15; return sx > mx && sy > my && sx < box.clientWidth-mx && sy < box.clientHeight-my; }
+// Follow: on entering it (load, a level switch, a click) zoom in and centre; then re-centre only
+// when the dot leaves the middle of the view, so the map does not swim under the pointer.
+function liveFollow() {
+  const p = liveDot(); if (!follow || !p) return;
+  if (followZoom) { if (scale < 1.5) scale = 2; centerOn(p[0], p[1]); followZoom = false; }
+  else if (!dotInView(p)) centerOn(p[0], p[1]);
+}
+const livebar = document.getElementById('livebar'), livestat = document.getElementById('livestat'), livecount = document.getElementById('livecount');
+function liveStatus() {
+  const e = LF && M.find(x => x.id === LF.level), cur = M.find(x => x.id === current);
+  let state, text;
+  if (!LF) { state = 'off'; text = 'App not running'; }
+  else if (!LF.playing) { state = 'idle'; text = 'Not playing'; }
+  else if (!e) { state = 'unknown'; text = 'Playing a level this map does not have'; }
+  else if (e.id !== current) { state = 'elsewhere'; text = `Playing <b>${esc(e.label)}</b> · showing ${esc(cur ? cur.label : '')}`; }
+  else { state = 'here'; text = `Playing <b>${esc(e.label)}</b>` + (LF.cell ? ` · ${esc(SPEC.actor)} at cell <b>${LF.cell[0]},${LF.cell[1]}</b>` : ''); }
+  livebar.dataset.state = state; livestat.innerHTML = text;
+  const C = LF && LF.playing && LF.counters || {};
+  livecount.innerHTML = LV.counters.filter(([k]) => k in C).map(([k, n]) => `${esc(n)} <b>${esc(C[k])}</b>`).join(' · ');
+}
+function gotLive(f) {
+  LF = f && typeof f.t === 'number' && Date.now() - f.t <= LV.stale_ms ? f : null;
+  // The page goes where play goes; a level picked by hand holds until play changes level again.
+  if (LF && LF.playing && LF.level != null && LF.level !== liveLevel) {
+    liveLevel = LF.level;
+    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; liveStatus(); select(LF.level); return; }
+  }
+  liveStatus(); liveFollow(); draw();
+}
+function poll() {
+  if (pending) return;
+  pending = true; window.LIVE = undefined;
+  const s = document.createElement('script');
+  s.src = LV.file + '?t=' + Date.now();
+  const fin = ok => { s.remove(); pending = false; gotLive(ok ? window.LIVE : null); };
+  s.onload = () => fin(true); s.onerror = () => fin(false);
+  document.head.appendChild(s);
+}
+if (LV) { livebar.hidden = false; setFollow(true); liveStatus(); poll(); setInterval(poll, LV.poll_ms); }
+// Read by the end-to-end tests: where the view is, to find the live dot on screen.
+window.ROUTEVIEW = { view: () => ({ scale, ox, oy, follow, current }) };
+
 window.addEventListener('resize', resize);
 const start = location.hash.slice(1);
 if (M.length) select(M.some(e => e.id === start) ? start : M[0].id);
