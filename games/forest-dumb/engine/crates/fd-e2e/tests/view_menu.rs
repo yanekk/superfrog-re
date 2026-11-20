@@ -2,7 +2,7 @@
 //! and is saved in `settings.toml`, which the next launch starts from; a scripted run goes
 //! fullscreen only with `--allow-fullscreen`.
 //!
-//! Two layers. The script layer (`menu scale-2`, `menu filter-geom`, `shot`) runs in smoke. The OS
+//! Two layers, both full (owner, 2026-11-20). The script layer: `menu scale-2`, `menu filter-geom`, `shot`. The OS
 //! layer clicks the real menu bar through the Accessibility API, the one way to read its titles and
 //! checks, and presses ⌃⌘F through CGEvent:
 //! `FD_E2E_OS=1 cargo test --release -p fd-e2e --test view_menu -- --ignored --test-threads 1`

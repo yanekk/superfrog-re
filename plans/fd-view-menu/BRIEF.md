@@ -107,3 +107,5 @@ Auto (2×) and fullscreen. Both use `fd-e2e`'s existing launcher and `amiga_e2e`
 rig.
 
 ## Changed during the build
+
+- 2026-11-20: `fd-e2e/tests/view_menu.rs` is labelled full, script layer included, not smoke: smoke hit its 1200 s limit on main 9a5dfc4 itself; the owner's call.
