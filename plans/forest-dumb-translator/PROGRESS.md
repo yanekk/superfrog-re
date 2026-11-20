@@ -74,7 +74,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | Review clean, no fix commit. Ran mount_level_1 full (47 pass, 1139 s), HEARS 23, CLX at 0, seam 2 000, mount_timing. Probed: routes fail mounted at 4161 and 4969 as noted, route-W1-1 passes translated alone. Mutation: no lump cost for char_update fails mechanic-spring and two more at pass 474; seam.rs and CLX miss it. |
-| T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
+| T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
 **Review queue:** *(empty)*
 
