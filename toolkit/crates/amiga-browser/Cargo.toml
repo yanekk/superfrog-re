@@ -1,0 +1,13 @@
+[package]
+name = "amiga-browser"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Test tooling: a page a crate writes, opened from disk in headless Chrome and driven over the
+# DevTools protocol on a pipe (no websocket library). Shell: it starts a process. Only tests depend
+# on it. serde_json was approved for this crate alone; libc is already in the lock.
+
+[dependencies]
+libc = "0.2"
+serde_json = "1"
