@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! Forest Dumb   About · Services · Hide, Hide Others, Show All · Quit Forest Dumb ⌘Q
-//! Game          Start Level… · Stop Recording ⌘. · Controls…
+//! Game          Start Level… · Stop Recording ⌘. · Show Map · Controls…
 //! View          Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · Filter ▸ None Basic Lottes Geom Easymode
 //! ```
 //!
@@ -24,6 +24,8 @@ pub enum Command {
     StartLevel,
     /// Game → Stop Recording, ⌘., or the recording bar's STOP: the save window (T14).
     StopRecording,
+    /// Game → Show Map: the map page written fresh and opened in Chrome (map page DESIGN §2.8).
+    ShowMap,
     /// Game → Controls…: the window that rebinds keys and pad.
     Controls,
     /// Quit Forest Dumb, ⌘Q, Esc, or the window closed.
@@ -34,9 +36,10 @@ pub enum Command {
 
 impl Command {
     /// The Forest Dumb and Game menus' commands; View's are `ViewCommand`'s.
-    pub const GAME: [Command; 4] = [
+    pub const GAME: [Command; 5] = [
         Command::StartLevel,
         Command::StopRecording,
+        Command::ShowMap,
         Command::Controls,
         Command::Quit,
     ];
@@ -47,6 +50,7 @@ impl Command {
         match self {
             Command::StartLevel => "start-level".into(),
             Command::StopRecording => "stop-recording".into(),
+            Command::ShowMap => "show-map".into(),
             Command::Controls => "controls".into(),
             Command::Quit => "quit".into(),
             Command::View(v) => v.id(),
@@ -108,6 +112,8 @@ pub fn build_menu() -> MenuBar {
         &[
             &MenuItem::with_id(Command::StartLevel.id(), "Start Level…", true, None),
             &stop_recording,
+            &PredefinedMenuItem::separator(),
+            &MenuItem::with_id(Command::ShowMap.id(), "Show Map", true, None),
             &PredefinedMenuItem::separator(),
             &MenuItem::with_id(Command::Controls.id(), "Controls…", true, None),
         ],
@@ -176,6 +182,7 @@ mod tests {
         }
         assert_eq!(Command::from_id("scale-2"), Some(Command::View(ViewCommand::Scale(Scale::N(2)))));
         assert_eq!(Command::from_id("filter-geom"), Some(Command::View(ViewCommand::Filter(Filter::Geom))));
+        assert_eq!(Command::from_id("show-map"), Some(Command::ShowMap));
         assert_eq!(Command::from_id("fullscreen"), Some(Command::View(ViewCommand::ToggleFullscreen)));
         for bad in ["start", "scale-0", "scale-17", "filter-crt", "filter-", "widescreen"] {
             assert_eq!(Command::from_id(bad), None, "{bad}");
