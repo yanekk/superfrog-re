@@ -3,11 +3,10 @@
 //!
 //! Full (the disks, Kickstart and the generated tree): every case that passes mounted today still
 //! does, the mount really replaces the translated `game_frame` in play, and (T55) its CLXDAT read
-//! lands on the translated program's line. The mount spends the original's time by a cost rule a
-//! callee (T55, `fd-translated/src/seam/frame.rs`); the cases that still differ mounted are T56's
-//! (mount-routine-timing): where a routine's time varies with its state the rule misses by up to
-//! 7 000 cycles, enough to move JOY1DAT's read across a frame's end. A no-disk check keeps every
-//! case in one of the two lists.
+//! lands on the translated program's line. The mount spends the original's time by walking each
+//! routine's path through the original's instructions (T56, T58, `fd-translated/src/seam/rules.rs`);
+//! the one case that differs mounted differs on the translated program alone. A no-disk check keeps
+//! every case in one of the two lists.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -20,8 +19,8 @@ use pcode_machine::{Disks, Input};
 use pcode_rt::{Image, Regs, Stop};
 
 /// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19; the eight
-/// after `world-6-start`, T55, 2026-11-19).
-const PASS_MOUNTED: [&str; 39] = [
+/// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20).
+const PASS_MOUNTED: [&str; 49] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -61,14 +60,6 @@ const PASS_MOUNTED: [&str; 39] = [
     "edge-latch-route",
     "enemy-hop",
     "enemy-route",
-];
-
-/// Cases that differ mounted, T56's to make pass (`death-spikes` passed with T36's instant mount;
-/// T55's rule starts its creature cuts two to three lines early) (or, for the last three, not the
-/// mount's alone:
-/// they fail on the translated program alone, `power-on-level-1` from frame 6301 (T53) and the two
-/// routes from pass 4161 (T54)).
-const T56: [&str; 11] = [
     "camera-bottom-right",
     "contact-route",
     "death-spikes",
@@ -77,17 +68,20 @@ const T56: [&str; 11] = [
     "enemy-kind4",
     "mechanic-spring",
     "mechanic-vanish",
-    "power-on-level-1",
     "route-W1-1",
     "route-both-W1-1",
 ];
 
+/// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated
+/// program alone from frame 6301 (T53; measured again 2026-11-20, T58).
+const DIFFER: [&str; 1] = ["power-on-level-1"];
+
 /// The level 1 cases that hear a sound effect on the original whose Paula writes are the
 /// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
-/// again on T55's mount time): the mount makes each effect's writes as the hand engine starts it
+/// again on T55's mount time; the five after `stretch-wall` with T58's, 2026-11-20): the mount makes each effect's writes as the hand engine starts it
 /// (`seam::frame`, `Sound`, the character's `Scratch::hw`). `run_with`, which the hand engine's case
 /// tests use, refuses a case comparing writes, so `writes` is turned on here, not in the case files.
-const HEARS: [(&str, &str); 20] = [
+const HEARS: [(&str, &str); 25] = [
     ("camera-bottom-right", "item, stomp, hurt"),
     ("camera-right-left", "stomp, hurt"),
     ("character-edge-pit", "stomp, hurt"),
@@ -108,19 +102,13 @@ const HEARS: [(&str, &str); 20] = [
     ("stretch-pit", "hurt"),
     ("stretch-slope", "slide, hurt"),
     ("stretch-wall", "slide"),
-];
-
-/// The cases that hear an effect whose Paula writes differ mounted, T56's: the mount's time still
-/// misses a routine's varying cost, so a pass ends a frame apart and an effect falls in the next
-/// pass (`contact-route`, `enemy-contact` at pass 151). Every one fails mounted on its state as well
-/// (`T56` above). Named, not run.
-const HEARS_T56: [(&str, &str); 5] = [
     ("contact-route", "item, stomp, hurt"),
     ("death-water", "item, stomp, slide, hurt"),
     ("enemy-contact", "item, stomp, hurt"),
     ("route-W1-1", "item, stomp, slide"),
     ("route-both-W1-1", "item, stomp, slide"),
 ];
+
 
 fn cases_dir() -> std::path::PathBuf {
     fd_conform::conform_dir().join("cases")
@@ -145,7 +133,7 @@ fn every_case_is_in_one_list() {
     on_disk.sort();
     let mut listed: Vec<String> = PASS_MOUNTED
         .iter()
-        .chain(T56.iter())
+        .chain(DIFFER.iter())
         .map(|s| s.to_string())
         .collect();
     listed.sort();
@@ -153,7 +141,7 @@ fn every_case_is_in_one_list() {
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 39 cases, about 15 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 49 cases, about 25 min"]
 fn every_case_that_passes_mounted_still_does() {
     generated();
     let cases: Vec<Case> = PASS_MOUNTED
@@ -355,9 +343,9 @@ fn first_clx(frame: pcode_rt::Mounted, mounted: bool) -> (u16, u8) {
 }
 
 /// How many lines the mount's CLXDAT read may fall from the translated program's on the pass
-/// below: 2 with T55's cost rule (measured 2026-11-19, line 304 against 302), which misses
-/// `camera_update`'s and the creatures' varying time; T56 times those routines and makes it 0.
-const CLX_LINES_OFF: u8 = 2;
+/// below: 2 with T55's cost rule (measured 2026-11-19, line 304 against 302); 0 since every routine
+/// before it is walked by its path (T56, T58, 2026-11-20).
+const CLX_LINES_OFF: u8 = 0;
 
 /// T36's first mounted difference: contact-route's pass 2 (oracle frame 6304) read `$8060`, the
 /// original `$8061`, the mount having read CLXDAT at the pass's start. With the mount's time
@@ -380,21 +368,17 @@ fn the_mounts_clxdat_read_lands_on_the_translated_programs_line() {
 }
 
 #[test]
-fn the_cases_that_hear_an_effect_are_cases_and_the_t56_ones_fail_mounted() {
-    let on_disk = |n: &str| cases_dir().join(format!("{n}.toml")).exists();
-    for (n, _) in HEARS.iter().chain(&HEARS_T56) {
-        assert!(on_disk(n), "{n}: no such case");
-    }
-    for (n, _) in &HEARS_T56 {
+fn the_cases_that_hear_an_effect_are_cases() {
+    for (n, _) in &HEARS {
         assert!(
-            T56.contains(n),
-            "{n}: hears an effect late mounted but passes on its state"
+            cases_dir().join(format!("{n}.toml")).exists(),
+            "{n}: no such case"
         );
     }
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 20 cases, about 2 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 25 cases, about 15 min"]
 fn the_effects_each_case_hears_are_the_originals_paula_writes_in_order_mounted() {
     generated();
     let cases: Vec<Case> = HEARS
@@ -412,9 +396,7 @@ fn the_effects_each_case_hears_are_the_originals_paula_writes_in_order_mounted()
         for _ in 0..workers.min(cases.len()) {
             s.spawn(|| {
                 while let Some(c) = cases.get(next.fetch_add(1, Ordering::Relaxed)) {
-                    // Paula's channel alone: camera-bottom-right, death-spikes, enemy-kind4,
-                    // mechanic-spring and mechanic-vanish differ on their state (T56's) while every
-                    // effect they hear is in order.
+                    // Paula's channel alone; the state is `every_case_that_passes_mounted_still_does`'.
                     let line = match run_mounted(c, EngineKind::Translated, true) {
                         Ok(v) => v
                             .firsts

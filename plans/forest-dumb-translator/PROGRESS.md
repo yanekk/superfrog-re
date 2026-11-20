@@ -72,11 +72,11 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T55 | mount-timing | T36; blocks T40, T42 | ✅ | |
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
-| T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
+| T58 | mount-character-timing | T56; blocks T40, T42 | 🔍 | Rules for `char_hit_check`, `char_update` (sub-steps on a `Character` copy); both pass `mount_timing.rs` 2 000. 49 of 50 mounted, `CLX_LINES_OFF` 0, `HEARS` 25. Deviations: `char_probe` far reads come from memory; `fd-core` `POINTS`, `table`, `idle_landed` made public; T59's eighteen `COSTS` rows left; T56 list now `DIFFER`. |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T58
 
 ## Blocked on the user
 

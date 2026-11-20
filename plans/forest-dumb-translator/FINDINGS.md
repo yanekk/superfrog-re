@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25, `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. `char_probe` past the kept plane reads memory (two judge states). |
 | 2026-11-20 | 🐞 | **Machine crash, from T54:** `engine.rs`'s mounted handler never polled, so after T54's `IPL_DELAY` its `rte` retook VERTB forever and the frame's writes grew to 25 GB (panic 2026-11-20). `Machine::stuck_interrupt` stops such a loop. |
 | 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
 | 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). Measured before: 47 of 50 pass mounted; routes (4161, 4969) left for T58, power-on-level-1 fails alone. |
@@ -15,7 +16,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 🐞 | **T54 review, open:** `IPL_DELAY` (8) also delays chip-raised requests (`Machine::settle`); vAmiga's `serviceIrqEvent` calls `setINTREQ` directly, skipping the register's DMA cycle, so 6. Routes pass; unmeasured, left alone. |
 | 2026-11-19 | 📌 | **T54 review:** DESIGN §2.8 says a pending interrupt is taken at the next instruction boundary; since T54 the CPU sees it `IPL_DELAY` later, at an instruction's last access (vAmiga's IPL pipe). DESIGN left alone. |
 | 2026-11-19 | 📌 | **T54:** both W1-1 routes pass translated to the level's end; every other case passes but power-on-level-1, as at T51; gate 89 of 100, `MACHINE_PINNED` unchanged. For T36: a route difference with level 1 mounted is the seam's. |
-| 2026-11-19 | 📌 | **T55 costs** (`examples/game_frame_costs.rs`, contention out): `char_update` 15 968 typical, 4 374 to 17 160; `h0_94ba` 72, fading 13 550; `h0_2c7e` 608 + 306 a blit; `h0_2d4c` 716 + 840. The rest in `frame.rs` `COSTS`. |
 | 2026-11-19 | 📌 | **T39, open:** a stop during `--level 1`'s headless run through the title (`Translated::to_level_1`) still ends the app with exit 1 and no zip; only a stop after the window opens freezes and saves one. |
 | 2026-11-19 | 📌 | **T38:** a fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch buildscripts/fd_translated.rs`: the build had cached the stub and ignored the new tree. |
 | 2026-11-19 | 🐞 | **T37 review, open:** under load 30 to 100, `translated_app.rs` `start_by_its_key…` fails at `c.exit.success()`: fd-app's `--timeout 180 s` reached (debug, 1 220 captured frames). Idle, the file passes in 65 s. Left alone. |
