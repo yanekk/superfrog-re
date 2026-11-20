@@ -781,12 +781,15 @@ impl App {
             Engine::Hand(g) => g,
             Engine::Translated(t) => {
                 let was_level_1 = t.frame().level_1;
+                let was_exited = t.frame().exited;
                 t.step(input);
                 if stop_after == Some(n) {
                     t.raise(test_stop(n));
                 }
                 let f = t.frame();
-                let exited = f.exited;
+                // Only the frame it ended on: the frozen frames after it keep `exited`, and a
+                // Quit cancelled at "Recording in progress" is not asked again every step.
+                let exited = f.exited && !was_exited;
                 if f.level_1 && !was_level_1 {
                     eprintln!("fd-app: level 1 begins at step {n}");
                 }

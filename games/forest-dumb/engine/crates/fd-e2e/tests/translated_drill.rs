@@ -230,3 +230,32 @@ fn the_stop_band_shows_whole_at_the_default_scale_and_resized_and_its_zip_replay
         );
     }
 }
+
+/// KONIEC with a recording running, Quit cancelled at "Recording in progress": the program has
+/// ended and its last frame stays, so the app asks once and not again every step (before the T41
+/// review's fix it asked every step, 188 times by step 5100); Esc then quits as usual. The recording starts at
+/// level 1 (Start Level), right held into the spikes to game over, fire past it and the high
+/// scores to the title (up by step 4700), then KONIEC.
+#[test]
+fn koniec_while_recording_asks_once_and_a_cancel_is_not_asked_again() {
+    require_tree();
+    let (mut app, bugs) = launch(5100, Some(1), &[]);
+    let c = app.run_script_unread(&format!(
+        "fast-until 4750\n10: menu start-level\nform level W1-1\nform record on\nform start\n\
+         answer-recording cancel\nanswer-recording discard\n\
+         20: down ArrowRight\n4300: up ArrowRight\n{}{}{}{}{}5000: press Escape\n",
+        press(4450, "AltLeft"),
+        press(4600, "AltLeft"),
+        press(4800, "ArrowDown"),
+        press(4850, "ArrowDown"),
+        press(4900, "AltLeft")
+    ));
+    assert!(c.exit.success(), "{}", c.stderr);
+    let quit = step_after(&c, "fd-app: the program quit to AmigaDOS at step ");
+    assert!((4900..5000).contains(&quit), "quit at step {quit}");
+    assert_eq!(c.stderr.matches("the program quit to AmigaDOS").count(), 1, "{}", c.stderr);
+    assert_eq!(c.stderr.matches("Quit cancelled; still recording").count(), 1, "{}", c.stderr);
+    assert!(c.stderr.contains("fd-app: recording discarded\n"), "{}", c.stderr);
+    assert!(c.stderr.contains("fd-app: quit after step 4999\n"), "Esc quits: {}", c.stderr);
+    assert_eq!(zips(&bugs), Vec::<PathBuf>::new(), "no bug zip");
+}

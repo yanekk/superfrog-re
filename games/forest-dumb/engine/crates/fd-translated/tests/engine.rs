@@ -596,3 +596,48 @@ fn a_return_to_zero_not_from_the_power_on_entry_still_stops_untranslated() {
     assert!(!g.exited());
     assert_eq!(exited, [false]);
 }
+
+/// A program whose every address resumes in one routine that leaves for address 0 at the top
+/// level, as an `rts` to the long under the power-on stack would, with a7 and the mode given.
+macro_rules! to_zero {
+    ($name:ident, $supervisor:expr, $a7:expr) => {
+        fn $name(_: (u32, u32)) -> Option<fd_translated::Resume> {
+            Some(|_, r, _, _| {
+                if $supervisor {
+                    ops::sr_set(r, 0x2000);
+                }
+                r.set_a(7, $a7);
+                r.set(PC, 4, 0);
+                Ok(())
+            })
+        }
+    };
+}
+to_zero!(exit_exactly, false, fd_translated::POWER_ON_STACK + 4);
+to_zero!(stack_unmoved, false, fd_translated::POWER_ON_STACK);
+to_zero!(in_supervisor, true, fd_translated::POWER_ON_STACK + 4);
+
+/// Only a return to the exit's address with the stack the entry's `rts` leaves (a7 =
+/// `POWER_ON_STACK` + 4), in user mode, is the program's exit (DESIGN §2.10); the same address
+/// with the stack unmoved, or in supervisor mode, stops `untranslated` (T41 review).
+#[test]
+fn only_the_entrys_own_return_to_zero_is_the_exit() {
+    let file = shared_call_file();
+    for (resume, exits) in [
+        (exit_exactly as fn(_) -> _, true),
+        (stack_unmoved, false),
+        (in_supervisor, false),
+    ] {
+        let mut g = TranslatedGame::with_program(
+            Program { resume, ..shared_call_prog() },
+            &[BASE],
+            Start::PowerOn {
+                program: &file,
+                disks: Disks::default(),
+            },
+        );
+        let stop = g.run(&mut |_| Control::Next(Input::default()));
+        let want = (!exits).then(|| Stop::Untranslated("$000000".into()));
+        assert_eq!((stop, g.exited()), (want, exits), "exits: {exits}");
+    }
+}
