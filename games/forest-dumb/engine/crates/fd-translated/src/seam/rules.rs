@@ -6,10 +6,15 @@
 //!
 //! A routine with no rule here is timed by its measured cost (`frame.rs`, `COSTS`).
 
+use fd_core::character::Character;
+use fd_core::character::physics::POINTS;
 use fd_core::level::LevelCtx;
 use fd_core::level::camera::{Camera, Dir, MAX_X, MAX_Y};
+use fd_core::level::collision;
+use fd_core::program::HUNK_BASES;
+use fd_core::program::Scratch;
 
-use super::walk::Decision::{self, Branch, Count};
+use super::walk::Decision::{self, Branch, Count, Reg};
 
 /// Memory as a routine reads it, by hunk and offset: for what the typed state does not hold or
 /// holds only at the pass's end (a cell past the object map's end, the collision map as the
@@ -30,6 +35,9 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
         0x9754 => copper_pointers(s.camera.y, &mut d),
         // `read_joystick`'s branches hang on JOY1DAT: [`after_joy1dat`], once it is read.
         0x8dfc => {}
+        // `char_hit_check`'s on CLXDAT: [`after_clxdat`], once it is read.
+        0x3b2a => {}
+        0x3e0c => char_update(l, peek, &mut d),
         0x20b0 => countdown_step(l, &mut d),
         0x2104 => play_keys(l, &mut d),
         0x21c0 => spring_redraw(l, &mut d),
@@ -47,9 +55,9 @@ pub fn path(offset: u32, l: &LevelCtx, peek: Peek) -> Option<Vec<Decision>> {
 }
 
 /// The routines with a rule.
-pub const RULED: [u32; 18] = [
+pub const RULED: [u32; 20] = [
     0x2698, 0x62b6, 0x2fae, 0x2dd6, 0x3698, 0x24ce, 0x9b06, 0x94ba, 0x4d7e, 0x513c, 0x5462, 0x9754,
-    0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c,
+    0x8dfc, 0x20b0, 0x2104, 0x21c0, 0x2c7e, 0x2d4c, 0x3b2a, 0x3e0c,
 ];
 
 /// `read_joystick`'s decisions after its read of JOY1DAT, `v`: the four direction bits (`btst #9`
@@ -781,4 +789,474 @@ fn object_cells(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
             break;
         }
     }
+}
+
+/// `char_hit_check`'s decisions after its read of CLXDAT, `v`: `beq` with no contact bit (1, 2),
+/// else `contact`, the path with contact ([`hit_check`]).
+pub fn after_clxdat(v: u16, contact: &[Decision]) -> Vec<Decision> {
+    let none = v & 6 == 0;
+    let mut d = vec![Branch(none)];
+    if !none {
+        d.extend_from_slice(contact);
+    }
+    d
+}
+
+/// `char_hit_check` (`h0+$3b2a`) past its contact test, as the level is on entry: `char_dying`
+/// (`beq` on), `char_falling` (`bne` to the creatures); falling, each slot (`beq` past it) whose flag
+/// is set tested by `h0_3dd8` (four `bpl`/`bmi` outs, then `beq` on `d7`) and its kind 7 (`beq` on),
+/// the first stomped (`h0_3adc`'s wait) ending it; then `char_unhurt_t` (`beq`), the third hit
+/// (`bpl`), the cheat (`beq`), `lives_minus_one`'s `bne` and the hurt sound's wait.
+pub fn hit_check(l: &LevelCtx) -> Vec<Decision> {
+    let s = &*l.state;
+    let m = &s.motion;
+    let mut d = Vec::new();
+    d.push(Branch(m.dying == 0));
+    if m.dying != 0 {
+        return d;
+    }
+    d.push(Branch(m.falling != 0));
+    if m.falling != 0 {
+        let px = s.char_x.wrapping_add(0x10) as u16;
+        let py = s.char_y.wrapping_add(0x24) as u16;
+        let c = &s.edges.creatures;
+        for i in 0..5 {
+            let on = c.active[i] != 0;
+            d.push(Branch(!on));
+            if !on {
+                continue;
+            }
+            let v = c.slots[i];
+            // `cmp.w d0, d4; bpl`, `cmp.w d0, d6; bmi`, `cmp.w d1, d5; bpl`, `cmp.w d1, d7; bmi`.
+            let outs = [
+                !minus(v.x, px),
+                minus(v.x.wrapping_add(0x30), px),
+                !minus(v.y, py),
+                minus(v.y.wrapping_add(0x20), py),
+            ];
+            let mut hit = true;
+            for out in outs {
+                d.push(Branch(out));
+                if out {
+                    hit = false;
+                    break;
+                }
+            }
+            d.push(Branch(!hit));
+            if !hit {
+                continue;
+            }
+            d.push(Branch(v.kind == 7));
+            if v.kind != 7 {
+                line_wait(4, &mut d);
+                return d;
+            }
+        }
+    }
+    d.push(Branch(m.unhurt_t == 0));
+    if m.unhurt_t != 0 {
+        return d;
+    }
+    d.push(Branch(!minus(s.hits_taken.wrapping_add(1), 3)));
+    if minus(s.hits_taken.wrapping_add(1), 3) {
+        return d;
+    }
+    d.push(Branch(s.keys.cheat == 0));
+    if s.keys.cheat != 0 {
+        return d;
+    }
+    d.push(Branch(s.lives != 0));
+    line_wait(3, &mut d);
+    d
+}
+
+/// `char_update` (`h0+$3e0c`): four sub-steps (`dbra`), each `char_probe`, `char_probe_flags` and
+/// `char_step`. The level is moved on by the hand engine's own sub-steps ([`Character`]) on a copy,
+/// so each sub-step's path is taken from the state the one before left, as the original's is; the
+/// probe's samples past what the plane keeps come from memory ([`far_samples`]).
+fn char_update(l: &LevelCtx, peek: Peek, d: &mut Vec<Decision>) {
+    let mut state = l.state.clone();
+    let mut scratch = Scratch::default();
+    let mut c = Character {
+        state: &mut state,
+        program: l.program,
+        anim: l.anim,
+        plane: &*l.plane,
+        scratch: &mut scratch,
+    };
+    for n in (0..=3u16).rev() {
+        probe(&c, d);
+        c.probe();
+        far_samples(&mut c, peek);
+        probe_flags(&c, d);
+        c.probe_flags();
+        char_step(&mut c, d);
+        d.push(Count(n));
+    }
+}
+
+/// `char_probe` (`h0+$5500`): each of the nine points' `lsl.l d2, d0`, `d2` its x's pixel in the
+/// plane's word.
+fn probe(c: &Character, d: &mut Vec<Decision>) {
+    let x0 = c.state.char_x.wrapping_sub(0x10);
+    for (dx, _, _) in POINTS {
+        d.push(Reg(2, x0.wrapping_add(dx) & 0xf));
+    }
+}
+
+/// A probe point whose long lies past what a plane in play keeps (an `x` far past the level's) reads
+/// whatever memory is there, which the plane holds as 0: its samples are taken again from memory.
+/// The chips' and CIAs' range is left at 0, as a read there is not memory and `peek` would make it.
+fn far_samples(c: &mut Character, peek: Peek) {
+    let x0 = c.state.char_x.wrapping_sub(0x10);
+    let y0 = c.state.char_y;
+    for (dx, dy, bits) in POINTS {
+        let (x, y) = (x0.wrapping_add(dx), y0.wrapping_add(dy));
+        let off = c.plane.offset(x, y);
+        if off.wrapping_add(collision::BEFORE) < collision::BEFORE + collision::KEPT {
+            continue;
+        }
+        let long = (0..4u32).fold(0u32, |v, k| {
+            let o = collision::MAP.wrapping_add(off).wrapping_add(k);
+            let a = HUNK_BASES[3].wrapping_add(o) & 0xff_ffff;
+            let b = if (0xa0_0000..0xc0_0000).contains(&a) || (0xd8_0000..0xe0_0000).contains(&a) {
+                0
+            } else {
+                peek(3, o)
+            };
+            v << 8 | b as u32
+        });
+        let w = (long << (x & 15)) >> 16;
+        for &(bit, i) in bits {
+            c.state.motion.samples[i] = if w >> bit & 1 != 0 { 0xff } else { 0 };
+        }
+    }
+}
+
+/// `char_probe_flags` (`h0_4f90`): a `beq` past each sample it folds, in its order.
+fn probe_flags(c: &Character, d: &mut Vec<Decision>) {
+    let s = c.state.motion.samples;
+    for i in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 9, 13, 14, 12] {
+        d.push(Branch(s[i] == 0));
+    }
+}
+
+/// `cmpi.b #1, v; bpl`: on ground.
+fn one_up(v: u8) -> bool {
+    v.wrapping_sub(1) & 0x80 == 0
+}
+
+/// `cmpi.l #k, v; bpl`.
+fn not_below(v: u32, k: u32) -> bool {
+    v.wrapping_sub(k) & 0x8000_0000 == 0
+}
+
+/// `char_step` (`h0+$3e30`): the dying fall, the rise, the fall (`beq` past each), else up, left
+/// and right in turn (`beq` past each), and with none held `h0_3ea8`. Each part's path is taken
+/// before the hand engine's part moves the copy.
+fn char_step(c: &mut Character, d: &mut Vec<Decision>) {
+    let m = c.state.motion;
+    d.push(Branch(m.dying == 0));
+    if m.dying != 0 {
+        dying_fall(c, d);
+        return c.step();
+    }
+    d.push(Branch(m.rising == 0));
+    if m.rising != 0 {
+        rise(c, d);
+        return c.step();
+    }
+    d.push(Branch(m.falling == 0));
+    if m.falling != 0 {
+        land_or_fall(c, d);
+        return c.land_or_fall();
+    }
+    let j = c.state.joy;
+    d.push(Branch(j.up == 0));
+    if j.up != 0 {
+        up_pressed(c, d);
+        c.up_pressed();
+    }
+    d.push(Branch(j.left == 0));
+    if j.left != 0 {
+        pressed(c, true, d);
+        c.left_pressed();
+    }
+    d.push(Branch(j.right == 0));
+    if j.right != 0 {
+        pressed(c, false, d);
+        c.right_pressed();
+    }
+    // `tst.w; bne` on left, right, up in turn.
+    d.push(Branch(j.left != 0));
+    if j.left != 0 {
+        return;
+    }
+    d.push(Branch(j.right != 0));
+    if j.right != 0 {
+        return;
+    }
+    d.push(Branch(j.up != 0));
+    if j.up != 0 {
+        return;
+    }
+    // `h0_3ea8`: `h0_410c`, then the slide's tests.
+    land_or_fall(c, d);
+    c.land_or_fall();
+    idle_landed(c, d);
+    c.idle_landed();
+}
+
+/// `char_step` at `h0+$4b64`: `bmi` while the count's frame is below 8, then the facing (`bmi`) for
+/// the frame; from 8, `bne` on ground.
+fn dying_fall(c: &Character, d: &mut Vec<Decision>) {
+    let t = c.state.motion.dying_t.wrapping_add(1);
+    let early = minus(t >> 4, 8);
+    d.push(Branch(early));
+    if early {
+        d.push(Branch(c.state.anim.facing & 0x80 != 0));
+    } else {
+        d.push(Branch(c.state.anim.probe_1 != 0));
+    }
+}
+
+/// `char_step` at `h0+$41b8`, the rise: `bne` once taken off; either way the head's two probes
+/// (`beq` on the first clear, `bne` on the second set). Before take-off, unblocked, `beq` on
+/// `char_jump_41b6`; after, unblocked, `h0_4274`, `h0_4696`, `h0_4d32` and `beq` when the step
+/// count wraps.
+fn rise(c: &Character, d: &mut Vec<Decision>) {
+    let m = c.state.motion;
+    d.push(Branch(m.jumped != 0));
+    d.push(Branch(m.probe_5 == 0));
+    if m.probe_5 != 0 {
+        d.push(Branch(m.probe_6 != 0));
+    }
+    let blocked = m.probe_5 != 0 && m.probe_6 != 0;
+    if m.jumped == 0 {
+        if !blocked {
+            d.push(Branch(m.jump_41b6 == 0));
+        }
+        return;
+    }
+    if blocked {
+        return;
+    }
+    let ended = rise_step(c, d);
+    let facing = move_x(c, d);
+    d.push(Branch(facing & 0x80 != 0));
+    let t = if ended { 0xff } else { m.jump_t };
+    d.push(Branch(t.wrapping_add(1) == 0));
+}
+
+/// `h0_4274`: `bne` on `char_jump_41b4`, else `bne` on `char_jump_3b28`, for the table; `beq` on its
+/// `$ff`, `beq` past bit 7 clear, `beq` with bit 7 and up not held. Whether the rise ended.
+fn rise_step(c: &Character, d: &mut Vec<Decision>) -> bool {
+    let m = c.state.motion;
+    d.push(Branch(m.jump_41b4 != 0));
+    let table = if m.jump_41b4 != 0 {
+        0x43ba
+    } else {
+        d.push(Branch(m.jump_3b28 != 0));
+        if m.jump_3b28 != 0 { 0x42ec } else { 0x431e }
+    };
+    let v = c.table(table + m.jump_t as u32);
+    d.push(Branch(v == 0xff));
+    if v == 0xff {
+        return true;
+    }
+    d.push(Branch(v & 0x80 == 0));
+    if v & 0x80 == 0 {
+        return false;
+    }
+    let up = c.state.joy.up != 0;
+    d.push(Branch(!up));
+    !up
+}
+
+/// `h0_4696`: `bne` on right (then `bne` on the right wall), else `bne` on left (then the left
+/// wall). The facing it leaves.
+fn move_x(c: &Character, d: &mut Vec<Decision>) -> u8 {
+    let (j, m) = (c.state.joy, c.state.motion);
+    let facing = c.state.anim.facing;
+    d.push(Branch(j.right != 0));
+    if j.right != 0 {
+        d.push(Branch(m.probe_4 != 0));
+        return if m.probe_4 == 0 { 1 } else { facing };
+    }
+    d.push(Branch(j.left != 0));
+    if j.left != 0 {
+        d.push(Branch(m.probe_3 != 0));
+        return if m.probe_3 == 0 { 0xff } else { facing };
+    }
+    facing
+}
+
+/// `h0_410c`: `bpl` on ground; in the air `h0_416c` (`beq` on the fall table's `$ff`), `h0_4d54`
+/// (`bmi` on the facing) and `h0_4696`.
+fn land_or_fall(c: &Character, d: &mut Vec<Decision>) {
+    let on = one_up(c.state.anim.probe_1);
+    d.push(Branch(on));
+    if on {
+        return;
+    }
+    let v = c.table(0x44d4 + c.state.motion.jump_t as u32);
+    d.push(Branch(v == 0xff));
+    d.push(Branch(c.state.anim.facing & 0x80 != 0));
+    move_x(c, d);
+}
+
+/// `h0_4c6a`, the standing frame from the probes and the facing (`beq`, `bmi`, `bne` in its order).
+fn frame_from_probes(c: &Character, d: &mut Vec<Decision>) {
+    let (p1, p2) = (c.state.anim.probe_1, c.state.anim.probe_2);
+    let left = c.state.anim.facing & 0x80 != 0;
+    d.push(Branch(p1 == 1));
+    d.push(Branch(left));
+    if p1 == 1 {
+        return;
+    }
+    // Facing right the pair of tests for bit 1 and 2, then bit 0 and 3; left, the other order.
+    let pairs = if left {
+        [(1u8, 3u8), (2, 2)]
+    } else {
+        [(2, 2), (1, 3)]
+    };
+    for (bit, p) in pairs {
+        d.push(Branch(p2 & bit != 0));
+        if p2 & bit != 0 {
+            return;
+        }
+        d.push(Branch(p1 != p));
+        if p1 == p {
+            return;
+        }
+    }
+}
+
+/// `h0_4b0e`, up held: `bpl` on ground, then `beq` past each head probe, `h0_4c6a` on one set.
+fn up_pressed(c: &Character, d: &mut Vec<Decision>) {
+    let on = one_up(c.state.anim.probe_1);
+    d.push(Branch(on));
+    if !on {
+        return;
+    }
+    let m = c.state.motion;
+    for p in [m.probe_6, m.probe_5] {
+        d.push(Branch(p == 0));
+        if p != 0 {
+            return frame_from_probes(c, d);
+        }
+    }
+}
+
+/// `h0_4718` (left) or `h0_48be` (right): `beq` past the wall; a wall, `bmi` off ground (`h0+$4836`)
+/// or `h0_4c6a`. No wall: the walk step's `bmi`, `bmi` off ground, then the slope's tests and the run
+/// step (`h0_47e2`, `h0_497c`).
+fn pressed(c: &Character, left: bool, d: &mut Vec<Decision>) {
+    let (m, a) = (c.state.motion, c.state.anim);
+    let (p1, p2) = (a.probe_1, a.probe_2);
+    let wall = if left { m.probe_3 } else { m.probe_4 };
+    d.push(Branch(wall == 0));
+    if wall != 0 {
+        let off = !one_up(p1);
+        d.push(Branch(off));
+        if off {
+            off_ground(c, left, d);
+        } else {
+            frame_from_probes(c, d);
+        }
+        return;
+    }
+    // `char_step_4be6` / `h0_4c28`: `cmpi.b #$28; bmi` on the walk's count.
+    d.push(Branch(
+        a.walk_t.wrapping_add(1).wrapping_sub(0x28) & 0x80 != 0,
+    ));
+    let off = !one_up(p1);
+    d.push(Branch(off));
+    if off {
+        return off_ground(c, left, d);
+    }
+    // Left tests bit 0 first and compares 2; right bit 1 and 3.
+    let (first, second, steep) = if left { (1, 2, 2) } else { (2, 1, 3) };
+    d.push(Branch(p2 & first == 0));
+    if p2 & first != 0 {
+        d.push(Branch(p1 == steep));
+        if p1 != steep {
+            d.push(Branch(p2 != 3));
+        }
+    } else {
+        d.push(Branch(p2 & second == 0));
+        if p2 & second != 0 {
+            d.push(Branch(p1 == 1));
+        }
+    }
+    run_step(c, left, d);
+}
+
+/// `h0+$4836` / `h0+$487a`: `bne` on the low ground sample, then the run step.
+fn off_ground(c: &Character, left: bool, d: &mut Vec<Decision>) {
+    let low = c.state.motion.samples[15] != 0;
+    d.push(Branch(low));
+    if low {
+        run_step(c, left, d);
+    }
+}
+
+/// `h0_47e2` / `h0_497c`: the count stepped, `bne` past `$f0`, `beq` on the table's `$ff` (the
+/// count back `$1e` and again).
+fn run_step(c: &Character, left: bool, d: &mut Vec<Decision>) {
+    let m = c.state.motion;
+    let mut t = if left { m.run_left } else { m.run_right };
+    // The guard of the hand engine's loop: the original would hang first.
+    for _ in 0..1 << 20 {
+        t = t.wrapping_add(1);
+        d.push(Branch(t != 0xf0));
+        let v = c.table(0x49d0u32.wrapping_add(t));
+        d.push(Branch(v == 0xff));
+        if v != 0xff {
+            return;
+        }
+        t = t.wrapping_sub(0x1e);
+    }
+}
+
+/// `h0_3ea8` after its `h0_410c`: `bne` on `char_probe_2`, `bne` on `char_probe_1` not 1, then `bpl`
+/// on each run of `$30`, to the slide; else `h0_4c6a`.
+fn idle_landed(c: &Character, d: &mut Vec<Decision>) {
+    let (m, a) = (c.state.motion, c.state.anim);
+    d.push(Branch(a.probe_2 != 0));
+    if a.probe_2 == 0 {
+        d.push(Branch(a.probe_1 != 1));
+        if a.probe_1 == 1 {
+            for left in [true, false] {
+                let run = if left { m.run_left } else { m.run_right };
+                d.push(Branch(not_below(run, 0x30)));
+                if not_below(run, 0x30) {
+                    return slide(c, left, d);
+                }
+            }
+        }
+    }
+    frame_from_probes(c, d);
+}
+
+/// `h0+$3ef6` / `h0+$3fce`, a slide step: `beq` past the wall, `bne` past the sound (its wait) unless
+/// the step is 3, `bpl` on a run of `$a0` for the table, `bne` past its `$ff`.
+fn slide(c: &Character, left: bool, d: &mut Vec<Decision>) {
+    let m = c.state.motion;
+    let wall = if left { m.probe_3 } else { m.probe_4 };
+    d.push(Branch(wall == 0));
+    if wall != 0 {
+        return;
+    }
+    let t = m.slide_t;
+    d.push(Branch(t != 3));
+    if t == 3 {
+        line_wait(4, d);
+    }
+    let run = if left { m.run_left } else { m.run_right };
+    let fast = not_below(run, 0xa0);
+    d.push(Branch(fast));
+    // Sliding right reads `h0+$40ac` whatever it chose.
+    let table = if left && fast { 0x40cb } else { 0x40ac };
+    d.push(Branch(c.table(table + t as u32) != 0xff));
 }
