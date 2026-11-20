@@ -6,7 +6,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 
 **Status:** Planned 2026-11-11; nothing built.
 **Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Next `pir-work` will:** review T59; T58 and T60 to build.
 
 ## Tasks
 
@@ -73,10 +73,10 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T57 | hand-engine-sound-effects | T38; blocks T40, T42 | ✅ | |
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
-| T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
+| T59 | mount-walk-close | T56; blocks T40, T42 | 🔍 | Eight cases moved to `PASS_MOUNTED`, 47 pass (full run 2026-11-20); `T56` list now `T58` (3); `HEARS` 23, `HEARS_T58` 2; `CLX_LINES_OFF` 0 holds; `COSTS` two rows, `FADE_ON` and unwalked blit removed (a stop now); DESIGN §2.9 paragraph. No new test file. FINDINGS compacted: three superseded rows dropped (T50's is DESIGN §2.8). |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T59
 
 ## Blocked on the user
 
