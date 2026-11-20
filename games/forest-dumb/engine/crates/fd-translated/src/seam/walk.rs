@@ -78,7 +78,8 @@ struct Frame {
 /// A walk through the original's code, from a function's entry.
 pub struct Walk {
     frames: Vec<Frame>,
-    /// Control jumped (a branch taken, a call, a return): the next instruction is a block start.
+    /// Control jumped (a branch taken, a jump, a call's entry): the next instruction is a block
+    /// start. Not a return: the generated caller goes on in its block after the call it made.
     jumped: bool,
     decisions: VecDeque<Decision>,
     /// Custom writes handed by the hand engine, in order: (register, value, size in bytes).
@@ -309,7 +310,9 @@ impl Walk {
                 Flow::JumpInd => return Err(self.fail(img, "a computed jump")),
                 Flow::Ret => {
                     self.frames.pop();
-                    self.jumped = true;
+                    // Back after the call: the caller's next instruction is reached in sequence, so
+                    // `insn_start`, or `block_start` only where a block starts (T60).
+                    self.jumped = false;
                     if until == Until::Write && self.frames.len() == 1 {
                         return Ok(Event::Returned);
                     }
@@ -351,7 +354,8 @@ impl Walk {
             bus.sync(r);
         }
         self.top().pc = s.next();
-        self.jumped = true;
+        // As after a return: the instruction after the call is reached in sequence.
+        self.jumped = false;
         Ok(())
     }
 
