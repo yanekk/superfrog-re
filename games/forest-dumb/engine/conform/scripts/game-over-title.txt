@@ -1,6 +1,6 @@
 # forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
 # title, as world-2-start's do. World 2 given up with Esc, game over, the high scores
-# with no name (score 0 is under the eighth entry's 2500), the title again.
+# with no name (score 0 is under the eighth entry's 25000), the title again.
 0: -
 10: F        # fire on START (frame 5000): world_index set at load_world by the case or test
 21: -

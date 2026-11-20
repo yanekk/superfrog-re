@@ -96,8 +96,8 @@ memory is reused within a frame.
 
 ## Game over
 
-`session_game_over` (`h0+$1aa`), reached from `main_loop` when the lives run out or on give-up (Esc in
-play, docs/09): `game_over_screen` waits for fire pressed and released, then `high_scores`
+`session_game_over` (`h0+$1aa`), reached from `main_loop` when the lives run out, when `countdown` reaches
+0 or on give-up (Esc in play, docs/09), three branches to the same routine (read): `game_over_screen` waits for fire pressed and released, then `high_scores`
 (`h0+$89d0`), then `session_loop` again, which loads the title's files and runs `title_screen`.
 
 `high_scores` compares `score` with the eighth entry's (`hiscore_score_8`, signed, equal enters). Below

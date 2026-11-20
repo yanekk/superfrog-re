@@ -1180,13 +1180,14 @@ mod tests {
                 Width::Long => 0x0102_0304,
             };
             // A creature slot's field (T46) comes from the slots' own read, the whole symbol at
-            // once, so its bytes are those at its offset into it.
+            // once, so its bytes are those at its offset into it. Any other `+$` row (a high-score
+            // name's long) is read on its own, as a plain variable.
             let want = match v.name.split_once("+$") {
-                Some((_, off)) => {
+                Some((base, off)) if base.starts_with("creature_") => {
                     let off = u32::from_str_radix(off, 16).unwrap();
                     (1..=v.width.bytes() as u32).fold(0, |a, k| a << 8 | (off + k))
                 }
-                None => want,
+                _ => want,
             };
             assert_eq!(g.probe(v), want, "{}", v.name);
         }

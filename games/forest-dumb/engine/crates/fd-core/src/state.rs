@@ -94,6 +94,9 @@ pub struct TitleVars {
     pub mt_songpos: u8,
     /// `hiscore_score_1` to `hiscore_score_8`, BCD.
     pub hiscore_scores: [u32; 8],
+    /// `hiscore_name_1` to `hiscore_name_8`, 12 ASCII bytes each as three big-endian longs
+    /// (`hiscore_name_N+$0`, `+$4`, `+$8`).
+    pub hiscore_names: [[u32; 3]; 8],
 }
 
 impl TitleVars {
@@ -120,12 +123,25 @@ impl TitleVars {
                 0x0005_0000,
                 0x0002_5000,
             ],
+            hiscore_names: [
+                [0x6561676c, 0x6520736f, 0x66742020], // eagle soft
+                [0x68696a6f, 0x20202020, 0x20202020], // hijo
+                [0x6178656c, 0x20642e20, 0x20202020], // axel d.
+                [0x62616c64, 0x20686f72, 0x73202020], // bald hors
+                [0x64616e20, 0x20202020, 0x20202020], // dan
+                [0x6b2e6d2e, 0x20202020, 0x20202020], // k.m.
+                [0x636f6d61, 0x6e636865, 0x20202020], // comanche
+                [0x64727569, 0x64202020, 0x20202020], // druid
+            ],
         }
     }
 
     fn get(&self, name: &str) -> Option<u32> {
         if let Some(i) = hiscore_index(name) {
             return Some(self.hiscore_scores[i]);
+        }
+        if let Some((i, j)) = hiscore_name_index(name) {
+            return Some(self.hiscore_names[i][j]);
         }
         Some(match name {
             "title_cursor" => self.title_cursor,
@@ -143,6 +159,10 @@ impl TitleVars {
     fn set(&mut self, name: &str, value: u32) -> bool {
         if let Some(i) = hiscore_index(name) {
             self.hiscore_scores[i] = value;
+            return true;
+        }
+        if let Some((i, j)) = hiscore_name_index(name) {
+            self.hiscore_names[i][j] = value;
             return true;
         }
         let (b, w) = (value as u8, value as u16);
@@ -165,6 +185,19 @@ impl TitleVars {
 fn hiscore_index(name: &str) -> Option<usize> {
     let n: usize = name.strip_prefix("hiscore_score_")?.parse().ok()?;
     (1..=8).contains(&n).then(|| n - 1)
+}
+
+/// `hiscore_name_N+$O`'s entry and long, N 1 to 8, O 0, 4 or 8.
+fn hiscore_name_index(name: &str) -> Option<(usize, usize)> {
+    let (n, off) = name.strip_prefix("hiscore_name_")?.split_once("+$")?;
+    let n: usize = n.parse().ok()?;
+    let j = match off {
+        "0" => 0,
+        "4" => 1,
+        "8" => 2,
+        _ => return None,
+    };
+    (1..=8).contains(&n).then(|| (n - 1, j))
 }
 
 impl State {

@@ -151,8 +151,8 @@ pub const LAYOUT: &[Var] = &[
     var("creature_slots+$20", 0, 0x680c, Width::Long),
     var("creature_slots+$24", 0, 0x6810, Width::Long),
     // The title (forest-dumb-title T01, docs/16-title.md): its rows and flags, KODY's digits, the
-    // song's position and the high-score table's scores. The entries' names are 12 bytes, wider
-    // than a `Width`, and are compared as memory.
+    // song's position and the high-score table, each entry's 12-byte name as three longs (LAYOUT
+    // has no wider width) and its score.
     var("title_cursor", 0, 0x6df2, Width::Long),
     var("title_start_flag", 0, 0x6dee, Width::Long),
     var("title_quit_flag", 0, 0x6ee8, Width::Word),
@@ -169,6 +169,30 @@ pub const LAYOUT: &[Var] = &[
     var("hiscore_score_6", 0, 0x8512, Width::Long),
     var("hiscore_score_7", 0, 0x8522, Width::Long),
     var("hiscore_score_8", 0, 0x8532, Width::Long),
+    var("hiscore_name_1+$0", 0, 0x84b6, Width::Long),
+    var("hiscore_name_1+$4", 0, 0x84ba, Width::Long),
+    var("hiscore_name_1+$8", 0, 0x84be, Width::Long),
+    var("hiscore_name_2+$0", 0, 0x84c6, Width::Long),
+    var("hiscore_name_2+$4", 0, 0x84ca, Width::Long),
+    var("hiscore_name_2+$8", 0, 0x84ce, Width::Long),
+    var("hiscore_name_3+$0", 0, 0x84d6, Width::Long),
+    var("hiscore_name_3+$4", 0, 0x84da, Width::Long),
+    var("hiscore_name_3+$8", 0, 0x84de, Width::Long),
+    var("hiscore_name_4+$0", 0, 0x84e6, Width::Long),
+    var("hiscore_name_4+$4", 0, 0x84ea, Width::Long),
+    var("hiscore_name_4+$8", 0, 0x84ee, Width::Long),
+    var("hiscore_name_5+$0", 0, 0x84f6, Width::Long),
+    var("hiscore_name_5+$4", 0, 0x84fa, Width::Long),
+    var("hiscore_name_5+$8", 0, 0x84fe, Width::Long),
+    var("hiscore_name_6+$0", 0, 0x8506, Width::Long),
+    var("hiscore_name_6+$4", 0, 0x850a, Width::Long),
+    var("hiscore_name_6+$8", 0, 0x850e, Width::Long),
+    var("hiscore_name_7+$0", 0, 0x8516, Width::Long),
+    var("hiscore_name_7+$4", 0, 0x851a, Width::Long),
+    var("hiscore_name_7+$8", 0, 0x851e, Width::Long),
+    var("hiscore_name_8+$0", 0, 0x8526, Width::Long),
+    var("hiscore_name_8+$4", 0, 0x852a, Width::Long),
+    var("hiscore_name_8+$8", 0, 0x852e, Width::Long),
 ];
 
 /// The variable called `name`.
@@ -298,6 +322,21 @@ mod tests {
             assert_eq!(layout_var(v.name), Some(v));
         }
         assert_eq!(layout_var("no_such"), None);
+    }
+
+    #[test]
+    fn every_high_score_entry_is_a_layout_row_name_and_score() {
+        // The game over cases judge a typed name in the table, and add no rows of their own.
+        for n in 1..=8 {
+            for f in [
+                format!("hiscore_name_{n}+$0"),
+                format!("hiscore_name_{n}+$4"),
+                format!("hiscore_name_{n}+$8"),
+                format!("hiscore_score_{n}"),
+            ] {
+                assert!(layout_var(&f).is_some(), "{f} is not in LAYOUT");
+            }
+        }
     }
 
     struct Bytes(Vec<u8>);

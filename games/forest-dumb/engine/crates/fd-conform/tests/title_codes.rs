@@ -351,7 +351,12 @@ fn game_over(name: &str, score: Option<u32>) -> (Vec<u32>, Vec<(String, u32)>) {
     }
     let table = (0..8)
         .map(|e| {
-            let b = run.am.peek(h0(HISCORE_NAME_1 + 16 * e), 12);
+            // Through LAYOUT's rows, as the game over cases compare it; the raw bytes must agree.
+            let b: Vec<u8> = ["0", "4", "8"]
+                .iter()
+                .flat_map(|o| run.var(&format!("hiscore_name_{}+${o}", e + 1)).to_be_bytes())
+                .collect();
+            assert_eq!(b, run.am.peek(h0(HISCORE_NAME_1 + 16 * e), 12));
             let name = String::from_utf8_lossy(&b).trim_end().to_string();
             (name, run.var(&format!("hiscore_score_{}", e + 1)))
         })
