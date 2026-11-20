@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00 and T06 can run beside it; T07 awaits review.
+**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00 and T06 can run beside it; T07 ✅ unblocks T09 once T08 lands.
 
 ## Tasks
 
@@ -23,14 +23,14 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T04 | page-map-only | T03 | ⬜ | |
 | T05 | page-live | T04 | ⬜ | |
 | T06 | live-reader | — | ⬜ | |
-| T07 | secrets-research | — | 🔍 | `fd_assets::secrets` (hidden passages: wall-pictured tiles over empty shapes, inside a wall) and docs/17; 9 unit tests, 5 in secret_claims.rs (counts smoke; W1, W3, W4 walks and a solid control, full). Deviations: no `InvisibleFloor`, none found or confirmed; vanishing-block cells excluded; oracle walks carry the character by poking. |
+| T07 | secrets-research | — | ✅ | Hidden passages only. Review: one fix, docs/17 gave six group extents wrong. Probed: 34 listed cells in 9 of 11 groups stood in on the original; three rule mutations caught by unit tests; listing confirms `char_x` writers. Deviations held. Unprobed: W1-1 tower `121,79`, W3-1 `164,53`. |
 | T08 | map-command | T02, T05 | ⬜ | |
 | T09 | secrets-layer | T07, T08 | ⬜ | |
 | T10 | app-live | T02, T05, T06 | ⬜ | |
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T07
+**Review queue:** (empty)
 
 ## Blocked on the user
 
