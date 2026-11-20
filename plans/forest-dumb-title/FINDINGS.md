@@ -8,6 +8,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | `cargo clippy -p fd-conform` fails before this plan: `while_immutable_condition` (deny) at `fd-conform/src/bug.rs` `while steps > 0`. Smoke runs no clippy, so nothing catches it. |
 | 2026-11-20 | 📌 | `tools/smoke.sh` in a fresh worktree (plan review): setup clean; root, toolkit and forest-dumb ok, forest-dumb done at 1061 s from a cold build; killed at the 1200 s limit in games/superfrog. Warm runs are the 842 s figure. |
 | 2026-11-20 | 📌 | `bug compare` judges only hand-engine level 1 recordings (`fd-conform/src/bug.rs` `compare`, retimed to the level sync point); translated recordings, any start, only replay. Left out of scope here. |
 | 2026-11-20 | 📌 | Smoke's last pass took 842 s of its 900 (`smoke-times.tsv`, `a4eebadc`); three of the four runs before it failed or hit the limit. Only seconds-long tests go in smoke. |
