@@ -15,9 +15,11 @@
 //!   or a custom register mirror; those are the rig's memory, not a hardware model.
 //! - **Hardware reads the case gives** (`Setup::hw_reads`) are answered as the routine oracle answers
 //!   them: a custom register's word from its two bytes (a byte not given reads 0), by a device
-//!   attached to that register ([`CaseReads`]). INTENAR and
-//!   INTREQR, which no device may answer, are the snapshot's INTENA and INTREQ. VHPOSR given by a
-//!   case is ignored, as the oracle ignores it.
+//!   attached to that register ([`CaseReads`]). CLXDAT is always the case's, 0 where it gives
+//!   none: the routine oracle draws no display, so it has no collisions and no bit 15, which
+//!   `pcode-machine`'s own CLXDAT sets as the A500 does (T30); whole runs keep the machine's.
+//!   INTENAR and INTREQR, which no device may answer, are the snapshot's INTENA and INTREQ.
+//!   VHPOSR given by a case is ignored, as the oracle ignores it.
 //! - **The beam:** at line `Setup::beam`, slot 0, at cycle 0, so the first VHPOSR read gives the
 //!   byte the original's first read gave; later reads follow the counted cycles, where the oracle's
 //!   count one a read.
@@ -36,8 +38,8 @@
 use std::sync::Arc;
 
 use amiga_oracle::{RETURN_SENTINEL, Regs};
-use pcode_machine::custom;
 use pcode_machine::{Config, Device, Machine};
+use pcode_machine::{collide, custom};
 use pcode_rt::{Bus, Image, Stop};
 
 use super::Mem;
@@ -150,6 +152,10 @@ fn lay_hardware(s: &Setup) -> ([u16; 256], CaseReads, Vec<(u32, u8)>) {
             cias.retain(|&(at, _)| at != a);
             cias.push((a, v));
         }
+    }
+    // CLXDAT answered as the oracle answers it even where the case gives no byte (module doc).
+    if !reads.words.iter().any(|&(r, _)| r == collide::CLXDAT) {
+        reads.words.push((collide::CLXDAT, 0));
     }
     (regs, reads, cias)
 }
@@ -378,7 +384,25 @@ mod tests {
         assert_eq!(regs[0x0F], 0x0040, "INTREQR is the snapshot's INTREQ");
         assert_eq!(reads.read(0x002, 0), 0x1234);
         assert_eq!(reads.read(0x00E, 0), 0x0056, "a byte not given reads 0");
-        assert_eq!(reads.words.len(), 2, "VHPOSR is the beam's");
+        assert_eq!(reads.words.len(), 2, "VHPOSR is the beam's; CLXDAT given");
         assert_eq!(cias, [(0xBF_E001, 0x7F), (0xBF_D100, 0x01)]);
+    }
+
+    /// A case that gives CLXDAT no byte reads 0 on the judge's machine, as on the routine oracle;
+    /// the machine on its own still reads bit 15 (T30), which whole runs keep.
+    #[test]
+    fn clxdat_not_given_reads_0_on_the_judge_and_bit_15_on_the_bare_machine() {
+        let flat = vec![0u8; SLOW_BASE + SLOW];
+        let s = Setup::default();
+        let (regs, reads, _) = lay_hardware(&s);
+        assert_eq!(reads.words, [(collide::CLXDAT, 0)]);
+        let (mut m, _) = machine_for(&ram(&flat), &s);
+        assert_eq!(m.rw(0xDF_F000 | collide::CLXDAT as u32), 0);
+        let mut bare =
+            Machine::from_snapshot(Config::a500(HUNK_BASES.to_vec()), &ram(&flat), &regs);
+        assert_eq!(
+            bare.rw(0xDF_F000 | collide::CLXDAT as u32),
+            collide::CLXDAT_NONE
+        );
     }
 }
