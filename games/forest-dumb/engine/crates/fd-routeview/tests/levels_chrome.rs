@@ -109,7 +109,9 @@ fn all_writes_six_levels_matching_their_files() {
         let file = object_file(i + 1);
         let cols = number(&js, "cols");
         assert_eq!(cols, if i == 5 { 320 } else { 240 }, "{id}");
-        let objects = rows_of(array(&js, "objects"), 3);
+        // A secret (T09) has value 0: the object map holds nothing for it.
+        let all = rows_of(array(&js, "objects"), 3);
+        let objects: Vec<_> = all.iter().filter(|o| o[2] != 0).collect();
         let want = file[..cols * ROWS].iter().filter(|&&v| v != 0).count();
         assert_eq!(objects.len(), want, "{id}: object count");
         for o in &objects {
@@ -206,8 +208,8 @@ const CATCH: &str = "<script>window.ERRS=[];addEventListener('error',e=>ERRS.pus
 addEventListener('unhandledrejection',e=>ERRS.push(String(e.reason)));\
 {const ce=console.error;console.error=(...a)=>{ERRS.push(a.join(' '));ce(...a)}}</script>";
 
-fn site() -> PathBuf {
-    let out = temp("chrome");
+fn site(name: &str) -> PathBuf {
+    let out = temp(name);
     let r = run(&["--all", "--out", out.to_str().unwrap()]);
     assert!(r.status.success(), "{}", String::from_utf8_lossy(&r.stderr));
     let index = out.join("index.html");
@@ -414,7 +416,7 @@ fn drive(root: &Path, (w, h): (u32, u32), needed: &[u16]) {
         ("Water", "o[3] === 'hazard'"),
         (
             MISC,
-            "!['coin', 'enemy', 'pickup', 'hazard'].includes(o[3])",
+            "!['coin', 'enemy', 'pickup', 'hazard', 'secret'].includes(o[3])",
         ),
     ];
     // The pointer leaves the map first (the click on column 319 left a hover mark there).
@@ -442,7 +444,7 @@ fn drive(root: &Path, (w, h): (u32, u32), needed: &[u16]) {
     // A flame alone: no other object of the layer within the cells `around` looks at.
     let lone = eval_str(
         &mut b,
-        "(() => { const O = ROUTE_DATA['W3-1'].objects, misc = o => !['coin', 'enemy', 'pickup', 'hazard'].includes(o[3]); \
+        "(() => { const O = ROUTE_DATA['W3-1'].objects, misc = o => !['coin', 'enemy', 'pickup', 'hazard', 'secret'].includes(o[3]); \
          const f = O.find(o => o[2] === 0x34 && !O.some(p => p !== o && misc(p) && Math.abs(p[0] - o[0]) <= 3 && p[1] - o[1] >= -5 && p[1] - o[1] <= 3)); \
          return f ? f[0] + ',' + f[1] + ',' + f[3] : ''; })()",
     );
@@ -478,11 +480,135 @@ fn drive(root: &Path, (w, h): (u32, u32), needed: &[u16]) {
 
 #[test]
 fn the_six_levels_in_chrome_at_three_sizes() {
-    let root = site();
+    let root = site("chrome");
     let needed: Vec<u16> = (1..=6)
         .map(|w| fd_map::items_needed("x", &object_file(w)).unwrap())
         .collect();
     for size in [(1280, 800), (1920, 1080), (800, 600)] {
         drive(&root, size, &needed);
     }
+}
+
+/// Pixels of the Secrets layer's colour (`--secret`, #c792ff) on the canvas over level pixels
+/// `x0..x1`, `y0..y1`. The map is dimmed, so no tile reaches that blue; a mark of the layer does.
+fn purple(b: &mut Browser, (x0, y0, x1, y1): (i32, i32, i32, i32)) -> i64 {
+    eval_i(
+        b,
+        &format!(
+            "(() => {{ const v = ROUTEVIEW.view(), c = document.getElementById('cv'), d = devicePixelRatio || 1; \
+             const sx = p => Math.round((p * v.scale + v.ox) * d), sy = p => Math.round((p * v.scale + v.oy) * d); \
+             const a = Math.max(0, sx({x0})), t = Math.max(0, sy({y0})), z = Math.min(c.width, sx({x1})), w = Math.min(c.height, sy({y1})); \
+             if (z <= a || w <= t) return -1; \
+             const px = c.getContext('2d').getImageData(a, t, z - a, w - t).data; let n = 0; \
+             for (let i = 0; i < px.length; i += 4) if (Math.abs(px[i] - 0xc7) < 40 && Math.abs(px[i+1] - 0x92) < 40 && px[i+2] > 0xe0) n++; return n; }})()"
+        ),
+    )
+}
+
+/// A layer's count in the map-only stats panel.
+fn stat(b: &mut Browser, name: &str) -> String {
+    eval_str(
+        b,
+        &format!(
+            "(() => {{ const d = [...document.querySelectorAll('#stats dt')].find(e => e.textContent === '{name}'); return d ? d.nextElementSibling.textContent : 'none'; }})()"
+        ),
+    )
+}
+
+/// T09: the Secrets layer at 1280×800. Off at load, so no secret is drawn; switched on, each of
+/// W1-1's hidden passages is drawn at its cell, and a click (which moves the pointer there first)
+/// names it "hidden passage" in the tip; W2-1, which has none, lists the layer with 0.
+#[test]
+fn secrets_layer_off_at_load_then_drawn_at_its_cells() {
+    let root = site("secrets");
+    let mut b = Browser::launch(Opts {
+        width: 1280,
+        height: 800,
+        ..Opts::default()
+    })
+    .unwrap_or_else(|e| panic!("amiga-browser: {e}"));
+    b.open(&root.join("index.html")).unwrap();
+    wait_level(&mut b, "W1-1");
+    assert_eq!(
+        eval_str(
+            &mut b,
+            &format!("{}.getAttribute('aria-pressed')", chip("Secrets"))
+        ),
+        "false",
+        "Secrets on at load"
+    );
+    let cells = b
+        .eval("ROUTE_DATA['W1-1'].objects.filter(o => o[3] === 'secret').map(o => [o[0], o[1]])")
+        .unwrap();
+    let cells: Vec<(i64, i64)> = cells
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c[0].as_i64().unwrap(), c[1].as_i64().unwrap()))
+        .collect();
+    assert_eq!(cells.len(), 133, "W1-1's hidden passages (docs/17)");
+    assert_eq!(stat(&mut b, "Secrets"), "133");
+    let cell = |c: i64, r: i64| {
+        (
+            (c * 16) as i32,
+            (r * 16) as i32,
+            (c * 16 + 16) as i32,
+            (r * 16 + 16) as i32,
+        )
+    };
+    let all = (0, 0, 240 * 16, 96 * 16);
+    assert_eq!(purple(&mut b, all), 0, "a secret drawn at load");
+    b.screenshot(&root.join("secrets-off.png")).unwrap();
+    click(&mut b, &chip("Secrets"));
+    b.screenshot(&root.join("secrets-on.png")).unwrap();
+    // At the fitted view an object's mark is wider than its cell (a bonus beside W1-1's 159,91
+    // covers it), so each cell is judged with the other layers off.
+    let others = ["Coins", "Creatures", "Bonuses", "Water", MISC];
+    for name in others {
+        click(&mut b, &chip(name));
+    }
+    let missing: Vec<_> = cells
+        .iter()
+        .filter(|&&(c, r)| purple(&mut b, cell(c, r)) == 0)
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "secrets not drawn at their cells: {missing:?}"
+    );
+    for name in others {
+        click(&mut b, &chip(name));
+    }
+    let (c0, r0) = cells[0];
+    let at = b
+        .eval(&format!(
+            "(() => {{ document.getElementById('mapbox').scrollIntoView({{block: 'center'}}); \
+             const v = ROUTEVIEW.view(), r = document.getElementById('mapbox').getBoundingClientRect(); \
+             return [r.x + ({c0} * 16 + 8) * v.scale + v.ox, r.y + ({r0} * 16 + 8) * v.scale + v.oy]; }})()"
+        ))
+        .unwrap();
+    b.click(at[0].as_f64().unwrap(), at[1].as_f64().unwrap())
+        .unwrap();
+    let tip = eval_str(&mut b, "document.getElementById('tip').textContent");
+    assert!(
+        tip.starts_with(&format!("W1-1:{c0},{r0} · hidden passage")),
+        "the tip over {c0},{r0}: {tip}"
+    );
+    click(&mut b, &chip("Secrets"));
+    assert_eq!(purple(&mut b, all), 0, "Secrets off still draws");
+
+    click(
+        &mut b,
+        "[...document.querySelectorAll('#worlds .rt')].find(e => e.textContent.endsWith('W2-1'))",
+    );
+    wait_level(&mut b, "W2-1");
+    assert_eq!(stat(&mut b, "Secrets"), "0", "W2-1 has none");
+    assert!(
+        b.eval(&format!("!!{}", chip("Secrets")))
+            .unwrap()
+            .as_bool()
+            .unwrap(),
+        "W2-1: no Secrets chip"
+    );
+    assert_eq!(errors(&mut b), Vec::<String>::new());
+    assert_eq!(b.blocked_requests(), Vec::<String>::new());
 }
