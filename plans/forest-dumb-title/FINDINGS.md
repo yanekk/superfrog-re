@@ -8,6 +8,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | `tools/smoke.sh` in a fresh worktree (plan review): setup clean; root, toolkit and forest-dumb ok, forest-dumb done at 1061 s from a cold build; killed at the 1200 s limit in games/superfrog. Warm runs are the 842 s figure. |
 | 2026-11-20 | 📌 | `bug compare` judges only hand-engine level 1 recordings (`fd-conform/src/bug.rs` `compare`, retimed to the level sync point); translated recordings, any start, only replay. Left out of scope here. |
 | 2026-11-20 | 📌 | Smoke's last pass took 842 s of its 900 (`smoke-times.tsv`, `a4eebadc`); three of the four runs before it failed or hit the limit. Only seconds-long tests go in smoke. |
 | 2026-11-20 | 📌 | fd-app's Esc always quits and never reaches the game; the Amiga Esc is reached through a `[keys]` binding (`"key Esc" = ["KeyE"]`, `game_over.rs`). |

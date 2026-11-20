@@ -61,7 +61,9 @@ change to what this plan checks.
 
 ### 2.2 The cases
 
-One case each, on the oracle and on `--engine translated`, in `engine/conform/cases/`:
+One case each, on the oracle and on `--engine translated`, in `engine/conform/cases/`, every one lined
+up by loads (`align = "loads"`, from power-on with `start = "entry"` or from the 4990 snapshot),
+because that runner is the only one that takes a goal on the title (a plain title case takes none):
 
 | Case | Path | Judged to |
 |---|---|---|
@@ -126,8 +128,10 @@ code on KODY because it is simpler and does not depend on the code table. World 
 hand engine through the seam as today; worlds 2 to 6 run translated. The title's codes stay on the
 title as the original has them.
 
-`--level N` takes 1 to 6 and starts the same way with the cheat off, so there is one start path and a
-test can reach any world from the command line. `--engine hand` keeps today's window, level 1 only and
+`--level N` takes 1 to 6 and starts the same way, with the cheat off unless `--cheat` is given (owner,
+2026-11-20 plan review), so the command line reaches every start the window does through the one start
+path. `--cheat` without `--level`, or with `--engine hand`, exits 2 naming why, since there is no
+world start for it to apply to. `--engine hand` keeps today's window, level 1 only and
 no cheat box, because the hand engine has only level 1.
 
 A bug recording names where play started. Version 3 of the format adds `world-N` starts (N 1 to 6) and
@@ -212,6 +216,9 @@ Start Level… (`N: start …` lines, `fd-app/README.md`), the OS layer (`FD_E2E
 real controls, at the app's default scale and 400×300 to 1200×900 as T41 drove. The free backend is the
 translated program on the owner's disks, run locally.
 
+**Outside actions.** None: every task runs locally on the owner's disks and the oracle, with no deploy,
+paid call or published output, so there is no §5.3 table and no `permissions.json`.
+
 ### 5.1 Seatbelts
 
 | Flag / mechanism | Default | Effect |
@@ -233,8 +240,9 @@ translated program on the owner's disks, run locally.
   stop at play's start and game over is checked in world 2.
 - Planner: a plan, not single runs (brief, Open 4), since cases, fixes, a recording format change and
   app tests span several sessions.
-- Planner: `--level N` takes 1 to 6 with no cheat, so the app has one start path for Start Level… and
-  the command line.
+- 2026-11-20, owner at plan review: `--level N` takes 1 to 6 and `--cheat` turns the cheat on, against
+  the planner's no-cheat proposal, so the command line reaches every start the window does; one start
+  path either way.
 - Planner: two general goals (`enters`, `exited`) rather than per-case code, so later plans can reuse
   them.
 - Planner: no mock, since Start Level… reuses its window and the title already exists.

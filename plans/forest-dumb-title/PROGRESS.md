@@ -3,7 +3,7 @@
 **Update this whenever a task changes state.** It is the handoff between sessions. What the build
 taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-11-20 — 10 fixed, 1 decided with the user
 
 **Status:** planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20

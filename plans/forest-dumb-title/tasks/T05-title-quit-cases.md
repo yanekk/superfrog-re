@@ -20,8 +20,10 @@ DESIGN §2.2, §2.3.
 ## Interface
 
 `title-koniec`: Down, Down, fire; `goal = { exited = true, by_frame = … }`. `title-esc`: the Amiga Esc
-key (a `K45` script line) on the title; goal as T01 measured: `exited` if it quits, or `idle` with
-`title_cursor` and `title_quit_flag` unchanged over a stated stretch if it does nothing.
+key (a `K45` script line) on the title; goal as T01 measured: `exited` if it quits, or, if it does nothing, `all`
+with `title_cursor` and `title_quit_flag` at their starting values by the case's last frame, the case
+running a stated stretch past the key (a case lined up by loads refuses `idle`, and its memory is
+compared every frame, which holds the stretch). Both cases `align = "loads"` from the snapshot.
 
 ## Tests
 

@@ -36,12 +36,17 @@ the original reaches the return address the entry was called with, with the stac
 it; the translated program reports `TranslatedGame::exited`. Both only on `align = "loads"` cases; a
 case using one elsewhere is refused at parse.
 
+`exited` must hold on a snapshot start too: `title-koniec` starts from the 4990 snapshot, and
+`TranslatedGame`'s `exit_to` is set today only by the power-on start (`fd-translated/src/lib.rs`), so
+from a snapshot every return to AmigaDOS would read as a stop. The snapshot start takes the entry's
+return address and stack from the original, as the power-on start leaves them.
+
 ## Tests
 
 - [ ] Parse: both forms; an unknown routine, a missing `by_frame`, use without `align = "loads"` are errors.
 - [ ] On stand-ins (a second copy of the original, `tests/common`): both enter the routine in the same
       frame passes; one side a frame later fails naming both frames; neither by `by_frame` fails.
-- [ ] `exited`: a stand-in returning from the entry passes; a jump to 0 that is not the entry's return
+- [ ] `exited`: a stand-in returning from the entry passes, from power-on and from a snapshot; a jump to 0 that is not the entry's return
       fails as a stop on the translated side.
 
 ## Done when

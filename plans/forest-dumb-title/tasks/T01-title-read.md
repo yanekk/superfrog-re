@@ -28,7 +28,8 @@ DESIGN §2.1; brief "Stages", the read.
 - `games/forest-dumb/engine/crates/fd-conform/tests/title_codes.rs` (new, full) and its `smoke.toml`
   label.
 - `docs/07-executable-map.md` "The title screen's code path": correct what the read contradicts (the
-  Esc route, `OpenLibrary`, the OS interrupts line named in docs/14 "Docs and data").
+  Esc route, `OpenLibrary`, the OS interrupts line named in docs/14 "Docs and data"), and point to
+  `16-title.md` for the behaviour rather than restating it.
 
 ## Interface
 

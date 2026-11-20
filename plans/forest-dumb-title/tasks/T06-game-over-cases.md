@@ -24,7 +24,8 @@ DESIGN §2.2, §2.3.
 
 `align = "loads"`, sync at the 4990 snapshot, `set = [{ var = "world_index", value = 1, when =
 "load_world" }, { var = "lives", value = <T01/docs-09's BCD for one life>, when = "load_world" }]`,
-`goal = { enters = "title_screen", by_frame = … }`. `game-over-name` adds the typed name and a `vars`
+`goal = { enters = "title_screen", by_frame = … }`. The worker checks nothing after `load_world`'s
+entry sets `lives` again before play; if something does, the row's `when` is the routine after it. `game-over-name` adds the typed name and a `vars`
 check of the table's entry before the title.
 
 ## Tests

@@ -17,8 +17,9 @@ DESIGN §2.5.
 
 - `games/forest-dumb/engine/crates/fd-core/src/recording.rs`: `LevelId` W1-1 to W6-1, `StartPoint`,
   version 3, its tests.
-- `games/forest-dumb/engine/crates/fd-app/src/lib.rs`: the start's input and writes, exported as
-  `to_level_1_input` is, so the app and `fd-conform` start alike.
+- `games/forest-dumb/engine/crates/fd-core/src/recording.rs` again: the start's input and writes,
+  beside `to_level_1_input`, and re-exported from `fd-app/src/lib.rs` as it is, so the app and
+  `fd-conform` (which does not depend on `fd-app`) start alike.
 - `games/forest-dumb/engine/crates/fd-conform/src/bug.rs` (`replay_translated`).
 - `games/forest-dumb/engine/crates/fd-conform/tests/recording_compare.rs` or a new test, labelled.
 

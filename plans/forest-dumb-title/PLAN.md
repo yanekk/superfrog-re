@@ -91,6 +91,7 @@ DESIGN §2.8) are a likely cause the machine does not model. If it grows, its wo
 
 ## Decisions still open
 
-- Whether the high scores are saved to disk, whether they take a name, and what Esc and a wrong code do
+- Whether the high scores are saved to disk (`fd-core/src/game_over.rs` records that the original
+  never saves them, owner 2026-11-01; the read confirms it), whether they take a name, and what Esc and a wrong code do
   on the original: settled by T01's read; a disk write goes to the owner before it is planned around.
   Blocks only T05 and T06's exact goals.

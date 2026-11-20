@@ -24,7 +24,8 @@ DESIGN §2.2, §2.4 (no fixing here: a translated failure is recorded for T07).
 
 `title-idle-loop`: power-on (`start = "entry"`, `align = "loads"`, `swap` as `power-on-title`), frames
 to past T01's measured loop frame, goal `mt_songpos` back to 0 after its last position.
-`title-rows`: from the 4990 snapshot, Down to KODY, Down to KONIEC, Up, Up, each move held as T01
+`title-rows`: `align = "loads"` from the 4990 snapshot, as `world-2-start` (the only title runner
+that takes a goal), Down to KODY, Down to KONIEC, Up, Up, each move held as T01
 measured; goal `title_cursor` 0 at the end, `vars` including `title_cursor`.
 
 ## Tests
