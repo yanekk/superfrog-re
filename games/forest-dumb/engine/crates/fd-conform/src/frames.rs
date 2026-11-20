@@ -744,9 +744,9 @@ pub fn run_frames_inputs(
                     None => verdict.passes += 1,
                 }
             }
-            if let Some(Goal::All { by_frame, .. }) = &case.goal
+            if let Some(g) = &case.goal
                 && verdict.goal_met.is_none()
-                && at <= *by_frame
+                && g.all_counts_at(at)
                 && goal.iter().enumerate().all(|(i, (_, value))| {
                     let i = vars.len() + i;
                     ours.1[i] == *value && theirs.1[i] == *value
@@ -1424,9 +1424,9 @@ fn goal_check(
     frame: u32,
     verdict: &mut Verdict,
 ) {
-    if let Some(Goal::All { by_frame, .. }) = &case.goal
+    if let Some(g) = &case.goal
         && verdict.goal_met.is_none()
-        && frame <= *by_frame
+        && g.all_counts_at(frame)
         && goal
             .iter()
             .all(|(v, value)| engine.probe(v) == *value && Live(am).value(v) == *value)
@@ -1455,12 +1455,13 @@ fn conclude(case: &Case, mut verdict: Verdict, nothing: Option<&str>) -> Verdict
         none("neither side wrote to Paula in any compared frame")
     } else {
         match &case.goal {
-            Some(Goal::All { all, by_frame }) if verdict.goal_met.is_none() => {
-                let want: Vec<String> = all.iter().map(|(v, n)| format!("{v} = {n}")).collect();
-                Some(Outcome::GoalMissed {
-                    goal: format!("{} by oracle frame {by_frame}", want.join(", ")),
-                })
-            }
+            Some(Goal::All {
+                all,
+                by_frame,
+                after,
+            }) if verdict.goal_met.is_none() => Some(Outcome::GoalMissed {
+                goal: Goal::all_wanted(all, *after, *by_frame),
+            }),
             Some(Goal::GameOver { by_frame }) => match verdict.game_over {
                 Some((_, Some(left))) if left <= *by_frame => {
                     verdict.goal_met = Some(left);

@@ -40,6 +40,9 @@ workspace = "engine"
 # forest-dumb-title T01: the title's read held on the original from a snapshot of the idle title, every
 # code, a wrong one, the rows, Esc, KONIEC, game over and a name to the title, the song's loop: about 30 s.
 "crates/fd-conform/tests/title_codes.rs" = "full"
+# forest-dumb-title T03: title-idle-loop and title-rows translated (about 2 min and 30 s) need the disks,
+# Kickstart and the tree; the check that each case is listed passing or differing takes under a second.
+"crates/fd-conform/tests/title_idle_cases.rs" = ["every_case_of_the_task_is_in_one_list_and_has_a_goal_counted_after_its_start"]
 # forest-dumb-title T04: the KODY cases, each code and a wrong one typed from the idle title, on the
 # translated program against the original (five runs, about 50 s in parallel): disks, Kickstart, the
 # tree put them in full. The check that each case is listed and sets nothing takes no disks.

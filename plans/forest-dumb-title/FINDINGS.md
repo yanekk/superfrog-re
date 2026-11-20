@@ -8,6 +8,8 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | Every new case file must be listed in `mount_level_1.rs` (`PASS_MOUNTED` or `DIFFER`) or `every_case_is_in_one_list` fails in smoke; T04 to T06 each grow the same array, a merge to resolve (T03). |
+| 2026-11-20 | 📌 | **An `all` goal true at the start is met on frame one**: `title_cursor` 0, `mt_songpos` 0, `world_index` 0 for world 1. `after = F` (T03, owner's choice) counts it only after oracle frame F. |
 | 2026-11-20 | 🔄 | Owner confirmed (T10 review): `title_paths_short.rs` and `title_paths.rs` are full with no `[[area]]`, against T10's smoke label, as every generated-tree test is. |
 | 2026-11-20 | 🐞 | HELP held 5+ steps under the cheat stops the translated program as the level ends: the release byte arrives in `load_world`'s OS time (`OS's level 2 interrupt handler, not modelled`). T10 taps 2 steps. DESIGN §2.4: owner's choice. |
 | 2026-11-20 | 📌 | Esc on the title, translated: `quit_flag` the step after the press, the return the step after that (press at 301, exit 303); docs/16 has `quit_flag` in the press step on the original. T05's case judges it. |

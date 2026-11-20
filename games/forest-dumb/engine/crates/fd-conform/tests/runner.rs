@@ -23,6 +23,7 @@ fn short(frames: u32) -> Case {
         goal: Some(Goal::All {
             all: vec![("char_x".into(), 0x70)],
             by_frame: 6301 + frames,
+            after: None,
         }),
         ..stub()
     }
@@ -255,6 +256,7 @@ fn two_sides_that_agree_but_miss_the_goal_fail() {
         goal: Some(Goal::All {
             all: vec![("char_x".into(), 0x1a3)],
             by_frame: 6380,
+            after: None,
         }),
         ..stub()
     };
