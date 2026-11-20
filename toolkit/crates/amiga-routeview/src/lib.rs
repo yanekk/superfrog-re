@@ -6,8 +6,10 @@
 
 pub mod guide;
 pub mod json;
+pub mod live;
 pub mod site;
 pub mod verdict;
 
+pub use live::{LiveFrame, LiveSpec, write_live};
 pub use site::{Category, Entry, LevelDump, PageSpec, write_site};
 pub use verdict::{Bench, Event, Facts, Outcome, Stall, Status, Verdict, progress};

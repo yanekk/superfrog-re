@@ -56,6 +56,7 @@ pub fn spec() -> PageSpec {
         anchor: SPOT,
         cell_origin: SPOT,
         live_box: (0, 0, 16, 16),
+        live: None,
     }
 }
 

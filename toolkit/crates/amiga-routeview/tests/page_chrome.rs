@@ -109,6 +109,7 @@ fn site() -> PathBuf {
         anchor: (0, 0),
         cell_origin: (0, 0),
         live_box: (0, 0, 8, 8),
+        live: None,
     };
     // The map-only level first, so the page opens on it.
     write_site(&root, &spec, &[&MapOnly, &Routed]).unwrap();
