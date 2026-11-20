@@ -62,10 +62,12 @@ pub enum Align {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Goal {
     /// Every `(var, value)` holds together at the end of one compared pass ending at or before
-    /// oracle frame `by_frame`.
+    /// oracle frame `by_frame` and, with `after`, after oracle frame `after` (title T03): for a
+    /// path that comes back to where it started, which would otherwise be met on its first frame.
     All {
         all: Vec<(String, u32)>,
         by_frame: u32,
+        after: Option<u32>,
     },
     /// A stretch where only state is expected to stay in step: the run reaches its last frame with
     /// no engine event, and every listed variable is compared on every pass.
@@ -171,6 +173,27 @@ pub struct Case {
     pub set: Vec<Set>,
     pub start: StartAt,
     pub align: Align,
+}
+
+impl Goal {
+    /// Whether an `all` goal may be met at oracle frame `frame`: at or before its `by_frame` and
+    /// after its `after`. False for every other goal.
+    pub fn all_counts_at(&self, frame: u32) -> bool {
+        match self {
+            Goal::All {
+                by_frame, after, ..
+            } => frame <= *by_frame && after.is_none_or(|a| frame > a),
+            _ => false,
+        }
+    }
+
+    /// An `all` goal as a missed goal names it: `a = 1, b = 2 [after oracle frame A] by oracle
+    /// frame B`.
+    pub fn all_wanted(all: &[(String, u32)], after: Option<u32>, by_frame: u32) -> String {
+        let want: Vec<String> = all.iter().map(|(v, n)| format!("{v} = {n}")).collect();
+        let after = after.map_or(String::new(), |a| format!(" after oracle frame {a}"));
+        format!("{}{after} by oracle frame {by_frame}", want.join(", "))
+    }
 }
 
 impl Case {
@@ -751,6 +774,7 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
         &[
             "all",
             "by_frame",
+            "after",
             "idle",
             "game_over",
             "level_end",
@@ -812,9 +836,24 @@ fn goal(v: &Value, sync_frame: u32, frames: u32) -> Result<Goal, String> {
     if all.is_empty() {
         return Err("goal.all is empty: a goal with nothing to reach".to_string());
     }
+    let by_frame = by_frame(t)?;
+    let after = match t.iter().find(|(k, _)| k == "after") {
+        None => None,
+        Some((_, a)) => {
+            let a = a.int("after")?;
+            if a < sync_frame || a >= by_frame {
+                return Err(format!(
+                    "goal after {a}: must be at or after the sync frame {sync_frame} and before \
+                     by_frame {by_frame}"
+                ));
+            }
+            Some(a)
+        }
+    };
     Ok(Goal::All {
         all,
-        by_frame: by_frame(t)?,
+        by_frame,
+        after,
     })
 }
 
@@ -1077,6 +1116,53 @@ mod tests {
         );
     }
 
+    /// An `all` goal's `after` (title T03): a path back to where it started is met only past it.
+    #[test]
+    fn an_all_goal_takes_a_frame_it_counts_only_after() {
+        let all = "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }";
+        let after = WORLD.replace(
+            all,
+            "goal = { all = [{ var = \"irq_count\", value = 300 }], after = 5130, by_frame = 7990 }",
+        );
+        let g = Case::parse("w", &after).unwrap().goal.unwrap();
+        assert_eq!(
+            g,
+            Goal::All {
+                all: vec![("irq_count".into(), 300)],
+                by_frame: 7990,
+                after: Some(5130),
+            }
+        );
+        assert!(!g.all_counts_at(5000) && !g.all_counts_at(5130));
+        assert!(g.all_counts_at(5131) && g.all_counts_at(7990) && !g.all_counts_at(7991));
+        let plain = Case::parse("w", WORLD).unwrap().goal.unwrap();
+        assert!(plain.all_counts_at(4991) && !plain.all_counts_at(7991));
+        assert!(!Goal::Exited { by_frame: 7990 }.all_counts_at(5000));
+        assert_eq!(
+            Goal::all_wanted(&[("title_cursor".into(), 0)], Some(5130), 5170),
+            "title_cursor = 0 after oracle frame 5130 by oracle frame 5170"
+        );
+        assert_eq!(
+            Goal::all_wanted(&[("title_cursor".into(), 0)], None, 5170),
+            "title_cursor = 0 by oracle frame 5170"
+        );
+        let new = |a: &str| {
+            format!("goal = {{ all = [{{ var = \"irq_count\", value = 300 }}], {a}by_frame = 7990 }}")
+        };
+        for (to, says) in [
+            (new("after = 4989, "), "goal after 4989: must be at or after the sync frame 4990"),
+            (new("after = 7990, "), "before by_frame 7990"),
+            (new("after = soon, "), "soon"),
+            (
+                "goal = { exited = true, after = 5000, by_frame = 7990 }".to_string(),
+                "takes a `by_frame` and nothing else",
+            ),
+            ("goal = { idle = true, after = 5000 }".to_string(), "stands alone"),
+        ] {
+            refused(WORLD, all, &to, says);
+        }
+    }
+
     #[test]
     fn what_the_enters_and_exited_goals_do_not_say_is_refused() {
         let all = "goal = { all = [{ var = \"irq_count\", value = 300 }], by_frame = 7990 }";
@@ -1172,7 +1258,8 @@ mod tests {
             c.goal,
             Some(Goal::All {
                 all: vec![("char_x".into(), 0x80)],
-                by_frame: 6400
+                by_frame: 6400,
+                after: None,
             })
         );
         assert_eq!(

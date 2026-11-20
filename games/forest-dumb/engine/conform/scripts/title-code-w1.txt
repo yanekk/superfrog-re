@@ -17,3 +17,6 @@
 128: -
 138: F       # fire on START: title_code_world and load_world in this step (frame 5128)
 148: -
+# forest-dumb-title T04: SCENA 1 waits for fire from about 6334 (boot-to-level1's 6206, 128 frames on);
+1438: F      # fire on SCENA 1 (frame 6428); play's first frame is 6429, level3_handler's first run
+1449: -

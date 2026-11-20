@@ -20,8 +20,9 @@ use pcode_rt::{Image, Regs, Stop};
 
 /// Cases that pass on the translated program with level 1 mounted (T36, 2026-11-19; the eight
 /// after `world-6-start`, T55, 2026-11-19; the ten after `enemy-route`, T58, 2026-11-20;
-/// `title-koniec`, title T05, 2026-11-20; the two game over cases, title T06, 2026-11-20).
-const PASS_MOUNTED: [&str; 52] = [
+/// `title-koniec`, title T05, and the two idle title cases, which never reach play, title T03,
+/// 2026-11-20; the two game over cases, title T06, 2026-11-20).
+const PASS_MOUNTED: [&str; 54] = [
     "camera-top-left",
     "character-edge-left",
     "character-edge-slope",
@@ -71,15 +72,27 @@ const PASS_MOUNTED: [&str; 52] = [
     "mechanic-vanish",
     "route-W1-1",
     "route-both-W1-1",
+    "title-idle-loop",
     "title-koniec",
+    "title-rows",
     "game-over-title",
     "game-over-name",
 ];
 
 /// Cases that differ mounted, not the mount's doing: `power-on-level-1` differs on the translated
 /// program alone from frame 6301 (T53; measured again 2026-11-20, T58). `title-esc` quits a frame
-/// late on the translated program alone, the same mounted (title T05, 2026-11-20; left for T07).
-const DIFFER: [&str; 2] = ["power-on-level-1", "title-esc"];
+/// late on the translated program alone, the same mounted (title T05, 2026-11-20; left for T07). The
+/// `title-code-*` cases differ on it alone from frame 5051, on the title (title plan T04,
+/// `title_code_cases.rs`).
+const DIFFER: [&str; 7] = [
+    "power-on-level-1",
+    "title-code-cheat",
+    "title-code-w1",
+    "title-code-w3",
+    "title-code-w5",
+    "title-code-wrong",
+    "title-esc",
+];
 
 /// The level 1 cases that hear a sound effect on the original whose Paula writes are the
 /// original's in order with level 1 mounted, and the effects each hears (T57, 2026-11-19, measured
@@ -146,7 +159,7 @@ fn every_case_is_in_one_list() {
 }
 
 #[test]
-#[ignore = "full: the disks, Kickstart and the generated tree; 52 cases, about 25 min"]
+#[ignore = "full: the disks, Kickstart and the generated tree; 54 cases, about 28 min"]
 fn every_case_that_passes_mounted_still_does() {
     generated();
     let cases: Vec<Case> = PASS_MOUNTED

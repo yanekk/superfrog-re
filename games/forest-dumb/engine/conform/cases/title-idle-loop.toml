@@ -1,0 +1,18 @@
+# The idle title past the song's first loop (forest-dumb-title T03, DESIGN §2.2): power-on as
+# power-on-title (boot-to-title's input, nothing pressed after the disk 2 prompt), then the title
+# idles while mt_music plays positions 0 to 26; mt_songpos is first back at 0 in step 15013, 10091
+# frames after mt_init's frame 4922 (T01, docs/16-title.md, "The song's loop"). Lined up by loads,
+# the only title runner that takes a goal. Translated engine only.
+# Passes on the translated program, measured 2026-11-20 (T03), and with level 1 mounted: 10 440
+# frames compared outside the five loads, every channel equal within the bar (one frame's bytes one
+# frame on, one picture a few pixels off, two glitch frames), the goal met at oracle frame 15014.
+sync = { script = "boot-to-title", frame = 0 }
+start = "entry"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 15100
+compare = ["memory", "picture", "writes", "vars"]
+vars = ["mt_songpos", "mt_counter"]
+# mt_songpos is 0 from mt_init on: `after` takes it only once position 26, the song's last, has
+# started (14905), so the goal is the loop back to 0 (step 15013).
+goal = { all = [{ var = "mt_songpos", value = 0 }], after = 14905, by_frame = 15100 }

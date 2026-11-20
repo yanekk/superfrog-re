@@ -83,7 +83,7 @@ fn hits(verdicts: &[(Case, Verdict)], name: &str) -> u32 {
 
 fn goal(case: &Case) -> (&[(String, u32)], u32) {
     match &case.goal {
-        Some(Goal::All { all, by_frame }) => (all, *by_frame),
+        Some(Goal::All { all, by_frame, .. }) => (all, *by_frame),
         _ => panic!("{}: states no goal of variables", case.name),
     }
 }
