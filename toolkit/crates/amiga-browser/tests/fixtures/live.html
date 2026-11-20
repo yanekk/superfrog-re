@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<p id="frame">none</p>
+<script>
+// The DESIGN §2.5 mechanism: a page opened from disk cannot fetch, so it re-inserts a script tag.
+window.frame = null;
+setInterval(() => {
+  const s = document.createElement("script");
+  s.src = "live.js?t=" + Date.now();
+  s.onload = s.onerror = () => s.remove();
+  document.head.appendChild(s);
+}, 250);
+</script>

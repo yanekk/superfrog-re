@@ -26,6 +26,10 @@ const PURE: [&str; 5] = [
     "fd-translated",
 ];
 
+/// Pure files of crates that are part shell (map-page DESIGN §3.1): scanned by the same rules,
+/// file by file. `fd-map`'s level data is pure; its site writer and `default_out` are not.
+const PURE_FILES: [&str; 1] = ["fd-map/src/level.rs"];
+
 /// Crates a pure crate may depend on (normal and build edges, transitively). Each entry beyond the
 /// pure crates needs one line saying why it is pure. The toolkit crates' sources are scanned by
 /// the toolkit's own purity test.
@@ -516,6 +520,11 @@ fn the_real_pure_crates_pass() {
     let mut files = Vec::new();
     for k in PURE {
         rust_files(&crates_dir().join(k), &mut files);
+    }
+    for f in PURE_FILES {
+        let path = crates_dir().join(f);
+        assert!(path.is_file(), "{f}, a pure file, is not there");
+        files.push(path);
     }
     assert!(
         files.len() >= 3,

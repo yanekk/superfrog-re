@@ -51,7 +51,7 @@ h1 .lvl { color: var(--accent); }
 .rt.faults .g { background: var(--warn); }
 .rt.failed { border-color: color-mix(in srgb, var(--bad) 55%, var(--line)); }
 .rt.failed .g { background: var(--bad); }
-.rt.unknown .g { background: var(--muted); }
+.rt.unknown .g, .rt.map .g { background: var(--muted); }
 .rt[hidden] { display: none; }
 .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg); cursor: pointer; user-select: none; }
 .toggle input { accent-color: var(--warn); }
@@ -61,7 +61,7 @@ h1 .lvl { color: var(--accent); }
 .verdict.failed { border-color: var(--bad); }
 .verdict.faults { border-color: var(--warn); }
 .pill { font-family: var(--display); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; padding: 2px 9px; border-radius: 3px; color: #111; }
-.pill.clean { background: var(--ok); } .pill.faults { background: var(--warn); } .pill.failed { background: var(--bad); } .pill.unknown { background: var(--muted); }
+.pill.clean { background: var(--ok); } .pill.faults { background: var(--warn); } .pill.failed { background: var(--bad); } .pill.unknown, .pill.map { background: var(--muted); }
 .fault { font-size: 12.5px; padding: 2px 8px; border-radius: 3px; background: var(--panel-2); border: 1px solid var(--line); }
 .verdict.failed .fault { border-color: color-mix(in srgb, var(--bad) 60%, var(--line)); }
 .verdict.faults .fault { border-color: color-mix(in srgb, var(--warn) 60%, var(--line)); }
@@ -81,6 +81,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .chip[aria-pressed="false"] { opacity: .4; }
 .chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .ctl { display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.ctl.maponly { grid-template-columns: minmax(0, 1fr); }
 .ctl input[type=range] { width: 100%; accent-color: var(--accent); min-width: 0; }
 .readout { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .readout b { color: var(--fg); font-weight: 500; }
@@ -102,6 +103,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .notes { color: var(--muted); font-size: 12px; font-family: var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .empty { color: var(--muted); font-size: 13px; margin: 0; }
+/* Live mode: what the running game is doing, above the map. */
+.livebar { display: flex; flex-wrap: wrap; gap: 4px 18px; align-items: baseline; padding: 7px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-family: var(--mono); font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.livebar b { color: var(--fg); font-weight: 500; }
+.livebar[data-state="here"] { border-color: #7dff6a; }
+.livebar[data-state="unknown"] { border-color: var(--warn); }
 </style>
 
 <div class="wrap">
@@ -122,6 +128,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
   <div class="legend" id="legend"></div>
 
+  <div class="livebar" id="livebar" data-state="off" hidden><span id="livestat"></span><span id="livecount"></span></div>
+
   <div class="mapbox" id="mapbox">
     <canvas id="cv"></canvas>
     <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit">Fit</button><button id="zfollow" aria-pressed="false">Follow __ACTOR__</button></div>
@@ -129,7 +137,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     <div class="loading" id="loading" hidden>loading…</div>
   </div>
 
-  <div class="ctl">
+  <div class="ctl" id="ctl">
     <button id="play" aria-label="Play">▶</button>
     <button id="speed" title="Playback speed">4×</button>
     <input type="range" id="scrub" min="0" value="0" aria-label="Frame">
@@ -138,12 +146,12 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
   <div class="lower">
     <div class="card">
-      <h2>Route summary</h2>
+      <h2 id="statsh">Route summary</h2>
       <dl class="stats" id="stats"></dl>
-      <h2 style="margin-top:16px">Route file</h2>
+      <h2 style="margin-top:16px" id="notesh">Route file</h2>
       <p class="notes" id="notes"></p>
     </div>
-    <div class="card">
+    <div class="card" id="evcard">
       <h2>Events along the route</h2>
       <div class="filters" id="filters"></div>
       <div class="events"><table><tbody id="evbody"></tbody></table></div>
@@ -169,7 +177,8 @@ const tok = n => C.getPropertyValue(n).trim();
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 
 // ---------- per-route state, rebuilt by show() ----------
-let D = null, W = 0, H = 0, END = 0, map = null, objAt = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
+let D = null, Did = null, W = 0, H = 0, END = 0, ROUTED = true,   // END is -1 for a map-only level
+    map = null, objAt = new Map(), VAL = new Map(), done = new Map(), EV = [], segBreak = new Uint8Array(1), heat = null, heatMax = 1;
 const fp = k => { const p = D.track[Math.max(0, Math.min(END, k))]; return [p[0] + FX, p[1] + FY]; };
 
 const EVT = {
@@ -195,6 +204,10 @@ Object.assign(LAYERS, {
   live:   { name: 'Live objects at frame', color: '#ff9db0', on: true },
   events: { name: 'Event marks', color: '#9fe8ff', on: true },
 });
+// Live mode's own layer: the running game's character, creatures and changed cells. Not `live`,
+// which is a route's objects in play at the scrubbed frame.
+const LV = SPEC.live;   // null: no live mode, and the live file is never asked for
+if (LV) LAYERS.play = { name: 'Live play', color: '#7dff6a', on: true };
 // An object's layer: the first listing its cat, else the first listing none.
 const CAT_LAYER = {};
 for (const l of SPEC.layers) for (const c of l.cats) if (!(c in CAT_LAYER)) CAT_LAYER[c] = l.key;
@@ -220,6 +233,10 @@ function buildMap() {
 
 function buildEvents() {
   objAt = new Map(); D.objects.forEach(o => objAt.set(o[0] + ',' + o[1], o));
+  // An object value's cat and name, from the first object holding it: how a live cell is drawn.
+  VAL = new Map(); for (const o of D.objects) if (!VAL.has(o[2])) VAL.set(o[2], [o[3], o[4]]);
+  // A map-only level's data may leave out what only a replay has.
+  for (const k of ['inputs', 'live', 'events', 'notes']) if (!D[k]) D[k] = [];
   done = new Map(); EV = [];
   let lastSecret = -99;
   for (const e of D.events) {
@@ -276,25 +293,40 @@ function draw() {
     for (let i = 0; i < heat.length; i++) if (heat[i]) { cx.fillStyle = `rgba(255,77,210,${(0.12 + 0.78 * Math.log(heat[i] + 1) / lm).toFixed(3)})`; cx.fillRect((i % D.cols) * CELL_W, Math.floor(i / D.cols) * CELL_H, CELL_W, CELL_H); }
   }
 
-  for (const o of D.objects) {
-    const [c, r, m, cat, name] = o, L = layerOf(cat);
-    if (!shown(cat)) continue;
-    const x = c*CELL_W+CELL_W/2, y = r*CELL_H+CELL_H/2, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
-    cx.lineWidth = Math.max(1, 1.4*u);
-    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*CELL_W, r*CELL_H, CELL_W, CELL_H); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*CELL_W+.5, r*CELL_H+.5, CELL_W-1, CELL_H-1); continue; }
-    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*CELL_W+1, r*CELL_H+1, CELL_W-2, CELL_H-2); cx.setLineDash([]); continue; }
-    const col = LAYERS[L].color;
-    cx.strokeStyle = col; cx.fillStyle = col;
+  const shape = (x, y, cat, name) => {
     cx.beginPath();
     if (cat === 'coin') { if (name === 'tile coin') cx.rect(x-S*.8, y-S*.8, S*1.6, S*1.6); else cx.arc(x, y, S, 0, 7); }
     else if (cat === 'enemy') { const s = S*1.5; cx.moveTo(x, y-s); cx.lineTo(x+s, y); cx.lineTo(x, y+s); cx.lineTo(x-s, y); cx.closePath(); }
     else if (cat === 'pickup') { const s = S*1.3; cx.moveTo(x, y-s); cx.lineTo(x+s*.95, y+s*.7); cx.lineTo(x-s*.95, y+s*.7); cx.closePath(); }
     else cx.rect(x-S, y-S, S*2, S*2);
+  };
+  const drawObj = o => {
+    const [c, r, m, cat, name] = o, L = layerOf(cat);
+    if (!shown(cat)) return;
+    const x = c*CELL_W+CELL_W/2, y = r*CELL_H+CELL_H/2, took = done.has(c+','+r) && done.get(c+','+r) <= frame;
+    cx.lineWidth = Math.max(1, 1.4*u);
+    if (cat === 'hazard') { cx.fillStyle = 'rgba(255,138,61,.45)'; cx.fillRect(c*CELL_W, r*CELL_H, CELL_W, CELL_H); cx.strokeStyle = tok('--hazard'); cx.strokeRect(c*CELL_W+.5, r*CELL_H+.5, CELL_W-1, CELL_H-1); return; }
+    if (cat === 'secret') { cx.strokeStyle = took ? 'rgba(199,146,255,.35)' : tok('--secret'); cx.setLineDash([3,2]); cx.strokeRect(c*CELL_W+1, r*CELL_H+1, CELL_W-2, CELL_H-2); cx.setLineDash([]); return; }
+    const col = LAYERS[L].color;
+    cx.strokeStyle = col; cx.fillStyle = col;
+    shape(x, y, cat, name);
     if (took) { cx.globalAlpha = .28; cx.fill(); cx.globalAlpha = 1; cx.stroke(); }
     else if (!['coin', 'enemy', 'pickup'].includes(cat)) { cx.globalAlpha = .9; cx.stroke(); cx.globalAlpha = 1; }
     else { cx.fill(); cx.strokeStyle = 'rgba(0,0,0,.7)'; cx.stroke(); }
-    if (cat === 'exit' && name === 'level exit') { cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.fillText('EXIT', x - 11*u, y - S - 3*u); }
-  }
+    // One label a block of exit cells, centred over its top row: on its top-left cell alone.
+    const isExit = (c, r) => { const e = objAt.get(c + ',' + r); return !!e && e[3] === 'exit' && e[4] === 'level exit'; };
+    if (cat === 'exit' && name === 'level exit' && !isExit(c-1, r) && !isExit(c, r-1)) {
+      let w = 1; while (isExit(c+w, r)) w++;
+      cx.fillStyle = '#fff'; cx.font = `${Math.max(8, 10*u)}px ${tok('--mono')}`; cx.textAlign = 'center';
+      cx.fillText('EXIT', c*CELL_W + w*CELL_W/2, y - S - 3*u); cx.textAlign = 'start';
+    }
+  };
+  // In live play a cell the game changed is drawn with its current value, 0 being gone.
+  const here = liveHere() && LAYERS.play.on, lc = new Map();
+  if (here) for (const [c, r, v] of LF.cells || []) lc.set(c + ',' + r, v);
+  // An object of value 0 (a secret) has no object-map value for the game to change: always drawn.
+  for (const o of D.objects) if (!o[2] || !lc.has(o[0] + ',' + o[1])) drawObj(o);
+  for (const [k, v] of lc) if (v) { const [c, r] = k.split(',').map(Number); drawObj([c, r, v, ...(VAL.get(v) || ['other', 'other ' + v])]); }
 
   // route line, coloured from start (blue) to end (gold); the part not yet played is faint
   if (LAYERS.route.on && END > 0) {
@@ -338,6 +370,18 @@ function draw() {
     }
   }
 
+  if (here) {
+    // Creatures in view, each by its cat's shape in its layer's colour, then the character.
+    cx.lineWidth = Math.max(1, 1.4*u);
+    for (const [x, y, cat] of LF.actors || []) { cx.fillStyle = (LAYERS[layerOf(cat)] || LAYERS.play).color; shape(x, y, cat, ''); cx.fill(); cx.strokeStyle = '#000'; cx.stroke(); }
+    if (LF.actor) {
+      const [x, y] = LF.actor;
+      cx.beginPath(); cx.arc(x, y, Math.max(9, 12*u), 0, 7); cx.strokeStyle = LAYERS.play.color; cx.lineWidth = Math.max(1.5, 2.5*u); cx.stroke();
+      cx.beginPath(); cx.arc(x, y, Math.max(5, 7*u), 0, 7); cx.fillStyle = LAYERS.play.color; cx.fill(); cx.strokeStyle = '#000'; cx.lineWidth = Math.max(1, 2*u); cx.stroke();
+    }
+  }
+
+  if (!ROUTED) return;
   const [fx, fy] = fp(frame);
   cx.fillStyle = '#7dff6a'; cx.strokeStyle = '#000'; cx.lineWidth = Math.max(1, 2*u);
   cx.beginPath(); cx.arc(fx, fy, Math.max(5, 7*u), 0, 7); cx.fill(); cx.stroke();
@@ -353,13 +397,14 @@ box.addEventListener('pointermove', e => {
 });
 box.addEventListener('pointerup', e => { box.classList.remove('drag'); const d = drag; drag = null; if (d && !d.moved && D) clickAt(e); });
 box.addEventListener('pointerleave', () => { tip.hidden = true; });
-box.addEventListener('wheel', e => { e.preventDefault(); const r = box.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+box.addEventListener('wheel', e => { e.preventDefault(); if (LV) setFollow(false); const r = box.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top); }, { passive: false });
 document.getElementById('zin').onclick = () => zoomAt(1.4, box.clientWidth/2, box.clientHeight/2);
 document.getElementById('zout').onclick = () => zoomAt(1/1.4, box.clientWidth/2, box.clientHeight/2);
 document.getElementById('zfit').onclick = () => { setFollow(false); fit(); };
 const fb = document.getElementById('zfollow');
 function setFollow(v) { follow = v; fb.setAttribute('aria-pressed', v); fb.style.borderColor = v ? 'var(--accent)' : ''; }
-fb.onclick = () => { setFollow(!follow); if (follow) { if (scale < 1.5) scale = 2; const [x,y] = fp(frame); centerOn(x,y); draw(); } };
+// A map-only level in live mode has no track: with no live dot yet, Follow waits for the next one.
+fb.onclick = () => { setFollow(!follow); if (!follow) return; const p = liveDot() || (ROUTED ? fp(frame) : null); if (!p) { followZoom = true; return; } if (scale < 1.5) scale = 2; centerOn(p[0], p[1]); draw(); };
 
 const tip = document.getElementById('tip');
 const toLevel = e => { const r = box.getBoundingClientRect(); return [(e.clientX - r.left - ox)/scale, (e.clientY - r.top - oy)/scale, e.clientX - r.left, e.clientY - r.top]; };
@@ -375,7 +420,8 @@ function hover(e) {
   let html = `${D.level}:${hc},${hr}` + (heat && heat[hi] ? ` · ${esc(SPEC.actor)} here ${heat[hi]} frames` : '');
   if (LAYERS.guide.on && D.guide) { const g = D.guide.find(g => g[0] === hc && g[1] === hr); if (g) html += `<br>guide point${g[2] != null ? ' t ' + g[2] + ' s' : ''}${g[3] ? ' (estimated)' : ''}`; }
   if (n && n.ev) html = `frame ${n.ev.k} · ${(n.ev.k/50).toFixed(1)} s<br>${esc(n.ev.text)}`;
-  else if (n && n.obj) { const o = n.obj, k = done.get(o[0]+','+o[1]); html = `${D.level}:${o[0]},${o[1]} · ${esc(o[4])} (marker ${o[2]})<br>${k != null ? 'route got it at frame ' + k : 'route never touched it'}`; }
+  else if (n && n.obj) { const o = n.obj, k = done.get(o[0]+','+o[1]); html = `${D.level}:${o[0]},${o[1]} · ${esc(o[4])} (marker ${o[2]})` + (ROUTED ? `<br>${k != null ? 'route got it at frame ' + k : 'route never touched it'}` : ''); }
+  if (!ROUTED) readout.innerHTML = `${esc(D.level)}:<b>${hc},${hr}</b>` + (n && n.obj ? ` · ${esc(n.obj[4])}` : '');
   tip.innerHTML = html; tip.hidden = false;
   tip.style.left = Math.min(sx + 14, box.clientWidth - tip.offsetWidth - 6) + 'px';
   tip.style.top = Math.min(sy + 14, box.clientHeight - tip.offsetHeight - 6) + 'px';
@@ -392,11 +438,11 @@ function clickAt(e) {
 const scrub = document.getElementById('scrub'), readout = document.getElementById('readout'), playB = document.getElementById('play'), speedB = document.getElementById('speed');
 const joy = v => { let s = ''; if (v & 1) s += 'U'; if (v & 2) s += 'D'; if (v & 4) s += 'L'; if (v & 8) s += 'R'; if (v & 16) s += 'F'; return s || '–'; };
 function setFrame(k, fromPlay) {
-  if (!D) return;
+  if (!D || !ROUTED) return;
   frame = Math.max(0, Math.min(END, k|0)); scrub.value = frame;
   const p = D.track[frame];
   readout.innerHTML = `frame <b>${frame}</b> / ${END} · <b>${(frame/50).toFixed(1)}</b> s · input <b>${joy(D.inputs[frame])}</b> · ${D.level}:${cellOf(p).join(',')}`;
-  if (follow || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
+  if (follow && !liveDot() || !fromPlay && !inView()) { const [x,y] = fp(frame); centerOn(x,y); }
   draw(); markRow();
 }
 function inView() { const [x,y] = fp(frame), sx = x*scale+ox, sy = y*scale+oy; return sx > 30 && sy > 30 && sx < box.clientWidth-30 && sy < box.clientHeight-30; }
@@ -415,11 +461,13 @@ function tick(t) {
 }
 
 // ---------- legend (layers persist across routes) ----------
-const legend = document.getElementById('legend');
-for (const l of Object.values(LAYERS)) {
-  const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', l.on);
+const legend = document.getElementById('legend'), layerChips = {};
+// The page's own layers follow a route; a map-only level has none of them to draw.
+const ROUTE_LAYERS = ['route', 'guide', 'heat', 'live', 'events'];
+for (const [key, l] of Object.entries(LAYERS)) {
+  const b = document.createElement('button'); layerChips[key] = b; b.className = 'chip'; b.setAttribute('aria-pressed', l.on);
   b.innerHTML = `<i style="background:${l.color}"></i>${l.name}`;
-  b.onclick = () => { l.on = !l.on; b.setAttribute('aria-pressed', l.on); draw(); };
+  b.onclick = () => { l.on = !l.on; b.setAttribute('aria-pressed', l.on); if (D && !ROUTED) { mapSub(); mapStats(); } draw(); };
   legend.appendChild(b);
 }
 
@@ -454,7 +502,17 @@ function markRow() {
   if (marked && marked !== cur) marked.classList.remove('now');
   if (cur) cur.classList.add('now'); marked = cur;
 }
+// Secrets are counted only while their layer is on, so a count gives none away (owner, 2026-11-20).
+const counted = () => D.objects.filter(o => o[3] !== 'secret' || shown('secret'));
+function mapSub() { document.getElementById('sub').textContent = `map only · ${counted().length} objects`; }
+function mapStats() {
+  const S = SPEC.layers.filter(l => !l.cats.includes('secret') || LAYERS[l.key].on).map(l => [l.name, counted().filter(o => layerOf(o[3]) === l.key).length]);
+  if (D.coins_needed != null) S.unshift(['Coins the exit needs', D.coins_needed]);
+  document.getElementById('stats').innerHTML = S.map(([a,b]) => `<dt>${esc(a)}</dt><dd>${b}</dd>`).join('');
+  document.getElementById('notes').textContent = D.notes.join('\n');
+}
 function buildStats(entry) {
+  if (!ROUTED) return mapStats();
   const got = list => list.filter(o => done.has(o[0]+','+o[1])).length;
   const by = n => D.objects.filter(o => o[4] === n), cat = c => D.objects.filter(o => o[3] === c);
   const coinsObj = by('coin'), coinsTile = by('tile coin'), enemies = cat('enemy'), pickups = cat('pickup');
@@ -481,8 +539,8 @@ function buildStats(entry) {
 }
 
 // ---------- switcher ----------
-const GLYPH = { clean: '✓', faults: '!', failed: '✕', unknown: '?' };
-const WORD = { clean: 'Clean', faults: 'Faults', failed: 'Failed', unknown: 'No verdict' };
+const GLYPH = { clean: '✓', faults: '!', failed: '✕', unknown: '?', map: '·' };
+const WORD = { clean: 'Clean', faults: 'Faults', failed: 'Failed', unknown: 'No verdict', map: 'Map only' };
 const worlds = document.getElementById('worlds'), onlybad = document.getElementById('onlybad');
 const chips = new Map();
 {
@@ -501,7 +559,7 @@ const chips = new Map();
     worlds.appendChild(div);
   }
   const n = s => M.filter(e => e.status === s).length;
-  document.getElementById('count').innerHTML = `<span><b>${M.length}</b> routes</span><span style="color:var(--ok)"><b>${n('clean')}</b> clean</span><span style="color:var(--warn)"><b>${n('faults')}</b> with faults</span><span style="color:var(--bad)"><b>${n('failed')}</b> failed</span>`;
+  document.getElementById('count').innerHTML = `<span><b>${M.length}</b> ${n('map') ? 'levels' : 'routes'}</span><span style="color:var(--ok)"><b>${n('clean')}</b> clean</span><span style="color:var(--warn)"><b>${n('faults')}</b> with faults</span><span style="color:var(--bad)"><b>${n('failed')}</b> failed</span>` + (n('map') ? `<span><b>${n('map')}</b> map only</span>` : '');
   onlybad.onchange = () => { for (const e of M) chips.get(e.id).hidden = onlybad.checked && !(e.status === 'faults' || e.status === 'failed'); };
   if (M.length < 2) document.getElementById('switch').hidden = true;
 }
@@ -509,7 +567,8 @@ function verdict(e) {
   const v = document.getElementById('verdict');
   v.className = 'verdict ' + e.status;
   v.innerHTML = `<span class="pill ${e.status}">${WORD[e.status]}</span>` +
-    (e.faults.length ? e.faults.map(f => `<span class="fault">${esc(f)}</span>`).join('') : '<span class="info">no faults: reaches the exit, no heart lost, within 25% of the reference route</span>') +
+    (e.status === 'map' ? '<span class="info">no route: the level as its files hold it</span>' :
+     e.faults.length ? e.faults.map(f => `<span class="fault">${esc(f)}</span>`).join('') : '<span class="info">no faults: reaches the exit, no heart lost, within 25% of the reference route</span>') +
     (e.info.length ? `<span class="info">${e.info.map(esc).join(' · ')}</span>` : '');
 }
 
@@ -535,14 +594,81 @@ async function select(id) {
   try { data = await loadData(e); } catch (err) { ld.textContent = err.message; return; }
   if (current !== e.id) return;
   ld.hidden = true;
-  D = data; W = D.cols * CELL_W; H = D.rows * CELL_H; END = D.track.length - 1;
-  scrub.max = END;
+  // An empty track is a map-only level: no character, route, timeline or events.
+  D = data; Did = e.id; W = D.cols * CELL_W; H = D.rows * CELL_H; D.track = D.track || []; ROUTED = D.track.length > 0; END = D.track.length - 1;
+  scrub.max = Math.max(0, END); frame = 0;
+  for (const id of ['play', 'speed', 'scrub', 'evcard']) document.getElementById(id).hidden = !ROUTED;
+  document.getElementById('zfollow').hidden = !ROUTED && !LV;
+  for (const k of ROUTE_LAYERS) layerChips[k].hidden = !ROUTED;
+  document.getElementById('ctl').classList.toggle('maponly', !ROUTED);
+  document.getElementById('statsh').textContent = ROUTED ? 'Route summary' : 'Level summary';
+  document.getElementById('notesh').textContent = ROUTED ? 'Route file' : 'Notes';
+  if (!ROUTED && !LV) setFollow(false);
   buildMap(); buildEvents(); buildFilters(); rows(); buildStats(e);
-  document.getElementById('sub').textContent = `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '');
+  document.getElementById('sub').textContent = ROUTED
+    ? `${e.route_file || 'no route file'} · replayed on the engine · seed ${D.seed} · ${END + 1} frames` + (D.timing !== 'app' ? ` · timed for the original, so the replay may drift` : '') + (D.guide ? ` · guide ${D.guide_file} (${D.guide.length} points, hollow = estimated)` : '')
+    : '';
+  if (!ROUTED) mapSub();
   resize(); fit();
   // Open on the last frame, so the whole route and every event read at full strength at rest.
-  setFrame(END, true);
+  if (ROUTED) setFrame(END, true);
+  else readout.innerHTML = `${esc(D.level)} · point at the map for a cell`;
+  if (LV) { liveStatus(); liveFollow(); }
+  draw();
 }
+// ---------- live play ----------
+// The running game rewrites LV.file (replaced whole by rename); a page opened from disk cannot fetch,
+// so it is re-read by inserting a script tag, which sets window.LIVE. A missing file, or a frame
+// older than stale_ms by this page's clock, is "App not running": an old position is never drawn.
+let LF = null, liveLevel = null, followZoom = true, pending = false;
+// Only once the level's data is in: while a switch loads, D is still the old level's.
+function liveHere() { return !!(LV && LF && LF.playing && D && Did === current && LF.level === current); }
+function liveDot() { return liveHere() && LAYERS.play.on && LF.actor ? LF.actor : null; }
+function dotInView([x, y]) { const sx = x*scale+ox, sy = y*scale+oy, mx = box.clientWidth * .15, my = box.clientHeight * .15; return sx > mx && sy > my && sx < box.clientWidth-mx && sy < box.clientHeight-my; }
+// Follow: on entering it (load, a level switch, a click) zoom in and centre; then re-centre only
+// when the dot leaves the middle of the view, so the map does not swim under the pointer.
+function liveFollow() {
+  const p = liveDot(); if (!follow || !p) return;
+  if (followZoom) { if (scale < 1.5) scale = 2; centerOn(p[0], p[1]); followZoom = false; }
+  else if (!dotInView(p)) centerOn(p[0], p[1]);
+}
+const livebar = document.getElementById('livebar'), livestat = document.getElementById('livestat'), livecount = document.getElementById('livecount');
+function liveStatus() {
+  const e = LF && M.find(x => x.id === LF.level), cur = M.find(x => x.id === current);
+  let state, text;
+  if (!LF) { state = 'off'; text = 'App not running'; }
+  else if (!LF.playing) { state = 'idle'; text = 'Not playing'; }
+  else if (!e) { state = 'unknown'; text = 'Playing a level this map does not have'; }
+  else if (e.id !== current) { state = 'elsewhere'; text = `Playing <b>${esc(e.label)}</b> · showing ${esc(cur ? cur.label : '')}`; }
+  else { state = 'here'; text = `Playing <b>${esc(e.label)}</b>` + (LF.cell ? ` · ${esc(SPEC.actor)} at cell <b>${LF.cell[0]},${LF.cell[1]}</b>` : ''); }
+  livebar.dataset.state = state; livestat.innerHTML = text;
+  const C = LF && LF.playing && LF.counters || {};
+  livecount.innerHTML = LV.counters.filter(([k]) => k in C).map(([k, n]) => `${esc(n)} <b>${esc(C[k])}</b>`).join(' · ');
+}
+function gotLive(f) {
+  LF = f && typeof f.t === 'number' && Date.now() - f.t <= LV.stale_ms ? f : null;
+  // The page goes where play goes; a level picked by hand holds until play changes level again.
+  if (LF && LF.playing && LF.level != null && LF.level !== liveLevel) {
+    liveLevel = LF.level;
+    if (M.some(e => e.id === LF.level) && LF.level !== current) { followZoom = true; tip.hidden = true; select(LF.level); liveStatus(); draw(); return; }
+  }
+  liveStatus(); liveFollow(); draw();
+}
+function poll() {
+  if (pending) return;
+  pending = true; window.LIVE = undefined;
+  const s = document.createElement('script');
+  s.src = LV.file + '?t=' + Date.now();
+  // A file that ran but set no frame was read half replaced (Chrome does, now and then, despite
+  // the rename): keep the last frame, which gotLive still drops once it is stale.
+  const fin = ok => { s.remove(); pending = false; gotLive(ok ? window.LIVE || LF : null); };
+  s.onload = () => fin(true); s.onerror = () => fin(false);
+  document.head.appendChild(s);
+}
+if (LV) { livebar.hidden = false; setFollow(true); liveStatus(); poll(); setInterval(poll, LV.poll_ms); }
+// Read by the end-to-end tests: where the view is, to find the live dot on screen.
+window.ROUTEVIEW = { view: () => ({ scale, ox, oy, follow, current }) };
+
 window.addEventListener('resize', resize);
 const start = location.hash.slice(1);
 if (M.length) select(M.some(e => e.id === start) ? start : M[0].id);

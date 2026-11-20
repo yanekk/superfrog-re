@@ -164,7 +164,7 @@ fn main() {
                         label: j.label.clone(),
                         group: j.group.clone(),
                         route_file: j.route.as_ref().map(|p| shown(p, &repo)),
-                        verdict: v,
+                        verdict: Some(v),
                         wall_s: j.bench.as_ref().map(|b| b.wall_s),
                         ref_frames: j.bench.as_ref().and_then(|b| b.ref_frames),
                     };
@@ -182,7 +182,7 @@ fn main() {
     entries.sort_by_key(|e| e.0);
     let entries: Vec<Entry> = entries.into_iter().map(|e| e.1).collect();
     let page = site::write_index(&out, &site::spec(), &entries, bare).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
-    let n = |s: verdict::Status| entries.iter().filter(|e| e.verdict.status == s).count();
+    let n = |s: verdict::Status| entries.iter().filter(|e| e.verdict.as_ref().map(|v| v.status) == Some(s)).count();
     println!(
         "{}: {} routes, {} clean, {} with faults, {} failed",
         page.display(),

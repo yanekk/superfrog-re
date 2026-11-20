@@ -28,6 +28,10 @@
 //! is saved to the bugs folder at once, with the stop in its header; the app goes on ticking frozen,
 //! so Esc, ⌘Q and the menus still work. `--stop-after N` raises a test stop at step N.
 //!
+//! Every [`LIVE_EVERY`]th step play is sampled for the map page and `live.js` written into its
+//! folder on a thread of its own (`live.rs`, plans/forest-dumb-map-page DESIGN §2.5); a scripted
+//! run writes `<home>/map/live.js`, never the owner's page.
+//!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
 //! inputs and each frame's state hash (`fd_app::HASHES`), without the frames' pictures under
 //! `--capture-hashes`; `--max-frames` and `--timeout` bound a
@@ -38,6 +42,7 @@ mod controls;
 mod disks;
 mod home;
 mod input;
+mod live;
 mod menu;
 mod recorder;
 mod script;
@@ -75,6 +80,7 @@ use winit::window::{Window, WindowId};
 use crate::args::{Args, EngineChoice};
 use crate::controls::OpenControls;
 use crate::input::{HostInput, Input};
+use crate::live::{LIVE_EVERY, LiveWriter, Opened, RamSampler};
 use crate::menu::{Command, MenuBar};
 use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
@@ -297,6 +303,12 @@ struct Run {
     /// Whether the window's size holds the bar: it lags `video.bar` while fullscreen, and is
     /// caught up on leaving it.
     window_bar: bool,
+    /// The map page's live file (`live.rs`).
+    live: LiveWriter,
+    /// The translated program's live samples put back together, and the last one's `irq_count`.
+    sampler: RamSampler,
+    /// Game ▸ Show Map's page being written and opened, off the game loop (`live::show_map`).
+    show_map: Option<std::thread::JoinHandle<Opened>>,
 }
 
 /// The translated program's recording from `start`, by this build.
@@ -476,6 +488,9 @@ impl App {
             },
             stopped: None,
             window_bar: false,
+            live: LiveWriter::start(live::live_dir(&self.home, self.script.is_some())),
+            sampler: RamSampler::new(),
+            show_map: None,
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
@@ -522,6 +537,7 @@ impl App {
         match c {
             Command::StartLevel => self.start_level(),
             Command::StopRecording => self.stop_recording(),
+            Command::ShowMap => self.show_map(),
             Command::Controls => self.open_controls(event_loop),
             // Settings are saved when they change, never on the way out: a damaged file stays as
             // it is until the owner changes a setting (DESIGN §2.12).
@@ -531,6 +547,63 @@ impl App {
             Command::View(ViewCommand::Filter(f)) => self.set_filter(f),
         }
         self.show_menu();
+    }
+
+    /// Game ▸ Show Map (map page DESIGN §2.8): the page written fresh into the live file's folder
+    /// and opened in Chrome, on a thread, so play goes on meanwhile; [`App::shown_map`] says how it
+    /// went. A second click while one is under way does nothing more.
+    fn show_map(&mut self) {
+        let scripted = self.script.is_some();
+        let dir = live::live_dir(&self.home, scripted);
+        let Some(run) = &mut self.run else { return };
+        if run.show_map.is_some() {
+            eprintln!("fd-app: show-map: the page is still being written");
+            return;
+        }
+        let (program, disk2) = (run.disks.program.clone(), run.disks.disk2.clone());
+        let spawned = std::thread::Builder::new()
+            .name("show map".into())
+            .spawn(move || match live::disk2_files(&disk2) {
+                Ok(files) => live::show_map(&dir, &*files, &program, scripted),
+                Err(e) => Opened::Failed(format!("The map page could not be written: {e}")),
+            });
+        match spawned {
+            Ok(t) => run.show_map = Some(t),
+            Err(e) => self.say_map(Opened::Failed(format!("The map page could not be written: {e}"))),
+        }
+    }
+
+    /// Show Map's outcome once its thread is done (`wait`: wait for it). Only the main thread
+    /// shows a message window, so the thread hands its outcome back here.
+    fn shown_map(&mut self, wait: bool) {
+        let Some(run) = &mut self.run else { return };
+        if !wait && !run.show_map.as_ref().is_some_and(|t| t.is_finished()) {
+            return;
+        }
+        let Some(t) = run.show_map.take() else { return };
+        let opened = t
+            .join()
+            .unwrap_or_else(|_| Opened::Failed("The map page could not be written.".into()));
+        self.say_map(opened);
+    }
+
+    fn say_map(&self, opened: Opened) {
+        match opened {
+            Opened::Opened(p) => eprintln!("fd-app: show-map: opened {} in Chrome", p.display()),
+            // A scripted run never opens a browser (DESIGN §2.8): a test reads this line instead.
+            Opened::WouldOpen(p) => eprintln!("fd-app: show-map: would open {}", p.display()),
+            Opened::Failed(why) => {
+                eprintln!("fd-app: show-map: {why}; the game carries on");
+                if !self.args.unattended() {
+                    rfd::MessageDialog::new()
+                        .set_level(rfd::MessageLevel::Warning)
+                        .set_title("Forest Dumb")
+                        .set_description(&why)
+                        .set_buttons(rfd::MessageButtons::Ok)
+                        .show();
+                }
+            }
+        }
     }
 
     /// View → Scale ▸ `s`: remembered, and a window (not fullscreen) resized to it, the bar's
@@ -864,7 +937,7 @@ impl App {
             Engine::Translated(t) => {
                 let was_level_1 = t.frame().level_1;
                 let was_exited = t.frame().exited;
-                t.step(input);
+                t.step_live(input, n.is_multiple_of(LIVE_EVERY as u64));
                 if stop_after == Some(n) {
                     t.raise(test_stop(n));
                 }
@@ -1010,6 +1083,9 @@ impl App {
             }
         }
         run.shown.completed((n, size, rgba));
+        if n.is_multiple_of(LIVE_EVERY as u64) {
+            sample_live(run, ran);
+        }
         if run.recorder.full() {
             eprintln!("fd-app: the recording is a day long, the longest one may be: stopped");
             self.save_recording();
@@ -1021,8 +1097,12 @@ impl App {
     }
 
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
+        // A page being written is finished and said, so a scripted run's last line is never lost.
+        self.shown_map(true);
         if let Some(r) = self.run.as_mut() {
             eprintln!("fd-app: quit after step {}", r.steps);
+            // The run's last sample on disk before the process exits, which drops nothing.
+            r.live.finish();
             if let Some(c) = r.capture.as_mut() {
                 let done = r
                     .hashes
@@ -1064,6 +1144,22 @@ impl App {
     }
 }
 
+/// The map page's sample of the step just run, handed to the live writer. `ran` is false after a
+/// stop, whose frozen frame is not play.
+fn sample_live(run: &mut Run, ran: bool) {
+    let sample = match &run.engine {
+        _ if !ran => fd_core::live::Live::default(),
+        Engine::Hand(g) => fd_core::live::live_from_game(g, &g.data().level.objects.cells),
+        Engine::Translated(t) => {
+            let Some(bytes) = &t.frame().live else { return };
+            let objects = &run.disks.objects;
+            let start = |w: u8| objects.get((w as usize).wrapping_sub(1)).cloned().flatten();
+            run.sampler.live(bytes, &start)
+        }
+    };
+    run.live.send(live::frame(&sample, live::now_ms()));
+}
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if !self.started {
@@ -1082,6 +1178,7 @@ impl ApplicationHandler for App {
                 return;
             }
         }
+        self.shown_map(false);
         while let Some(a) = ControlsWindow::next_click() {
             self.controls_action(a);
         }

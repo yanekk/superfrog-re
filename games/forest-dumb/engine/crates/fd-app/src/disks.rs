@@ -38,6 +38,10 @@ pub struct Disks {
     pub program: Vec<u8>,
     /// Disk 2's ADF, in the translated machine's df0.
     pub disk2: Vec<u8>,
+    /// Each world's object map as its level file holds it (`_MapaBobowN`, world N at N - 1), what
+    /// the map page's live cells are the differences from (plans/forest-dumb-map-page DESIGN §2.5);
+    /// `None` for a file that cannot be read or is not a whole map, whose world then shows no cells.
+    pub objects: Vec<Option<Vec<u8>>>,
 }
 
 /// Everything the game reads, from the zips in `dir`.
@@ -66,9 +70,27 @@ pub fn read(dir: &Path) -> Result<Disks, String> {
     let program = images[0].1.read_file(PROGRAM_FILE).map_err(|e| {
         format!("{PROGRAM_FILE}: disk 1 ({}): {e}", images[0].0.display())
     })?;
+    let objects = (1..=6)
+        .map(|w| {
+            let name = &fd_assets::level_file_names(w)[4];
+            let whole = fd_assets::OBJECT_COLUMNS as usize * fd_assets::LEVEL_ROWS as usize;
+            match files(name) {
+                Ok(m) if m.len() == whole => Some(m),
+                Ok(m) => {
+                    eprintln!("fd-app: {name}: {} bytes, not {whole}; the map page shows no taken items in W{w}-1", m.len());
+                    None
+                }
+                Err(e) => {
+                    eprintln!("fd-app: {e}; the map page shows no taken items in W{w}-1");
+                    None
+                }
+            }
+        })
+        .collect();
     Ok(Disks {
         data,
         program,
         disk2: adfs[1].clone(),
+        objects,
     })
 }

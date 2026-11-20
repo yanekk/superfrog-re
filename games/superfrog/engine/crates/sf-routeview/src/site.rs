@@ -30,6 +30,7 @@ pub fn spec() -> PageSpec {
         anchor: (0x17, -10),
         cell_origin: (0x17, -0x10),
         live_box: (-2, -14, 20, 18),
+        live: None,
     }
 }
 
@@ -66,5 +67,16 @@ mod tests {
             assert_eq!(s.categories.iter().filter(|c| c.cats.iter().any(|x| x == cat)).count(), 1, "{cat}");
         }
         assert_eq!(s.categories.iter().filter(|c| c.cats.is_empty()).count(), 1);
+    }
+
+    /// Superfrog has no live writer: its page never asks for a live file (the toolkit's
+    /// `live_chrome.rs` shows a page with `"live":null` inserts no script).
+    #[test]
+    fn the_page_has_no_live_mode() {
+        assert_eq!(spec().live, None);
+        let dir = std::env::temp_dir().join(format!("sf-routeview-no-live-{}", std::process::id()));
+        let html = std::fs::read_to_string(write_index(&dir, &spec(), &[], false).unwrap()).unwrap();
+        assert!(html.contains(r#""live":null"#));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

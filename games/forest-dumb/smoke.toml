@@ -260,7 +260,25 @@ workspace = "engine"
 # from a snapshot against the original's.
 "crates/fd-conform/tests/machine_title.rs" = "full"
 "crates/fd-assets/src" = "smoke"
+# Map page T01: every value of the six object maps has a group in re/objects-*.toml, and made-up
+# tables and maps for the unknown value and the contradiction; reads disk 2, under a second warm.
+"crates/fd-conform/tests/object_tables.rs" = "smoke"
+# Map page T07: the secrets rule's per-world counts on the six levels (disk 2, under a second warm) in
+# smoke; the four oracle claims (W1-1 from the sync cache, W3-1 and W4-1 by level 1's cheat end,
+# about 6 s together warm) are #[ignore]d for the nightly set (DESIGN §5: oracle tests are full).
+"crates/fd-conform/tests/secret_claims.rs" = ["the_rule_lists_the_counts_docs_17_gives"]
+# Map page T02: fd-map on made-up level bytes and on each real world's object file (counts, exit,
+# items needed); reads both disks, about 2 s warm.
+"crates/fd-map/tests/levels.rs" = "smoke"
+# Map page T02: each world's items needed and exit against the original after level_init, six runs
+# from power-on, about 76 s: full.
+"crates/fd-conform/tests/map_oracle.rs" = "full"
 "crates/fd-core/src" = "smoke"
+# Map page T06: the live reader on made-up RAM, under a second.
+"crates/fd-core/tests/live.rs" = "smoke"
+# Map page T06: the live reader on headless runs from power-on (W1-1's route opening, beside the hand
+# engine, world 2, Esc to game over), about 20 s each warm; the disks and the tree's build put it in full.
+"crates/fd-conform/tests/live_reader.rs" = "full"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 # T65: a new game's collision_map, play screen and creature tables against the original at the cached
 # sync point, under a second warm (a machine with no sync cache boots to W1-1 once first).
@@ -320,6 +338,16 @@ workspace = "engine"
 # level 1's load with resizes and a lost focus, the stop band at 2× and 1000×700 with its zip
 # replayed. Four launches, about 34 s, and the generated tree.
 "crates/fd-e2e/tests/translated_drill.rs" = "full"
+# Map page T10: the app writing live.js. A 120-step hand run, about 4 s warm, in smoke; the route's 600
+# steps (6 s), the read-only folder, the title and W1-1 on the translated program (about 30 s and the
+# generated tree) full.
+"crates/fd-e2e/tests/live.rs" = ["a_short_hand_run_writes_live_js_into_its_home"]
+# Map page T11: Game ▸ Show Map. The scripted page write into <home>/map, about 2 s warm, in smoke; the
+# read-only folder and the click on the frame cap full; the real menu bar's listing is #[ignore]d, FD_E2E_OS=1.
+"crates/fd-e2e/tests/show_map.rs" = ["a_scripted_show_map_writes_the_page_into_its_home_and_opens_nothing"]
+# Map page T12, the drill: the page in three headless Chromes beside the translated app through W1-1 into
+# world 2, 4 to 10 min release, #[ignore]d; the generated tree and Chrome.
+"crates/fd-e2e/tests/map_drill.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
@@ -401,6 +429,13 @@ workspace = "engine"
 # script, read back against a replay; about 1 s warm.
 "crates/fd-routeview/src" = "smoke"
 "crates/fd-routeview/tests/page.rs" = "smoke"
+# Map page T08: fd-routeview --all's six data files against the disks' object files and its bad
+# arguments, about 2 s; --level and --script --all (~2 s) and the page in Chrome at three sizes
+# (~25 s) are full.
+"crates/fd-routeview/tests/levels_chrome.rs" = [
+    "all_writes_six_levels_matching_their_files",
+    "bad_arguments_exit_2_naming_what",
+]
 # T20, the planner: its facts, a 100-round search to the exit's cells replayed and drawn on the page,
 # the same route on 1 to 4 threads, the budget's stop through the command, and the route played on the
 # original (~2 s), two agreeing prefixes on it (~3 s): about 7 s warm. The 400-round search through
@@ -761,3 +796,19 @@ covers = ["crates/fd-conform/tests/seam.rs::one_byte_written_differently_fails_n
 [[area]]
 name = "the app built with no translation says how to generate it"
 covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_the_app_names_the_command_and_exits_1"]
+
+[[area]]
+name = "the map page's levels: every world's objects, exit and items needed read from its files"
+covers = ["crates/fd-map/tests/levels.rs::each_real_world_matches_its_object_file"]
+
+[[area]]
+name = "the app writing the map page's live file while it plays, into a scripted run's own home"
+covers = ["crates/fd-e2e/tests/live.rs::a_short_hand_run_writes_live_js_into_its_home"]
+
+[[area]]
+name = "the six-level map page: fd-routeview --all writes W1-1 to W6-1 map only, live mode on"
+covers = ["crates/fd-routeview/tests/levels_chrome.rs::all_writes_six_levels_matching_their_files"]
+
+[[area]]
+name = "Game ▸ Show Map writing the map page and, scripted, opening nothing"
+covers = ["crates/fd-e2e/tests/show_map.rs::a_scripted_show_map_writes_the_page_into_its_home_and_opens_nothing"]

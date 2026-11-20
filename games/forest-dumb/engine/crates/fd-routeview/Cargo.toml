@@ -4,9 +4,9 @@ version.workspace = true
 edition.workspace = true
 publish.workspace = true
 
-# The map page (DESIGN §2.10): plays an input script on the engine from W1-1's start and writes the
-# toolkit's route page over level 1's map, the character's path drawn on it. Shell: it reads the
-# script and the owner's disks and writes files under build/ (the page holds disk graphics).
+# The map page: the six levels map only, live mode on (plan forest-dumb-map-page T08, `--all`,
+# `--level`), and an input script played on the engine from W1-1's start drawn over level 1's map
+# (`--script`). Shell: it reads the script and the owner's disks and writes files under build/.
 
 [dependencies]
 # The page writer.
@@ -17,8 +17,16 @@ amiga-input = { path = "../../../../../toolkit/crates/amiga-input" }
 # The engine the script is played on, and the level files' layout.
 fd-core = { path = "../fd-core" }
 fd-assets = { path = "../fd-assets" }
+# The object tables' reader the map page and the app share (`object_name`).
+fd-map = { path = "../fd-map" }
 # The game's data from the owner's disks (`game_data`).
 fd-conform = { path = "../fd-conform" }
+# The disk files as stored, for the six-level map page (`write_map`); fd-conform already links it.
+fd-tools = { path = "../fd-tools" }
+
+[dev-dependencies]
+# Headless Chrome for tests/levels_chrome.rs.
+amiga-browser = { path = "../../../../../toolkit/crates/amiga-browser" }
 
 [[bin]]
 name = "fd-routeview"
