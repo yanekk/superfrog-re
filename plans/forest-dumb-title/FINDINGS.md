@@ -12,7 +12,7 @@ changed.
 | 2026-11-20 | 🐞 | Esc on the title quits to AmigaDOS in the step it is pressed (`title_codes.rs`); docs/07 read it as dead. `title-esc` judges a quit, as `title-koniec` does. |
 | 2026-11-20 | 📌 | `level2_handler` runs on keys at the title: `last_key_byte` follows them (T01). docs/15's "none taken" for level 2 there pressed no key. KODY and Esc need the machine to take it. |
 | 2026-11-20 | 📌 | Esc in play gives up straight to game over; `game-over-*.txt` use it. High scores take a typed name, kept in memory only (the save routine is unreferenced), so `game-over-name` applies; no owner question. |
-| 2026-11-20 | 📌 | A `LAYOUT` row needs a `State` field (fd-core `TitleVars`, carried unchanged), and a `name+$off` row is read as a creature field, so the high-score table is `hiscore_name_N`/`hiscore_score_N`. |
+| 2026-11-20 | 📌 | A `LAYOUT` row needs a `State` field (fd-core `TitleVars`, carried unchanged). High-score names are three long rows each, `hiscore_name_N+$0/+$4/+$8`; a non-creature `+$` row reads as a plain variable (T01 review). |
 | 2026-11-20 | 📌 | `tools/smoke.sh` in a fresh worktree (plan review): setup clean; root, toolkit and forest-dumb ok, forest-dumb done at 1061 s from a cold build; killed at the 1200 s limit in games/superfrog. Warm runs are the 842 s figure. |
 | 2026-11-20 | 📌 | `bug compare` judges only hand-engine level 1 recordings (`fd-conform/src/bug.rs` `compare`, retimed to the level sync point); translated recordings, any start, only replay. Left out of scope here. |
 | 2026-11-20 | 📌 | Smoke's last pass took 842 s of its 900 (`smoke-times.tsv`, `a4eebadc`); three of the four runs before it failed or hit the limit. Only seconds-long tests go in smoke. |
