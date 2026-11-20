@@ -2,7 +2,7 @@
 
 Each world's level as the map page draws it, read from the level files and the main program with no
 engine run (plan `forest-dumb-map-page`, DESIGN §2.1, §2.2, §3.2): the tile map, the tiles it uses, the
-palette, every object with its page layer, the exit cells and the items the exit needs. Separate from
+palette, every object with its page layer, the hidden passages, the exit cells and the items the exit needs. Separate from
 `fd-routeview` so `fd-app` can link it: its normal dependencies are `fd-assets` and `amiga-routeview`
 only. `src/level.rs` is pure (`fd-conform/tests/purity.rs` scans it); `src/lib.rs` is the shell side.
 
@@ -23,7 +23,12 @@ only. `src/level.rs` is pure (`fd-conform/tests/purity.rs` scans it); `src/lib.r
 - `WORLDS` (`[1, 2, 3, 4, 5, 6]`), `level_id(world) -> String` (`"W2-1"`).
 - `map_level(world, &Level, program: &[u8]) -> Result<MapLevel, String>`: errors name the file
   (`_MapaBobowN: no exit`, `FOREST_DUMB_FOREVER: hunk 1 +$398: ... is not colour 5's copper move`).
-- `MapLevel { world, cols, rows, palette, body, tiles, objects, exit, items_needed }`; `to_json()`.
+- `MapLevel { world, cols, rows, palette, body, tiles, objects, secrets, exit, items_needed }`; `to_json()`.
+  `secrets` is `fd_assets::secrets(level)` as `MapObject`s: cat `secret`, value 0, named by kind
+  (`secret_name(SecretKind)`, `"hidden passage"`). Only hidden passages: T07 confirmed no other kind on
+  the original (docs/17), so there is no invisible floor to list. `to_json` writes them into `objects`
+  before the real objects, because the page keys a cell's hover by the last object there and a coin
+  in a passage must stay the coin; a test counting the file's objects skips value 0.
   `cols` is the used columns (the collision map's: 240, W6-1 320); `body` is row by row.
 - `MapObject { c, r, value, cat, name }`.
 - `object_name(value) -> (&'static str, String)`: the layer (`coin`, `enemy`, `pickup`, `hazard`,
@@ -33,7 +38,7 @@ only. `src/level.rs` is pure (`fd-conform/tests/purity.rs` scans it); `src/lib.r
   38 400 bytes less 50, as every `load_list_world_N` computes it (T00, docs/10, "Items"). It is a pure
   function of the object map: no run of the program is needed.
 - `palette(program) -> Result<Vec<[u8; 3]>, String>`: hunk 1's level colours at `$384`, registers checked.
-- `spec() -> PageSpec`: the game's page, live mode on (`live.js`, "Items left"); `offline(html)` drops the toolkit's
+- `spec() -> PageSpec`: the game's page, a Secrets layer (cat `secret`, off at load, DESIGN §2.3), live mode on (`live.js`, "Items left"); `offline(html)` drops the toolkit's
   web-font line and shows a clean route as "No verdict".
 - `write_site(out, files, program, route) -> Result<PathBuf, String>`: the six levels' page (`index.html`,
   `data/W?-1.js`); `write_levels(out, files, program, worlds, route)` for some. `route` (a `LevelDump`) takes its
@@ -49,8 +54,11 @@ and `fd-conform/tests/object_tables.rs` fails on it.
 ## Tests
 
 - `tests/levels.rs` (smoke, about 2 s, needs both disks): made-up levels (layers, exit, unknown value,
-  coins past the used columns, W6-1's 320 columns, errors), then each real world's object counts per
-  value against its `_MapaBobowN` bytes, its 2×3 exit and T00's items needed.
+  coins past the used columns, W6-1's 320 columns, a hidden passage, errors), then each real world's
+  object counts per value against its `_MapaBobowN` bytes, its 2×3 exit, T00's items needed, and its
+  secrets against `fd_assets::secrets` (W1-1 133, W3-1 292, W4-1 63, the rest 0).
+- `fd-routeview/tests/levels_chrome.rs`: the page in Chrome; Secrets off at load, drawn at each of
+  W1-1's cells when on and named on hover, W2-1's count 0.
 - `fd-conform/tests/map_oracle.rs` (full, about 76 s): each world's items needed and `$ff` cells against
   `items_left` and the RAM object map (`h0+$cb38`) when `main_loop` first runs, by the
   `world-N-start` cases' way in.

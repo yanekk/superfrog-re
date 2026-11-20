@@ -3,8 +3,8 @@
 
 use amiga_routeview::LevelDump;
 use fd_assets::{
-    AssetError, CollisionMap, LEVEL_ROWS, Level, OBJECT_COLUMNS, ObjectMap, TILE_BYTES, TileMap,
-    read_level,
+    AssetError, CollisionMap, LEVEL_ROWS, Level, OBJECT_COLUMNS, ObjectMap, SecretKind, TILE_BYTES,
+    TileMap, read_level, secrets,
 };
 use fd_map::{MapLevel, WORLDS, items_needed, level_id, map_level, object_name};
 
@@ -146,6 +146,64 @@ fn objects_past_the_used_columns_are_not_drawn_but_their_coins_count() {
     assert_eq!(m.items_needed, 2);
 }
 
+/// A wall (tile 2, solid shape) with one cell of it empty inside: T07's hidden passage, listed apart
+/// from the objects with cat `secret`, value 0, named by kind; and on the page before the objects.
+#[test]
+fn a_made_up_hidden_passage_is_a_secret() {
+    let mut l = level(240, &usual());
+    l.gens.push([0; TILE_BYTES]);
+    l.shapes.push([0xffff; 16]);
+    for c in 20..26 {
+        for r in 40..50 {
+            l.tiles.cells[c * 96 + r] = 2;
+            l.collision.cells[c * 96 + r] = 1;
+        }
+    }
+    l.collision.cells[22 * 96 + 45] = 0;
+    // A coin in the passage stays an object, and the page keeps it the cell's last.
+    l.objects.cells[22 * 96 + 45] = 0x20;
+    let m = map_level(1, &l, &program()).unwrap();
+    let got: Vec<_> = m
+        .secrets
+        .iter()
+        .map(|o| (o.c, o.r, o.value, o.cat, o.name.as_str()))
+        .collect();
+    assert_eq!(got, [(22, 45, 0, "secret", "hidden passage")]);
+    assert_eq!(
+        fd_map::secret_name(SecretKind::HiddenPassage),
+        "hidden passage"
+    );
+    assert!(m.objects.iter().all(|o| o.cat != "secret"));
+    let json = m.to_json();
+    let (s, c) = (
+        json.find(r#"[22,45,0,"secret","hidden passage"]"#).unwrap(),
+        json.find(r#"[22,45,32,"coin","coin"]"#).unwrap(),
+    );
+    assert!(s < c, "the secret after the coin at its cell");
+    // With no wall met empty, none.
+    assert!(
+        map_level(1, &level(240, &usual()), &program())
+            .unwrap()
+            .secrets
+            .is_empty()
+    );
+}
+
+/// The Secrets layer is off at load and holds only `secret` (DESIGN §2.3).
+#[test]
+fn the_secrets_layer_starts_off() {
+    let spec = fd_map::spec();
+    let l = spec.categories.iter().find(|c| c.key == "secrets").unwrap();
+    assert!(!l.on);
+    assert_eq!(l.cats, ["secret"]);
+    assert!(
+        spec.categories
+            .iter()
+            .filter(|c| c.key != "secrets")
+            .all(|c| !c.cats.iter().any(|k| k == "secret"))
+    );
+}
+
 #[test]
 fn w6_1_is_320_columns_wide() {
     let mut o = usual();
@@ -264,4 +322,29 @@ fn each_real_world_matches_its_object_file() {
         assert!(m.objects.iter().all(|o| o.cat != "other"), "W{world}-1");
         assert_eq!(m.palette.len(), 32);
     }
+}
+
+/// Each world's secrets are `fd_assets::secrets`'s, cell for cell, all named "hidden passage".
+#[test]
+fn each_real_world_lists_fd_assets_secrets() {
+    let program = disk("disk1/FOREST_DUMB_FOREVER").unwrap_or_else(|e| panic!("{e}"));
+    let mut counts = Vec::new();
+    for world in WORLDS {
+        let level = read_level(world, &files).unwrap_or_else(|e| panic!("{e}"));
+        let m = map_level(world, &level, &program).unwrap();
+        let want: Vec<_> = secrets(&level).iter().map(|s| (s.c, s.r)).collect();
+        let got: Vec<_> = m.secrets.iter().map(|o| (o.c, o.r)).collect();
+        assert_eq!(got, want, "W{world}-1");
+        assert!(
+            m.secrets
+                .iter()
+                .all(|o| o.cat == "secret" && o.name == "hidden passage")
+        );
+        counts.push(got.len());
+    }
+    // docs/17: passages in W1-1, W3-1 and W4-1 only.
+    assert!(
+        counts[0] > 0 && counts[2] > 0 && counts[3] > 0,
+        "{counts:?}"
+    );
 }
