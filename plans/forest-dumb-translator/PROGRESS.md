@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-20
+**Next `pir-work` will:** T58 and T59 (T56's rest), then T40 and T42.
 
 ## Tasks
 
@@ -74,9 +74,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
-| T60 | walk-unit-tests | T56; blocks T40, T42 | 🔍 | `fd-translated/tests/walk.rs`, 15 smoke tests: walk equals generated calls on dbf_loop, flags_call, nested_call, shared_call; each Decision, Until, skip_call on hand shapes. Python `ShapeRow`, 4 tests. Deviation: fixed walk's block start after return and skip_call (separate Escape commit). mount_timing full unrun. |
+| T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | Reviewed clean, no fix commit. Walk equals generated calls on four fixtures; each Decision, Until, skip_call and ShapeRow held. Return and skip_call block-start fix held: reverting either line turns tests red; Dbcc first-CBRANCH mutation red. Probe: `relative` fixture matches too. Effect on the real program (`mount_timing.rs` full, disks) unrun. |
 
-**Review queue:** T60
+**Review queue:** empty
 
 ## Blocked on the user
 
