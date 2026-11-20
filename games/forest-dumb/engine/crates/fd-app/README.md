@@ -7,7 +7,7 @@ writes through `amiga-paula` to the audio device, whose clock paces the game; a 
 nothing aloud and captures it; level 1 has no music, only its effects, which the mount starts as the original does, T57); `--engine hand`
 instead opens straight in W1-1 at the level sync point on fd-core's `Game`. Either is stepped once a
 313-line PAL frame on the wall clock. Built with no generated translation it prints `NOT_GENERATED`
-(run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level… and the bug recorder.
+(run `python3 -I games/forest-dumb/tools/translate.py --build`) and exits 1. It holds the menu bar, Game ▸ Controls…, Game ▸ Start Level…, the bug recorder and View ▸ Scale, Fullscreen and Filter (the toolkit's `amiga_app::view_menu`; no Widescreen, as the original has no wider view).
 Its game-free parts (pacing, pads, video, capture, lock, keys, settings, windows, a script's
 game-free lines) are `toolkit/crates/amiga-app`. It never links an emulator or test tooling (`tests/deps.rs`). Tests drive it
 through `fd-e2e`, not by calling its code; the library exports the state hashes, the translated program's window (`CANVAS`) and `--level 1`'s way through the title.
@@ -20,7 +20,7 @@ From `games/forest-dumb/engine/`:
    generate the translation (`python3 -I games/forest-dumb/tools/translate.py --build` from the repo
    root). Without the extract, `translate.py` stops with "no program at …".
 1. Play: `cargo run --release -p fd-app` (power-on; `-- --level 1` opens in level 1, `-- --engine hand`
-   the hand engine). Esc or ⌘Q quits.
+   the hand engine). Esc or ⌘Q quits. View ▸ Scale, Fullscreen (⌃⌘F) and Filter apply at once and are saved in `settings.toml` for the next launch.
 2. A bounded scripted run with a capture:
    `cargo run -p fd-app -- --home /tmp/h --script run.txt --capture /tmp/cap --max-frames 240 --bugs-dir /tmp/bugs`
 3. From a test: `fd_e2e::App::launch` then `run_script(...)` (`crates/fd-e2e/tests/smoke.rs`); compare
@@ -28,7 +28,7 @@ From `games/forest-dumb/engine/`:
 
 ## Flags (`src/args.rs`)
 
-`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] [--stop-after N]`
+`fd-app [--home DIR] [--disks DIR] [--script FILE] [--capture DIR [--capture-hashes]] [--max-frames N] [--timeout S] [--scale N] [--bugs-dir DIR] [--engine translated|hand] [--level 1] [--stop-after N] [--allow-fullscreen]`
 
 - `--home DIR`: app-data folder; else `FOREST_DUMB_HOME`, else `~/Library/Application Support/Forest-Dumb-RE`. One copy runs per home (a second is refused, "already running").
 - `--disks DIR`: the folder of both zips; else `fd_tools::disk_dir()` (`FOREST_DUMB_DISKS`, then the main checkout). Missing disks: a plain message and exit 1.
@@ -36,7 +36,8 @@ From `games/forest-dumb/engine/`:
 - `--capture DIR`: frames, inputs and `hashes.txt` (below). `--capture-hashes`: without the frames' PNGs, for a whole level's run.
 - `--max-frames N`: exit 0 after N steps.
 - `--timeout S`: stop the whole process group after S seconds; defaults to 120 (`SCRIPT_TIMEOUT_S`) under `--script`. Exit 124 if the group cannot be stopped whole.
-- `--scale N`: 1 to 16, for this run only.
+- `--scale N`: 1 to 16, for this run only: it wins over the saved scale at launch; a scale chosen from View in the run is still saved.
+- `--allow-fullscreen`: lets a scripted run go fullscreen; refused unless `--max-frames` is 300 or fewer (`FULLSCREEN_MAX_FRAMES`). Without it a scripted run stays windowed: View ▸ Fullscreen logs `fullscreen refused: a scripted run needs --allow-fullscreen` and changes nothing, and a saved `fullscreen = true` opens windowed with `staying windowed: …`.
 - `--bugs-dir DIR`: where bug zips go; else `<home>/bugs` for a scripted run, else `games/forest-dumb/bugs/` of the main checkout, else `~/Documents/Forest Dumb Bugs/`. Zips are `bug-<level>-<YYYY-MM-DD-HHMM>.zip`, `-2`, `-3` on a clash.
 
 - `--engine translated|hand`: the translated program (default) or level 1's hand engine alone, as before the translator plan. Tests that run without a generated tree pass `hand` (`fd_e2e::App::launch` does).
@@ -77,7 +78,7 @@ seed 1 2                  fast-until 11183
 
 This game's lines:
 
-- `N: menu <id>`: `start-level`, `stop-recording`, `controls`, `quit` (`menu::Command::id`).
+- `N: menu <id>`: `start-level`, `stop-recording`, `controls`, `quit`, and View's `scale-1` … `scale-16`, `scale-auto`, `fullscreen`, `filter-none|basic|lottes|geom|easymode` (`menu::Command::id`, `amiga_app::view_menu::ViewCommand::id`). A View choice applies at once and is saved.
 - `N: controls <input> keys|pad`, `controls defaults`, `controls close`: a click in the Controls window (`up keys` starts rebinding Up; the next key pressed binds it).
 - `N: shot`: the window as presented, into the capture as `window-NNNNN.png`.
 - `N: resize W H`: the inner size in points.
@@ -94,7 +95,7 @@ left a window is cancelled, or the save window discarded:
 ## Keys and settings (`src/settings.rs`)
 
 `<home>/settings.toml` is the toolkit's format: `scale = "auto"` or 1 to 16, `fullscreen`, `filter`,
-`widescreen`, then `[keys]` and `[pad]` mapping an original input to a list of host names. Inputs are
+`widescreen` (read and written back unchanged: this app has no Widescreen), then `[keys]` and `[pad]` mapping an original input to a list of host names. Inputs are
 `up`, `down`, `left`, `right`, `fire`, or `key <label>` / `key $<hex>` for an Amiga key (tests use
 `"key Esc" = ["KeyE"]` and `"key $5f" = ["KeyH"]`, HELP). Host key names are winit's `KeyCode` names:
 `ArrowLeft`, `Space`, `AltLeft`, `KeyW`, `Digit1`, `F1` (`amiga_app::keys::HOST_KEYS`); pad names are in
@@ -107,7 +108,7 @@ never reaches the game; ⌘ plus a key is the app's.
 
 `--capture` writes the files `amiga_app::capture` lists (`frame-NNNNN.png`, `inputs.txt`,
 `window-NNNNN.png`, `prompts.txt`, …) plus `hashes.txt`: `N hash` in hex a frame, frame 0 the start.
-stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`,
+stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`, `fullscreen refused: …`, `staying windowed: …`, `could not save the settings: …`,
 `game over`, `level 1 complete`, `quit after step N`).
 
 ## Library API (`src/lib.rs`)

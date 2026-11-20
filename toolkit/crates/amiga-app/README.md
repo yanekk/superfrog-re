@@ -1,6 +1,6 @@
 # amiga-app
 
-The game-free parts of a desktop app that plays an Amiga game: sound and the sample clock that paces it, gamepads, key bindings, the picture on the GPU, capture files for end-to-end tests, atomic writes, the single-copy lock, `settings.toml`, and the shared panels, each an AppKit-free model plus a native macOS view. A shell crate: it reads devices, the clock and files, so a game's pure engine core must not depend on it. The run loop, game window, menus and the glue that opens the panels stay the game's. Off macOS the panels are stubs (the save window discards the recording).
+The game-free parts of a desktop app that plays an Amiga game: sound and the sample clock that paces it, gamepads, key bindings, the picture on the GPU, capture files for end-to-end tests, atomic writes, the single-copy lock, `settings.toml`, and the shared panels, each an AppKit-free model plus a native macOS view. A shell crate: it reads devices, the clock and files, so a game's pure engine core must not depend on it. The run loop, game window, menus (but the View menu's shared items) and the glue that opens the panels stay the game's. Off macOS the panels are stubs (the save window discards the recording).
 
 ## Start here
 
@@ -41,6 +41,11 @@ Panels
 - Start Level: the game describes fields in `StartLevelSpec { fields: Vec<LevelField> }` (`FieldKind::{Dropdown, Number { max, range }, Checkbox}`, `Value`); `Form::new(spec)`, `apply(a: FieldAction) -> Option<Option<Values>>`, `can_start`, `number`, `hint`; `FieldAction::named(spec, words)`; `Values::choice`/`text`/`on`; `whole_number`; `run_modal(app, spec, parent) -> Option<Values>`.
 - Recording bar: `BAR_HEIGHT` (34 points), `elapsed(frames) -> String`, `place`; `RecordingBar::new(window)`, `set_shown`, `set_time`, `layout`, `next_click()`. Growing the window is the game's.
 - Save window: `SaveForm::new(name, location: impl Display)`, `action(SaveAction) -> Outcome`; `save_window::run(app, parent, shot: &[u8], form, save: &mut dyn FnMut(&str) -> Result<(), String>) -> bool`, modal; `TITLE`.
+
+View menu (`view_menu`)
+- `ViewItems::new()` (Scale ▸ 1× 2× 3× Auto, Fullscreen ⌃⌘F, Filter ▸ in `Filter::ALL` order, as check items), `view_menu(extra: &[&dyn IsMenuItem]) -> muda::Result<Submenu>` (the "View" menu, the game's own items after Filter), `show(scale, fullscreen, filter)` (the checks).
+- `ViewCommand::{Scale(Scale), ToggleFullscreen, Filter(Filter)}`: `id()` (`scale-1`…`scale-16`, `scale-auto`, `fullscreen`, `filter-<name>`, the item's id and a script's `menu` name), `from_id`; `SCALES`. A game wraps it in its own command and acts on it.
+- `set_fullscreen(window, on)` (borderless on the window's display); `before_launch()`, called before the event loop runs, stops AppKit adding "Enter Full Screen" to a menu titled View.
 
 Scripts (`script_core`): `parse_script_core<G: ScriptGame>(text, game) -> Result<CoreScript<G::Event>, ScriptError>`; `CoreScript { seed, fast_until, events }`; `trait ScriptGame { type Event; host; directive; event; finish }`; `HostInput::{Key, MouseLeft, FocusLost, Pad}`; `lines`, `Line`, `host_events`. The format is in the module doc.
 

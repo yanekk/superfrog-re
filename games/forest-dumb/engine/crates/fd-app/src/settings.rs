@@ -120,6 +120,25 @@ mod tests {
         std::fs::remove_dir_all(&h).unwrap();
     }
 
+    /// fd-view-menu: this app has no Widescreen, and a View change saved here keeps the first
+    /// game's setting in a shared file as it was.
+    #[test]
+    fn a_view_change_saved_keeps_widescreen_as_it_was() {
+        let h = home("wide");
+        std::fs::write(h.join("settings.toml"), "widescreen = true\n").unwrap();
+        let (mut s, msg) = read(&h);
+        assert_eq!(msg, None);
+        assert!(s.widescreen);
+        s.scale = Scale::N(2);
+        s.filter = amiga_app::video::Filter::Geom;
+        s.fullscreen = true;
+        save(&h, &s).unwrap();
+        let (back, _) = read(&h);
+        assert!(back.widescreen);
+        assert_eq!((back.scale, back.filter, back.fullscreen), (Scale::N(2), amiga_app::video::Filter::Geom, true));
+        std::fs::remove_dir_all(&h).unwrap();
+    }
+
     #[test]
     fn a_damaged_file_is_the_defaults_named_and_left_alone() {
         let h = home("bad");

@@ -3,13 +3,18 @@
 //! ```text
 //! Forest Dumb   About · Services · Hide, Hide Others, Show All · Quit Forest Dumb ⌘Q
 //! Game          Start Level… · Stop Recording ⌘. · Controls…
+//! View          Scale ▸ 1× 2× 3× Auto · Fullscreen ⌃⌘F · Filter ▸ None Basic Lottes Geom Easymode
 //! ```
 //!
-//! Stop Recording is enabled only while a recording runs (T14). A [`Command`] is the one path from the menu to
+//! Stop Recording is enabled only while a recording runs (T14). View's items are the toolkit's
+//! (`amiga_app::view_menu`), checked as the app's scale, fullscreen and filter are; no Widescreen,
+//! as the original this runs has no wider view (fd-view-menu). A [`Command`] is the one path from the menu to
 //! the app: a click, its shortcut, a script's `menu …` and a key `input.rs` keeps for the app all
 //! become one, and the app acts on it.
 
 use muda::accelerator::{Accelerator, Code, Modifiers};
+use amiga_app::video::{Filter, Scale};
+use amiga_app::view_menu::{ViewCommand, ViewItems};
 use muda::{AboutMetadata, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use winit::event_loop::ActiveEventLoop;
 
@@ -23,28 +28,36 @@ pub enum Command {
     Controls,
     /// Quit Forest Dumb, ⌘Q, Esc, or the window closed.
     Quit,
+    /// View → Scale ▸, Fullscreen or Filter ▸.
+    View(ViewCommand),
 }
 
 impl Command {
-    pub const ALL: [Command; 4] = [
+    /// The Forest Dumb and Game menus' commands; View's are `ViewCommand`'s.
+    pub const GAME: [Command; 4] = [
         Command::StartLevel,
         Command::StopRecording,
         Command::Controls,
         Command::Quit,
     ];
 
-    /// Its menu item's id, also its name in a script's `menu …` event.
-    pub fn id(self) -> &'static str {
+    /// Its menu item's id, also its name in a script's `menu …` event (View's: `scale-2`,
+    /// `scale-auto`, `fullscreen`, `filter-geom`, …).
+    pub fn id(self) -> String {
         match self {
-            Command::StartLevel => "start-level",
-            Command::StopRecording => "stop-recording",
-            Command::Controls => "controls",
-            Command::Quit => "quit",
+            Command::StartLevel => "start-level".into(),
+            Command::StopRecording => "stop-recording".into(),
+            Command::Controls => "controls".into(),
+            Command::Quit => "quit".into(),
+            Command::View(v) => v.id(),
         }
     }
 
     pub fn from_id(id: &str) -> Option<Command> {
-        Command::ALL.into_iter().find(|c| c.id() == id)
+        Command::GAME
+            .into_iter()
+            .find(|c| c.id() == id)
+            .or_else(|| ViewCommand::from_id(id).map(Command::View))
     }
 }
 
@@ -52,6 +65,7 @@ impl Command {
 pub struct MenuBar {
     menu: Menu,
     stop_recording: MenuItem,
+    view: ViewItems,
 }
 
 /// The menu bar, before [`MenuBar::install`] puts it in place. On the main thread.
@@ -98,14 +112,17 @@ pub fn build_menu() -> MenuBar {
             &MenuItem::with_id(Command::Controls.id(), "Controls…", true, None),
         ],
     );
+    let view_items = ViewItems::new();
+    let view = view_items.view_menu(&[]);
     let menu = Menu::new();
-    for m in [app, game] {
+    for m in [app, game, view] {
         menu.append(&m.expect("a menu"))
             .expect("a menu in the menu bar");
     }
     MenuBar {
         menu,
         stop_recording,
+        view: view_items,
     }
 }
 
@@ -113,6 +130,11 @@ impl MenuBar {
     /// Stop Recording is enabled exactly while a recording runs.
     pub fn show_recording(&self, on: bool) {
         self.stop_recording.set_enabled(on);
+    }
+
+    /// View's checks: the scale, fullscreen and the filter.
+    pub fn show_view(&self, scale: Scale, fullscreen: bool, filter: Filter) {
+        self.view.show(scale, fullscreen, filter);
     }
 
     /// Make this the app's menu bar; AppKit's window tabs are turned off.
@@ -145,9 +167,18 @@ mod tests {
 
     #[test]
     fn every_command_s_id_names_it() {
-        for c in Command::ALL {
-            assert_eq!(Command::from_id(c.id()), Some(c));
+        let mut all = Command::GAME.to_vec();
+        all.extend(amiga_app::view_menu::SCALES.map(|s| Command::View(ViewCommand::Scale(s))));
+        all.push(Command::View(ViewCommand::ToggleFullscreen));
+        all.extend(Filter::ALL.map(|f| Command::View(ViewCommand::Filter(f))));
+        for c in all {
+            assert_eq!(Command::from_id(&c.id()), Some(c), "{}", c.id());
         }
-        assert_eq!(Command::from_id("start"), None);
+        assert_eq!(Command::from_id("scale-2"), Some(Command::View(ViewCommand::Scale(Scale::N(2)))));
+        assert_eq!(Command::from_id("filter-geom"), Some(Command::View(ViewCommand::Filter(Filter::Geom))));
+        assert_eq!(Command::from_id("fullscreen"), Some(Command::View(ViewCommand::ToggleFullscreen)));
+        for bad in ["start", "scale-0", "scale-17", "filter-crt", "filter-", "widescreen"] {
+            assert_eq!(Command::from_id(bad), None, "{bad}");
+        }
     }
 }

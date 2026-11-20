@@ -439,6 +439,12 @@ workspace = "engine"
     "the_committed_routes_are_route_scripts",
     "the_planners_route_finishes_on_the_engine_alone",
 ]
+# fd-view-menu: View ▸ Scale, Fullscreen and Filter. The script layer, three scripted runs, about 6 s
+# warm, smoke; the OS layer (`FD_E2E_OS=1`, unlocked screen, about 6 s in release) is `#[ignore]`d, so full.
+"crates/fd-e2e/tests/view_menu.rs" = [
+    "scale_and_filter_from_a_script_apply_at_once_and_a_relaunch_starts_with_them",
+    "a_scripted_run_stays_windowed_without_allow_fullscreen",
+]
 # T68, the app drill's real-window half: every test is OS layer (`FD_E2E_OS=1`, unlocked screen),
 # seven in about 40 s in release, as Superfrog's recorder_drill.rs.
 "crates/fd-e2e/tests/drill_os.rs" = "full"
