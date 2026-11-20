@@ -2,9 +2,8 @@
 # world-3-start.toml's path with the world chosen by the typed code, not a `set`: from the idle
 # title at 4990, KODY, the digits, START at 5128 (128 frames after world-3-start's), world 3's load,
 # SCENA 3, fire, and 300 passes of play.
-# Translated, measured 2026-11-20 (T04): both sides reach the goal (world_index 2, 300 passes) at oracle
-# frame 6598, but it differs from 5051, a frame after the first digit's key goes down: the original
-# writes AUD0PER..AUD3PER that pass, the engine not; memory from 5056 (h4+$195c9, 1 against 2).
+# Translated, measured 2026-11-20: passes, both sides reaching the goal (world_index 2, 300 passes) at oracle
+# frame 6598 (T07; T04 read a difference from 5051, the first digit's key byte landing at once).
 sync = { script = "boot-to-level1", frame = 4990 }
 input = "title-code-w3"
 align = "loads"

@@ -524,12 +524,14 @@ fn keys_already_held_at_a_snapshot_are_not_sent_again() {
     assert_eq!(m.cia_a().keys_queued(), 0);
     // Letting it go is a change: its up byte is sent.
     m.set_input(&Input::default());
+    at_cycles(&mut m, 1_000 + cia::KEY_BYTE_CYCLES);
     assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
     // Without `keys_held` the same input is a press.
     let mut m = machine();
     m.wb(CIAA_ICR, 0x88);
     at_cycles(&mut m, 1_000);
     m.set_input(&held);
+    at_cycles(&mut m, 1_000 + cia::KEY_BYTE_CYCLES);
     assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
 }
 
@@ -545,6 +547,12 @@ fn a_key_arrives_through_sdr_with_its_interrupt_and_waits_for_the_handshake() {
         keys: vec![0x28, 0x40],
         ..Input::default()
     });
+    // The first byte too takes its 8 bits to clock out (title plan T07): the original's
+    // level 2 handler runs 7 lines into the frame a key goes down, not at its start.
+    assert_eq!((m.take_cia_interrupts(), m.rb(CIAA_SDR)), (0, 0), "not at the press");
+    at_cycles(&mut m, 1_000 + cia::KEY_BYTE_CYCLES - 1);
+    assert_eq!(m.take_cia_interrupts(), 0);
+    at_cycles(&mut m, 1_000 + cia::KEY_BYTE_CYCLES);
     assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
     assert_eq!(m.take_cia_interrupts(), 0);
     // The level 2 handler: ICR's serial flag, the byte, the handshake.
@@ -573,6 +581,7 @@ fn a_masked_key_raises_nothing_until_unmasked() {
         keys: vec![0x45],
         ..Input::default()
     });
+    at_cycles(&mut m, cia::KEY_BYTE_CYCLES);
     assert_eq!(m.take_cia_interrupts(), 0);
     m.wb(CIAA_ICR, 0x88);
     assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
@@ -583,6 +592,7 @@ fn a_masked_key_raises_nothing_until_unmasked() {
         keys: vec![0x45],
         ..Input::default()
     });
+    at_cycles(&mut m, cia::KEY_BYTE_CYCLES);
     assert_eq!(m.take_cia_interrupts(), INTREQ_PORTS);
 }
 

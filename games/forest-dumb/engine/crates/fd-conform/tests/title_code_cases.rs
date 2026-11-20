@@ -13,22 +13,21 @@ use fd_conform::translated_engine::run_translated;
 use fd_conform::{Case, Options, Outcome, conform_dir};
 use fd_translated::TranslatedGame;
 
-/// Cases that pass on the translated program.
-const PASSING: [&str; 0] = [];
-
-/// Cases that differ on the translated program, with the start of their reading's first line
-/// (measured 2026-11-20, T04). All five first differ a frame after the first digit's key goes down, before the code is read: the original writes the four AUDxPER registers in that
-/// pass and the translated program does not; memory follows at 5056 (`h4+$195c9`, 1 against 2).
-const DIFFER: [(&str, &str); 5] = [
-    ("title-code-w1", KEY_SOUND),
-    ("title-code-w3", KEY_SOUND),
-    ("title-code-w5", KEY_SOUND),
-    ("title-code-cheat", KEY_SOUND),
-    ("title-code-wrong", KEY_SOUND),
+/// Cases that pass on the translated program (2026-11-20, T07). T04 read all five differing from
+/// 5051, a frame after the first digit's key went down: the machine landed the key byte at the
+/// frame's start, so `level2_handler`'s two-line wait ran across `title_pass`'s `wait_line_1` and
+/// the title lost a pass (`pcode-machine` `cia.rs`, the idle keyboard's first byte).
+const PASSING: [&str; 5] = [
+    "title-code-w1",
+    "title-code-w3",
+    "title-code-w5",
+    "title-code-cheat",
+    "title-code-wrong",
 ];
 
-const KEY_SOUND: &str = "Paula writes differ at pass 61 (oracle frame 5051): write #1: original \
-                         AUD0PER = $01ac, engine nothing";
+/// Cases that differ on the translated program, with the start of their reading's first line.
+/// None today.
+const DIFFER: [(&str, &str); 0] = [];
 
 fn case(name: &str) -> Case {
     Case::load(&conform_dir().join("cases").join(format!("{name}.toml")))

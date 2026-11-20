@@ -24,7 +24,8 @@ pub const CRA_SPMODE: u8 = 0x40;
 /// CRA's and CRB's START bit.
 const CR_START: u8 = 0x01;
 
-/// CPU cycles from the end of a handshake to the keyboard's next byte in SDR: 8 bits at about
+/// CPU cycles from the end of a handshake, or from a key change on an idle keyboard, to the
+/// keyboard's byte in SDR: 8 bits at about
 /// 60 µs a bit (Hardware Reference Manual, keyboard chapter) at 7.09 MHz. From the manual, not
 /// measured; the frame bar admits it moving inside the frame (DESIGN §2.7).
 pub const KEY_BYTE_CYCLES: u64 = 3_405;
@@ -176,10 +177,18 @@ impl CiaA {
         self.held = keys;
     }
 
-    /// The keys held this frame, at cycle count `at`: the keyboard queues a byte per change and
-    /// sends the first if it is free.
+    /// The keys held this frame, at cycle count `at`: the keyboard queues a byte per change and,
+    /// if it was idle, starts clocking the first out, in SDR [`KEY_BYTE_CYCLES`] later.
     pub fn set_keys(&mut self, keys: KeySet, at: u64) {
+        // An idle keyboard takes a byte's 8 bits to send it, as after a handshake: vAmiga's
+        // `wakeUp` starts `sendKeyCode` at the press, and the CIA loads SDR on the eighth CNT edge.
+        // Landing it at once ran the original's level 2 handler 7 lines early, across the title's
+        // `wait_line_1`, and the title lost a pass (title plan T07).
+        let idle = self.queue.is_empty() && !self.awaiting_handshake;
         self.queue.extend(key_bytes(self.held, keys));
+        if idle && !self.queue.is_empty() {
+            self.ready_at = at + KEY_BYTE_CYCLES;
+        }
         self.held = keys;
         self.tick(at);
     }
@@ -276,6 +285,7 @@ mod tests {
     fn a_key_sets_sp_and_the_line_only_when_unmasked() {
         let mut c = CiaA::default();
         c.set_keys(KeySet::key(0x28), 100);
+        c.tick(100 + KEY_BYTE_CYCLES);
         assert_eq!(c.read(SDR, 100), key_byte(0x28, false));
         assert!(!c.line() && !c.take_interrupt(), "masked");
         // Unmasking a set flag drives the line.
@@ -296,6 +306,7 @@ mod tests {
         let mut c = CiaA::default();
         c.set_icr_mask(ICR_SP);
         c.set_keys(KeySet::key(0x45), 0);
+        c.tick(KEY_BYTE_CYCLES);
         assert!(c.take_interrupt());
         c.write(ICR, 0x7F, 10);
         assert!(c.line(), "a mask write leaves the line driven");
@@ -311,6 +322,7 @@ mod tests {
         c.set_icr_mask(ICR_SP);
         // Two keys down: two bytes, the second queued.
         c.set_keys(KeySet::key(0x10).with(0x20), 0);
+        c.tick(KEY_BYTE_CYCLES);
         assert_eq!(c.read(SDR, 0), key_byte(0x10, false));
         assert!(c.take_interrupt());
         assert_eq!(c.keys_queued(), 1);
@@ -334,8 +346,27 @@ mod tests {
         c.tick(20_000);
         assert!(!c.take_interrupt());
         c.set_keys(KeySet::NONE, 30_000);
+        assert_eq!(c.next_at(), Some(30_000 + KEY_BYTE_CYCLES));
+        c.tick(30_000 + KEY_BYTE_CYCLES);
         assert_eq!(c.read(SDR, 0), key_byte(0x10, true));
         assert_eq!(c.keys_queued(), 1);
+    }
+
+    #[test]
+    fn an_idle_keyboard_takes_a_bytes_time_to_send_its_first() {
+        // vAmiga `Keyboard::wakeUp` starts sending at the press; SDR loads on the eighth CNT edge.
+        let mut c = CiaA::default();
+        c.set_icr_mask(ICR_SP);
+        c.set_keys(KeySet::key(0x45), 5_000);
+        assert_eq!(c.next_at(), Some(5_000 + KEY_BYTE_CYCLES));
+        c.tick(5_000 + KEY_BYTE_CYCLES - 1);
+        assert!(!c.take_interrupt() && c.read(SDR, 0) == 0, "still clocking");
+        c.tick(5_000 + KEY_BYTE_CYCLES);
+        assert!(c.take_interrupt());
+        assert_eq!(c.read(SDR, 0), key_byte(0x45, false));
+        // A key changing while a byte is on its way or awaits its handshake queues behind it.
+        c.set_keys(KeySet::NONE, 6_000);
+        assert_eq!(c.next_at(), None, "awaiting the handshake");
     }
 
     #[test]
