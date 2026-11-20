@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 🐞 | T05 drill, worker-driven at three sizes: after the page switched level by itself the last hover's tip still named a cell of the old level; hidden on a live switch, asserted in `live_chrome.rs`. |
 | 2026-11-20 | 📌 | T04 review: a map-only level's header still reads "<title> route · <level>" and the filter "Only routes with faults or failures" (`page.html`). Wording the task left open; left for the owner or T12's drill. |
 | 2026-11-20 | 📌 | T04 review: fake unverified against real. `page_chrome.rs` and `made_up_level.rs` write map-only JSON by hand; no game writes one until T02 and T08, which should drive the page on a real dump. |
 | 2026-11-20 | 📌 | `amiga-browser` has no console capture (T04): a page test catches errors by writing a script into `index.html` before the page's own, collecting `error`, `unhandledrejection` and `console.error` into `window.ERRS` (`page_chrome.rs` `CATCH`). |

@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** review T05 (page-live); T07 can run beside it, then T08 and T10 once T05 is ✅.
 
 ## Tasks
 
@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | map-levels | T00, T01 | ✅ | |
 | T03 | chrome-rig | — | ✅ | |
 | T04 | page-map-only | T03 | ✅ | |
-| T05 | page-live | T04 | ⬜ | |
+| T05 | page-live | T04 | 🔍 | LiveSpec, LiveFrame, write_live and the page's live mode: status bar, dot, creatures, changed cells, Follow, level switching. Six tests: live.rs 2, live_chrome.rs 2, one site.rs, one sf-routeview. Deviations: hand scroll tested as a wheel turn (rig has no drag), which stops Follow only in live mode; the font request is allowed as in T04; test hook `ROUTEVIEW.view()`. |
 | T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ⬜ | |
 | T08 | map-command | T02, T05 | ⬜ | |
@@ -30,7 +30,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** (empty)
+**Review queue:** T05
 
 ## Blocked on the user
 
