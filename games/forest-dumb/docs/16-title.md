@@ -141,6 +141,9 @@ across `title_pass`'s `wait_line_1`, which then waited a whole frame. An idle ke
 `KEY_BYTE_CYCLES` to send its first byte, as it already did after a handshake (`cia.rs`, tests
 `an_idle_keyboard_takes_a_bytes_time_to_send_its_first` and the machine's
 `a_key_arrives_through_sdr_with_its_interrupt_and_waits_for_the_handshake`).
+`run-all --engine translated` after the fix: 60 of 61, the 50 earlier cases as before (49 pass,
+`power-on-level-1` from 6301 at `h0+$1fe6`). With level 1 mounted, `title-code-w1`, `-cheat` and
+`-wrong` differ at play's first frame, 6429 (`h0+$1e65`, the camera), the mount's and left open.
 
 ## Unreferenced title code
 
