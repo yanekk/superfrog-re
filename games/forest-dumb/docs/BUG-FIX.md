@@ -15,7 +15,7 @@ session's evidence is the headless replay and the original running on the oracle
   checkout. From a worktree: `"$(git rev-parse --path-format=absolute --git-common-dir)/../games/forest-dumb/bugs/<zip>"`.
   Below, `$ZIP` is that absolute path. Never commit the zip or anything rendered from it: only a
   case and its script, which are inputs.
-- **What is in it.** `recording.txt` (build, `start`, `engine`, level, frames, `stopped-at`,
+- **What is in it.** `recording.txt` (build, `start`, `engine`, level, `cheat`, frames, `stopped-at`,
   `stop`, the owner's `note`, the inputs one a step) and `screenshot.png` (the frame Stop was pressed on). Read the header first:
   `unzip -p "$ZIP" recording.txt | sed -n '1,/^inputs$/p'`.
 - **The zip is tied to its build.** `bug replay` and `bug compare` refuse a zip whose `build` line
@@ -31,10 +31,13 @@ session's evidence is the headless replay and the original running on the oracle
 
 The app saves a zip by itself when the translated program stops (translator DESIGN §2.4, §2.10):
 `bug-power-on-<date>.zip` or `bug-W1-1-<date>.zip`, no note. Its header says `engine translated`,
-`start power-on` or `start level-1` (power-on, then the title on `to_level_1_input` until level 1),
-and `stop <how>` (`untranslated: h0+$1a2b4`, `write-into-code: …`, `unsupported: <op> at …`,
+`start power-on`, `start level-1` (power-on, then the title on `to_level_1_input` until level 1) or
+`start world` (the same way to its `level` line's world, `world_index` and, with `cheat on`,
+`cheat_flag` written as `load_world` is entered; `bug replay` only, `bug compare` refuses it), and
+`stop <how>` (`untranslated: h0+$1a2b4`, `write-into-code: …`, `unsupported: <op> at …`,
 `hang (steps)`, `hang (depth)`, `trap: …`, `outside-memory: …`, `os: …`; `test-stop: --stop-after N`
-is a test's, no defect behind it). `stopped-at` is the character's cell in level 1, `-` elsewhere.
+is a test's, no defect behind it). `stopped-at` is the character's cell in the level played, `-` on
+the title.
 
 The original would have carried on, so a stop is always a translator or machine defect, never a
 quirk to keep: step 3 does not apply. Replay it (step 1): on the build that made it, expect
