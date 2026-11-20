@@ -17,9 +17,10 @@
 //! Level), cancelled ("Recording in progress": the recording goes on) or discarded (the save window):
 //!
 //! ```text
-//! form level W1-1               # the Start Level window as clicks drive it, until a `form start`
-//! form record off               # it takes or a `form cancel` (the recorder starts on)
-//! form start
+//! form level W3-1               # the Start Level window as clicks drive it, until a `form start`
+//! form cheat on                 # it takes or a `form cancel` (the cheat starts off, the recorder
+//! form record off               # on); `level` W1-1 to W6-1 and `cheat` on the translated program,
+//! form start                    # `level W1-1` alone on `--engine hand`
 //! answer-recording save         # "Recording in progress": `save`, `discard` or `cancel`
 //! note black screen here        # the save window's note, and Save (`note` alone: an empty note;
 //!                               # `note discard`: Discard)
@@ -33,6 +34,7 @@ use amiga_app::script_core::{
 };
 use amiga_app::start_level_window::{FieldAction, Form};
 
+use crate::args::EngineChoice;
 use crate::menu::Command;
 use crate::recorder::{self, EndChoice};
 
@@ -72,8 +74,9 @@ impl Deref for Script {
     }
 }
 
-#[derive(Default)]
 struct Game {
+    /// Whose Start Level window the `form` lines click ([`recorder::spec`]).
+    engine: EngineChoice,
     answers: Answers,
     /// The `form` lines of a Start Level window not yet closed by a Start it takes or a Cancel,
     /// with the window's model, which says when that is.
@@ -91,9 +94,18 @@ impl ScriptGame for Game {
         let words = &line.words;
         match words.first().copied() {
             Some("form") => {
-                let spec = recorder::spec();
+                let spec = recorder::spec(self.engine);
                 let a = FieldAction::named(&spec, &words[1..]).ok_or_else(|| {
-                    line.error("`form` takes level W1-1, record on|off, start or cancel")
+                    line.error(match self.engine {
+                        EngineChoice::Translated => {
+                            "`form` takes level W1-1 to W6-1, cheat on|off, record on|off, \
+                             start or cancel"
+                        }
+                        EngineChoice::Hand => {
+                            "`form` takes level W1-1, record on|off, start or cancel (the hand \
+                             engine's window has level 1 only and no cheat)"
+                        }
+                    })
                 })?;
                 let (model, actions) = self
                     .form
@@ -162,8 +174,13 @@ impl ScriptGame for Game {
     }
 }
 
-pub fn parse(text: &str) -> Result<Script, ScriptError> {
-    let mut g = Game::default();
+/// `text` as a script for a run on `engine`, whose Start Level window its `form` lines click.
+pub fn parse(text: &str, engine: EngineChoice) -> Result<Script, ScriptError> {
+    let mut g = Game {
+        engine,
+        answers: Answers::default(),
+        form: None,
+    };
     let core = parse_script_core(text, &mut g)?;
     Ok(Script {
         core,
@@ -186,9 +203,13 @@ mod tests {
     use amiga_app::keys::OriginalInput;
     use winit::keyboard::KeyCode;
 
+    fn parse_t(text: &str) -> Result<Script, ScriptError> {
+        parse(text, EngineChoice::Translated)
+    }
+
     #[test]
     fn the_game_s_lines_and_the_toolkit_s_land_on_their_frames() {
-        let s = parse("10: menu controls\n11: controls up keys\n12: press KeyW\n13: shot\n14: resize 640 600\n15: hang\n16: cheat\n")
+        let s = parse_t("10: menu controls\n11: controls up keys\n12: press KeyW\n13: shot\n14: resize 640 600\n15: hang\n16: cheat\n")
             .unwrap();
         assert_eq!(
             s.events,
@@ -223,7 +244,7 @@ mod tests {
 
     #[test]
     fn the_recorder_s_lines_answer_its_windows_in_order() {
-        let s = parse(
+        let s = parse_t(
             "1: menu start-level\nform record off\nform start\nform cancel\n\
              9: menu stop-recording\nanswer-recording save\nanswer-recording discard\n\
              answer-recording cancel\nnote black screen # here\nnote\nnote discard\n",
@@ -236,7 +257,7 @@ mod tests {
                 (9, Event::Command(Command::StopRecording)),
             ]
         );
-        let spec = recorder::spec();
+        let spec = recorder::spec(EngineChoice::Translated);
         let record = spec.field("record").unwrap();
         assert_eq!(
             s.answers,
@@ -266,8 +287,29 @@ mod tests {
             ("5: resize big 3", "`resize` takes"),
             ("5: fly", "unknown event"),
         ] {
-            let e = parse(bad).unwrap_err().0;
+            let e = parse_t(bad).unwrap_err().0;
             assert!(e.contains(why), "{bad}: {e}");
         }
+    }
+
+    #[test]
+    fn form_lines_click_the_engine_s_window() {
+        let text = "1: menu start-level\nform level W3-1\nform cheat on\nform start\n";
+        let s = parse_t(text).unwrap();
+        let spec = recorder::spec(EngineChoice::Translated);
+        assert_eq!(
+            s.answers.starts,
+            vec![vec![
+                FieldAction::named(&spec, &["level", "W3-1"]).unwrap(),
+                FieldAction::named(&spec, &["cheat", "on"]).unwrap(),
+                FieldAction::Start,
+            ]]
+        );
+        assert!(parse_t("form cheat off\nform level w6-1\nform start\n").is_ok());
+        for bad in ["form level W3-1\nform start\n", "form cheat on\nform start\n"] {
+            let e = parse(bad, EngineChoice::Hand).unwrap_err().0;
+            assert!(e.contains("has level 1 only and no cheat"), "{bad}: {e}");
+        }
+        assert!(parse("form level W1-1\nform record off\nform start\n", EngineChoice::Hand).is_ok());
     }
 }
