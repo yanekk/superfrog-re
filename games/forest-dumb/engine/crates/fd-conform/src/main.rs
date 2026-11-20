@@ -262,10 +262,11 @@ fn bug_replay(zip: &Path, rest: &[String]) -> Result<bool, String> {
         .map_err(|e| format!("{}: {e}", zip.display()))?;
     // The engine that played it, unless asked for the other (a level-1 start plays on either).
     let engine = engine.unwrap_or(rec.engine);
-    if (engine, rec.start) == (Played::Hand, StartPoint::PowerOn) {
+    if engine == Played::Hand && rec.start != StartPoint::Level1 {
         return Err(format!(
-            "{}: a power-on recording replays on the translated program only (--engine translated)",
-            zip.display()
+            "{}: a {} recording replays on the translated program only (--engine translated)",
+            zip.display(),
+            rec.start.name()
         ));
     }
     let place = |l: Option<fd_core::recording::Location>| l.map_or("-".to_string(), |l| l.to_string());
@@ -315,12 +316,24 @@ fn bug_compare(zip: &Path, rest: &[String]) -> Result<bool, String> {
     let (rec, _) = bug::open_zip(&bytes, fd_tools::ENGINE_BUILD)
         .map_err(|e| format!("{}: {e}", zip.display()))?;
     std::fs::create_dir_all(&out).map_err(|e| format!("{}: {e}", out.display()))?;
-    if rec.start == fd_core::recording::StartPoint::PowerOn {
-        return Err(format!(
-            "{}: a power-on recording starts before the level sync point bug compare starts at; \
-             replay it with `bug replay`",
-            zip.display()
-        ));
+    match rec.start {
+        fd_core::recording::StartPoint::Level1 => {}
+        fd_core::recording::StartPoint::PowerOn => {
+            return Err(format!(
+                "{}: a power-on recording starts before the level sync point bug compare starts at; \
+                 replay it with `bug replay`",
+                zip.display()
+            ));
+        }
+        // Comparing a translated world start with the original is out of scope (title plan
+        // DESIGN §2.5): `compare` retimes a level 1 recording to the level sync point.
+        fd_core::recording::StartPoint::World { .. } => {
+            return Err(format!(
+                "{}: bug compare judges level-1 recordings only, and this is a world start; \
+                 replay it with `bug replay`",
+                zip.display()
+            ));
+        }
     }
     let c = bug::compare(fd_conform::game_data()?, &rec, Some(out.clone()))?;
     print!("{}", c.report());

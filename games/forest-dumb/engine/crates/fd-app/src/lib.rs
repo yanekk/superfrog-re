@@ -1,7 +1,8 @@
 //! What `fd-app` and the tests that drive it share: the state hash its capture's `hashes.txt`
 //! holds, so a test computes it on a headless [`Game`] the same way; and for the translated
 //! program (translator T37) the window its frames are shown through, its state hash, and
-//! `--level 1`'s way through the title, so a test drives a headless run the same way.
+//! `--level N`'s way through the title (a world start's writes too), so a test drives a headless
+//! run the same way.
 
 pub mod audio;
 
@@ -36,10 +37,11 @@ pub const NOT_GENERATED: &str = "The translated program is not built in: generat
 `python3 -I games/forest-dumb/tools/translate.py --build` from the repository's root, then build \
 the app again. `--engine hand` plays level 1 on the hand engine meanwhile.";
 
-/// The translated program's window, `--level 1`'s way through the title and where play is, from
+/// The translated program's window, `--level N`'s way through the title and where play is, from
 /// `fd_core::recording` since translator T39: a bug replay starts the same way the app does.
 pub use fd_core::recording::{
-    CANVAS, TO_LEVEL_1_FRAMES, canvas, in_level_1, location_in_ram, to_level_1_input,
+    CANVAS, LOAD_WORLD, TO_LEVEL_1_FRAMES, canvas, in_level_1, level_in_ram, location_in_ram,
+    start_reached, to_level_1_input, world_start_bytes, world_start_writes,
 };
 
 /// The translated program's state as a number: chip RAM then slow RAM at a frame's end, what a

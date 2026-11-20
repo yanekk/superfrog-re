@@ -117,7 +117,9 @@ stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program f
 stable within one build only); `hash_line(n: u64, g: &Game) -> String`. For the translated program (its `hashes.txt` is
 `memory_hash` of chip then slow RAM): `NOT_GENERATED`, `CANVAS` and `canvas(&Picture)` (the fixed window
 every screen is shown through), `memory_hash`, `memory_hash_line`, `to_level_1_input(n)`,
-`TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
+`TO_LEVEL_1_FRAMES`, `in_level_1(chip, slow)`, `level_in_ram`, `location_in_ram`; a world start (title
+plan T08) adds `LOAD_WORLD`, `world_start_writes(level, cheat)`, `world_start_bytes(level, cheat)` and
+`start_reached(start, chip, slow)`, the start path `fd-conform bug replay` shares. The sound (T38): `audio::Sound::new(rate, dmacon)`, `frame(writes, beam, chip, &mut out)`,
 `frame_out(&FrameOut, &mut out)`; `audio::SILENT_RATE` (48 000, a scripted run's and the capture's rate).
 
 ## Where the details are

@@ -33,6 +33,9 @@ workspace = "engine"
 # to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
 # cases on it: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/world_starts.rs" = "full"
+# Title plan T08: a world 3 cheat-on recording made headless from power-on and replayed by
+# `bug::replay_translated` to its recorded RAM: the disks and the generated tree put it in full.
+"crates/fd-conform/tests/world_start_replay.rs" = "full"
 # Translator T47: a write a read of a write-only register made, compared by register only (pure).
 "crates/fd-conform/tests/leftover.rs" = "smoke"
 # Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
