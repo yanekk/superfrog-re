@@ -88,7 +88,11 @@ fn re_dir() -> PathBuf {
 
 /// Every `re/objects-*.toml`, by file name, so the order (and an error naming two) is stable.
 fn tables_on_disk() -> Vec<(String, String)> {
-    let dir = re_dir();
+    tables_in(&re_dir())
+}
+
+/// Every `objects-*.toml` in `dir`, by file name, each named as `re/<file>`.
+fn tables_in(dir: &Path) -> Vec<(String, String)> {
     let mut names: Vec<String> = std::fs::read_dir(&dir)
         .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
         .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
@@ -149,7 +153,12 @@ fn the_flame_is_in_worlds_3_to_6_and_grouped_by_objects_more() {
     for world in 1..=6u8 {
         let level = read_level(world, &files).unwrap_or_else(|e| panic!("{e}"));
         let used = level.collision.columns as usize * 96;
-        counts.push(level.objects.cells[..used].iter().filter(|&&v| v == 0x34).count());
+        counts.push(
+            level.objects.cells[..used]
+                .iter()
+                .filter(|&&v| v == 0x34)
+                .count(),
+        );
     }
     assert_eq!(counts, [0, 0, 31, 10, 25, 17]);
 }
@@ -174,11 +183,19 @@ fn an_unknown_value_is_named_with_its_cell() {
 
 #[test]
 fn two_tables_grouping_one_value_differently_fail_naming_both() {
-    let a = ("re/objects-W1-1.toml".to_string(), "[[value]]\nvalue = 0x34\ngroup = \"flame\"\n".to_string());
-    let b = ("re/objects-W2-1.toml".to_string(), "[[value]]\nvalue = 52 # decimal\ngroup = \"bonus\"\n".to_string());
+    let a = (
+        "re/objects-W1-1.toml".to_string(),
+        "[[value]]\nvalue = 0x34\ngroup = \"flame\"\n".to_string(),
+    );
+    let b = (
+        "re/objects-W2-1.toml".to_string(),
+        "[[value]]\nvalue = 52 # decimal\ngroup = \"bonus\"\n".to_string(),
+    );
     let err = merge(&[a.clone(), b]).unwrap_err();
     assert!(
-        err.contains("$34") && err.contains("re/objects-W1-1.toml") && err.contains("re/objects-W2-1.toml"),
+        err.contains("$34")
+            && err.contains("re/objects-W1-1.toml")
+            && err.contains("re/objects-W2-1.toml"),
         "{err}"
     );
     // The same group in two tables agrees.
@@ -188,21 +205,41 @@ fn two_tables_grouping_one_value_differently_fail_naming_both() {
 
 #[test]
 fn a_row_without_a_group_fails_naming_its_file() {
-    let err = merge(&[("re/objects-x.toml".into(), "[[value]]\nvalue = 0x34\n".into())]).unwrap_err();
+    let err = merge(&[(
+        "re/objects-x.toml".into(),
+        "[[value]]\nvalue = 0x34\n".into(),
+    )])
+    .unwrap_err();
     assert!(err.contains("re/objects-x.toml"), "{err}");
 }
 
-/// Every `objects-*.toml` the directory holds is read, a per-world one included.
+/// Every `objects-*.toml` a directory holds is read, a per-world one a later plan adds included,
+/// and nothing else; a per-world table contradicting another fails naming both.
 #[test]
 fn every_objects_table_in_re_is_read() {
-    let dir = re_dir();
-    let on_disk = std::fs::read_dir(&dir)
-        .unwrap()
-        .filter_map(|e| {
-            let n = e.unwrap().file_name().to_string_lossy().into_owned();
-            (n.starts_with("objects-") && n.ends_with(".toml")).then_some(n)
-        })
-        .count();
-    assert_eq!(tables_on_disk().len(), on_disk);
-    assert!(on_disk >= 2);
+    let dir = std::env::temp_dir().join(format!("fd-object-tables-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let row = |g: &str| format!("[[value]]\nvalue = 0x34\ngroup = \"{g}\"\n");
+    for (n, text) in [
+        ("objects-W1-1.toml", row("flame")),
+        ("objects-W2-1.toml", row("bonus")),
+        ("objects-more.toml", row("flame")),
+        ("symbols.toml", row("ignored")),
+        ("objects-old.txt", row("ignored")),
+    ] {
+        std::fs::write(dir.join(n), text).unwrap();
+    }
+    let tables = tables_in(&dir);
+    std::fs::remove_dir_all(&dir).unwrap();
+    let names: Vec<&str> = tables.iter().map(|(n, _)| n.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "re/objects-W1-1.toml",
+            "re/objects-W2-1.toml",
+            "re/objects-more.toml"
+        ]
+    );
+    let err = merge(&tables).unwrap_err();
+    assert!(err.contains("re/objects-W2-1.toml"), "{err}");
 }
