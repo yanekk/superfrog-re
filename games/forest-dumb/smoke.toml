@@ -260,6 +260,9 @@ workspace = "engine"
 # from a snapshot against the original's.
 "crates/fd-conform/tests/machine_title.rs" = "full"
 "crates/fd-assets/src" = "smoke"
+# Map page T01: every value of the six object maps has a group in re/objects-*.toml, and made-up
+# tables and maps for the unknown value and the contradiction; reads disk 2, under a second warm.
+"crates/fd-conform/tests/object_tables.rs" = "smoke"
 "crates/fd-core/src" = "smoke"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 # T65: a new game's collision_map, play screen and creature tables against the original at the cached

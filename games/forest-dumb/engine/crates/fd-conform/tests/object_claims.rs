@@ -61,6 +61,8 @@ mod at {
     pub const DRAW_ITEM: u32 = 0x6398;
     pub const DRAW_WATER: u32 = 0x63b0;
     pub const DRAW_VANISH: u32 = 0x65e2;
+    /// `h0_62b6`'s branch for `$34`, the flame: blits `_Plomien` (`h4+$a298`), frame by the tick.
+    pub const DRAW_FLAME: u32 = 0x6508;
     /// `h0_62b6` writing `collision_map` solid under a vanishing block, and clearing it.
     pub const VANISH_SOLID: u32 = 0x6672;
     pub const VANISH_CLEAR: u32 = 0x66c2;
@@ -148,6 +150,7 @@ fn watched() -> Vec<u32> {
         at::DRAW_ITEM,
         at::DRAW_WATER,
         at::DRAW_VANISH,
+        at::DRAW_FLAME,
         at::VANISH_SOLID,
         at::VANISH_CLEAR,
     ];
@@ -429,6 +432,35 @@ fn value_28_is_water_and_30_to_33_are_vanishing_blocks() {
         ));
     }
     check(claims);
+}
+
+/// `$34`: the flame, which W1-1 lacks and worlds 3 to 6 hold (plan forest-dumb-map-page T01).
+/// Placed in the character's body, and under its feet, it is animated by `h0_62b6`, which blits
+/// `_Plomien` and writes nothing else: the run ends as the same run with nothing placed does, in
+/// position, score, items, countdown, lives and every contact pass, and the cell stays.
+#[test]
+fn value_34_is_a_flame_that_changes_no_state() {
+    let plain = slide(&[], PASSES);
+    let key = |s: &Seen| {
+        (
+            s.after,
+            s.contact.clone(),
+            s.hits_by_pass.clone(),
+            s.lives_lost.clone(),
+            s.kinds.clone(),
+            s.exit_passes,
+        )
+    };
+    for at in [BODY, FEET] {
+        let s = slide(&[(at.0, at.1, 0x34)], PASSES);
+        assert!(s.hits(at::ANIM_ADD) >= 1, "{at:?} not added to the animated cells: {s:x?}");
+        assert!(s.hits(at::DRAW_FLAME) >= 1, "{at:?} not drawn as a flame: {s:x?}");
+        for e in [at::DRAW_ITEM, at::DRAW_WATER, at::DRAW_VANISH, at::ITEM_TAKEN, at::BONUS_TAKEN] {
+            assert_eq!(s.hits(e), plain.hits(e), "{at:?} h0+${e:x}: {s:x?}");
+        }
+        assert_eq!(s.cells, [0x34], "{at:?} cell changed: {s:x?}");
+        assert_eq!(key(&s), key(&plain), "{at:?} state differs from the plain slide");
+    }
 }
 
 /// `$10`-`$13`: a spring. Under the feet while `h0+$4ed0` is set, `h0_24ce` fires once and the

@@ -16,8 +16,8 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T00 | items-needed-source | — | ⬜ | |
-| T01 | objects-all-worlds | — | ⬜ | |
+| T00 | items-needed-source | — | ✅ | |
+| T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ✅ | Built `amiga-browser`, Chrome over the DevTools pipe; click test in smoke. Review clean, no fix commit. Ran drive.rs five times; probed reopen, missing file, promises, rejections, a network image (blocked), a bad `CHROME`. Mutations: no Fetch block (font red), no group kill (drop hangs). Pipe-inheritance race not reproduced with a widened window. |
 | T04 | page-map-only | T03 | ⬜ | |
