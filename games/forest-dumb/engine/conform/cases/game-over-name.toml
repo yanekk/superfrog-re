@@ -15,3 +15,5 @@ compare = ["memory", "picture", "writes", "vars"]
 vars = ["hiscore_name_8+$0", "hiscore_name_8+$4", "hiscore_name_8+$8", "hiscore_score_8"]
 set = [{ var = "world_index", value = 1, when = "load_world" }, { var = "score", value = 0x30000, when = "load_world" }]
 goal = { enters = "title_screen", by_frame = 7600 }
+# Passes on the translated program and with level 1 mounted, measured 2026-11-20 (T06): memory,
+# pictures, Paula's writes and the entry's vars equal, title_screen entered by both at 7549.

@@ -15,3 +15,5 @@ frames = 2520
 compare = ["memory", "picture", "writes"]
 set = [{ var = "world_index", value = 1, when = "load_world" }]
 goal = { enters = "title_screen", by_frame = 7500 }
+# Passes on the translated program and with level 1 mounted, measured 2026-11-20 (T06): memory,
+# pictures and Paula's writes equal, title_screen entered by both at oracle frame 7448.
