@@ -33,6 +33,9 @@ workspace = "engine"
 # to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
 # cases on it: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/world_starts.rs" = "full"
+# forest-dumb-title T01: the title's read held on the original from a snapshot of the idle title, every
+# code, a wrong one, the rows, Esc, KONIEC, game over and a name to the title, the song's loop: about 30 s.
+"crates/fd-conform/tests/title_codes.rs" = "full"
 # Translator T47: a write a read of a write-only register made, compared by register only (pure).
 "crates/fd-conform/tests/leftover.rs" = "smoke"
 # Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.

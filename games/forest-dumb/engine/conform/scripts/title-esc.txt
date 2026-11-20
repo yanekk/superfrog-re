@@ -1,0 +1,5 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. Esc on the title: quit_to_dos in the step it is pressed.
+0: -
+20: K45      # Esc down (last_key_byte $75): title_pass quits in step 5010, the return in 5011
+30: -

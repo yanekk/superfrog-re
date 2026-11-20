@@ -1,0 +1,14 @@
+# forest-dumb-title T01 (docs/16-title.md): frames count from boot-to-level1's frame 4990, the idle
+# title, as world-2-start's do. World 2 given up with Esc, game over, the high scores
+# with no name (score 0 is under the eighth entry's 2500), the title again.
+0: -
+10: F        # fire on START (frame 5000): world_index set at load_world by the case or test
+21: -
+1160: F      # fire on SCENA 2 (frame 6150); play's first frame is 6151
+1171: -
+1260: K45    # Esc in play, released at 1263: give_up; game_over_screen from step 6278
+1263: -
+1400: F      # fire on the game over screen, released at 1410: high_scores from step 6400
+1410: -
+1500: F      # fire on the high scores, released at 1510: session_loop in step 6500, title_screen 7447
+1510: -

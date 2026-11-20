@@ -42,7 +42,7 @@ offset = 0x1a8
 name = "quit_flag"
 kind = "var"
 size = 2
-note = "set by the title on KONIEC; session_loop then quits"
+note = "set by the title on KONIEC or Esc; session_loop then quits to AmigaDOS (docs/16)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -333,7 +333,7 @@ hunk = 0
 offset = 0x6e06
 name = "title_screen"
 kind = "func"
-note = "runs the title until START or KONIEC"
+note = "runs the title until START, KONIEC or Esc (docs/16)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -341,7 +341,7 @@ hunk = 0
 offset = 0x6e6e
 name = "title_pass"
 kind = "func"
-note = "one pass of the title: raster wait, input, menu, code digits, music"
+note = "one pass of the title: raster wait, input, menu, code digits, music; Esc down (last_key_byte $75) quits, measured (docs/16)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -952,7 +952,7 @@ hunk = 0
 offset = 0x777e
 name = "title_code_world"
 kind = "func"
-note = "the title code picks the start world; one code sets cheat_flag"
+note = "four codes: 0556 world 1, 2424 world 3, 7531 world 5, 2400 world 1 with cheat_flag; else world 1, cheat_flag kept (measured, docs/16)"
 
 [[sym]]
 exe = "forest_dumb_forever"
@@ -2077,3 +2077,383 @@ offset = 0x3dd8
 name = "h0_3dd8"
 kind = "func"
 note = "point d0, d1 inside slot a0's $30 by $20 box: d7.b 1, else d7 0 (T24)"
+
+# forest-dumb-title T01, the title, its codes and the high scores (docs/16-title.md).
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x1aa
+name = "session_game_over"
+kind = "func"
+note = "game_over_screen, high_scores, then session_loop again (measured, docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6df6
+name = "title_selected"
+kind = "var"
+size = 4
+note = "fire released on KODY or KONIEC: KODY's digit entry or KONIEC's quit runs; the rows stop moving (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x6dfa
+name = "lives_choice"
+kind = "var"
+size = 4
+note = "0..2: 15, 27 or 39 lives in unreferenced h0+$53e; changed only by unreferenced h0+$7236, so 0 (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7112
+name = "title_fire_down"
+kind = "var"
+size = 4
+note = "fire pressed on KODY or KONIEC; title_selected is set on its release (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x71e6
+name = "title_menu"
+kind = "func"
+note = "title_selected clear: title_move_rows; set: KONIEC sets title_quit_flag, KODY runs title_code_entry (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x742e
+name = "code_digits"
+kind = "var"
+size = 4
+note = "KODY's four digits, a byte each; 00 05 05 06 at load; each world's load list stores its code (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7432
+name = "code_digit_index"
+kind = "var"
+size = 4
+note = "the next digit KODY writes, 0..3; the fourth ends the entry (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7436
+name = "code_entry_on"
+kind = "var"
+size = 2
+note = "KODY's digit entry started: index cleared and the cursor box drawn once (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x7438
+name = "title_code_entry"
+kind = "func"
+note = "one digit per key release into code_digits; after the fourth, back to the rows (measured, docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x75ce
+name = "code_key_down"
+kind = "var"
+size = 2
+note = "a key press byte (bit 0 set) seen; the next release byte is decoded (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x75d0
+name = "code_key"
+kind = "var"
+size = 2
+note = "the digit code_read_key decoded, $ff for none (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x75d2
+name = "code_read_key"
+kind = "func"
+note = "last_key_byte: a release of keys 1..9 and 0 (raw $fc..$ea) gives that digit (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x793a
+name = "title_move_rows"
+kind = "func"
+note = "Down or Up held is noted; on release title_cursor moves one row, wrapping 2 to 0 and 0 to 2 (measured, docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79d2
+name = "title_down_pending"
+kind = "var"
+size = 2
+note = "Down was held; acted on when the stick is released (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79d4
+name = "title_up_pending"
+kind = "var"
+size = 2
+note = "Up was held; acted on when the stick is released (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79d6
+name = "title_joy_left"
+kind = "var"
+size = 2
+note = "JOY1DAT bit 9 this pass"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79d8
+name = "title_joy_right"
+kind = "var"
+size = 2
+note = "JOY1DAT bit 1 this pass"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79da
+name = "title_joy_up"
+kind = "var"
+size = 2
+note = "JOY1DAT bit 8 xor bit 9 this pass"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x79dc
+name = "title_joy_down"
+kind = "var"
+size = 2
+note = "JOY1DAT bit 0 xor bit 1 this pass"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84b6
+name = "hiscore_name_1"
+kind = "var"
+size = 12
+note = "high-score entry 1's name, ASCII, space-filled; best first; in memory only, the save routine is unreferenced (docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84c2
+name = "hiscore_score_1"
+kind = "var"
+size = 4
+note = "high-score entry 1's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84c6
+name = "hiscore_name_2"
+kind = "var"
+size = 12
+note = "high-score entry 2's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84d2
+name = "hiscore_score_2"
+kind = "var"
+size = 4
+note = "high-score entry 2's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84d6
+name = "hiscore_name_3"
+kind = "var"
+size = 12
+note = "high-score entry 3's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84e2
+name = "hiscore_score_3"
+kind = "var"
+size = 4
+note = "high-score entry 3's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84e6
+name = "hiscore_name_4"
+kind = "var"
+size = 12
+note = "high-score entry 4's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84f2
+name = "hiscore_score_4"
+kind = "var"
+size = 4
+note = "high-score entry 4's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x84f6
+name = "hiscore_name_5"
+kind = "var"
+size = 12
+note = "high-score entry 5's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8502
+name = "hiscore_score_5"
+kind = "var"
+size = 4
+note = "high-score entry 5's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8506
+name = "hiscore_name_6"
+kind = "var"
+size = 12
+note = "high-score entry 6's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8512
+name = "hiscore_score_6"
+kind = "var"
+size = 4
+note = "high-score entry 6's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8516
+name = "hiscore_name_7"
+kind = "var"
+size = 12
+note = "high-score entry 7's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8522
+name = "hiscore_score_7"
+kind = "var"
+size = 4
+note = "high-score entry 7's score, BCD as score"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8526
+name = "hiscore_name_8"
+kind = "var"
+size = 12
+note = "high-score entry 8's name, ASCII, space-filled; hiscore_sort keeps the eight entries best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8532
+name = "hiscore_score_8"
+kind = "var"
+size = 4
+note = "high-score entry 8's score, BCD as score; high_scores compares the score with this one"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8926
+name = "hiscore_sort"
+kind = "func"
+note = "bubble sort of the eight hiscore entries (h0+$84b6, 16 bytes each) by score, best first"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x89ce
+name = "hiscore_entered"
+kind = "var"
+size = 2
+note = "set once a name was entered; nothing measured reads it"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x89d0
+name = "high_scores"
+kind = "func"
+note = "score at least the eighth entry's: hiscore_name_entry, the score into slot 8, sort; then the table until fire (measured, docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8a96
+name = "hiscore_insert"
+kind = "func"
+note = "the typed name and score into hiscore_name_8 and hiscore_score_8"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8b1a
+name = "hiscore_name_entry"
+kind = "func"
+note = "types a name of up to 12 keys; Return ends, Backspace deletes (measured, docs/16)"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8bc4
+name = "hiscore_name_index"
+kind = "var"
+size = 2
+note = "the next character hiscore_name_entry writes, 0..11"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8bc6
+name = "hiscore_key_down"
+kind = "var"
+size = 2
+note = "a key press byte seen; the next release byte is typed"
+
+[[sym]]
+exe = "forest_dumb_forever"
+hunk = 0
+offset = 0x8bc8
+name = "hiscore_name_done"
+kind = "var"
+size = 2
+note = "Return released: the name entry ends"

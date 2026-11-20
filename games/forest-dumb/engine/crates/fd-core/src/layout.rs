@@ -150,6 +150,25 @@ pub const LAYOUT: &[Var] = &[
     var("creature_slots+$1c", 0, 0x6808, Width::Long),
     var("creature_slots+$20", 0, 0x680c, Width::Long),
     var("creature_slots+$24", 0, 0x6810, Width::Long),
+    // The title (forest-dumb-title T01, docs/16-title.md): its rows and flags, KODY's digits, the
+    // song's position and the high-score table's scores. The entries' names are 12 bytes, wider
+    // than a `Width`, and are compared as memory.
+    var("title_cursor", 0, 0x6df2, Width::Long),
+    var("title_start_flag", 0, 0x6dee, Width::Long),
+    var("title_quit_flag", 0, 0x6ee8, Width::Word),
+    var("quit_flag", 0, 0x1a8, Width::Word),
+    var("title_selected", 0, 0x6df6, Width::Long),
+    var("code_digits", 0, 0x742e, Width::Long),
+    var("code_digit_index", 0, 0x7432, Width::Long),
+    var("mt_songpos", 4, 0x195ca, Width::Byte),
+    var("hiscore_score_1", 0, 0x84c2, Width::Long),
+    var("hiscore_score_2", 0, 0x84d2, Width::Long),
+    var("hiscore_score_3", 0, 0x84e2, Width::Long),
+    var("hiscore_score_4", 0, 0x84f2, Width::Long),
+    var("hiscore_score_5", 0, 0x8502, Width::Long),
+    var("hiscore_score_6", 0, 0x8512, Width::Long),
+    var("hiscore_score_7", 0, 0x8522, Width::Long),
+    var("hiscore_score_8", 0, 0x8532, Width::Long),
 ];
 
 /// The variable called `name`.
