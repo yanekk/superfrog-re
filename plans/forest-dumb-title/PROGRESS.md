@@ -5,10 +5,9 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 1 decided with the user
 
-**Status:** planned 2026-11-20; nothing built.
+**Status:** building; T01 awaiting review.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T01 title-read, because every case and app test names what it finds; T02 and
-T08 can run beside it.
+**Next `pir-work` will:** review T01; T02 and T08 can run beside it, T03 to T06 and T10 after T01 is reviewed.
 
 ## Tasks
 
@@ -17,7 +16,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
-| T01 | title-read | — | ⬜ | |
+| T01 | title-read | — | 🔍 | docs/16-title.md, symbols, LAYOUT rows, 10 scripts, title_codes.rs (8 oracle tests, full, 30 s). Deviations: codes exist only for worlds 1, 3, 5 plus cheat 2400; fd-core State gained TitleVars, since State must hold every LAYOUT row; high-score names stay out of LAYOUT (12 bytes), table split per entry; game-over scripts give up with Esc. |
 | T02 | case-goals | — | ⬜ | |
 | T03 | title-idle-rows-cases | T01, T02 | ⬜ | |
 | T04 | title-code-cases | T01, T02 | ⬜ | |
@@ -29,7 +28,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T10 | title-app-paths | T01 | ⬜ | |
 | T11 | title-drill | T07, T09, T10 | ⬜ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T01
 
 ## Blocked on the user
 
