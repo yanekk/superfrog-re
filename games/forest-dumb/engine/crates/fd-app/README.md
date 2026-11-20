@@ -111,6 +111,17 @@ never reaches the game; ⌘ plus a key is the app's.
 stderr lines start `fd-app: ` (`playing W1-1`, `playing the translated program from power-on`, `level 1 reached headless after N frames`, `level 1 begins at step N`, `the translated program stopped at step N: …`, `the program quit to AmigaDOS at step N`, `stop recording saved to <path> (N frames from <start>)`, `menu <id> after step N`, `controls: <status>`, `fullscreen refused: …`, `staying windowed: …`, `could not save the settings: …`,
 `game over`, `level 1 complete`, `quit after step N`).
 
+## The map page's live file (`src/live.rs`; plan forest-dumb-map-page T10)
+
+Every 12th step (`LIVE_EVERY`, about four times a second) the app samples play (`fd_core::live`) and a
+thread of its own writes `live.js` (`amiga_routeview::live::write_live`: `live.js.tmp`, then renamed)
+into the map page's folder: `games/forest-dumb/build/map/` of the main checkout the app was built in
+(`fd_map::out_in`), else `<home>/map/`. **A scripted run (`--script`) always writes `<home>/map/live.js`,
+never the owner's page.** Outside play (the title, menus, after a stop) it writes `playing: false`. The
+game never waits on the file: a newer frame replaces one not yet written, and a write that fails is
+dropped, said once on stderr (`fd-app: live map: cannot write <path>: …`) and tried again with the next.
+The translated program's thread copies only the bytes the sample reads (`fd_core::live::live_ranges`).
+
 ## Library API (`src/lib.rs`)
 
 `HASHES` (`"hashes.txt"`); `state_hash(g: &Game) -> u64` (scene, state, objects, collision plane;
@@ -122,6 +133,6 @@ every screen is shown through), `memory_hash`, `memory_hash_line`, `to_level_1_i
 
 ## Where the details are
 
-- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`; `translated.rs` the translated program on its own thread, one frame a step over channels, its sound mixed there; `audio.rs` (library) the mixer, which tests use for the headless samples.
+- `src/main.rs` loop and pacing; `args.rs`; `script.rs`; `menu.rs`; `input.rs` host input to `FrameInput`; `settings.rs`, `controls.rs`; `recorder.rs` bug zips; `disks.rs`, `home.rs`; `translated.rs` the translated program on its own thread, one frame a step over channels, its sound mixed there; `live.rs` the map page's live file; `audio.rs` (library) the mixer, which tests use for the headless samples.
 - `toolkit/crates/amiga-app/src/` (`script_core.rs`, `keys.rs`, `settings.rs`, `capture.rs`).
 - `plans/forest-dumb-level-1/DESIGN.md` §2.7, §2.8, §5.2; `games/forest-dumb/CLAUDE.md` "Playing it"; `games/forest-dumb/docs/BUG-FIX.md`, `frame-length.md`.

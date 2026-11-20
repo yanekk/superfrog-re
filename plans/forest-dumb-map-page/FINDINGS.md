@@ -7,6 +7,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | T10 review: in `--level 1` after 240 route steps the translated app and a hand `Game` from W1-1's start disagree: one more creature in view, another 8 px apart. Items left and taken cells agree. Not investigated. |
 | 2026-11-20 | 📌 | T09, worker-driven at 1280×800: the heading's object count (W1-1 "1156 objects") includes the 133 secrets with the layer off, so it hints at them; `page.html` counts `D.objects`. Left for T12. |
 | 2026-11-20 | 📌 | T09: in live play a cell the app changed is drawn by its live value only, so W3-1 41,78, a passage holding an object, loses its secret mark once that object is taken (`page.html`). Left for T12. |
 | 2026-11-20 | 📌 | T08 review, worker-driven: the map-only page's heading reads "Forest Dumb Forever route · W3-1" and the summary counts "0 clean 0 with faults"; toolkit `page.html` wording, left for T12. |

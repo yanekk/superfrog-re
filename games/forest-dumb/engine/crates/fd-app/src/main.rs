@@ -28,6 +28,10 @@
 //! is saved to the bugs folder at once, with the stop in its header; the app goes on ticking frozen,
 //! so Esc, ⌘Q and the menus still work. `--stop-after N` raises a test stop at step N.
 //!
+//! Every [`LIVE_EVERY`]th step play is sampled for the map page and `live.js` written into its
+//! folder on a thread of its own (`live.rs`, plans/forest-dumb-map-page DESIGN §2.5); a scripted
+//! run writes `<home>/map/live.js`, never the owner's page.
+//!
 //! `--script` feeds events in place of the keyboard's and `--capture` writes what was shown, the
 //! inputs and each frame's state hash (`fd_app::HASHES`), without the frames' pictures under
 //! `--capture-hashes`; `--max-frames` and `--timeout` bound a
@@ -38,6 +42,7 @@ mod controls;
 mod disks;
 mod home;
 mod input;
+mod live;
 mod menu;
 mod recorder;
 mod script;
@@ -75,6 +80,7 @@ use winit::window::{Window, WindowId};
 use crate::args::{Args, EngineChoice};
 use crate::controls::OpenControls;
 use crate::input::{HostInput, Input};
+use crate::live::{LIVE_EVERY, LiveWriter, RamSampler};
 use crate::menu::{Command, MenuBar};
 use crate::recorder::{EndChoice, NativeUi, Recorder, ScriptedUi, Ui};
 use crate::script::{Event, Script};
@@ -297,6 +303,10 @@ struct Run {
     /// Whether the window's size holds the bar: it lags `video.bar` while fullscreen, and is
     /// caught up on leaving it.
     window_bar: bool,
+    /// The map page's live file (`live.rs`).
+    live: LiveWriter,
+    /// The translated program's live samples put back together, and the last one's `irq_count`.
+    sampler: RamSampler,
 }
 
 /// The translated program's recording from `start`, by this build.
@@ -476,6 +486,8 @@ impl App {
             },
             stopped: None,
             window_bar: false,
+            live: LiveWriter::start(live::live_dir(&self.home, self.script.is_some())),
+            sampler: RamSampler::new(),
         };
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
@@ -864,7 +876,7 @@ impl App {
             Engine::Translated(t) => {
                 let was_level_1 = t.frame().level_1;
                 let was_exited = t.frame().exited;
-                t.step(input);
+                t.step_live(input, n.is_multiple_of(LIVE_EVERY as u64));
                 if stop_after == Some(n) {
                     t.raise(test_stop(n));
                 }
@@ -1010,6 +1022,9 @@ impl App {
             }
         }
         run.shown.completed((n, size, rgba));
+        if n.is_multiple_of(LIVE_EVERY as u64) {
+            sample_live(run, ran);
+        }
         if run.recorder.full() {
             eprintln!("fd-app: the recording is a day long, the longest one may be: stopped");
             self.save_recording();
@@ -1023,6 +1038,8 @@ impl App {
     fn finish(&mut self, event_loop: &ActiveEventLoop) {
         if let Some(r) = self.run.as_mut() {
             eprintln!("fd-app: quit after step {}", r.steps);
+            // The run's last sample on disk before the process exits, which drops nothing.
+            r.live.finish();
             if let Some(c) = r.capture.as_mut() {
                 let done = r
                     .hashes
@@ -1062,6 +1079,22 @@ impl App {
             self.fail(event_loop, &format!("shot: {e}"));
         }
     }
+}
+
+/// The map page's sample of the step just run, handed to the live writer. `ran` is false after a
+/// stop, whose frozen frame is not play.
+fn sample_live(run: &mut Run, ran: bool) {
+    let sample = match &run.engine {
+        _ if !ran => fd_core::live::Live::default(),
+        Engine::Hand(g) => fd_core::live::live_from_game(g, &g.data().level.objects.cells),
+        Engine::Translated(t) => {
+            let Some(bytes) = &t.frame().live else { return };
+            let objects = &run.disks.objects;
+            let start = |w: u8| objects.get((w as usize).wrapping_sub(1)).cloned().flatten();
+            run.sampler.live(bytes, &start)
+        }
+    };
+    run.live.send(live::frame(&sample, live::now_ms()));
 }
 
 impl ApplicationHandler for App {
