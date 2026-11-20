@@ -63,6 +63,7 @@
 //! of slack. The picture and Paula's writes stay per frame; before play (the title, SCENA) memory
 //! stays judged at frame ends with T51's allowances.
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, VecDeque};
 use std::ops::Range;
 
@@ -135,6 +136,25 @@ pub trait FrameEngine: Transplant {
     /// How many [`FrameEngine::write_at`] writes the engine has not made by the last frame's end.
     fn writes_at_pending(&self) -> usize {
         0
+    }
+    /// Before the first frame: report each entry into the routine at `at` (hunk, offset) from then
+    /// on ([`FrameEngine::entered`]), for a case's `enters` goal (title T02); the original's is its
+    /// first instruction run. An engine that cannot refuses.
+    fn watch_entry(&mut self, _at: (u8, u32)) -> Result<(), String> {
+        Err("this engine reports no routine's entry".into())
+    }
+    /// Whether the last frame entered the routine of [`FrameEngine::watch_entry`].
+    fn entered(&self) -> bool {
+        false
+    }
+    /// Before the first frame of a snapshot start: the program's exit, read off the original's
+    /// entry (`sync::entry_return`), for a case's `exited` goal (title T02). A power-on start has
+    /// its own.
+    fn exit_to(&mut self, _back: u32, _sp: u32) {}
+    /// Whether the program returned from its entry to its caller in the last frame (it then
+    /// reports a stop naming it, [`FrameEngine::stopped`], and runs no more).
+    fn exited(&self) -> bool {
+        false
     }
 }
 
@@ -918,7 +938,7 @@ pub fn run_title_frames(
     let mut am = if level {
         reach_case(case, 0)?
     } else {
-        reach_title(case, inputs)?
+        reach_title(case, inputs, false)?.0
     };
     am.watch_pcs(&pcs);
     if level {
@@ -1044,10 +1064,33 @@ pub fn run_entry_frames(
     let mut pcs: Vec<u32> = opts.register.iter().map(crate::coverage::address).collect();
     pcs.extend(&entries);
     pcs.extend(&returns);
+    // Title T02's goals: the original's PC that marks the event, the routine's entry or the
+    // address the program's entry returns to; the engine reports its own.
+    let wants_exit = matches!(case.goal, Some(Goal::Exited { .. }));
+    let mut event_pc = match &case.goal {
+        Some(Goal::Enters { at, .. }) => {
+            engine.watch_entry(*at)?;
+            Some(h(*at))
+        }
+        _ => None,
+    };
+    pcs.extend(event_pc);
     let (mut am, line) = if case.is_entry() {
-        sync::reach_entry(case, inputs, &pcs)?
+        let (am, line, exit) = sync::reach_entry(case, inputs, &pcs)?;
+        if wants_exit {
+            let (back, _) = exit.ok_or(
+                "the program's exit: no line sample of the entry's step held its return",
+            )?;
+            event_pc = Some(back);
+        }
+        (am, line)
     } else {
-        let mut am = reach_title(case, inputs)?;
+        let (mut am, exit) = reach_title(case, inputs, wants_exit)?;
+        if let Some((back, sp)) = exit {
+            engine.exit_to(back, sp);
+            event_pc = Some(back);
+            pcs.push(back);
+        }
         am.watch_pcs(&pcs);
         (am, 0)
     };
@@ -1069,7 +1112,14 @@ pub fn run_entry_frames(
     };
     // Loads entered and returned on the original since the entry.
     let (mut entered, mut returned) = (0u32, 0u32);
+    // The original reached `event_pc` in a step not yet paired with an engine frame.
+    let theirs_hit = Cell::new(false);
     let mut count = |am: &Amiga| {
+        if let Some(pc) = event_pc
+            && am.pc_hits().iter().any(|&(p, n)| p == pc && n > 0)
+        {
+            theirs_hit.set(true);
+        }
         let hits = |list: &[u32]| -> u32 {
             am.pc_hits()
                 .iter()
@@ -1125,6 +1175,13 @@ pub fn run_entry_frames(
     let (back, tail) = os_tail.frame(r, program_owns(&am));
     load_count += r;
     align.original(r + back, l || tail);
+    if case.is_entry() && wants_exit {
+        // Known only from the entry's step, whose hits are counted: watched from the next on.
+        pcs.extend(event_pc);
+        am.watch_pcs(&pcs);
+    }
+    // The aligned frame each side reached an `enters` or `exited` goal's event in, once one has.
+    let mut event: Option<(Option<u32>, Option<u32>)> = None;
     loop {
         let eng_before = keep.then(|| engine.ram().map(<[u8]>::to_vec)).flatten();
         engine.frame(input);
@@ -1132,7 +1189,12 @@ pub fn run_entry_frames(
         let pass = run;
         let frame = am.frame();
         if let Some(stop) = engine.stopped() {
-            verdict.firsts.push(Outcome::Stopped { pass, frame, stop });
+            if wants_exit && engine.exited() {
+                // The engine has no frame after its exit: paired with the step just run.
+                event = Some((theirs_hit.take().then_some(frame), Some(frame)));
+            } else {
+                verdict.firsts.push(Outcome::Stopped { pass, frame, stop });
+            }
             break;
         }
         let (r, l) = engine.loads();
@@ -1172,6 +1234,18 @@ pub fn run_entry_frames(
             break;
         }
         let frame = am.frame();
+        // An event either side reached in the steps paired with this engine frame (a load's
+        // skipped steps included) is this frame's. Apart, the frame is not judged: the run goes on
+        // with the other side alone to name its frame.
+        let theirs_now = theirs_hit.take();
+        let ours_now = engine.entered();
+        let apart = theirs_now != ours_now;
+        if theirs_now || ours_now {
+            event = Some((theirs_now.then_some(frame), ours_now.then_some(frame)));
+        }
+        if apart {
+            break;
+        }
         if !align.compared() {
             judge.leave_play();
         } else {
@@ -1197,7 +1271,8 @@ pub fn run_entry_frames(
             }
             goal_check(case, &goal, &*engine, &am, frame, &mut verdict);
         }
-        if am.frame() >= end {
+        // Both entered together: the comparison ends there, the frame judged.
+        if event.is_some() || am.frame() >= end {
             break;
         }
         owned_before = program_owns(&am);
@@ -1209,6 +1284,50 @@ pub fn run_entry_frames(
         let (back, tail) = os_tail.frame(r, program_owns(&am));
         load_count += r;
         align.original(r + back, l || tail);
+    }
+    if let Some(e) = event {
+        let (mut theirs, mut ours) = e;
+        let by = match &case.goal {
+            Some(Goal::Enters { by_frame, .. } | Goal::Exited { by_frame }) => (*by_frame).min(end),
+            _ => end,
+        };
+        // The other side alone, a frame at a time, no longer lined up by loads: only its frame
+        // is wanted, to name it.
+        while theirs.is_none() && am.frame() < by {
+            step(&mut am)?;
+            count(&am);
+            if theirs_hit.take() {
+                theirs = Some(am.frame());
+            }
+        }
+        let mut f = ours.map_or(am.frame(), |_| 0);
+        while ours.is_none() && f < by && engine.stopped().is_none() {
+            engine.frame(inputs.at(f));
+            f += 1;
+            if engine.entered() || engine.exited() {
+                ours = Some(f);
+            }
+        }
+        let what = match &case.goal {
+            Some(Goal::Enters { routine, .. }) => format!("entered {routine}"),
+            _ => "returned from the program's entry".to_string(),
+        };
+        let at = |side: Option<u32>| side.map_or(format!("not by oracle frame {by}"), |f| format!("at oracle frame {f}"));
+        match (theirs, ours) {
+            (Some(t), Some(o)) if t == o => {
+                if t <= by {
+                    verdict.goal_met = Some(t);
+                }
+            }
+            (t, o) => verdict.firsts.push(Outcome::SceneDiffers {
+                frame: t.into_iter().chain(o).min().unwrap_or(by),
+                why: format!(
+                    "the original {what} {}, the engine {}",
+                    at(t),
+                    at(o)
+                ),
+            }),
+        }
     }
     if verdict.firsts.is_empty() || opts.every_channel {
         judge.finish(&mut verdict);
@@ -1246,8 +1365,13 @@ pub fn run_entry_frames(
     Ok(conclude(case, verdict, nothing))
 }
 
-/// The original from power-on to the end of title case `case`'s sync frame, its swap made on the way.
-fn reach_title(case: &Case, inputs: &Inputs) -> Result<Amiga, String> {
+/// The original from power-on to the end of title case `case`'s sync frame, its swap made on the way,
+/// and with `exit` the program's exit read off its entry ([`sync::ExitFinder`]).
+fn reach_title(
+    case: &Case,
+    inputs: &Inputs,
+    exit: bool,
+) -> Result<(Amiga, Option<sync::Exit>), String> {
     use amiga_oracle::{OracleConfig, kickstart_path};
     let kickstart = kickstart_path().map_err(|e| e.to_string())?;
     let cfg = OracleConfig::new(
@@ -1256,13 +1380,19 @@ fn reach_title(case: &Case, inputs: &Inputs) -> Result<Amiga, String> {
         case.sync_frame + case.frames + 1,
     );
     let mut am = Amiga::power_on(&cfg).map_err(|e| e.to_string())?;
+    let mut finder = exit.then(|| sync::ExitFinder::start(&mut am));
     for frame in 0..case.sync_frame {
         if let Some(s) = case.swap.filter(|s| s.frame == frame) {
             am.insert_disk(0, s.disk as usize - 1);
         }
         am.step(inputs.at(frame)).map_err(|e| e.to_string())?;
+        if let Some(f) = &mut finder {
+            f.stepped(&mut am);
+        }
     }
-    Ok(am)
+    let by = format!("the sync frame {}", case.sync_frame);
+    let exit = finder.map(|f| f.finish(&mut am, &by)).transpose()?;
+    Ok((am, exit))
 }
 
 fn goal_vars(case: &Case) -> Result<Vec<(&'static Var, u32)>, String> {
@@ -1332,6 +1462,18 @@ fn conclude(case: &Case, mut verdict: Verdict, nothing: Option<&str>) -> Verdict
                     ),
                 }),
             },
+            Some(Goal::Enters {
+                routine, by_frame, ..
+            }) if verdict.goal_met.is_none() => Some(Outcome::GoalMissed {
+                goal: format!("both sides entering {routine} by oracle frame {by_frame}"),
+            }),
+            Some(Goal::Exited { by_frame }) if verdict.goal_met.is_none() => {
+                Some(Outcome::GoalMissed {
+                    goal: format!(
+                        "both sides returning from the program's entry by oracle frame {by_frame}"
+                    ),
+                })
+            }
             Some(Goal::LevelEnd { by_frame }) => match verdict.level_end {
                 Some(end) if end <= *by_frame => {
                     verdict.goal_met = Some(end);

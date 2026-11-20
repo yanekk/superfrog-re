@@ -7,7 +7,7 @@
 use std::path::{Path, PathBuf};
 
 use amiga_conform::{script, sync_cache};
-use amiga_oracle::{Amiga, OracleConfig, default_cache, kickstart_path, read_only};
+use amiga_oracle::{Amiga, LineSample, OracleConfig, default_cache, kickstart_path, read_only};
 
 use crate::{conform_dir, disks};
 
@@ -102,6 +102,84 @@ pub fn level_1_script() -> Result<(String, script::InputScript), String> {
 /// The program's entry, `h0+$0` (docs/07-executable-map.md).
 pub const ENTRY: (u8, u32) = (0, 0x0);
 
+/// The entry's first call's return, `h0+$a` (its `jsr prompt_disk_2` at `h0+$4`), and the longs
+/// it pushed before that call (`movem.l d0-d7/a0-a6,-(a7)`): above them on the stack is the
+/// address the program returns to when it quits (`quit_to_dos`'s `movem` and `rts`).
+pub const ENTRY_FIRST_RETURN: (u8, u32) = (0, 0xa);
+const ENTRY_SAVED: u32 = 15;
+
+/// The program's exit: the address its entry returns to, and the stack pointer that `rts` leaves.
+pub type Exit = (u32, u32);
+
+/// The program's exit, read off a line sample of the original inside the entry's first call (the
+/// disk 2 prompt, which waits for fire): (the address its entry returns to, the stack pointer that
+/// `rts` leaves). Title T02's `exited` goal: the original quits when it reaches that address, the
+/// translated program when it returns there with that stack (`TranslatedGame::exit_to`). `None`
+/// when no sample in user mode holds the first call's return in its stack window.
+pub fn entry_return(samples: &[LineSample]) -> Option<Exit> {
+    let mark = crate::HUNK_BASES[ENTRY_FIRST_RETURN.0 as usize] + ENTRY_FIRST_RETURN.1;
+    samples.iter().filter(|s| s.sr & 0x2000 == 0).find_map(|s| {
+        let i = s.stack.iter().position(|&l| l == mark)? as u32;
+        let at = i + 1 + ENTRY_SAVED;
+        let back = *s.stack.get(at as usize)?;
+        Some((back & 0xFF_FFFF, s.sp + 4 * at + 4))
+    })
+}
+
+/// [`entry_return`] while stepping the original from power-on: line samples on from the start
+/// (which leaves the run unchanged, `Amiga::set_profile`) until a step at or after the entry's
+/// holds the exit, then off. Watches the entry's PC meanwhile, so it is for a run that watches
+/// nothing else on the way.
+pub struct ExitFinder {
+    entry: u32,
+    entered: bool,
+    found: Option<Exit>,
+}
+
+impl ExitFinder {
+    pub fn start(am: &mut Amiga) -> ExitFinder {
+        let entry = crate::HUNK_BASES[ENTRY.0 as usize] + ENTRY.1;
+        am.watch_pcs(&[entry]);
+        am.set_profile(true);
+        ExitFinder {
+            entry,
+            entered: false,
+            found: None,
+        }
+    }
+
+    /// After each step.
+    pub fn stepped(&mut self, am: &mut Amiga) {
+        if self.found.is_some() {
+            return;
+        }
+        self.entered |= am.pc_hits().iter().any(|&(pc, n)| pc == self.entry && n > 0);
+        if self.entered {
+            self.found = entry_return(&am.line_samples());
+            if self.found.is_some() {
+                am.set_profile(false);
+                am.watch_pcs(&[]);
+            }
+        }
+    }
+
+    /// The exit, or why there is none, `by` naming where the run ended.
+    pub fn finish(self, am: &mut Amiga, by: &str) -> Result<Exit, String> {
+        am.set_profile(false);
+        am.watch_pcs(&[]);
+        self.found.ok_or_else(|| {
+            format!(
+                "the program's exit: {} by {by}",
+                if self.entered {
+                    "no line sample after the entry held its return"
+                } else {
+                    "the entry did not run"
+                }
+            )
+        })
+    }
+}
+
 /// Each hunk's length in memory, BSS included (docs/07-executable-map.md, "hunks"), at
 /// `HUNK_BASES`: the bytes a power-on case's `memory` compares.
 pub const HUNK_SIZES: [u32; 5] = [0x5be68, 0x1280, 0x1830, 0x3aa28, 0x1c94c];
@@ -149,8 +227,8 @@ pub const LEVEL3_VECTOR: u32 = 0x6C;
 pub const LEVEL3_HANDLER: (u8, u32) = (0, 0x1eda);
 
 /// The original from power-on, `case`'s script and swap, up to the end of the step that first runs
-/// the program's entry, with room for the rest of the case's frames, and the raster line the
-/// entry ran on. `watch` are the PCs whose hits the run counts from then on (the entry's own is
+/// the program's entry, with room for the rest of the case's frames, the raster line the
+/// entry ran on, and the program's exit if that step's line samples hold it ([`entry_return`]). `watch` are the PCs whose hits the run counts from then on (the entry's own is
 /// added first); the entry step's hits are the caller's to read.
 ///
 /// The line: Kickstart enters the program partway through a frame (line 179 of frame 3461 on
@@ -162,7 +240,7 @@ pub fn reach_entry(
     case: &crate::Case,
     inputs: &crate::Inputs,
     watch: &[u32],
-) -> Result<(Amiga, u16), String> {
+) -> Result<(Amiga, u16, Option<Exit>), String> {
     let kickstart = kickstart_path().map_err(|e| e.to_string())?;
     let disks = disks::load()?;
     let cfg = OracleConfig::new(kickstart, disks, case.frames + 1);
@@ -190,8 +268,9 @@ pub fn reach_entry(
                 .find(|l| in_code(l.pc))
                 .map(|l| l.vpos)
                 .ok_or("the entry's step: no line ended in the program's code")?;
+            let exit = entry_return(&am.line_samples());
             am.set_profile(false);
-            return Ok((am, line));
+            return Ok((am, line, exit));
         }
     }
     Err(format!(

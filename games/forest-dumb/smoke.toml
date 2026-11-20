@@ -33,6 +33,10 @@ workspace = "engine"
 # to the title, about 30 s), each world's 300 passes on the translated program alone, and the five
 # cases on it: the disks, Kickstart and the tree's build put them in full.
 "crates/fd-conform/tests/world_starts.rs" = "full"
+# Title T02: the `enters` and `exited` goals against stand-in copies of the original (eight runs from
+# power-on, about 70 s) and on the translated program (about 40 s): the disks, Kickstart and the
+# tree's build put them in full. The parser's own tests are in the crate's src.
+"crates/fd-conform/tests/case_goals.rs" = "full"
 # Translator T47: a write a read of a write-only register made, compared by register only (pure).
 "crates/fd-conform/tests/leftover.rs" = "smoke"
 # Translator T29: every case on `--engine hand` passes as before, all 43 cases: about 7 minutes.
