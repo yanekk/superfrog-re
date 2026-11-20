@@ -116,7 +116,11 @@ fn world_3_in_play_reads_whole() {
         Some(level_file())
     };
     let l = r.live(Some(40), &start);
-    assert_eq!(asked.get(), 3, "the level file asked for is world_index + 1's");
+    assert_eq!(
+        asked.get(),
+        3,
+        "the level file asked for is world_index + 1's"
+    );
     assert_eq!(
         l,
         Live {
@@ -184,7 +188,11 @@ fn the_ranges_cover_every_byte_read() {
     // Sorted and apart, so the app's copy is a few slices; the map is one of them.
     assert!(ranges.windows(2).all(|w| w[0].1 < w[1].0), "{ranges:x?}");
     let map = HUNK_BASES[0] + MAP;
-    assert!(ranges.iter().any(|&(a, b)| a <= map && map + MAP_BYTES as u32 <= b));
+    assert!(
+        ranges
+            .iter()
+            .any(|&(a, b)| a <= map && map + MAP_BYTES as u32 <= b)
+    );
     let bytes: u32 = ranges.iter().map(|(a, b)| b - a).sum();
     assert!(bytes < 40_000, "{bytes} bytes: the map and a few variables");
 }

@@ -61,7 +61,9 @@ fn h0(off: u32) -> u32 {
 /// A BCD word as a number: `$282` is 282. A nibble past 9 counts as its value, as the original's
 /// digits never hold one.
 fn from_bcd(w: u16) -> u16 {
-    (0..4).rev().fold(0, |acc, k| acc * 10 + (w >> (4 * k) & 0xf))
+    (0..4)
+        .rev()
+        .fold(0, |acc, k| acc * 10 + (w >> (4 * k) & 0xf))
 }
 
 /// The spot the cell rule reads (`recording::Location::of_character`).
@@ -111,7 +113,11 @@ pub fn live_from_ram(
             let [active, xy, kind] = slot_vars(i);
             (var(&active) != 0).then(|| {
                 let (xy, kind) = (var(&xy), var(&kind));
-                ((xy >> 16) as i16 as i32, xy as i16 as i32, (kind >> 16) as u8)
+                (
+                    (xy >> 16) as i16 as i32,
+                    xy as i16 as i32,
+                    (kind >> 16) as u8,
+                )
             })
         })
         .collect();
