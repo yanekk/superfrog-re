@@ -74,9 +74,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T56 | mount-routine-timing | T55; blocks T40, T42 | ✅ | |
 | T58 | mount-character-timing | T56; blocks T40, T42 | ⬜ | |
 | T59 | mount-walk-close | T56; blocks T40, T42 | ⬜ | |
-| T60 | walk-unit-tests | T56; blocks T40, T42 | ⬜ | |
+| T60 | walk-unit-tests | T56; blocks T40, T42 | 🔍 | `fd-translated/tests/walk.rs`, 15 smoke tests: walk equals generated calls on dbf_loop, flags_call, nested_call, shared_call; each Decision, Until, skip_call on hand shapes. Python `ShapeRow`, 4 tests. Deviation: fixed walk's block start after return and skip_call (separate Escape commit). mount_timing full unrun. |
 
-**Review queue:** *(empty)*
+**Review queue:** T60
 
 ## Blocked on the user
 
