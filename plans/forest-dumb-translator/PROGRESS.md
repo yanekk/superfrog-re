@@ -5,8 +5,8 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 **Plan reviewed:** 2026-11-11 — 5 fixed, 6 decided with the user
 
 **Status:** Planned 2026-11-11; nothing built.
-**Last updated:** 2026-11-11
-**Next `pir-work` will:** T02 (code-seen), the head of the critical path; T00, T01, T05 and T17 can run beside it.
+**Last updated:** 2026-11-20
+**Next `pir-work` will:** review T40; then T41 (app-drill).
 
 ## Tasks
 
@@ -54,7 +54,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T37 | app-translated | T18, T32, T36 | ✅ | |
 | T38 | app-sound | T37 | ✅ | |
 | T39 | app-stop | T37 | ✅ | |
-| T40 | app-e2e | T33, T38, T39 | ⬜ | |
+| T40 | app-e2e | T33, T38, T39 | 🔍 | Built `translated_whole.rs` (503 s) and `translated_short.rs` (22 s), shared `tests/whole/mod.rs`: a headless run picks the inputs, the app plays them by key, state equal every step. Deviations: fire on world 2's SCENA screen (the program waits for it); no new `[[area]]`, both need disks and tree, so full (DESIGN §5); fixed T58's stale smoke label. |
 | T41 | app-drill | T40 | ⬜ | |
 | T42 | close | T21, T33, T34, T41 | ⬜ | |
 | T43 | call-fallthrough | T03; blocks T28 | ✅ | |
@@ -76,7 +76,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T59 | mount-walk-close | T56; blocks T40, T42 | ✅ | |
 | T60 | walk-unit-tests | T56; blocks T40, T42 | ✅ | |
 
-**Review queue:** *(empty)*
+**Review queue:** T40
 
 ## Blocked on the user
 
