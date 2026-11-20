@@ -16,13 +16,17 @@
 //! handed to the routine through `Bus::mount_data`; a run that mounts the frame without it stops.
 //! In another world the translated routine runs: the hand engine is level 1's.
 //!
-//! The pass takes the original's time on the machine (T55, DESIGN §2.9): each custom-chip access is
-//! made by the instruction the original makes it with, ticked from `pcode_rt::cycles` at its place
-//! in the pass (CLXDAT, JOY1DAT, the raster copy, every blit's wait on BBUSY and its registers,
-//! every sound's line wait and registers); the rest of each callee is a lump of its cycles measured
-//! on the translated program ([`COSTS`]), ticked a few accesses at a time through the bus's `poll`,
-//! so the machine's contention, the frame's end and any interrupt above level 3 fall inside the
-//! pass as they do inside the translated routine.
+//! The pass takes the original's time on the machine (T55, T56, DESIGN §2.9): `game_frame`'s own
+//! instructions and those of each callee with a timing rule (`seam::rules`, 18 of the 20) are
+//! walked (`seam::walk`): the rule works out from the typed state the path the original takes, and
+//! the walk makes each instruction's ticks, block starts and bus syncs as the generated code does,
+//! every custom-chip access (CLXDAT, JOY1DAT, the raster copy, each blit's BBUSY wait and
+//! registers, each sound's line wait and registers) made by its own instruction with the value the
+//! hand engine wrote or the machine's read. The machine's contention, the frame's end and any
+//! interrupt above level 3 so fall inside the pass where they fall inside the translated routine.
+//! The two callees with no rule, `char_hit_check` and `char_update` (T58's), are a lump of their
+//! cycles measured on the translated program ([`COSTS`]), ticked a few accesses at a time, their
+//! CLXDAT read and sounds made by the original's instructions; a blit outside a walk is a stop.
 //!
 //! What the mount does not do: leave the original's scratch registers (`level3_handler` restores
 //! them all around the call).
@@ -59,9 +63,8 @@ const READ_JOYSTICK: u32 = 0x8dfc;
 /// `world_index` (`h0+$6dfe`, a long): 0 in world 1, where the hand engine plays.
 const WORLD_INDEX: u32 = 0x6dfe;
 
-/// The custom chips the pass reads: the blitter's busy bit, the raster, JOY1DAT and CLXDAT (which a
-/// read clears).
-const DMACONR: u32 = 0xdf_f002;
+/// The custom chips the pass reads outside a walk: the raster, JOY1DAT and CLXDAT (which a read
+/// clears).
 const VHPOSR: u32 = 0xdf_f006;
 const JOY1DAT: u32 = 0xdf_f00c;
 const CLXDAT: u32 = 0xdf_f00e;
@@ -242,134 +245,24 @@ impl BusPass<'_, '_, '_> {
 
 // --- the time -------------------------------------------------------------------------------------
 
-/// What each callee of `game_frame` costs, in cycles of the 68000 with no chip holding the bus: its
-/// most common time from entry to return on the translated program, the waits for DMA slots, for
-/// BBUSY and for the beam taken out (`fd-conform`'s `examples/game_frame_costs.rs` over the level 1
-/// cases, 2026-11-19), and what each blit it starts adds. The instructions the mount makes its own
-/// accesses with are paid out of it; what is left is ticked as a lump (module comment).
-struct Cost {
-    at: u32,
-    base: u32,
-    per_blit: u32,
-}
-
-const COSTS: [Cost; 20] = [
-    Cost {
-        at: 0x9b06,
-        base: 3232,
-        per_blit: 0,
-    },
-    // `h0_94ba` with the fade off; [`FADE_ON`] while it runs.
-    Cost {
-        at: 0x94ba,
-        base: 72,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x4d7e,
-        base: 1240,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x513c,
-        base: 128,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x5462,
-        base: 434,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x9754,
-        base: 1272,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x2c7e,
-        base: 608,
-        per_blit: 306,
-    },
-    Cost {
-        at: 0x2fae,
-        base: 1414,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x21c0,
-        base: 44,
-        per_blit: 1060,
-    },
-    Cost {
-        at: 0x62b6,
-        base: 1030,
-        per_blit: 1070,
-    },
-    Cost {
-        at: 0x2dd6,
-        base: 1142,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x3698,
-        base: 1546,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x2d4c,
-        base: 716,
-        per_blit: 840,
-    },
-    Cost {
-        at: 0x8dfc,
-        base: 456,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x3b2a,
-        base: 98,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x20b0,
-        base: 92,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x24ce,
-        base: 44,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x3e0c,
-        base: 15968,
-        per_blit: 0,
-    },
-    Cost {
-        at: 0x2698,
-        base: 600,
-        per_blit: 1000,
-    },
-    Cost {
-        at: 0x2104,
-        base: 220,
-        per_blit: 0,
-    },
-];
-
-/// `h0_94ba` while the fade runs (`h0+$94b4` set as the pass starts).
-const FADE_ON: u32 = 13550;
-const FADE_FLAG: u32 = 0x94b4;
+/// What each callee of `game_frame` with no timing rule ([`rules`]) costs, in cycles of the 68000
+/// with no chip holding the bus: its most common time from entry to return on the translated
+/// program, the waits for DMA slots and for the beam taken out (`fd-conform`'s
+/// `examples/game_frame_costs.rs` over the level 1 cases, 2026-11-19). The instructions the mount
+/// makes its own accesses with are paid out of it; what is left is ticked as a lump (module
+/// comment). Two routines, `char_hit_check` and `char_update`, both T58's to walk; every other
+/// callee is walked (T56).
+const COSTS: [(u32, u32); 2] = [(0x3b2a, 98), (0x3e0c, 15968)];
 
 /// A lump is ticked this many cycles at a time, a block start before each, so the frame's end and
 /// an interrupt are taken within a few accesses of where the translated code takes them.
 const LUMP: u32 = 40;
 
-/// A wait loop on the bus gives up after this many turns (a bus with no beam or no blitter).
+/// A wait loop on the bus gives up after this many turns (a bus with no beam).
 const WAIT_GUARD: u32 = 100_000;
 
-fn cost(at: u32) -> Option<&'static Cost> {
-    COSTS.iter().find(|c| c.at == at)
+fn cost(at: u32) -> u32 {
+    COSTS.iter().find(|c| c.0 == at).map_or(0, |c| c.1)
 }
 
 /// `move.w #imm, abs.l` and `move.l #imm, abs.l`: how the original writes the chips' registers.
@@ -509,39 +402,14 @@ impl BusPass<'_, '_, '_> {
         }
     }
 
-    /// A blit: the routine's work towards it, the wait on BBUSY (`btst #6, $dff002` then `bne`,
-    /// every blit site's), then its registers in order.
+    /// A blit: its registers as the walked routine's instructions make them. Every routine that
+    /// starts one is walked (T56); a blit outside a walk would have no time, so the pass stops.
     fn blit(&mut self, writes: &[(u32, u32, bool)]) {
         if self.walked {
             return self.walk_writes(writes);
         }
-        let per = cost(self.at).map_or(0, |c| c.per_blit);
-        let btst = (
-            cy::of(Op::Btst, Size::B, Ea::Imm, Ea::AbsL),
-            cy::off_of(Op::Btst, Size::B, Ea::Imm, Ea::AbsL),
-        );
-        let own: u32 = btst.0
-            + cy::bcc(false, Size::W)
-            + writes
-                .iter()
-                .map(|w| if w.2 { MOVE_L.0 } else { MOVE_W.0 })
-                .sum::<u32>();
-        self.owed += per;
-        self.pay(per.saturating_sub(own));
-        for turn in 0..WAIT_GUARD {
-            if turn > 0 {
-                self.block();
-            }
-            self.insn(btst, 0, turn == 0);
-            let busy = self.bus().rb(DMACONR) & 0x40 != 0;
-            let b = (cy::bcc(busy, Size::W), cy::bcc_off(busy));
-            self.insn(b, b.1, turn == 0);
-            if !busy || self.stop.is_some() {
-                break;
-            }
-        }
-        for &(a, v, long) in writes {
-            self.write(a, v, long);
+        if self.stop.is_none() {
+            self.stop = Some(self.walk_stop("a blit from a routine with no timing rule"));
         }
     }
 
@@ -834,13 +702,7 @@ impl Pass for BusPass<'_, '_, '_> {
                     self.stop = Some(e);
                 }
                 self.walked = false;
-                self.owed = match cost(offset) {
-                    Some(_) if offset == 0x94ba && self.mem.read_at(self.h0(FADE_FLAG)) != 0 => {
-                        FADE_ON
-                    }
-                    Some(c) => c.base,
-                    None => 0,
-                };
+                self.owed = cost(offset);
             }
         }
     }
