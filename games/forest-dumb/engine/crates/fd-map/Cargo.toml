@@ -1,0 +1,18 @@
+[package]
+name = "fd-map"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+# Each world's level as the map page draws it, from the level files and the program's bytes with no
+# engine run (plan forest-dumb-map-page DESIGN §2.1, §2.2, §3.2). `fd-app` links it, so its normal
+# dependencies stay these two (fd-app/tests/deps.rs): never fd-conform, the oracle or test tooling.
+# `src/level.rs` is pure (fd-conform/tests/purity.rs scans it); `src/lib.rs` is the shell side.
+
+[dependencies]
+fd-assets = { path = "../fd-assets" }
+amiga-routeview = { path = "../../../../../toolkit/crates/amiga-routeview" }
+
+[dev-dependencies]
+# The owner's disks, for tests/levels.rs.
+fd-tools = { path = "../fd-tools" }

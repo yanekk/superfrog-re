@@ -263,6 +263,12 @@ workspace = "engine"
 # Map page T01: every value of the six object maps has a group in re/objects-*.toml, and made-up
 # tables and maps for the unknown value and the contradiction; reads disk 2, under a second warm.
 "crates/fd-conform/tests/object_tables.rs" = "smoke"
+# Map page T02: fd-map on made-up level bytes and on each real world's object file (counts, exit,
+# items needed); reads both disks, about 2 s warm.
+"crates/fd-map/tests/levels.rs" = "smoke"
+# Map page T02: each world's items needed and exit against the original after level_init, six runs
+# from power-on, about 76 s: full.
+"crates/fd-conform/tests/map_oracle.rs" = "full"
 "crates/fd-core/src" = "smoke"
 # Map page T06: the live reader on made-up RAM, under a second.
 "crates/fd-core/tests/live.rs" = "smoke"
@@ -769,3 +775,7 @@ covers = ["crates/fd-conform/tests/seam.rs::one_byte_written_differently_fails_n
 [[area]]
 name = "the app built with no translation says how to generate it"
 covers = ["crates/fd-e2e/tests/not_generated.rs::with_no_translation_built_in_the_app_names_the_command_and_exits_1"]
+
+[[area]]
+name = "the map page's levels: every world's objects, exit and items needed read from its files"
+covers = ["crates/fd-map/tests/levels.rs::each_real_world_matches_its_object_file"]
