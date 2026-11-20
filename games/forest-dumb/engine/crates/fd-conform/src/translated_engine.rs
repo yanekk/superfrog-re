@@ -401,7 +401,14 @@ impl TranslatedEngine {
                         picture: out.picture.clone(),
                         paula,
                         custom,
-                        stop: out.stop.clone(),
+                        // The program ending itself (KONIEC's return to AmigaDOS) is no stop to the
+                        // app (translator T41), but a case never asks for it: it ends the run as
+                        // one, by name, so a case reaching it fails there.
+                        stop: out.stop.clone().or_else(|| {
+                            out.exited.then(|| {
+                                Stop::Os("exit: the program returned from its entry".into())
+                            })
+                        }),
                         mem,
                         loads: (out.returns.len() as u32, !out.inside.is_empty()),
                         pass_ends: out.watched.clone(),

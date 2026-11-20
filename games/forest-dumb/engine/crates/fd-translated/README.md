@@ -35,7 +35,9 @@ let stop = g.run(&mut |frame| {
   `Machine::frame_end()`, interrupt handlers included: the host runs handlers itself
   (`Machine::enter_interrupt` / `leave_interrupt`) so their blocks reach its `poll`.
   It resets `Regs::steps` each frame and sets CIA-A's interrupts into INTREQ (PORTS).
-- It returns `None` when `each` said stop (final: the frames it was inside are gone), or the
+- It returns `None` when the program ended itself (`g.exited()`: it returned from its power-on
+  entry to the address under its stack, KONIEC's `quit_to_dos`, T41; one last `each` with
+  `exited` set and no `stop`), when `each` said stop (final: the frames it was inside are gone), or the
   program's stop, after one last `each` with `stop` set and the last whole frame's picture.
 - **Power-on** enters `h0+$0` with the stack at `POWER_ON_STACK`. The program waits for fire at the
   disk 2 prompt (`h0+$7b70`): hold it in the first frames' input.

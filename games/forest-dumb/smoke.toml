@@ -316,6 +316,10 @@ workspace = "engine"
 # app's smoke area is not_generated.rs's (DESIGN §5).
 "crates/fd-e2e/tests/translated_short.rs" = "full"
 "crates/fd-e2e/tests/translated_whole.rs" = "full"
+# Translator T41, the translated app's drill: KONIEC quits the app with no zip, a key held through
+# level 1's load with resizes and a lost focus, the stop band at 2× and 1000×700 with its zip
+# replayed. Four launches, about 34 s, and the generated tree.
+"crates/fd-e2e/tests/translated_drill.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
