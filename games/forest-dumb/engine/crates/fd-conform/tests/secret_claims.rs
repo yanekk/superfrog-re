@@ -241,7 +241,7 @@ fn w3_the_stone_room_beside_the_lava_is_passable() {
     passes(3, (80, 28), Joy::LEFT, 4);
 }
 
-/// W4-1's passage `W4-1:199,90` to `210,92`: in from the brick hall on its west.
+/// W4-1's passage `W4-1:199,90` to `210,93`: in from the brick hall on its west.
 #[test]
 #[ignore = "full: oracle"]
 fn w4_the_passage_by_the_statues_is_passable() {

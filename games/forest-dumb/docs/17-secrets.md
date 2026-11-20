@@ -45,10 +45,10 @@ Why each part, from the counts and the renders (`build/renders/`, collision laid
 
 | Level | Cells | Groups |
 |---|---|---|
-| W1-1 | 133 | the tunnel under the hill `117,91` to `159,93` (121); the stone tower `121,79` to `124,81` (12) |
+| W1-1 | 133 | the tunnel under the hill `117,91` to `159,93` (121); the stone tower `121,79` to `124,82` (12) |
 | W2-1 | 0 | only rims: the exit's frame, alcove and opening edges |
-| W3-1 | 292 | seven: the stone room `67,25` to `77,28` with its shaft down `67,29` to `69,32`; `30,70` to `39,73`; `35,78` to `41,82`; `79,89` to `90,91`; `100,33` to `116,34`; `117,10` to `128,12`; `164,53` to `168,68` |
-| W4-1 | 63 | `159,89` to `167,93`; `199,90` to `210,92` |
+| W3-1 | 292 | seven: the stone room `67,25` to `77,28` with its shaft down `67,29` to `69,32`; `32,70` to `39,73`; `35,78` to `41,82`; `79,89` to `90,92`; `100,33` to `116,35`; `117,10` to `128,13`; `164,53` to `168,68` |
+| W4-1 | 63 | `159,89` to `167,93`; `199,90` to `210,93` |
 | W5-1 | 0 | only the exit's frame |
 | W6-1 | 0 | only rims: the exit's frame and a row of three at `292,64` |
 
