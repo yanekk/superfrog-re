@@ -6,9 +6,9 @@ the over-budget cell they walk past.
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
-**Status:** Building; T00 done.
+**Status:** Building; T00 and T01 done.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T01, T06 and T07 beside it.
+**Next `pir-work` will:** T03 (chrome-rig), the head of the critical path; T02, T06 and T07 beside it.
 
 ## Tasks
 
@@ -17,7 +17,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | # | Task | Depends on | State | Notes |
 |---|---|---|---|---|
 | T00 | items-needed-source | — | ✅ | Reviewed: items_left = BCD(object-map coins - 50), set by all six load lists. Reran the oracle reading and map count; read the counter, packer and every items_left writer. Fix: docs/10 notes no coins in unused columns, README rerun needs the venv. Docs-only, no mutation. |
-| T01 | objects-all-worlds | — | ⬜ | |
+| T01 | objects-all-worlds | — | ✅ | |
 | T02 | map-levels | T00, T01 | ⬜ | |
 | T03 | chrome-rig | — | ⬜ | |
 | T04 | page-map-only | T03 | ⬜ | |
