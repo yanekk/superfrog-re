@@ -25,7 +25,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ✅ | |
 | T08 | map-command | T02, T05 | ✅ | |
-| T09 | secrets-layer | T07, T08 | ⬜ | |
+| T09 | secrets-layer | T07, T08 | ✅ | |
 | T10 | app-live | T02, T05, T06 | ✅ | |
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
