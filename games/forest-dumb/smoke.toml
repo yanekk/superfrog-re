@@ -264,6 +264,11 @@ workspace = "engine"
 # tables and maps for the unknown value and the contradiction; reads disk 2, under a second warm.
 "crates/fd-conform/tests/object_tables.rs" = "smoke"
 "crates/fd-core/src" = "smoke"
+# Map page T06: the live reader on made-up RAM, under a second.
+"crates/fd-core/tests/live.rs" = "smoke"
+# Map page T06: the live reader on headless runs from power-on (W1-1's route opening, beside the hand
+# engine, world 2, Esc to game over), about 20 s each warm; the disks and the tree's build put it in full.
+"crates/fd-conform/tests/live_reader.rs" = "full"
 "crates/fd-tools/tests/bad_disks.rs" = "smoke"
 # T65: a new game's collision_map, play screen and creature tables against the original at the cached
 # sync point, under a second warm (a machine with no sync cache boots to W1-1 once first).
