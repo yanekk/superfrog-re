@@ -1,0 +1,15 @@
+# Esc on the title (forest-dumb-title T05, DESIGN §2.2, §2.3): from the idle title at frame 4990,
+# the Amiga Esc key (K45, last_key_byte $75). T01 measured a quit, not nothing: title_pass runs
+# quit_to_dos in the step Esc goes down, 5010 (docs/16-title.md "Esc", tests/title_codes.rs), so
+# the case is judged as title-koniec, both sides returning from the program's entry in the same
+# aligned frame. Translated engine only.
+sync = { script = "boot-to-level1", frame = 4990 }
+input = "title-esc"
+align = "loads"
+swap = { frame = 3600, disk = 2 }
+frames = 60
+compare = ["memory", "picture", "writes"]
+goal = { exited = true, by_frame = 5050 }
+# Fails on the translated program, measured 2026-11-20 (T05), left for T07: it quits a frame late.
+# The original shuts its sound down at 5011 (AUD0PER first) and returns at 5012, the translated
+# program at 5013; first difference Paula's writes at 5011 (tests/title_quit_cases.rs).
