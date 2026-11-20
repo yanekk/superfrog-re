@@ -22,44 +22,57 @@ use amiga_app::start_level_window::{
 use fd_core::recording::{ForestDumb, LevelId, Recording, StartPoint};
 use winit::window::Window;
 
+use crate::args::EngineChoice;
+
 /// Whether a recording is running, and the recording.
 pub type Recorder = amiga_record::Recorder<ForestDumb>;
 
 /// The app's name in the log and the toolkit's windows.
 const APP: &str = "fd-app";
 
-/// The levels the Start Level window offers: level 1 only, until the title plan's T09 starts the
-/// other worlds from it (a recording names all six since T08).
-pub const OFFERED: [LevelId; 1] = [LevelId::W1_1];
-
-/// The Start Level window's fields (DESIGN §2.7): a level selector offering [`OFFERED`] and
-/// "Enable recorder?", on when the window opens, as Superfrog's is.
-pub fn spec() -> StartLevelSpec {
-    StartLevelSpec {
-        fields: vec![
-            LevelField {
-                id: "level".into(),
-                label: "Level".into(),
-                kind: FieldKind::Dropdown(OFFERED.iter().map(|l| l.to_string()).collect()),
-                default: Value::Choice(0),
-            },
-            LevelField {
-                id: "record".into(),
-                label: "Enable recorder?".into(),
-                kind: FieldKind::Checkbox,
-                default: Value::On(true),
-            },
-        ],
+/// The Start Level window's fields (DESIGN §2.7; title plan DESIGN §2.5). On the translated
+/// program: "Level" offering W1-1 to W6-1, "Cheat on" (off when the window opens) and "Enable
+/// recorder?" (on, as Superfrog's). On the hand engine, which has level 1 only and no title for a
+/// cheat: "Level" offering W1-1 and "Enable recorder?", as before the title plan.
+pub fn spec(engine: EngineChoice) -> StartLevelSpec {
+    let levels: &[LevelId] = match engine {
+        EngineChoice::Translated => &LevelId::ALL,
+        EngineChoice::Hand => &[LevelId::W1_1],
+    };
+    let mut fields = vec![LevelField {
+        id: "level".into(),
+        label: "Level".into(),
+        kind: FieldKind::Dropdown(levels.iter().map(|l| l.to_string()).collect()),
+        default: Value::Choice(0),
+    }];
+    if engine == EngineChoice::Translated {
+        fields.push(LevelField {
+            id: "cheat".into(),
+            label: "Cheat on".into(),
+            kind: FieldKind::Checkbox,
+            default: Value::On(false),
+        });
     }
+    fields.push(LevelField {
+        id: "record".into(),
+        label: "Enable recorder?".into(),
+        kind: FieldKind::Checkbox,
+        default: Value::On(true),
+    });
+    StartLevelSpec { fields }
 }
 
-/// The level and whether to record, from the window's values.
-pub fn chosen(v: &Values) -> (LevelId, bool) {
-    let level = v
-        .choice(0)
-        .and_then(|i| OFFERED.get(i).copied())
+/// The level, the cheat and whether to record, from the values of [`spec`]`(engine)`'s window.
+pub fn chosen(engine: EngineChoice, v: &Values) -> (LevelId, bool, bool) {
+    let s = spec(engine);
+    let level = s
+        .field("level")
+        .and_then(|i| v.choice(i))
+        .and_then(|i| LevelId::ALL.get(i).copied())
         .unwrap_or_default();
-    (level, v.on(1).unwrap_or(true))
+    let cheat = s.field("cheat").and_then(|i| v.on(i)).unwrap_or(false);
+    let record = s.field("record").and_then(|i| v.on(i)).unwrap_or(true);
+    (level, cheat, record)
 }
 
 /// What the player answered "Recording in progress" with, before an action that would end it.
@@ -185,8 +198,8 @@ pub fn local_now() -> (i32, u8, u8, u8, u8) {
 /// The recorder's windows: shown to a person ([`NativeUi`]), or answered by a script
 /// ([`ScriptedUi`]). Each is modal: no frame is stepped while one is open.
 pub trait Ui {
-    /// Game ▸ Start Level…: the level and whether to record, `None` for Cancel.
-    fn start_level(&mut self) -> Option<(LevelId, bool)>;
+    /// Game ▸ Start Level…: the level, the cheat and whether to record, `None` for Cancel.
+    fn start_level(&mut self) -> Option<(LevelId, bool, bool)>;
     /// "Recording in progress" before `action`.
     fn recording_in_progress(&mut self, action: &str) -> EndChoice;
     /// The save window: `save` is called with each note the player saves with, until it succeeds
@@ -205,9 +218,19 @@ pub trait Ui {
 }
 
 /// The real windows.
-#[derive(Default)]
 pub struct NativeUi {
     parent: Option<Arc<Window>>,
+    /// Which Start Level window ([`spec`]).
+    engine: EngineChoice,
+}
+
+impl NativeUi {
+    pub fn new(engine: EngineChoice) -> NativeUi {
+        NativeUi {
+            parent: None,
+            engine,
+        }
+    }
 }
 
 const IN_PROGRESS: &str = "Recording in progress";
@@ -216,9 +239,9 @@ const DISCARD: &str = "Discard";
 const CANCEL: &str = "Cancel";
 
 impl Ui for NativeUi {
-    fn start_level(&mut self) -> Option<(LevelId, bool)> {
-        amiga_app::start_level_window::run_modal(APP, &spec(), self.parent.as_deref())
-            .map(|v| chosen(&v))
+    fn start_level(&mut self) -> Option<(LevelId, bool, bool)> {
+        amiga_app::start_level_window::run_modal(APP, &spec(self.engine), self.parent.as_deref())
+            .map(|v| chosen(self.engine, &v))
     }
 
     /// An alert with Save…, Discard and Cancel (Esc), as a sheet on the game window.
@@ -281,11 +304,13 @@ impl Ui for NativeUi {
 }
 
 /// A script's answers ([`crate::script::Answers`]), taken in order, and a line in the log for every
-/// window shown: `start-level: -> <level> [record]|cancel`, `recording: <action> -> save|discard|
+/// window shown: `start-level: -> <level> [cheat] [record]|cancel`, `recording: <action> -> save|discard|
 /// cancel`, `save-recording: <name> at <place> -> note <text>|discard`, `notice: <text>`. With no
 /// answer left a window is cancelled, or the save window discarded, so a run always goes on.
 #[derive(Debug, Default)]
 pub struct ScriptedUi {
+    /// Which Start Level window ([`spec`]).
+    engine: EngineChoice,
     starts: std::collections::VecDeque<Vec<FieldAction>>,
     endings: std::collections::VecDeque<EndChoice>,
     notes: std::collections::VecDeque<Option<String>>,
@@ -294,8 +319,13 @@ pub struct ScriptedUi {
 }
 
 impl ScriptedUi {
-    pub fn new(a: crate::script::Answers, log_file: Option<PathBuf>) -> ScriptedUi {
+    pub fn new(
+        engine: EngineChoice,
+        a: crate::script::Answers,
+        log_file: Option<PathBuf>,
+    ) -> ScriptedUi {
         ScriptedUi {
+            engine,
             starts: a.starts.into(),
             endings: a.endings.into(),
             notes: a.notes.into(),
@@ -318,20 +348,24 @@ impl ScriptedUi {
 }
 
 impl Ui for ScriptedUi {
-    fn start_level(&mut self) -> Option<(LevelId, bool)> {
-        let spec = spec();
+    fn start_level(&mut self) -> Option<(LevelId, bool, bool)> {
+        let spec = spec(self.engine);
         let mut form = Form::new(spec.clone());
         let mut answer = None;
         for action in self.starts.pop_front().unwrap_or_default() {
             eprintln!("{APP}: start-level form: {}", action.words(&spec));
             if let Some(done) = form.apply(action) {
-                answer = done.map(|v| chosen(&v));
+                answer = done.map(|v| chosen(self.engine, &v));
                 break;
             }
         }
         let shown = match answer {
             None => "cancel".to_string(),
-            Some((level, record)) => format!("{level}{}", if record { " record" } else { "" }),
+            Some((level, cheat, record)) => format!(
+                "{level}{}{}",
+                if cheat { " cheat" } else { "" },
+                if record { " record" } else { "" }
+            ),
         };
         self.record(format!("start-level: -> {shown}"));
         answer
@@ -406,30 +440,63 @@ mod tests {
     }
 
     #[test]
-    fn the_window_offers_level_1_only_and_the_recorder_starts_on() {
-        let s = spec();
+    fn the_translated_window_offers_six_worlds_the_cheat_off_and_the_recorder_on() {
+        let s = spec(EngineChoice::Translated);
+        let names: Vec<String> = LevelId::ALL.iter().map(|l| l.to_string()).collect();
+        assert_eq!(names, ["W1-1", "W2-1", "W3-1", "W4-1", "W5-1", "W6-1"]);
+        assert_eq!(s.fields[0].kind, FieldKind::Dropdown(names));
+        assert_eq!(
+            (s.fields[1].label.as_str(), &s.fields[1].default),
+            ("Cheat on", &Value::On(false))
+        );
+        assert_eq!(s.fields[2].label, "Enable recorder?");
+        let t = EngineChoice::Translated;
+        assert_eq!(chosen(t, &Form::new(s.clone()).values), (LevelId::W1_1, false, true));
+        for (i, l) in LevelId::ALL.iter().enumerate() {
+            let mut f = Form::new(s.clone());
+            f.apply(FieldAction::named(&s, &["level", l.name()]).unwrap());
+            f.apply(FieldAction::named(&s, &["cheat", "on"]).unwrap());
+            f.apply(FieldAction::named(&s, &["record", "off"]).unwrap());
+            let v = f.apply(FieldAction::Start).unwrap().unwrap();
+            assert_eq!(chosen(t, &v), (*l, true, false), "{i}");
+        }
+        assert!(FieldAction::named(&s, &["level", "W7-1"]).is_none());
+        assert!(FieldAction::named(&s, &["level", "W1-2"]).is_none());
+    }
+
+    #[test]
+    fn the_hand_engine_s_window_is_as_before_level_1_only_and_no_cheat() {
+        let s = spec(EngineChoice::Hand);
+        assert_eq!(s.fields.len(), 2);
         assert_eq!(
             s.fields[0].kind,
             FieldKind::Dropdown(vec!["W1-1".to_string()])
         );
         assert_eq!(s.fields[1].label, "Enable recorder?");
-        let form = Form::new(s.clone());
-        assert_eq!(chosen(&form.values), (LevelId::W1_1, true));
-        assert!(FieldAction::named(&s, &["level", "W1-2"]).is_none());
+        let h = EngineChoice::Hand;
+        assert_eq!(chosen(h, &Form::new(s.clone()).values), (LevelId::W1_1, false, true));
+        assert!(FieldAction::named(&s, &["level", "W2-1"]).is_none());
+        assert!(FieldAction::named(&s, &["cheat", "on"]).is_none());
         let mut f = Form::new(s.clone());
         f.apply(FieldAction::named(&s, &["record", "off"]).unwrap());
         let v = f.apply(FieldAction::Start).unwrap().unwrap();
-        assert_eq!(chosen(&v), (LevelId::W1_1, false));
+        assert_eq!(chosen(h, &v), (LevelId::W1_1, false, false));
     }
 
     #[test]
     fn a_scripted_window_takes_its_answers_in_order_then_cancels() {
-        let spec = spec();
+        let spec = spec(EngineChoice::Translated);
         let mut ui = ScriptedUi::new(
+            EngineChoice::Translated,
             crate::script::Answers {
                 starts: vec![
                     vec![
                         FieldAction::named(&spec, &["record", "off"]).unwrap(),
+                        FieldAction::Start,
+                    ],
+                    vec![
+                        FieldAction::named(&spec, &["level", "W5-1"]).unwrap(),
+                        FieldAction::named(&spec, &["cheat", "on"]).unwrap(),
                         FieldAction::Start,
                     ],
                     vec![FieldAction::Cancel],
@@ -439,7 +506,8 @@ mod tests {
             },
             None,
         );
-        assert_eq!(ui.start_level(), Some((LevelId::W1_1, false)));
+        assert_eq!(ui.start_level(), Some((LevelId::W1_1, false, false)));
+        assert_eq!(ui.start_level(), Some((LevelId::W5_1, true, true)));
         assert_eq!(ui.start_level(), None);
         assert_eq!(ui.start_level(), None, "none left: cancel");
         assert_eq!(ui.recording_in_progress("Quit"), EndChoice::Save);
@@ -460,6 +528,7 @@ mod tests {
     #[test]
     fn a_save_that_fails_takes_the_next_note() {
         let mut ui = ScriptedUi::new(
+            EngineChoice::Translated,
             crate::script::Answers {
                 notes: vec![Some("a".into()), Some("b".into())],
                 ..Default::default()
