@@ -6,6 +6,7 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 🐞 | **Machine crash, from T54:** `engine.rs`'s mounted handler never polled, so after T54's `IPL_DELAY` its `rte` retook VERTB forever and the frame's writes grew to 25 GB (panic 2026-11-20). `Machine::stuck_interrupt` stops such a loop. |
 | 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
 | 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). Measured before: 47 of 50 pass mounted; routes (4161, 4969) left for T58, power-on-level-1 fails alone. |
 | 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
@@ -17,7 +18,6 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 | 2026-11-19 | 📌 | **T55 costs** (`examples/game_frame_costs.rs`, contention out): `char_update` 15 968 typical, 4 374 to 17 160; `h0_94ba` 72, fading 13 550; `h0_2c7e` 608 + 306 a blit; `h0_2d4c` 716 + 840. The rest in `frame.rs` `COSTS`. |
 | 2026-11-19 | 📌 | **T39, open:** a stop during `--level 1`'s headless run through the title (`Translated::to_level_1`) still ends the app with exit 1 and no zip; only a stop after the window opens freezes and saves one. |
 | 2026-11-19 | 📌 | **T38:** a fresh worktree needs `fd-tools extract` before `translate.py --build`, then `touch buildscripts/fd_translated.rs`: the build had cached the stub and ignored the new tree. |
-| 2026-11-19 | 🐞 | **T37 review:** Game ▸ Start Level… on the translated program skipped about a second of level 1: the pacer was reset before the headless run to level 1. Reproduced in release, fixed; `start_level_restarts_…` locks it, in release only. |
 | 2026-11-19 | 🐞 | **T37 review, open:** under load 30 to 100, `translated_app.rs` `start_by_its_key…` fails at `c.exit.success()`: fd-app's `--timeout 180 s` reached (debug, 1 220 captured frames). Idle, the file passes in 65 s. Left alone. |
 | 2026-11-19 | 🐞 | **T36 review:** `fd-judge --seam 'h0+$1fec'` would print `pass` if the frame mount fell through to the translated routine (translated against itself). `seam.rs` now asserts `Level1::passes()`; the CLI's JSON carries no such count, left alone. |
 | 2026-11-19 | 🐞 | T36, left alone: `watch_returns` counts a mounted routine's entry and return (`Host::mounted` sets `entered` before the seam answers), though `fd-translated/README.md` and its doc say a mount hides it. |

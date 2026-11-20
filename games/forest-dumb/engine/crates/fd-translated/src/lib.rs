@@ -590,7 +590,10 @@ impl Bus for Host<'_, '_> {
         if self.m.take_cia_interrupts() != 0 {
             self.m.raise(PORTS_BIT, r.cycles());
         }
+        let mut last = None;
         while let Some(level) = self.m.due(r) {
+            self.m.stuck_interrupt(level, last, r)?;
+            last = Some((level, self.m.ipl_sampled()));
             let taken = self.m.enter_interrupt(level, r, img)?;
             (taken.handler)(r, self, img)?;
             self.m.leave_interrupt(&taken, r, img)?;

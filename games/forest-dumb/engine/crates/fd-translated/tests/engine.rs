@@ -270,10 +270,17 @@ fn a_frame_that_ends_inside_a_handler_is_handed_over_there() {
 }
 
 /// The level 3 handler by hand, counting two a frame: `addq.w #2,($100).w`, VERTB cleared, `rte`.
-fn handler_by_two(r: &mut Regs, bus: &mut dyn Bus, _: &Image) -> Result<(), Stop> {
+/// It spends the `rte`'s 20 cycles and polls before leaving, as a translated handler's last block
+/// does: the CPU samples its IPL lines only as the machine times its accesses, so a handler that
+/// never polls leaves VERTB seen pending after the clear (Paula's 8-cycle IPL delay, T54), and its
+/// `rte` took the interrupt again forever (the 25 GB run of 2026-11-20; `stuck_interrupt` now
+/// stops it).
+fn handler_by_two(r: &mut Regs, bus: &mut dyn Bus, img: &Image) -> Result<(), Stop> {
     let n = bus.rw(COUNT as u32);
     bus.ww(COUNT as u32, n.wrapping_add(2));
     bus.ww(irq::INTREQ as u32 | 0xdf_f000, 0x20);
+    r.tick(20);
+    bus.poll(r, img)?;
     let sp = r.a(7);
     let sr = bus.rw(sp);
     let pc = bus.rl(sp + 2);

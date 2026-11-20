@@ -611,6 +611,35 @@ impl Machine {
         irq::above_mask(seen, ops::sr_get(r) as u16)
     }
 
+    /// Where the CPU last sampled its IPL lines, for [`Machine::stuck_interrupt`].
+    pub fn ipl_sampled(&self) -> u64 {
+        self.sampled_at
+    }
+
+    /// Stops a poll's interrupt loop that can only go round forever: `level` is due again and the
+    /// CPU has not sampled its IPL lines since it was last taken at `last` (its level and
+    /// [`Machine::ipl_sampled`] then). The CPU samples only as the machine times its accesses
+    /// (`poll_time`), so a handler that never polls (a mounted one) leaves the level seen before its
+    /// clear: Paula's [`irq::IPL_DELAY`] puts the clear after that sample, and each `rte` takes the
+    /// level again, 44 cycles a time, with no poll to end the frame while its writes grow (25 GB,
+    /// 2026-11-20). A handler that polls samples anew, so a run that would finish never stops here.
+    pub fn stuck_interrupt(
+        &self,
+        level: u8,
+        last: Option<(u8, u64)>,
+        r: &Regs,
+    ) -> Result<(), Stop> {
+        if last != Some((level, self.sampled_at)) {
+            return Ok(());
+        }
+        Err(Stop::Unsupported {
+            op: format!(
+                "interrupt level {level} due again before the CPU sampled its IPL lines: its handler never polls"
+            ),
+            at: format!("cycle {}", r.cycles()),
+        })
+    }
+
     /// DMACON as its set/clear writes leave it.
     pub fn dmacon(&self) -> u16 {
         self.dmacon
@@ -1262,7 +1291,10 @@ impl Bus for Machine {
     /// as a 68000 takes it before the next instruction.
     fn poll(&mut self, r: &mut Regs, img: &Image) -> Result<(), Stop> {
         self.poll_time(r)?;
+        let mut last = None;
         while let Some(level) = self.due(r) {
+            self.stuck_interrupt(level, last, r)?;
+            last = Some((level, self.sampled_at));
             self.take(level, r, img)?;
             if let Some(f) = &self.fault {
                 return Err(f.clone());
