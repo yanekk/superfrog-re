@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Building; T03 reviewed ✅ 2026-11-20.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T04 (page-map-only), now unblocked; T00, T01, T06 and T07 can run beside it.
+**Next `pir-work` will:** T04 (page-map-only) and T02 (map-levels), both unblocked; T06 and T07 can run beside them.
 
 ## Tasks
 
