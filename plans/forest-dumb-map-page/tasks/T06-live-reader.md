@@ -27,15 +27,20 @@ DESIGN §2.5, §2.7, §3.1.
 pub struct Live { pub playing: bool, pub world: Option<u8>, pub char_xy: Option<(u32, u32)>,
     pub items_left: Option<u16>,                 // decoded from BCD
     pub creatures: Vec<(i32, i32, u8)>,          // active slots: x, y, kind
-    pub changed: Vec<(u16, u16, u8)> }           // cells differing from `start`
+    pub changed: Vec<(u16, u16, u8)>,            // cells differing from `start`
+    pub irq: u16 }                               // irq_count, the next call's `prev_irq`
 /// `start`: the level file's object map for that world (`fd_assets::Level`), column-major as RAM holds it.
-pub fn live_from_ram(chip: &[u8], slow: &[u8], start: &dyn Fn(u8) -> Option<Vec<u8>>) -> Live;
+/// `prev_irq`: `irq_count` at the previous sample (`None` on the first), returned as `Live::irq`.
+pub fn live_from_ram(chip: &[u8], slow: &[u8], prev_irq: Option<u16>, start: &dyn Fn(u8) -> Option<Vec<u8>>) -> Live;
 pub fn live_from_game(g: &Game, start: &[u8]) -> Live;
 /// The bytes `live_from_ram` reads, so the app's program thread copies only these (DESIGN §3.4).
 pub fn live_ranges() -> Vec<(u32, u32)>;
 ```
 
-`playing` is `irq_count != 0` (docs/09); `world` is `world_index + 1`. `char_xy` is `char_x + $e`,
+`playing` is `irq_count` advanced since `prev_irq` (DESIGN §2.7: it stands still, not at 0, at the game
+over screen and the SCENA screens once a level was played); `world` is `world_index + 1`. Read RAM through
+`fd_core::recording`'s `ram_var` (made `pub(crate)`), the reader `location_in_ram` already uses, not a
+second one. `char_xy` is `char_x + $e`,
 `char_y + 9` (the cell rule's spot, `recording.rs`).
 
 ## Tests
@@ -44,11 +49,13 @@ pub fn live_ranges() -> Vec<(u32, u32)>;
   creature in `changed`; BCD items left; ranges cover every byte read.
 - [ ] Headless translated run (full): power-on to W1-1's play, then T84's route's first 600 steps: `char_xy`
   equals `location_in_ram`'s spot each frame, items left falls with each coin, `changed` holds each taken cell.
-- [ ] Headless `Game` (smoke): the same route steps give the same `Live` from `live_from_game` as from RAM of
+- [ ] Headless `Game` against the translated run (full: it needs the generated tree, which smoke.toml puts in full): the same route steps give the same `Live` from `live_from_game` as from RAM of
   the translated run at matched frames, where the two agree today (W1-1's seam).
 - [ ] World 2 (full): through the `world-2-start` way in, `world` 2, `playing` from its first pass.
+- [ ] Not playing after play (full): W1-1 played, then Esc to the game over screen: `playing` false
+  within two samples while `irq_count` is non-zero.
 
 ## Done when
 
-- [ ] `fd_core::live` is pure (fd-core's I/O guard passes) and its tests pass.
+- [ ] `fd_core::live` is pure (`fd-conform/tests/purity.rs` passes) and its tests pass.
 - [ ] The headless tests pass and are labelled.

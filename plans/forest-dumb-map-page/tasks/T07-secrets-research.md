@@ -15,7 +15,7 @@ DESIGN §2.4.
 
 ## Files
 
-- `games/forest-dumb/docs/16-secrets.md` (new): what was looked for, where in the code, the rule, each kind's
+- `games/forest-dumb/docs/17-secrets.md` (new): what was looked for, where in the code, the rule, each kind's
   oracle evidence, and the count per world; a line in `games/forest-dumb/CLAUDE.md` Notes.
 - `games/forest-dumb/engine/crates/fd-assets/src/secrets.rs` (new, pure), `src/lib.rs`.
 - `games/forest-dumb/engine/crates/fd-conform/tests/secret_claims.rs` (new, oracle).
@@ -48,7 +48,7 @@ pub fn secrets(level: &Level) -> Vec<Secret>;   // only kinds confirmed on the o
 
 ## Done when
 
-- [ ] docs/16 states each kind with its evidence and per-world counts, dated; or that a kind was looked for and
+- [ ] docs/17 states each kind with its evidence and per-world counts, dated; or that a kind was looked for and
   not found, and why.
 - [ ] `secrets()` and its tests pass; the oracle tests are labelled full.
 

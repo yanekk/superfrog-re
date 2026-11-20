@@ -47,7 +47,9 @@ coins (`$20`-`$27`), creatures (`$01`-`$06`), bonuses (`$40`-`$5f`), water (`$28
 springs, vanishing blocks, flames and the exit. The groups come from `re/objects-W1-1.toml` plus
 `re/objects-more.toml` (T01), which holds the values worlds 2 to 6 use and W1-1 lacks: today only `$34`,
 the flame (counted 2026-11-20: 31, 10, 25 and 17 cells in W3-1 to W6-1). Reason: the code dispatches on the
-value alone, the same in every world (docs/10), so one table names every world.
+value alone, the same in every world (docs/10), so one table names every world. Any per-world table another
+plan adds (`re/objects-W2-1.toml`, plan forest-dumb-level-2) is read too; a value two tables name
+differently fails T01's test rather than one silently winning.
 
 ### 2.2 The exit and the items it needs
 
@@ -94,14 +96,17 @@ holds the truth with level 1's hand engine mounted too, since the seam writes ba
 ### 2.6 Following the game
 
 When the world in `live.js` changes, the page switches to that level by itself; a level picked by hand
-stays until the next change (owner). The page scrolls to keep the dot in view while "Follow me" is on; it is
+stays until the next change (owner). The page scrolls to keep the dot in view while "Follow character" (the page's existing Follow button, reused) is on; it is
 on at load, any scroll or drag by hand turns it off, and clicking it turns it on again (owner).
 
 ### 2.7 When nothing is playing
 
-Outside play (title, menus, the SCENA screen, a level's load: `irq_count` 0) the app writes
-`playing: false` and the page shows no dot and "Not playing". When `live.js` is missing or its time stamp is
-more than 3 s older than the page's clock, the page shows "App not running". An old position is never drawn
+Outside play (title, menus, the SCENA screen, a level's load, the game over screen) the app writes
+`playing: false` and the page shows no dot and "Not playing". Play is `irq_count` having advanced since
+the previous sample, not `irq_count != 0`: once a level has been played it stands still, not at 0, at the
+game over screen and the SCENA screens (symbols.toml, docs/09, docs/14 T40). It still counts while paused,
+so a pause shows as playing. When `live.js` is missing or its time stamp is more than 3 s older than the
+page's clock, the page shows "App not running". An old position is never drawn
 as current (owner).
 
 ### 2.8 Opening it from the app
@@ -147,8 +152,9 @@ shell:  fd-map's site writer, fd-routeview's command, fd-app's live writer threa
 ```
 
 The pure parts take bytes and return values; no clock (the live time stamp is the writer's, in the app),
-no files. The existing guard is `fd-core`'s, whose crate must not do I/O (fd-core's own tests); `fd-map`'s
-pure module gets a test scanning `src/level.rs` for `std::fs`, `std::time` and `std::net`. If that test
+no files. The existing guard is the workspace's `fd-conform/tests/purity.rs`, which scans the crates in its `PURE`
+list (`fd-core`, `fd-assets` among them); `fd-map` is part shell, so that test is extended with a
+file-level check of `fd-map/src/level.rs` (the same forbidden `std` modules and identifiers), not a second scanner. If that test
 fails, move the code to the shell side; never relax the test. Everything pure is tested on made-up bytes in
 milliseconds; every rule that leaks into the shell needs Chrome or the app to check.
 
@@ -158,7 +164,8 @@ milliseconds; every rule that leaks into the shell needs Chrome or the app to ch
   secrets), as an `amiga_routeview::LevelDump`; `write_site(out, files, routes)`; `default_out()`. Depends on
   `fd-assets` and `amiga-routeview` only, so `fd-app` may link it (`fd-app/tests/deps.rs`).
 - `fd-routeview` (extended): `--level ID`, `--all`; with `--script` W1-1 is the route's level and the others
-  map-only. Depends on `fd-map`.
+  map-only. Depends on `fd-map`. `--level ID` without `--script` is map only; with `--script` it is the
+  route replay plan forest-dumb-level-2 (its T07) adds, so the two plans share one flag.
 - `fd-core::live` (new module): `Live` from RAM and from `Game`.
 - `fd-app` (extended): the live writer thread, Game ▸ Show Map.
 - `amiga-routeview` (toolkit, extended): map-only entries; `PageSpec.live`; `live::LiveFrame`, `write_live`.
@@ -221,9 +228,13 @@ nothing else is kept.
 | Deliberately absent | Playwright, any npm package, Safari automation |
 
 **The test command** is `tools/smoke.sh`, the repo's stored line (`.pir/settings.json`), unchanged. It ran
-842 to 1112 s in its last runs (`~/.cache/superfrog-re/smoke-times.tsv`), at the 15-minute budget, so this
+842 to 1112 s in its last runs (`~/.cache/superfrog-re/smoke-times.tsv`), at the 15-minute budget; in a
+fresh copy at plan review (cold build, a second smoke running beside it) it hit its 1200 s limit, Forest
+Dumb done at 820 s and 20 Superfrog entries not run, so this
 plan's oracle tests are full, and each smoke addition must finish in a few seconds; read that file before
-labelling. `SMOKE_VERBOSE=1` shows each entry's output.
+labelling. Each new area (a crate or a page mode) puts one test of 5 s or less in smoke, picked by name in
+`smoke.toml` as other entries are, with its `[[area]]`; every other Chrome, app and oracle test is full
+(owner, plan review 2026-11-20, because smoke already hits its limit; fixing that is separate work). `SMOKE_VERBOSE=1` shows each entry's output.
 
 **Setup** is the stored venv lines. Tests read the owner's disks from the main checkout (`fd_tools::disk_dir`).
 
@@ -258,6 +269,8 @@ failed and counted (`Fetch` domain), a hard time limit, the process group killed
 |---|---|---|---|---|---|---|
 | Add `serde_json` to `amiga-browser` | `cargo build` (cached crate) | worker | local, a Cargo.lock line | revert the commit | none | none |
 
+Approved by the owner at plan review, 2026-11-20: nothing in `ask`; the one person step is §5.1's.
+
 ---
 
 ## 7. Decisions and rationale
@@ -268,7 +281,7 @@ All 2026-11-20 with the owner unless marked.
 - Page switches to the level being played; a hand pick holds until the next change.
 - Nothing playing: no dot, "Not playing" or "App not running"; never a stale position.
 - Taken items vanish; creatures in view drawn live (else they vanish while near the player).
-- Follow me on by default, off on a hand scroll, back on by a click.
+- Follow on by default, off on a hand scroll, back on by a click; the existing "Follow character" button does it, label kept (owner, plan review).
 - Game ▸ Show Map plus the command; always Chrome, the browser measured.
 - Routes stay W1-1-only on the hand engine (brief's proposal).
 - Secrets: owner asked for them; layer off by default; each kind confirmed on the original.
@@ -279,6 +292,10 @@ All 2026-11-20 with the owner unless marked.
 - The live shape and reader are in the toolkit (`amiga-routeview`), game-free, so Superfrog's page could use
   them; its page is unchanged while `PageSpec.live` is `None` (planner).
 - About four writes a second: smooth enough for a dot and cheap (planner, inside the owner's "a few times").
+- Fits beside plans forest-dumb-level-2 and forest-dumb-title, both reviewed and unbuilt on 2026-11-20
+  (owner, at plan review): `--level` shared as above, every object table read, the secrets doc numbered 17
+  (level 2 takes 16), and the title plan's six-world `LevelId` used for level ids once it is merged.
+  Whichever plan is built second merges the other's shape rather than its own.
 
 ## 8. Explicitly out of scope
 

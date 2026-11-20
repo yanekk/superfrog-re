@@ -25,7 +25,7 @@ teardown: both stopped by their seatbelts; confirm no fd-app and no headless Chr
 - sizes: 1280×800, 1920×1080, 800×600 · screens saved to the scratch folder, never the repo
 - [ ] title: "Not playing"; W1-1's play: dot on the character's cell each poll, items left falling, coins
   vanishing behind the character, creatures in view moving
-- [ ] Follow me across W1-1; a hand scroll stops it; the click resumes it
+- [ ] Follow (the "Follow character" button) across W1-1; a hand scroll stops it; the click resumes it
 - [ ] the level ends and world 2 loads: "Not playing" during the load, then the page on W2-1 by itself
 - [ ] a level picked by hand during play holds until the next change
 - [ ] the app quits: "App not running" within 4 s

@@ -28,7 +28,8 @@ pub const LIVE_EVERY: u32 = 12;                           // frames between writ
 ```
 
 The `LiveFrame` is built from `fd_core::live::Live`: `level` from `world`, `actor` from `char_xy`, `actors` as
-cat `enemy`, `cells` from `changed`, counter `items_left`; `t_ms` from the wall clock here in the shell.
+cat `enemy`, `cells` from `changed`, counter `items_left`; `t_ms` from the wall clock here in the shell. The program thread keeps the last sample's `Live::irq` and
+passes it as the next `prev_irq` (T06, DESIGN §2.7).
 
 ## Tests
 
@@ -47,5 +48,5 @@ cat `enemy`, `cells` from `changed`, counter `items_left`; `t_ms` from the wall 
 
 ## Done when
 
-- [ ] The tests pass and are labelled (one short run in smoke with an `[[area]]`).
+- [ ] The tests pass and are labelled per DESIGN §5 (one run of 5 s or less in smoke with an `[[area]]`, the rest full).
 - [ ] fd-app's README says where `live.js` goes and that scripted runs never write the owner's folder.

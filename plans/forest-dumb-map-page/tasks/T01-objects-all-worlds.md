@@ -38,6 +38,8 @@ measured = "placed, object_claims.rs::flame_changes_no_state"
   in view other than the picture; `_Plomien` drawn (the frame counter T31's way).
 - [ ] Every non-zero value in the used columns of `_MapaBobow1` … `6` is in one of the two tables (needs the disks).
 - [ ] A made-up map with an unknown value: the test names the value and the cell.
+- [ ] Every `re/objects-*.toml` present is read (a per-world one from plan forest-dumb-level-2 included);
+  a value two tables give different groups fails, naming both files (DESIGN §2.1).
 
 ## Done when
 

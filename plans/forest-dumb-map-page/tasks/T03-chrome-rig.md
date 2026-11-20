@@ -50,5 +50,5 @@ message, never skips, like the disks.
 
 ## Done when
 
-- [ ] `cargo test -p amiga-browser` passes, labelled (smoke if a few seconds), with an `[[area]]`.
+- [ ] `cargo test -p amiga-browser` passes, labelled per DESIGN §5 (one test of 5 s or less in smoke, with an `[[area]]`; the rest full).
 - [ ] The README says how to call it and what it never does (no profile, no network, no visible window).

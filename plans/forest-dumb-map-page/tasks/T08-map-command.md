@@ -14,7 +14,8 @@ DESIGN §2.1 to §2.3, §2.9.
 ## Files
 
 - `games/forest-dumb/engine/crates/fd-map/src/lib.rs`: `spec()` with `live: Some(..)`, `write_site`.
-- `games/forest-dumb/engine/crates/fd-routeview/src/main.rs`, `src/lib.rs`, `README.md`.
+- `games/forest-dumb/engine/crates/fd-routeview/src/main.rs`, `src/lib.rs`, `README.md`, `Cargo.toml`
+  (`amiga-browser` as a dev-dependency).
 - `games/forest-dumb/engine/crates/fd-routeview/tests/levels_chrome.rs` (new); `games/forest-dumb/smoke.toml`.
 - `games/forest-dumb/CLAUDE.md` ("Seeing a run on the map").
 
@@ -22,7 +23,8 @@ DESIGN §2.1 to §2.3, §2.9.
 
 ```
 fd-routeview --all [--out DIR]                 # six levels, map only, default fd_map::default_out()
-fd-routeview --level W2-1 [--out DIR]          # one level
+fd-routeview --level W2-1 [--out DIR]          # one level, map only; with --script it is plan
+                                               # forest-dumb-level-2's route replay (DESIGN §3.2)
 fd-routeview --script FILE [--out DIR] [--all] # as today; with --all the other five levels map only
 ```
 
@@ -39,6 +41,7 @@ failure. Prints `<page>: 6 levels`.
 - [ ] `--all` into a temp dir: six `data/W?-1.js`; each level's object counts equal its file's (disks).
 - [ ] `--level W9-1` exits 2 naming the six ids; `--script` alone writes W1-1 as before (`tests/page.rs` green).
 - [ ] `fd-plan --page` unchanged (its tests green).
+- [ ] If plan forest-dumb-level-2's `--level W2-1 --script` is merged, its tests stay green beside these.
 
 ## End to end (the worker drives this)
 
@@ -51,5 +54,5 @@ failure. Prints `<page>: 6 levels`.
 
 ## Done when
 
-- [ ] The command and the Chrome test pass and are labelled; `fd-routeview`'s README and the game's
+- [ ] The command and the Chrome test pass and are labelled per DESIGN §5; `fd-routeview`'s README and the game's
   CLAUDE.md say how to write the six-level page.

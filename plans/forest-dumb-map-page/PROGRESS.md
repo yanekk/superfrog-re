@@ -4,7 +4,7 @@ Update this whenever a task changes state; it is the handoff between sessions. W
 [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted, flat prose; whoever writes a cell fixes
 the over-budget cell they walk past.
 
-**Plan reviewed:** not yet — the plan reviewer marks it before the build starts
+**Plan reviewed:** 2026-11-20 — 10 fixed, 4 decided with the user
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20

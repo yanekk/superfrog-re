@@ -17,6 +17,9 @@ DESIGN §2.5, §2.6, §2.7, §2.10, §3.3.
 - `toolkit/crates/amiga-routeview/src/live.rs` (new), `src/site.rs`, `src/page.html`, `src/lib.rs`, `README.md`.
 - `toolkit/crates/amiga-routeview/tests/live_chrome.rs` (new), `tests/live.rs` (new).
 - `toolkit/smoke.toml`.
+- Every builder of a `PageSpec`, for `live: None`: `games/superfrog/engine/crates/sf-routeview/src/site.rs`,
+  `games/forest-dumb/engine/crates/fd-routeview/src/lib.rs`, the crate's own `site.rs` tests and
+  `tests/made_up_level.rs`.
 
 ## Interface
 
@@ -31,11 +34,13 @@ impl LiveFrame { pub fn to_js(&self) -> String }            // `window.LIVE = {.
 pub fn write_live(dir: &Path, f: &LiveFrame) -> io::Result<()>; // live.js.tmp then rename
 ```
 
-The page, when `live` is set: every `poll_ms` inserts `<script src="live.js?t=…">`, removes it after load or
+The page already has a layer keyed `live` (objects in play at the scrubbed frame, `D.live`); live mode's
+own layer and data take another key. The page, when `live` is set: every `poll_ms` inserts `<script src="live.js?t=…">`, removes it after load or
 error; draws the actor dot and its cell, each actor in `actors` by its cat's shape, each changed cell with its
 value's layer (0: the object hidden); shows the counters; switches level when `LIVE.level` changes (a hand
-pick holds until it changes again); "Follow me" toggle, on at load, off on a hand scroll or drag, on by click,
-scrolling to keep the dot in view; the status line "Not playing", "App not running" (no file, or
+pick holds until it changes again); the Follow toggle, on at load, off on a hand scroll or drag, on by click,
+scrolling to keep the dot in view (the page's existing Follow button, `setFollow`, already turns off on a
+drag and on by a click: extend it to follow the live dot rather than add a second); the status line "Not playing", "App not running" (no file, or
 `Date.now() - t > stale_ms`), "Playing a level this map does not have".
 
 ## Tests
@@ -49,8 +54,8 @@ scrolling to keep the dot in view; the status line "Not playing", "App not runni
 - suite: `amiga-routeview/tests/live_chrome.rs` on `amiga-browser`, made-up level, the test writing frames
   · sizes: 1280×800, 1920×1080, 800×600
 - [ ] a frame with `playing: true` → dot at its pixel, readout names the cell, counter shown
-- [ ] a new frame moving the actor 200 cells → the view scrolls to it (Follow me on)
-- [ ] a hand scroll → Follow me off, the next frame does not scroll; click Follow me → it scrolls back
+- [ ] a new frame moving the actor 200 cells → the view scrolls to it (Follow on)
+- [ ] a hand scroll → Follow off, the next frame does not scroll; click "Follow character" → it scrolls back
 - [ ] a frame with `cells: [[c, r, 0]]` on a coin → that coin is gone; a value elsewhere → drawn there
 - [ ] `actors` → drawn at their positions, moving with the next frame
 - [ ] `level` changes → the page switches; pick another by hand → it stays until `level` changes again
@@ -61,6 +66,5 @@ scrolling to keep the dot in view; the status line "Not playing", "App not runni
 ## Done when
 
 - [ ] `tools/check_tier_names.py` passes: no game is named in the toolkit files touched.
-
-- [ ] Both new test files pass and are labelled, the live area in smoke with an `[[area]]`.
+- [ ] Both new test files pass and are labelled, per DESIGN §5: one live test of 5 s or less in smoke with an `[[area]]`, the Chrome sizes in full.
 - [ ] Superfrog's page tests are green; the README documents `LiveSpec`, `LiveFrame` and `write_live`.

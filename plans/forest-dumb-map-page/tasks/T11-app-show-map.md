@@ -51,4 +51,4 @@ DESIGN §5.1.)
 
 ## Done when
 
-- [ ] The scripted tests pass and are labelled; the owner's answer is in FINDINGS with the date.
+- [ ] The scripted tests pass and are labelled per DESIGN §5; the owner's answer is in FINDINGS with the date.

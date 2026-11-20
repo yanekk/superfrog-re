@@ -14,7 +14,9 @@ DESIGN §2.3.
 ## Files
 
 - `toolkit/crates/amiga-routeview/src/page.html`, `src/site.rs`, `README.md`, `tests/made_up_level.rs`.
-- `toolkit/crates/amiga-routeview/tests/page_chrome.rs` (new, dev-dependency `amiga-browser`).
+- `toolkit/crates/amiga-routeview/tests/page_chrome.rs` (new, dev-dependency `amiga-browser`), `Cargo.toml`.
+- Every builder of an `Entry`, for the `Option`: `games/superfrog/engine/crates/sf-routeview/src/site.rs`,
+  `src/main.rs`; `games/forest-dumb/engine/crates/fd-routeview/src/lib.rs`.
 
 ## Interface
 
@@ -41,5 +43,5 @@ the readout showing the cell under the pointer.
 
 ## Done when
 
-- [ ] The Chrome test passes and is labelled; Superfrog's and the toolkit's suites are green.
+- [ ] The Chrome test passes and is labelled per DESIGN §5; Superfrog's and the toolkit's suites are green.
 - [ ] The README documents map-only entries.
