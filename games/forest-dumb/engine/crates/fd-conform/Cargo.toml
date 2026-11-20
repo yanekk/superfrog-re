@@ -35,3 +35,7 @@ pcode-rt = { path = "../pcode-rt" }
 pcode-machine = { path = "../pcode-machine" }
 # The translated program as a case's engine (T28, `translated_engine`).
 fd-translated = { path = "../fd-translated" }
+
+[dev-dependencies]
+# The map page's level data, checked against the original after level_init (tests/map_oracle.rs).
+fd-map = { path = "../fd-map" }
