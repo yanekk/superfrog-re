@@ -21,7 +21,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T02 | map-levels | T00, T01 | ✅ | |
 | T03 | chrome-rig | — | ✅ | |
 | T04 | page-map-only | T03 | ✅ | |
-| T05 | page-live | T04 | ⬜ | |
+| T05 | page-live | T04 | ✅ | |
 | T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ✅ | |
 | T08 | map-command | T02, T05 | ⬜ | |
