@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** T09 (secrets-layer), then T12 (map-drill).
+**Next `pir-work` will:** T12 (map-drill).
 
 ## Tasks
 
