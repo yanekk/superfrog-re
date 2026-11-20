@@ -8,7 +8,7 @@ the over-budget cell they walk past.
 
 **Status:** Planned 2026-11-20; nothing built.
 **Last updated:** 2026-11-20
-**Next `pir-work` will:** review T09; T10 (app-live), then T11 and T12.
+**Next `pir-work` will:** T10 (app-live), then T11 and T12.
 
 ## Tasks
 
@@ -25,12 +25,12 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T06 | live-reader | — | ✅ | |
 | T07 | secrets-research | — | ✅ | |
 | T08 | map-command | T02, T05 | ✅ | |
-| T09 | secrets-layer | T07, T08 | 🔍 | `MapLevel.secrets` from `fd_assets::secrets`, cat `secret`, value 0, "hidden passage"; written into `objects` before real objects; Secrets layer off at load. 3 fd-map tests, 1 Chrome test. Deviation: a separate `secrets` field, not inside `objects`, so object counts stay the file's. Only hidden passages exist (T07). |
+| T09 | secrets-layer | T07, T08 | ✅ | Review fixed one defect: `--script` route page dropped W1-1's 133 secrets (fd-routeview `replay`), test locks it. Deviation (separate `secrets` field) held. Probed T84 route markers on secret cells (none); mutated JSON order and layer on-at-load, both caught; judged Chrome screenshots worker-driven. |
 | T10 | app-live | T02, T05, T06 | ⬜ | |
 | T11 | app-show-map | T08, T10 | ⬜ | |
 | T12 | map-drill | T09, T11 | ⬜ | |
 
-**Review queue:** T09
+**Review queue:** (empty)
 
 ## Blocked on the user
 
