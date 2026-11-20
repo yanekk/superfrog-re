@@ -6,11 +6,11 @@ Legend: 🐞 defect found · ✅ verified by hand with the user · 📌 worth kn
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-20 | 📌 | **T40:** `translated_whole.rs` passes in 503 s, review rerun 500 s: level 1 steps 620 to 23 084, world 2 play from 23 414. Its SCENA screen waits for fire: unpressed, `irq_count` stood 1 500 steps (review probe).
 | 2026-11-20 | 📌 | **T58 merge, left alone:** with `COSTS` gone every callee is walked, so `frame.rs`'s unwalked path (`owed`, `settle`, `pay`, `LUMP`, the `!self.walked` branches of `clxdat` and the sound writes) is dead code. |
 | 2026-11-20 | 📌 | **T58 review, open:** `game_frame_costs --passes --mounted enemy-contact`: CLXDAT, JOY1DAT and pass entries on the translated cycles; 422 of 1 299 passes run 2 to 8 cycles longer, all bus waits. Unlocated. |
 | 2026-11-20 | 📌 | **T58:** 49 of 50 level 1 cases pass mounted, both routes too; `HEARS` 25 (item, stomp, slide, hurt, spring; no time bonus in W1-1), `HEARS_T56` gone. Left: `power-on-level-1`, failing translated alone at 6301. |
 | 2026-11-20 | 🐞 | **T60:** `seam::walk` made a `block_start` after a return and after `skip_call` where the generated caller makes `insn_start`, one extra poll. Fixed (`Escape: forest-dumb-translator T56`); `mount_timing.rs`'s full test not re-run here (no disks, no tree). |
-| 2026-11-20 | 🐞 | **Machine crash, from T54:** `engine.rs`'s mounted handler never polled, so after T54's `IPL_DELAY` its `rte` retook VERTB forever and the frame's writes grew to 25 GB (panic 2026-11-20). `Machine::stuck_interrupt` stops such a loop. |
 | 2026-11-19 | 📌 | **T56 review:** `seam::walk` times every `dbcc` as `dbf` (`Decision::Count` carries no condition); all 178 in this program are `dbf`, so latent. `mount_timing.rs` runs contention out: a dropped `bus.sync` passes it. |
 | 2026-11-19 | 🔄 | **T56 split** (pir's context warning): T59 (case lists, COSTS trim, DESIGN §2.9, CLX check) and T60 (walker smoke tests). |
 | 2026-11-19 | 🔄 | **Owner, T56: exact paths, T58 added** (blocks T40, T42). Exact per-routine totals passed only contact-route and enemy-contact; bus waits hang on each instruction's place. Routines are walked through generated shapes; T58 takes `char_hit_check` and `char_update`. |
