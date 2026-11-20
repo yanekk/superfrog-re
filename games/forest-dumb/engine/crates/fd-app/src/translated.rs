@@ -18,6 +18,8 @@ use pcode_machine::Picture;
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
 use pcode_machine::{Disks, Input};
 
+use crate::live::{LiveBytes, copy_ranges};
+
 /// One frame of the translated program, as the app shows and captures it.
 pub struct Frame {
     /// Through [`fd_app::CANVAS`].
@@ -37,6 +39,10 @@ pub struct Frame {
     pub place: Option<fd_core::recording::Location>,
     /// The frame's sound at the run's rate, stereo; none for the start.
     pub samples: Vec<[i16; 2]>,
+    /// The bytes the map page's live sample reads, on a step that asked for them
+    /// ([`Translated::step_live`]); a few kilobytes, copied here so the app never needs the whole
+    /// RAM for it (plans/forest-dumb-map-page DESIGN §3.4).
+    pub live: Option<LiveBytes>,
 }
 
 impl Frame {
@@ -48,7 +54,8 @@ impl Frame {
 
 /// The translated program running on its thread.
 pub struct Translated {
-    to: Option<Sender<Input>>,
+    /// Each step's input, and whether to copy the live sample's bytes at its end.
+    to: Option<Sender<(Input, bool)>>,
     from: Receiver<Frame>,
     thread: Option<JoinHandle<()>>,
     /// The newest frame: before the first step, the start's.
@@ -66,7 +73,7 @@ impl Translated {
         hashes: bool,
         rate: u32,
     ) -> Translated {
-        let (to, inputs) = channel::<Input>();
+        let (to, inputs) = channel::<(Input, bool)>();
         let (frames, from) = channel::<Frame>();
         let thread = thread::Builder::new()
             .name("translated game".into())
@@ -88,11 +95,13 @@ impl Translated {
                     exited: false,
                     place: fd_app::location_in_ram(chip, slow),
                     samples: Vec::new(),
+                    live: None,
                 };
                 if frames.send(start).is_err() {
                     return;
                 }
-                let Ok(first) = inputs.recv() else { return };
+                let ranges = fd_core::live::live_ranges();
+                let Ok((first, mut sample)) = inputs.recv() else { return };
                 g.set_input(first);
                 g.run(&mut |out| {
                     let mut samples = Vec::new();
@@ -105,6 +114,7 @@ impl Translated {
                         exited: out.exited,
                         place: fd_app::location_in_ram(out.chip, out.slow),
                         samples,
+                        live: sample.then(|| copy_ranges(out.chip, out.slow, &ranges)),
                     };
                     let stopped = frame.stop.is_some() || frame.exited;
                     // The app dropped, or the program stopped or ended: nobody sends the next input.
@@ -112,7 +122,10 @@ impl Translated {
                         return Control::Stop;
                     }
                     match inputs.recv() {
-                        Ok(i) => Control::Next(i),
+                        Ok((i, s)) => {
+                            sample = s;
+                            Control::Next(i)
+                        }
                         Err(_) => Control::Stop,
                     }
                 });
@@ -132,13 +145,19 @@ impl Translated {
     /// One frame on `input`. After a stop or the program's exit nothing runs and the last frame
     /// stays, silent.
     pub fn step(&mut self, input: FrameInput) -> &Frame {
+        self.step_live(input, false)
+    }
+
+    /// [`Translated::step`], the frame's live sample bytes copied when `live`.
+    pub fn step_live(&mut self, input: FrameInput, live: bool) -> &Frame {
         if self.frame.stop.is_some() || self.frame.exited {
             // Frozen: the stop's frame was heard at its own step; nothing plays after.
             self.frame.samples.clear();
+            self.frame.live = None;
             return &self.frame;
         }
         // A send fails only when the thread has ended, which `receive` reports.
-        let _ = self.to.as_ref().expect("open").send(Input::from(input));
+        let _ = self.to.as_ref().expect("open").send((Input::from(input), live));
         self.frame = self.receive();
         &self.frame
     }

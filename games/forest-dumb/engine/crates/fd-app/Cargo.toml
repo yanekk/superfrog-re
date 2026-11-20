@@ -46,3 +46,9 @@ toml = "0.9"
 
 # The bug recorder and its zip (T14): the toolkit's game-free half, with fd-core's header.
 amiga-record = { path = "../../../../../toolkit/crates/amiga-record" }
+
+# The map page's live file (plan forest-dumb-map-page T10): its folder and level ids (`fd-map`) and
+# the file's shape and its rename-into-place writer (`amiga-routeview`'s `live`). Both game-free of
+# any emulator or test tooling (`tests/deps.rs`).
+fd-map = { path = "../fd-map" }
+amiga-routeview = { path = "../../../../../toolkit/crates/amiga-routeview" }
