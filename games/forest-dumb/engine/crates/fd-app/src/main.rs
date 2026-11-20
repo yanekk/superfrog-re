@@ -534,13 +534,14 @@ impl App {
     }
 
     /// View → Scale ▸ `s`: remembered, and a window (not fullscreen) resized to it, the bar's
-    /// height more while it shows. Auto keeps the window's size.
+    /// height more while it shows. Auto keeps the window's size. Whether the window is fullscreen
+    /// is `video.fullscreen`, not the setting: a scripted run kept windowed holds `true` there.
     fn set_scale(&mut self, s: Scale) {
         let run = self.run.as_mut().expect("running");
         run.settings.scale = s;
         run.video.scale = s;
         if let Scale::N(_) = s
-            && !run.settings.fullscreen
+            && !run.video.fullscreen
         {
             let size = initial_size(s, run.picture);
             let bar = if run.video.bar { BAR_HEIGHT } else { 0 };
@@ -589,7 +590,7 @@ impl App {
     /// applies it as a resize.)
     fn fit_window_to_bar(&mut self, at: Option<LogicalSize<f64>>) {
         let run = self.run.as_mut().expect("running");
-        if run.settings.fullscreen || run.window_bar == run.video.bar {
+        if run.video.fullscreen || run.window_bar == run.video.bar {
             return;
         }
         let at = at.unwrap_or_else(|| run.window.inner_size().to_logical(run.window.scale_factor()));

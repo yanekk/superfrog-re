@@ -110,6 +110,16 @@ fn a_scripted_run_stays_windowed_without_allow_fullscreen() {
     let (_, info) = c.read_shot(10);
     assert!(at_scale(&info, &c.read_frame(info.frame), 1), "windowed at --scale 1: {info:?}");
     assert_eq!(settings(&app), "fullscreen = true\n");
+
+    // Windowed despite that setting, a scale chosen still resizes the window (review: it tested
+    // the setting, not the window, and stayed at 1×); the setting is still left as it was.
+    app.opts.max_frames = 112;
+    let c = app.run_script("5: menu scale-2\n100: shot\n");
+    assert!(c.exit.success(), "{}", c.stderr);
+    let (_, info) = c.read_shot(100);
+    assert!(at_scale(&info, &c.read_frame(info.frame), 2), "the kept-windowed run at 2×: {info:?}");
+    let saved = settings(&app);
+    assert!(saved.contains("fullscreen = true") && saved.contains("scale = 2"), "{saved}");
 }
 
 fn os_layer() {
