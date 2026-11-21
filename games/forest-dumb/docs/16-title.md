@@ -52,8 +52,8 @@ Typed fast (T11's drill, `title-code-rolled`): the title keeps only the last byt
 keyboard sends one frame's key changes in key-code order, presses and releases mixed (vAmiga). So a
 key let go in the frame the next goes down counts only if its code is the higher: 2424 rolled enters
 two 4s, the 2s lost, the entry still on. Two digits pressed in one frame and let go in one frame
-count none; one-frame taps a frame apart all count (both measured equal on the original and
-translated, 2026-11-20).
+count one, the higher code's release being sent last (held 1 or 6 frames, T11 review); one-frame
+taps a frame apart all count (both measured equal on the original and translated, 2026-11-20).
 
 ## The codes
 
