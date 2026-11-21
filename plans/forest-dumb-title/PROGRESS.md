@@ -5,9 +5,9 @@ taught lives in [FINDINGS.md](FINDINGS.md). Sixty words to a Notes cell, counted
 
 **Plan reviewed:** 2026-11-20 — 10 fixed, 1 decided with the user
 
-**Status:** T01 to T10 ✅; T11 🔍 awaiting review.
+**Status:** T01 to T11 ✅; plan done.
 **Last updated:** 2026-11-21
-**Next `pir-work` will:** review T11.
+**Next `pir-work` will:** nothing; the plan is done.
 
 ## Tasks
 
@@ -26,9 +26,9 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ✅ | |
 | T10 | title-app-paths | T01 | ✅ | |
-| T11 | title-drill | T07, T09, T10 | 🔍 | Drill `title_drill.rs` (5 tests) worker-driven at three sizes; rolled-keys fix in `cia.rs` with case `title-code-rolled`; docs closed. OS layer `start_level_worlds` green at default, 400×300, 1200×900 (2026-11-21). No deviation from the task doc. |
+| T11 | title-drill | T07, T09, T10 | ✅ | Review: one doc fix, `16-title.md` said a two-digit chord counts none, measured one on oracle and translated. Mutation (old key order) caught by `cia.rs` unit test and `title-code-rolled`; drill 5/5, code, game-over, quit cases rerun green; smoke 764 s read. OS layer read-only. |
 
-**Review queue:** T11
+**Review queue:** (empty)
 
 ## Blocked on the user
 

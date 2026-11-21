@@ -8,6 +8,7 @@ changed.
 
 | Date | | Finding |
 |---|---|---|
+| 2026-11-21 | 📌 | Sweep: the hand engine's `fd-core` `game.rs` feeds `amiga-input` `CiaKeyboard::feed`, which keeps the last of `key_bytes`, downs before ups, so a rolled frame there may differ from vAmiga. Unchecked, left (T11 review). |
 | 2026-11-20 | 📌 | **Title drill, worker-driven** (`title_drill.rs`): title, KODY, rolled and held keys, focus lost, resizes, Start Level… on the title and in play, game over, at default, 400×300, 1200×900; screens in `build/drill/title/`, nothing clipped. OS layer `start_level_worlds` green at three sizes on 2026-11-21. |
 | 2026-11-20 | 🐞 | Digits typed rolled counted a digit the original drops: `pcode-machine` sent presses before releases, vAmiga sends a frame's changes by key code. Fixed in `cia.rs` `changes_by_code`; case `title-code-rolled` (T11). |
 | 2026-11-20 | 📌 | Up and Down held together on the title differ from 5021 (`title_joy_up`): vAmiga keeps the later pull, Down; the machine passes both. The level 1 plan's opposite-keys gap, left open (T11). |
