@@ -27,7 +27,7 @@ Legend: ⬜ not started · 🟡 in progress · 🔍 implemented, awaiting review
 | T08 | world-start-recording | — | ✅ | |
 | T09 | start-level-worlds | T08 | ✅ | |
 | T10 | title-app-paths | T01 | ✅ | |
-| T11 | title-drill | T07, T09, T10 | ⬜ | |
+| T11 | title-drill | T07, T09, T10 | ✅ | |
 
 **Review queue:** *(empty)*
 
