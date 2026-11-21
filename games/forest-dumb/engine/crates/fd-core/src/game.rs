@@ -125,6 +125,7 @@ impl Game {
             Start::Level1 => {
                 let mut state = State::level_1();
                 state.object_map = data.level.objects.cells.clone();
+                state.title.read_high_scores(&data.program);
                 let mut plane = CollisionPlane::new(&data.program);
                 let image = Arc::new(LevelImage::new(&data.level, &data.program));
                 let mut blits = Vec::new();

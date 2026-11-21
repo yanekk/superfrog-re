@@ -1274,6 +1274,15 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        // A scripted run is driven by its script alone. Its windows can still become key (closing
+        // the Controls window hands the key window to the game's), and a real key or focus change
+        // then (a person typing, another run's OS drill) would reach the game and make the run
+        // depend on the machine (`drill.rs`, the Controls window's Esc case).
+        if self.args.unattended()
+            && matches!(event, WindowEvent::KeyboardInput { .. } | WindowEvent::Focused(_))
+        {
+            return;
+        }
         if self.controls.as_ref().is_some_and(|c| c.window.id() == id) {
             match event {
                 WindowEvent::CloseRequested => self.close_controls(),

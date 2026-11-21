@@ -11,6 +11,10 @@ use crate::objects::animated::Animation;
 use crate::objects::creature::Moving;
 use crate::objects::spring::Spring;
 use crate::render::objects::CreatureDraw;
+use crate::program::Program;
+
+/// `hiscore_name_1`'s offset in hunk 0, the high-score table's start (docs/16-title.md).
+const HISCORE_TABLE: u32 = 0x84b6;
 
 /// The game state of a level in play. BCD variables are held as stored.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -101,8 +105,10 @@ pub struct TitleVars {
 
 impl TitleVars {
     /// After boot-to-level1's START at frame 5000 with no code typed: the row START, its flag still
-    /// set, world 1's code (its load list stores it), the song stopped at position 0 and the
-    /// high-score table as the program file holds it (measured, docs/16-title.md).
+    /// set, world 1's code (its load list stores it) and the song stopped at position 0 (measured,
+    /// docs/16-title.md). The high-score table is left zero here: it is the program file's, and
+    /// [`TitleVars::read_high_scores`] takes it from there (`Game::new`), since a table that size
+    /// comes from the player's disks (DESIGN §3.1, `fd-conform/tests/purity.rs`).
     pub const fn level_1() -> TitleVars {
         TitleVars {
             title_cursor: 0,
@@ -113,26 +119,21 @@ impl TitleVars {
             code_digits: 0x0005_0506,
             code_digit_index: 0,
             mt_songpos: 0,
-            hiscore_scores: [
-                0x0020_0000,
-                0x0017_5000,
-                0x0015_0000,
-                0x0012_5000,
-                0x0010_0000,
-                0x0007_5000,
-                0x0005_0000,
-                0x0002_5000,
-            ],
-            hiscore_names: [
-                [0x6561676c, 0x6520736f, 0x66742020], // eagle soft
-                [0x68696a6f, 0x20202020, 0x20202020], // hijo
-                [0x6178656c, 0x20642e20, 0x20202020], // axel d.
-                [0x62616c64, 0x20686f72, 0x73202020], // bald hors
-                [0x64616e20, 0x20202020, 0x20202020], // dan
-                [0x6b2e6d2e, 0x20202020, 0x20202020], // k.m.
-                [0x636f6d61, 0x6e636865, 0x20202020], // comanche
-                [0x64727569, 0x64202020, 0x20202020], // druid
-            ],
+            hiscore_scores: [0; 8],
+            hiscore_names: [[0; 3]; 8],
+        }
+    }
+
+    /// The high-score table as hunk 0 holds it at `h0+$84b6`: eight 16-byte entries, a 12-byte
+    /// name then a BCD score long. Nothing before the level sync point writes it (measured,
+    /// docs/16-title.md), so the program file's table is the one the original holds there.
+    pub fn read_high_scores(&mut self, program: &Program) {
+        for i in 0..8 {
+            let at = HISCORE_TABLE + 16 * i as u32;
+            for j in 0..3 {
+                self.hiscore_names[i][j] = program.long(at + 4 * j as u32);
+            }
+            self.hiscore_scores[i] = program.long(at + 12);
         }
     }
 
