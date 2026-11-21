@@ -1,6 +1,6 @@
 //! The KODY cases (forest-dumb-title T04, DESIGN §2.2, `docs/16-title.md`): one per code the title
-//! takes (`title-code-w1`, `-w3`, `-w5`, `-cheat`) and a wrong one (`title-code-wrong`), each typing
-//! its code on the keyboard from the idle title at 4990 (T01's scripts, `scripts/title-code-*.txt`),
+//! takes (`title-code-w1`, `-w3`, `-w5`, `-cheat`), a wrong one (`title-code-wrong`) and keys rolled
+//! (`title-code-rolled`, T11's drill), each typing its code on the keyboard from the idle title at 4990 (T01's scripts, `scripts/title-code-*.txt`),
 //! with no `set`: the original's own `title_code_world` writes `world_index` and `cheat_flag`.
 //!
 //! Full: the owner's disks and Kickstart and the generated tree. Each case runs on the translated
@@ -17,12 +17,14 @@ use fd_translated::TranslatedGame;
 /// 5051, a frame after the first digit's key went down: the machine landed the key byte at the
 /// frame's start, so `level2_handler`'s two-line wait ran across `title_pass`'s `wait_line_1` and
 /// the title lost a pass (`pcode-machine` `cia.rs`, the idle keyboard's first byte).
-const PASSING: [&str; 5] = [
+/// `title-code-rolled` passes since T11 sent a frame's key changes in code order, as vAmiga does.
+const PASSING: [&str; 6] = [
     "title-code-w1",
     "title-code-w3",
     "title-code-w5",
     "title-code-cheat",
     "title-code-wrong",
+    "title-code-rolled",
 ];
 
 /// Cases that differ on the translated program, with the start of their reading's first line.
@@ -137,3 +139,12 @@ fn code_7531_starts_world_5() {
 /// Play's 300th pass: world 3's first frame of play is 6299, world 5's 6139 (measured 2026-11-20).
 const W3_GOAL: u32 = 6598;
 const W5_GOAL: u32 = 6438;
+
+/// 2424 typed rolling, each key let go in the frame the next goes down: the frame's changes go out
+/// in key-code order, so key 2's rolled releases are followed by key 4's press and lost; two
+/// digits count, both 4, the entry still on (T11's drill).
+#[test]
+#[ignore = "full: the disks, Kickstart and the generated tree; about 20 s"]
+fn keys_rolled_count_only_the_releases_sent_last() {
+    reads("title-code-rolled", 5081);
+}

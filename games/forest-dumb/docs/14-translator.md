@@ -408,9 +408,8 @@ come from the wrapped `src + X` (T08); register-count rotates past the size and 
 X are wrong (T09); a `mulu` or `divu` with a memory source stops `Stop::Unsupported` (T11). A program
 using them needs a correction first.
 
-**Docs and data:** docs/07 says `OpenLibrary` where the file routines call `OldOpenLibrary` (-408),
-and that the OS's interrupts are taken through the title, where autovectors 2 and 3 are the
-program's (T01). `boot-to-level1.txt` says SCENA 1 waits for fire from 6206; its fire loop
+**Docs and data:** docs/07's `OpenLibrary` and its OS interrupts through the title were corrected
+by the title plan (`forest-dumb-title` T01). `boot-to-level1.txt` says SCENA 1 waits for fire from 6206; its fire loop
 `h0+$7c7e` first runs at 6056 (T33). `os-surface --worlds 1,3,6` lists `lea $0.l`..`$3.l` at
 `h0+$691e`..`$6930` as OS reads; they are constants (T01 review). The round trip over
 `camera-right-left`'s first 100 steps leaves `edges.pos` (`h0+$1e66`), `p840`, `p83c` and the

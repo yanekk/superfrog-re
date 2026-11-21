@@ -56,7 +56,9 @@ One plan a level, in order: W2-1 to W6-1 if the count below holds. Then a plan f
 
 A plan for the title screen and menus, which can run at any point after level 1, independent of the
 level plans. Its brief: [title-brief.md](title-brief.md) (2026-11-20); since the translator runs the
-title, it is mostly a checking plan.
+title, it is mostly a checking plan. Done (plan `plans/forest-dumb-title/`, 2026-11-20,
+[16-title.md](16-title.md)): every title case passes translated, the app's title paths equal headless,
+Game ▸ Start Level… and `--level N [--cheat]` start worlds 1 to 6; the drill (T11) closed it.
 
 The game has an ending: `end_screen`, after world 6, using `_END` (`docs/07-executable-map.md`, read from
 the code and not run). Its work goes in the last plan below unless it proves large enough for its own.
@@ -69,7 +71,8 @@ Last, once everything above is done: a plan for the whole-game end-to-end test, 
 - Level 1 first, as one plan with the stages above; then one plan a level; then sound; the whole-game
   end-to-end test last.
 - The title screen and menus are their own plan, in any order relative to the levels.
-- The app starts straight in level 1 until the title screen and menus plan lands.
+- The app starts straight in level 1 until the title screen and menus plan lands (it runs the title
+  from power-on since the translator plan; the title plan checked it, 2026-11-20).
 - Silent until the sound plan, which follows the level plans.
 
 The standing rule on disk-derived files applies to the map page: it holds disk graphics, so it stays in

@@ -384,6 +384,23 @@ impl Run {
     /// PNGs written only when `frames`; every step's input and state held to the run's. The app
     /// comes back with its capture: its home, the capture's folder, goes when it is dropped.
     pub fn in_the_app(&self, frames: bool, timeout_s: u64) -> (App, Captured) {
+        self.in_the_app_with(InApp {
+            frames,
+            timeout_s,
+            ..InApp::default()
+        })
+    }
+
+    /// [`Run::in_the_app`] with `how`'s scale, script lines and focus losses (title plan T11's drill).
+    pub fn in_the_app_with(&self, how: InApp) -> (App, Captured) {
+        let InApp {
+            frames,
+            timeout_s,
+            scale,
+            ref extra,
+            ref blur_at,
+            fast,
+        } = how;
         let steps = self.steps();
         let mut app = App::launch_translated(LaunchOpts {
             // Past an exit, so the app reaches it and quits on its own, not on the cap.
@@ -393,7 +410,7 @@ impl Run {
                 steps
             },
             timeout_s,
-            scale: Some(1),
+            scale,
             extra_args: if frames {
                 vec![]
             } else {
@@ -406,7 +423,21 @@ impl Run {
             .extra_args
             .extend(["--bugs-dir".into(), bugs.display().to_string()]);
         std::fs::write(app.home.join("settings.toml"), SETTINGS).unwrap();
-        let c = app.run_script_unread(&format!("fast-until {steps}\n{}", self.key_lines()));
+        // The app reads a script's events in file order, so an added line goes in among the keys'
+        // at its step (a stable sort keeps a step's own order), not after the last.
+        let mut lines: Vec<String> = self.key_lines(blur_at).lines().map(String::from).collect();
+        lines.extend(extra.lines().map(String::from));
+        lines.sort_by_key(|l| {
+            l.split(':')
+                .next()
+                .and_then(|n| n.parse::<u64>().ok())
+                .unwrap_or_else(|| panic!("not an `N: event` line: {l}"))
+        });
+        let c = app.run_script_unread(&format!(
+            "{}{}\n",
+            if fast { format!("fast-until {steps}\n") } else { String::new() },
+            lines.join("\n")
+        ));
         assert!(c.exit.success(), "{}", c.stderr);
         assert!(
             c.stderr
@@ -448,7 +479,9 @@ impl Run {
 
     /// The inputs as script lines: a host key goes down or up where its input changes, landing
     /// before the step that reads it (`N:` is seen by step N), everything let go after the last.
-    fn key_lines(&self) -> String {
+    /// At a step of `blur_at` the window loses focus in place of the keys' `up` lines: the app lets
+    /// go of every key held then, so the run's inputs must let go of them all there.
+    fn key_lines(&self, blur_at: &[u64]) -> String {
         let mut out = String::new();
         let mut held = FrameInput::NONE;
         for (k, i) in self
@@ -459,15 +492,23 @@ impl Run {
             .enumerate()
         {
             let n = k + 1;
+            if blur_at.contains(&(n as u64)) {
+                assert!(
+                    i.joy.0 & held.joy.0 == 0 && i.keys.0 & held.keys.0 == 0,
+                    "step {n}: a focus loss lets go of every key held"
+                );
+                out.push_str(&format!("{n}: blur\n"));
+            }
+            let lost = blur_at.contains(&(n as u64));
             for (bit, host) in JOY_KEYS {
                 let (was, is) = (held.joy.0 & bit.0 != 0, i.joy.0 & bit.0 != 0);
-                if was != is {
+                if was != is && !(lost && was) {
                     out.push_str(&format!("{n}: {} {host}\n", if is { "down" } else { "up" }));
                 }
             }
             for code in 0..128u8 {
                 let (was, is) = (held.keys.0 >> code & 1 != 0, i.keys.0 >> code & 1 != 0);
-                if was != is {
+                if was != is && !(lost && was) {
                     let how = if is { "down" } else { "up" };
                     out.push_str(&format!("{n}: {how} {}\n", host_key(code)));
                 }
@@ -475,6 +516,35 @@ impl Run {
             held = i;
         }
         out
+    }
+}
+
+/// How [`Run::in_the_app_with`] runs the app: [`Run::in_the_app`]'s at scale 1 by default.
+pub struct InApp {
+    /// Every frame's PNG written, else hashes and inputs only.
+    pub frames: bool,
+    pub timeout_s: u64,
+    /// `--scale`; `None` launches at the app's own default.
+    pub scale: Option<u32>,
+    /// Script lines added after the key presses: `N: resize W H`, `N: shot`.
+    pub extra: String,
+    /// Steps at which the window loses focus (`N: blur`), letting go of every key.
+    pub blur_at: Vec<u64>,
+    /// Unpaced to the last step (`fast-until`); a run taking shots is paced, since a shot is of
+    /// a window drawn, and a fast-forward draws none.
+    pub fast: bool,
+}
+
+impl Default for InApp {
+    fn default() -> InApp {
+        InApp {
+            frames: false,
+            timeout_s: 180,
+            scale: Some(1),
+            extra: String::new(),
+            blur_at: Vec::new(),
+            fast: true,
+        }
     }
 }
 

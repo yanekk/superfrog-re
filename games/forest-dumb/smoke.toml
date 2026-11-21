@@ -350,6 +350,8 @@ workspace = "engine"
 # generated tree, so full, with no area (owner, 2026-11-20).
 "crates/fd-e2e/tests/title_paths_short.rs" = "full"
 "crates/fd-e2e/tests/title_paths.rs" = "full"
+# Title plan T11: the title's drill, five app runs at three sizes with shots, about 80 s: full.
+"crates/fd-e2e/tests/title_drill.rs" = "full"
 # T23, what ends the game: the countdown, keys and lives on the rig (about 1 s); death-esc through the
 # game over screen to the high scores, the scene mismatches and a recording through the restart (about
 # 2 s warm; death-countdown, 140 s in release, is #[ignore]d for full); giving up in the real app at
