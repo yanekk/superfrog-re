@@ -63,6 +63,10 @@ Game ▸ Start Level… and `--level N [--cheat]` start worlds 1 to 6; the drill
 The game has an ending: `end_screen`, after world 6, using `_END` (`docs/07-executable-map.md`, read from
 the code and not run). Its work goes in the last plan below unless it proves large enough for its own.
 
+Real widescreen, as Superfrog's (owner, 2026-11-21): the first change to the game's logic, by
+mapping the routines it touches and rewriting them by hand through the seam. Its draft brief:
+[widescreen-brief.md](widescreen-brief.md); its order against the level plans is open there (Open 6).
+
 Last, once everything above is done: a plan for the whole-game end-to-end test, as Superfrog has
 (`games/superfrog/engine/crates/sf-e2e/`, `whole_game.rs`), played from power-on through the ending.
 
