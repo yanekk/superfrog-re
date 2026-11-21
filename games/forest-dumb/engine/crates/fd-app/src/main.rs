@@ -511,6 +511,13 @@ impl App {
             sampler: RamSampler::new(),
             show_map: None,
         };
+        // The device has been playing (and counting) since it opened, before the run through the
+        // title, the window and the pads: play starts from now, not in a burst catching up on that,
+        // whose samples would sit in the queue and keep the sound behind the picture for the run.
+        if run.audio.is_some() {
+            let skipped = run.pacer.due(run.now());
+            eprintln!("fd-app: audio: skipped {skipped} frames of start-up");
+        }
         run.shown.completed((0, size, rgba));
         self.run = Some(run);
         for e in present {
