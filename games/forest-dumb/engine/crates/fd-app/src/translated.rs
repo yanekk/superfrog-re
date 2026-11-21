@@ -19,6 +19,8 @@ use pcode_machine::Picture;
 use fd_translated::{Control, RUN_STACK, Start, TranslatedGame};
 use pcode_machine::{Disks, Input};
 
+use crate::live::{LiveBytes, copy_ranges};
+
 /// One frame of the translated program, as the app shows and captures it.
 pub struct Frame {
     /// Through [`fd_app::CANVAS`].
@@ -38,6 +40,10 @@ pub struct Frame {
     pub place: Option<fd_core::recording::Location>,
     /// The frame's sound at the run's rate, stereo; none for the start.
     pub samples: Vec<[i16; 2]>,
+    /// The bytes the map page's live sample reads, on a step that asked for them
+    /// ([`Translated::step_live`]); a few kilobytes, copied here so the app never needs the whole
+    /// RAM for it (plans/forest-dumb-map-page DESIGN §3.4).
+    pub live: Option<LiveBytes>,
 }
 
 impl Frame {
@@ -56,8 +62,8 @@ impl Frame {
 enum Msg {
     /// `TranslatedGame::write_at`, before the first frame: a world start's write.
     WriteAt((u8, u32), u32, Vec<u8>),
-    /// The next frame's input.
-    Input(Input),
+    /// The next frame's input, and whether to copy the live sample's bytes at its end.
+    Input(Input, bool),
 }
 
 /// The translated program running on its thread.
@@ -104,16 +110,18 @@ impl Translated {
                     exited: false,
                     place: fd_app::location_in_ram(chip, slow),
                     samples: Vec::new(),
+                    live: None,
                 };
                 if frames.send(start).is_err() {
                     return;
                 }
+                let ranges = fd_core::live::live_ranges();
                 // A world start's writes come before the first input: `write_at` holds only for a
                 // run not yet begun.
-                let first = loop {
+                let (first, mut sample) = loop {
                     match inputs.recv() {
                         Ok(Msg::WriteAt(at, addr, bytes)) => g.write_at(at, addr, &bytes),
-                        Ok(Msg::Input(i)) => break i,
+                        Ok(Msg::Input(i, s)) => break (i, s),
                         Err(_) => return,
                     }
                 };
@@ -129,6 +137,7 @@ impl Translated {
                         exited: out.exited,
                         place: fd_app::location_in_ram(out.chip, out.slow),
                         samples,
+                        live: sample.then(|| copy_ranges(out.chip, out.slow, &ranges)),
                     };
                     let stopped = frame.stop.is_some() || frame.exited;
                     // The app dropped, or the program stopped or ended: nobody sends the next input.
@@ -136,7 +145,10 @@ impl Translated {
                         return Control::Stop;
                     }
                     match inputs.recv() {
-                        Ok(Msg::Input(i)) => Control::Next(i),
+                        Ok(Msg::Input(i, s)) => {
+                            sample = s;
+                            Control::Next(i)
+                        }
                         Ok(Msg::WriteAt(..)) => unreachable!("to_world writes before the first step"),
                         Err(_) => Control::Stop,
                     }
@@ -158,14 +170,20 @@ impl Translated {
     /// One frame on `input`. After a stop or the program's exit nothing runs and the last frame
     /// stays, silent.
     pub fn step(&mut self, input: FrameInput) -> &Frame {
+        self.step_live(input, false)
+    }
+
+    /// [`Translated::step`], the frame's live sample bytes copied when `live`.
+    pub fn step_live(&mut self, input: FrameInput, live: bool) -> &Frame {
         if self.frame.stop.is_some() || self.frame.exited {
             // Frozen: the stop's frame was heard at its own step; nothing plays after.
             self.frame.samples.clear();
+            self.frame.live = None;
             return &self.frame;
         }
         // A send fails only when the thread has ended, which `receive` reports.
         self.stepped = true;
-        let _ = self.to.as_ref().expect("open").send(Msg::Input(Input::from(input)));
+        let _ = self.to.as_ref().expect("open").send(Msg::Input(Input::from(input), live));
         self.frame = self.receive();
         &self.frame
     }

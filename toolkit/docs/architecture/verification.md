@@ -29,6 +29,7 @@ owns = [
   "toolkit/crates/amiga-disk/",
   "toolkit/crates/amiga-plan/",
   "toolkit/crates/amiga-routeview/",
+  "toolkit/crates/amiga-browser/",
 ]
 +++
 
@@ -38,8 +39,9 @@ owns = [
 
 The machinery that judges an engine against the original, by machine. It also takes the toolkit's
 files with no hardware chapter of their own, so that every toolkit file has a toolkit owner:
-the workspace files, `toolkit/tools/`, `amiga-app`, `amiga-disk`, the route planner `amiga-plan` and the
-route viewer `amiga-routeview`. Those four crates are described in `toolkit/README.md`.
+the workspace files, `toolkit/tools/`, `amiga-app`, `amiga-disk`, the route planner `amiga-plan`, the
+route viewer `amiga-routeview` and the headless-Chrome test rig `amiga-browser`. Those five crates are
+described in `toolkit/README.md`.
 
 - **`amiga-oracle`** (`toolkit/crates/amiga-oracle/`): the original, run on vAmiga (MPL-2.0) at a pinned
   commit (`VAMIGA_COMMIT`) with seven core patches (`patches/`), built outside the repo by

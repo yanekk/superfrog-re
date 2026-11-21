@@ -14,7 +14,7 @@ use std::sync::Arc;
 use amiga_conform::script::{self, InputScript};
 use amiga_input::Joy;
 use amiga_routeview::json::{Json, esc, list, strs};
-use amiga_routeview::site::{self, Category, Entry, PageSpec};
+use amiga_routeview::site::{self, Entry, PageSpec};
 use amiga_routeview::verdict::{Status, Verdict};
 use amiga_routeview::{Event, LevelDump};
 use fd_assets::LEVEL_ROWS;
@@ -28,84 +28,18 @@ pub const TAIL: u32 = 100;
 /// The seatbelt: a script whose last line is past this many frames (30 minutes of play) is refused
 /// rather than played.
 pub const MAX_FRAMES: u32 = 50 * 60 * 30;
-/// The character's offset to the point that names its cell, as `Location::of_character` takes it
-/// (fd-core `recording.rs`: `char_x + $e`, `char_y + 9`); the page draws the character there too.
-const SPOT: (i32, i32) = (0xe, 9);
 
-/// The page's text for W1-1's objects: `re/objects-W1-1.toml`, a value and its group each.
-const OBJECTS: &str = include_str!("../../../../re/objects-W1-1.toml");
-
-/// What Forest Dumb's page knows of the game: 16-pixel cells, the character drawn and placed at its
-/// spot, an object in play boxed over the cell it stands on, and a layer per object group of
-/// `re/objects-W1-1.toml` ([`object_name`]).
+/// What the route page knows of the game: `fd_map::spec()` with live mode off, so the route page
+/// (`--script` alone, `fd-plan --page`) never asks for a live file and reads as it did.
 pub fn spec() -> PageSpec {
     PageSpec {
-        title: "Forest Dumb Forever".into(),
-        cell_size: (16, 16),
-        categories: vec![
-            Category::new("coins", "Coins", "--accent", true, &["coin"]),
-            Category::new("creatures", "Creatures", "--enemy", true, &["enemy"]),
-            Category::new("bonuses", "Bonuses", "--pickup", true, &["pickup"]),
-            Category::new("water", "Water", "--hazard", true, &["hazard"]),
-            Category::new(
-                "misc",
-                "Springs, vanishing blocks, the exit",
-                "#ffffff",
-                true,
-                &[],
-            ),
-        ],
-        actor: "character".into(),
-        anchor: SPOT,
-        cell_origin: SPOT,
-        live_box: (0, 0, 16, 16),
+        live: None,
+        ..fd_map::spec()
     }
 }
 
-/// An object value's layer and name: its group in `re/objects-W1-1.toml` (the page's cats `coin`,
-/// `enemy`, `pickup` and `hazard` draw in their own shapes), or `other` for a value the file lacks.
-pub fn object_name(value: u8) -> (&'static str, String) {
-    let group = groups().into_iter().find(|g| g.0 == value).map(|g| g.1);
-    let cat = match group.as_deref() {
-        // The page's summary counts the objects named `coin`; docs/10: `$20`..`$23` are coins.
-        Some("item") => return ("coin", "coin".into()),
-        Some("creature") => "enemy",
-        Some("bonus") => "pickup",
-        Some("water") => "hazard",
-        Some("spring") => "spring",
-        Some("vanishing-block") => "block",
-        // The page labels an object named `level exit` EXIT.
-        Some("exit") => return ("exit", "level exit".into()),
-        _ => "other",
-    };
-    let name = match group {
-        Some(g) => format!("{g} ${value:02x}"),
-        None => format!("object ${value:02x}"),
-    };
-    (cat, name)
-}
-
-/// (value, group) per `[[value]]` of `re/objects-W1-1.toml`, read by hand: two keys of a flat file.
-fn groups() -> Vec<(u8, String)> {
-    let mut out = Vec::new();
-    let mut value = None;
-    for line in OBJECTS.lines() {
-        let Some((k, v)) = line.split_once('=') else {
-            continue;
-        };
-        let v = v.trim();
-        match k.trim() {
-            "value" => value = u8::from_str_radix(v.trim_start_matches("0x"), 16).ok(),
-            "group" => {
-                if let Some(n) = value.take() {
-                    out.push((n, v.trim_matches('"').to_string()));
-                }
-            }
-            _ => {}
-        }
-    }
-    out
-}
+/// An object value's layer and name: `fd_map::object_name`, from every `re/objects-*.toml`.
+pub use fd_map::object_name;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Object {
@@ -192,21 +126,33 @@ pub fn replay(data: &Arc<GameData>, script: &InputScript, notes: Vec<String>) ->
             )
         })
         .collect();
-    let objects = (0..cols)
-        .flat_map(|c| (0..LEVEL_ROWS).map(move |r| (c, r)))
-        .filter_map(|(c, r)| {
-            let value = level.object(c, r);
-            (value != 0).then(|| {
-                let (cat, name) = object_name(value);
-                Object {
-                    c,
-                    r,
-                    value,
-                    cat,
-                    name,
-                }
-            })
-        })
+    // The hidden passages first, as `fd_map`'s map-only levels write them (T09): cat `secret`,
+    // value 0, so the page keys a cell's hover and route events by the real object there.
+    let secrets = fd_assets::secrets(level).into_iter().map(|s| Object {
+        c: s.c,
+        r: s.r,
+        value: 0,
+        cat: "secret",
+        name: fd_map::secret_name(s.kind).into(),
+    });
+    let objects = secrets
+        .chain(
+            (0..cols)
+                .flat_map(|c| (0..LEVEL_ROWS).map(move |r| (c, r)))
+                .filter_map(|(c, r)| {
+                    let value = level.object(c, r);
+                    (value != 0).then(|| {
+                        let (cat, name) = object_name(value);
+                        Object {
+                            c,
+                            r,
+                            value,
+                            cat,
+                            name,
+                        }
+                    })
+                }),
+        )
         .collect();
 
     let inputs_end = script.lines.last().map_or(0, |l| l.0);
@@ -411,31 +357,11 @@ pub fn default_out() -> PathBuf {
 pub const NO_VERDICT: &str =
     "no verdict: the level's end is not ported yet (T26), so the page cannot say a script finishes";
 
-/// The toolkit page as the map page needs it. It loads a web font; the map page opens from disk and
-/// makes no request outside it (T19), so the line is dropped and the page falls back to the
-/// system's fonts. And a route the toolkit can only call clean, faults or failed is shown as the
-/// page's own `unknown` ("No verdict"): a clean route there reads "reaches the exit", which nothing
-/// here knows.
-fn offline(page: &str) -> String {
-    let page = page.replace(
-        r#""status":"clean","faults":[""#,
-        r#""status":"unknown","faults":[""#,
-    );
-    page.lines()
-        .filter(|l| !(l.starts_with("<link") && l.contains("://")))
-        .collect::<Vec<_>>()
-        .join("\n")
-        + "\n"
-}
+use fd_map::offline;
 
-/// Plays the script at `script_path` on `data` and writes the page under `out`: `index.html` and
-/// `data/W1-1.js`. Returns the page's path and the replay. A missing or malformed script is an error
-/// naming its path.
-pub fn write_page(
-    data: &Arc<GameData>,
-    script_path: &Path,
-    out: &Path,
-) -> Result<(PathBuf, Dump), String> {
+/// Plays the script at `script_path` on `data`: the replay and its switcher row. A missing or
+/// malformed script is an error naming its path.
+pub fn play(data: &Arc<GameData>, script_path: &Path) -> Result<(Dump, Entry), String> {
     let text = std::fs::read_to_string(script_path)
         .map_err(|e| format!("script {}: {e}", script_path.display()))?;
     let script = parse_script(script_path, &text)?;
@@ -450,16 +376,28 @@ pub fn write_page(
         label: LEVEL.name().into(),
         group: "W1".into(),
         route_file: Some(script_path.display().to_string()),
-        // Until the level's end is ported (T26) the page gives no verdict ([`offline`] marks it
-        // unknown) and says why.
-        verdict: Verdict {
+        // Until the level's end is ported (T26) the page gives no verdict (`fd_map::offline` marks
+        // it unknown) and says why.
+        verdict: Some(Verdict {
             status: Status::Clean,
             faults: vec![NO_VERDICT.into()],
             info: vec![],
-        },
+        }),
         wall_s: None,
         ref_frames: None,
     };
+    Ok((dump, entry))
+}
+
+/// Plays the script at `script_path` on `data` and writes the page under `out`: `index.html` and
+/// `data/W1-1.js`. Returns the page's path and the replay. A missing or malformed script is an error
+/// naming its path.
+pub fn write_page(
+    data: &Arc<GameData>,
+    script_path: &Path,
+    out: &Path,
+) -> Result<(PathBuf, Dump), String> {
+    let (dump, entry) = play(data, script_path)?;
     let route = Route {
         dump: &dump,
         entry: entry.clone(),
@@ -472,14 +410,50 @@ pub fn write_page(
     Ok((page, dump))
 }
 
+/// The level ids the map page has: `W1-1` to `W6-1`.
+pub fn level_ids() -> Vec<String> {
+    fd_map::WORLDS
+        .iter()
+        .map(|&w| fd_map::level_id(w))
+        .collect()
+}
+
+/// The world of a level id, or an error naming the six ids.
+pub fn world_of(id: &str) -> Result<u8, String> {
+    fd_map::WORLDS
+        .into_iter()
+        .find(|&w| fd_map::level_id(w) == id)
+        .ok_or_else(|| format!("no level {id}: the levels are {}", level_ids().join(", ")))
+}
+
+/// The map page of `worlds` under `out`, live mode on (`fd_map::write_levels`), read from the
+/// owner's disks (`fd_tools::disk_dir`); `route` in its level's place. Returns the page's path.
+pub fn write_map(
+    out: &Path,
+    worlds: &[u8],
+    route: Option<&dyn LevelDump>,
+) -> Result<PathBuf, String> {
+    let dir = fd_tools::disk_dir()?;
+    let program = fd_tools::game_file(&dir, &format!("disk1/{}", fd_core::program::PROGRAM_FILE))?;
+    let files = |name: &str| {
+        fd_tools::game_file(&dir, &format!("disk2/{name}"))
+            .map_err(|e| fd_assets::AssetError::missing(name, e))
+    };
+    fd_map::write_levels(out, &files, &program, worlds, route)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn every_group_of_the_object_file_has_a_layer() {
-        let g = groups();
-        assert_eq!(g.len(), 24, "{g:?}");
+    fn every_group_of_the_object_files_has_a_layer() {
+        let g: Vec<(u8, String)> = fd_map::groups()
+            .iter()
+            .map(|(&v, g)| (v, g.clone()))
+            .collect();
+        // W1-1's 24 values and the flame.
+        assert!(g.len() >= 25, "{g:?}");
         assert_eq!(object_name(0x20), ("coin", "coin".into()));
         assert_eq!(object_name(0x01).0, "enemy");
         assert_eq!(object_name(0xff), ("exit", "level exit".into()));

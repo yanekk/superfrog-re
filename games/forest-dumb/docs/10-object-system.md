@@ -107,8 +107,14 @@ drops cells whose map value is gone or that left the view, and draws `_ELEMENTY`
 `(value - $20 + tick) & 7`, the tick at `h0+$62b2` stepping every fourth pass. `char_object_cells` reads
 the cells at `char_y + $19` and `char_y + 9`, column `char_x + $e`: `h0_26ec` takes an item, clears the
 cell, redraws its tile (`h0_29ca`), adds 100 and takes one from `items_left`. W1-1 holds 332 items;
-`items_left` starts at 282 (set by `load_list_world_1`), so 50 are spare. `h0+$7a9e` counts `$20`-`$27`
-over the whole map but is not what sets `items_left`.
+`items_left` starts at 282, so 50 are spare. **Its start value is computed from the map**: every
+`load_list_world_N` (hunk 4; the store is `h4+$1a884` in world 2's, `h4+$1c8c0` in world 1's) calls `h0+$7a9e`,
+which counts the bytes `$20`-`$27` over all 38400 bytes of the object map at `h0+$cb38` (unused columns
+included) into `h0+$7a9c`, subtracts `$32` and packs the result as three BCD digits (`h4+$1c910`) into
+`items_left`. No world has a coin in its unused columns (counted 2026-11-20, 96 bytes a column), so the
+used-column count is the same. So items needed = coins in `_MapaBobowN` - 50, in every world. Read 2026-11-20 on the
+oracle after `load_world` returns and at `main_loop`'s first run, equal to the count from the files
+(map-page T00, `spikes/items-needed/`): W1-1 282, W2-1 549, W3-1 676, W4-1 396, W5-1 547, W6-1 751.
 
 **Water (`$28`) and the other animated cells.** `$28` draws `_ELEMENTY` frames 8 and 9, or 8 to 11 when
 `h0+$6342` is set; `$2a` frames 10 and 11. `h0_26ec` ignores `$28` to `$3f`, so water changes no state
@@ -119,7 +125,7 @@ except, perhaps, through its pixels' colours (above). `$29`, `$2b` to `$2f` and 
 `h0+$63ec` gives for `(value - $30) * 16 + tick`, a 64-step cycle, so the four values run a quarter apart.
 On every frame but the empty one (offset `$14`) it writes `collision_map` solid (`$fffffff0`, 28 pixels on 8
 lines); on the empty one it clears it. So `collision_map` under a block changes with time: play state.
-`$34` draws `_Plomien` (a flame) and writes nothing; not in W1-1.
+`$34` draws `_Plomien` (a flame) and writes nothing; not in W1-1 (measured below).
 
 **Bonuses (`$40` to `$5f`).** The edge redraw that brings the cell in blits `_ELEMENTY`'s second row,
 frame `value - $40`, into the screen once (`h0_a06`, `h0_ce4`, `h0_104c`, `h0_1390`, one per edge). Taken by
@@ -213,6 +219,15 @@ frames 8 to 11.
 Read, not measured: `7` to `$f` and `$14` to `$1f` are skipped by the scan and by `h0_24ce`; `$12`, `$13`
 are springs, `$24` to `$27` coins, `$2a` water, `$34` a flame, `$45` to `$4b` and `$4d` to `$50` bonuses,
 `$4c` time. The placed runs measured `$12` and `$13` too.
+
+**`$34`, the flame, measured (2026-11-20, plan forest-dumb-map-page T01).** The one value worlds 3 to 6
+hold that W1-1 lacks (31, 10, 25 and 17 cells in W3-1 to W6-1, e.g. `W3-1:6,47`). Placed on W1-1's slide at
+the body and the feet cells, `h0_6882` adds it and `h0_62b6`'s branch at `h0+$6508` blits `_Plomien`
+(`h4+$a298`, frame by `anim_tick`) over the cell and the one below; the run ends as the plain slide does in
+position, score, items, countdown, lives and every contact pass, and the cell stays
+(`object_claims.rs::value_34_is_a_flame_that_changes_no_state`). Its group is in
+[`re/objects-more.toml`](../re/objects-more.toml); `fd-conform/tests/object_tables.rs` checks every value of
+the six maps has a group.
 
 ## Mechanics in W1-1
 

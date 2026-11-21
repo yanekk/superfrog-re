@@ -30,3 +30,5 @@ amiga-disk = { path = "../../../../../toolkit/crates/amiga-disk" }
 fd-translated = { path = "../fd-translated" }
 # A headless translated run's frames as the app's thread runs them, for its sound (T38).
 pcode-machine = { path = "../pcode-machine" }
+# Headless Chrome for the map page's drill beside the app (map page T12, tests/map_drill.rs).
+amiga-browser = { path = "../../../../../toolkit/crates/amiga-browser" }

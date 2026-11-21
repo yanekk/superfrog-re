@@ -97,6 +97,11 @@ elsewhere). Its flags and seatbelts (`--script`, `--capture`, `--max-frames`, `-
 
 ## Seeing a run on the map
 
+`cargo run --release -p fd-routeview -- --all` in `engine/` writes the six-level map page, W1-1 to W6-1, every
+object, the exit and the items it needs, to `games/forest-dumb/build/map/index.html` of the main checkout (from any
+worktree; `--out DIR` elsewhere, `--level W3-1` for one). Open it in Chrome beside `fd-app`; it shows "App not
+running" until the app writes `live.js` there. `--script FILE --all` draws a route on W1-1 in that page.
+
 `cargo run --release -p fd-routeview -- --script FILE` in `engine/` plays an input script
 (`engine/conform/scripts/*.txt`) from W1-1's start and writes level 1's map with the character's path
 to `games/forest-dumb/build/route-viz/index.html` (`--out DIR` elsewhere), which opens from disk. It
@@ -135,7 +140,7 @@ Each tool has a short README saying how to call it. Read it, in one step, before
 source; open the source only for what the README lacks.
 
 - [engine/crates/fd-conform/README.md](engine/crates/fd-conform/README.md): the conformance runner's Rust API for tests (cases, routine judge and rig, generators, coverage, bug replay); the case format is in [engine/conform/README.md](engine/conform/README.md).
-- [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers.
+- [engine/crates/fd-plan/README.md](engine/crates/fd-plan/README.md), [fd-app](engine/crates/fd-app/README.md), [fd-e2e](engine/crates/fd-e2e/README.md), [fd-routeview](engine/crates/fd-routeview/README.md), [fd-tools](engine/crates/fd-tools/README.md), [fd-assets](engine/crates/fd-assets/README.md), [fd-map](engine/crates/fd-map/README.md): the route planner, the app and its scripts and keys, end-to-end driving, the map page, the extract CLI, the asset readers, each world's level as the map page draws it.
 - [tools/README.md](tools/README.md): every Python script here; `tools/translate.py` first (the translator's one command), then listing, call tree, the translator's parts, generate and reshape (Haiku, the first try for generators and rewrites), task pack, renders.
 - [../../tools/README.md](../../tools/README.md): the repo's smoke and full tests, `smoke.toml` labels and `[[area]]`, the tier-name check.
 - The toolkit crates' READMEs: `toolkit/crates/<crate>/README.md` (`amiga-oracle`, `amiga-conform`, `amiga-plan`, `amiga-app`, `amiga-input`, `amiga-routeview`).
@@ -164,6 +169,7 @@ source; open the source only for what the README lacks.
 - [docs/14-translator.md](docs/14-translator.md): the translator plan's result and every reading, dated: 291 of 291 instruction kinds match Moira (`insn_gate.rs`); the whole tree, 100 of 100 routines, no hint; 89 of 100 on `pcode-machine`; 49 of 50 cases translated and with level 1 mounted (`power-on-level-1` fails from 6301); worlds 2 to 6, 5 of 5; no write into code; the app end to end to world 2; sessions translate first, 3 of 3; and what is left open for the level plans ("Open after the plan": read it before planning one).
 - [docs/15-os-surface.md](docs/15-os-surface.md): every OS call, OS memory access, interrupt and CIA register the program uses, measured on the original (`fd-conform os-surface`, data in [re/os-calls.toml](re/os-calls.toml)), and what it relies on each for.
 - [docs/16-title.md](docs/16-title.md): the title measured: the rows, KODY's digits, the four codes (0556, 2424, 7531, 2400 the cheat) and a wrong one, Esc and KONIEC returning to AmigaDOS, game over through the high scores (name entry, memory only) to the title, the song's loop, keys rolled (T11's drill).
+- [docs/17-secrets.md](docs/17-secrets.md): what the levels hide: hidden passages (wall pictures over empty shapes) by `fd_assets::secrets`, counted per world and walked into on the original in W1-1, W3-1, W4-1; no invisible floor, warp or teleport found.
 
 ## The first case
 

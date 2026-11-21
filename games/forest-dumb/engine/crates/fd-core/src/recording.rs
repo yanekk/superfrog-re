@@ -578,20 +578,24 @@ pub fn world_start_bytes(level: LevelId, cheat: bool) -> Vec<(u32, Vec<u8>)> {
 }
 
 /// Where slow RAM starts in the A500's address space.
-const SLOW_BASE: usize = 0xC0_0000;
+pub(crate) const SLOW_BASE: usize = 0xC0_0000;
+
+/// The byte at A500 address `a` in chip RAM or slow RAM at a frame's end; 0 past either.
+pub(crate) fn ram_byte(chip: &[u8], slow: &[u8], a: u32) -> u8 {
+    let a = (a & 0xFF_FFFF) as usize;
+    let b = match a.checked_sub(SLOW_BASE) {
+        Some(i) => slow.get(i),
+        None => chip.get(a),
+    };
+    b.copied().unwrap_or(0)
+}
 
 /// A variable of [`crate::LAYOUT`] read out of chip RAM and slow RAM at a frame's end.
-fn ram_var(chip: &[u8], slow: &[u8], name: &str) -> u32 {
+pub(crate) fn ram_var(chip: &[u8], slow: &[u8], name: &str) -> u32 {
     let v = crate::layout_var(name).expect("in LAYOUT");
     let at = crate::HUNK_BASES[v.hunk as usize] + v.offset;
-    (0..v.width.bytes() as u32).fold(0u32, |acc, k| {
-        let a = ((at + k) & 0xFF_FFFF) as usize;
-        let b = match a.checked_sub(SLOW_BASE) {
-            Some(i) => slow.get(i),
-            None => chip.get(a),
-        };
-        acc << 8 | b.copied().unwrap_or(0) as u32
-    })
+    (0..v.width.bytes() as u32)
+        .fold(0u32, |acc, k| acc << 8 | ram_byte(chip, slow, at + k) as u32)
 }
 
 /// The level the translated program is playing, from chip RAM and slow RAM at a frame's end:
